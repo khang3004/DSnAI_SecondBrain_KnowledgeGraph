@@ -1,0 +1,132 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Recommender Systems \& Ranking}{Collaborative Filtering, Matrix Factorization (ALS/SGD), AutoRec \& BPR}
+  {Factorize sparse user-item matrices into low-rank latent embeddings or optimize pairwise preference margins via BPR}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Collaborative\\ Filtering \& MF\\ \footnotesize\mdseries ALS $\cdot$ AutoRec $\cdot$ BPR}{%
+  \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+    \draw[csDom, thick, fill=csDom!10] (-1.8,-0.7) rectangle (-0.4,0.7) node[midway] {$\mat Y$};
+    \node at (-0.15,0) {$\approx$};
+    \draw[csB, thick, fill=csB!12] (0.1,-0.7) rectangle (0.65,0.7) node[midway] {$\mat P$};
+    \draw[csD, thick, fill=csD!12] (0.8,0.15) rectangle (1.9,0.7) node[midway] {$\mat Q\T$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; EXPLICIT vs IMPLICIT FEEDBACK}{%
+  \begin{csbul}
+    \item \textbf{Explicit ($y_{ui}\in\{1\dots 5\}$):} sparse, MNAR selection bias; evaluate RMSE/MAE
+    \item \textbf{Implicit (clicks/views):} positive-only $\mathcal{I}_u^+$; unobserved $=$ negative $\cup$ unexposed
+    \item \textbf{Confidence weighting:} $c_{ui}=1+\alpha r_{ui}$, $p_{ui}=\mathbb{I}(r_{ui}>0)$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; NEIGHBORHOOD CF $-$ User vs Item}{%
+  \csfm{\hat y_{ui}=\bar y_u + \frac{\sum_{j\in\mathcal N_u(i)}\mathrm{sim}(i,j)(y_{uj}-\bar y_u)}{\sum_j |\mathrm{sim}(i,j)|}}
+  \begin{csbul}
+    \item \textbf{Item-Item CF:} precomputable when $|I|\ll|U|$; stable against fast user drift
+    \item \textbf{Mean-centering:} removes generous vs harsh rater bias before cosine similarity
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; BIASED MATRIX FACTORIZATION (SVD++)}{%
+  \csfm{\hat y_{ui}=\mu+b_u+b_i+\vecb p_u\T\vecb q_i,\quad \min_{\mat P,\mat Q}\sum_{\Omega}(y_{ui}-\hat y_{ui})^2+\lambda(\norm{\mat P}_F^2+\norm{\mat Q}_F^2)}
+  \begin{csbul}
+    \item \textbf{Biases:} $b_u, b_i$ capture user generosity \& item quality separately from affinity
+    \item \textbf{SVD++:} adds implicit history $\vecb p_u + |\mathcal{N}(u)|^{-1/2}\sum_{j\in\mathcal{N}(u)}\vecb y_j$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; ALS vs SGD OPTIMIZATION}{%
+  \csfm{\vecb p_u \gets \Bigl(\sum_{i\in\Omega_u}\vecb q_i\vecb q_i\T + \lambda\eye_K\Bigr)^{-1}\sum_{i\in\Omega_u}(y_{ui}-\mu-b_u-b_i)\vecb q_i}
+  \begin{csbul}
+    \item \textbf{ALS:} parallel across users/items; Gram trick makes implicit ALS $O(|\Omega|K^2+MK^3)$
+    \item \textbf{SGD:} $O(|\Omega|K)$ per epoch; ideal for huge explicit ratings or streaming updates
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; AUTOREC $-$ Nonlinear Masked Autoencoder}{%
+  \csfm{\mathcal L_{\mathrm{AutoRec}}=\sum_i \norm{(\vecb y^{(i)}-f(\vecb y^{(i)}))\odot\vecb m^{(i)}}_2^2 + \frac{\lambda}{2}\norm{\Theta}_F^2}
+  \begin{csbul}
+    \item \textbf{Masked backprop:} mask $\vecb m^{(i)}$ updates weights only for observed ratings
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; BAYESIAN PERSONALIZED RANKING (BPR)}{%
+  \csfm{\mathcal L_{\mathrm{BPR}} = -\sum_{(u,i,j)}\log\sigma(\hat y_{ui}-\hat y_{uj}) + \lambda\norm{\Theta}_2^2}
+  \begin{csbul}
+    \item \textbf{Pairwise margin:} enforces $i\in\mathcal{I}_u^+$ ranks above $j\notin\mathcal{I}_u^+$ (smooth AUC proxy)
+  \end{csbul}}
+
+\end{tikzpicture}
+
+% =============================================================================
+%                                 PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item \textbf{Biased MF:} $\hat y_{ui}=\mu+b_u+b_i+\vecb p_u\T\vecb q_i$
+    \item \textbf{Implicit WALS:} $\vecb p_u = (\mat Q\T\mat Q + \sum_{i\in\mathcal I_u^+}(c_{ui}-1)\vecb q_i\vecb q_i\T + \lambda\eye)^{-1}\sum_{i\in\mathcal I_u^+} c_{ui}\vecb q_i$
+    \item \textbf{BPR Gradient:} $\nabla_{\vecb p_u}\log\sigma(\hat y_{ui}-\hat y_{uj}) = \sigma(\hat y_{uj}-\hat y_{ui})(\vecb q_i-\vecb q_j)$
+    \item \textbf{Relation to Bradley--Terry:} BPR applies BT pairwise odds to $(i \succ_u j)$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{IMPLICIT RANKING \& ALS RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Split by time:} use temporal holdout (leave-last-out), never random rating splits.
+    \item \textbf{Choose loss:} use WALS for dense implicit counts or BPR for top-$K$ pairwise ranking.
+    \item \textbf{Negative sampling:} mix uniform + popularity/in-batch hard negatives for BPR.
+    \item \textbf{Evaluate:} report Recall@$K$ and NDCG@$K$ over full catalog or unexposed pool.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    small/medium catalog, explainable & Item-Item CF (cosine on centered ratings)\\
+    huge implicit logs (clicks/views) & Weighted ALS (Gram trick) or BPR-MF\\
+    explicit star ratings ($1\dots 5$) & Biased MF (SGD) or AutoRec\\
+    new user/item (0 interactions) & Content features / Two-Tower hybrid\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csF}{BPR PAIRWISE MARGIN LOSS vs POINTWISE MSE}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=-4, xmax=4, ymin=0, ymax=4.5,
+      xlabel={Score Difference $\Delta = \hat{y}_{ui} - \hat{y}_{uj}$}, ylabel={Loss},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.97,0.92)}, anchor=north east, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csD, very thick, domain=-4:4, samples=60] {ln(1+exp(-x))};
+      \addlegendentry{BPR $-\log\sigma(\Delta)$}
+      \addplot[csA, dashed, very thick, domain=-4:4, samples=60] {max(0, 1-x)};
+      \addlegendentry{Hinge $\max(0,1-\Delta)$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Naive SVD on missing=0:} imputing unobserved ratings as $0$ biases predictions toward zero; optimize only over $\Omega$ or use confidence weights $c_{ui}$.
+    \item \textbf{Cold-start blindness:} pure ID embeddings $\vecb p_u, \vecb q_i$ cannot generalize to unseen items/users.
+    \item \textbf{Trivial uniform negatives:} sampling random tail items gives $\sigma(-\Delta)\approx 0$ and stalls BPR learning.
+    \item \textbf{Random split leakage:} random train/test splits leak future user behavior into the past.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csE}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Collaborative filtering discovers user-item taste via low-rank matrix completion $\mat Y \approx \mat P\mat Q\T$ (ALS/SGD), nonlinear masked AutoRec, or pairwise BPR margin maximization $\log\sigma(\hat y_{ui}-\hat y_{uj})$ tailored for top-$K$ implicit ranking.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+\end{document}

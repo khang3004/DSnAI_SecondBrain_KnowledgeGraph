@@ -1,0 +1,586 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Linear Algebra, Matrix Decompositions \& Vector Calculus}{Matrix Calculus, Jacobians \& Automatic Differentiation}{Matrix Calculus, Computational Graphs \& Automatic Differentiation}{%
+\bookcite{mathematics_machine_learning_orienly}{Ch.~5, pp.~139--169},
+\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.8, pp.~269--274; Sec.~8.1.4, pp.~282--283; Sec.~13.3, pp.~438--446},
+\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2, pp.~261--270; Sec.~16.2.10, pp.~640--641},
+\bookcite{deep_learning_foundations_concepts}{Ch.~8, pp.~233--252},
+\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5, pp.~204--224},
+\bookcite{machine_learning_co_ban_tiep_vu}{Ch.~2, pp.~30--39}%
+}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:matcalc:formulation}
+% =============================================================================
+
+Modern statistical learning and deep architectures optimize scalar objectives
+$L : \Theta \to \R$ formed by deep compositions of vector-, matrix-, and
+tensor-valued maps. Let $U \subseteq \R^n$ be open and let
+$\vecb{f} : U \to \R^m$ be differentiable at $\vecb{x} \in U$. Coordinate-free
+differential calculus defines the \emph{Fr\'{e}chet derivative} (or total
+differential) at $\vecb{x}$ as the unique linear map
+$D\vecb{f}(\vecb{x}) : \R^n \multimap \R^m$ satisfying
+\begin{equation}
+  \vecb{f}(\vecb{x} + \vecb{h})
+  = \vecb{f}(\vecb{x}) + D\vecb{f}(\vecb{x})[\vecb{h}] + o(\norm{\vecb{h}}_2)
+  \quad \text{as } \vecb{h} \to \zeros.
+  \label{eq:matcalc:frechet}
+\end{equation}
+In functional AD notation
+\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.1, pp.~262--263},
+this linear operator is written $\partial f(x) : \R^n \multimap \R^m$.
+Fixing the standard bases $\{\vecb{e}_j\}_{j=1}^n$ of $\R^n$ and
+$\{\vecb{e}_i\}_{i=1}^m$ of $\R^m$ yields the canonical matrix representation of
+$D\vecb{f}(\vecb{x})$, the \emph{Jacobian matrix}
+$\jac_{\vecb{f}}(\vecb{x}) \in \R^{m \times n}$:
+\begin{equation}
+  \jac_{\vecb{f}}(\vecb{x})
+  \triangleq \pd{\vecb{f}(\vecb{x})}{\vecb{x}\T}
+  = \begin{bmatrix}
+      \pd{f_1}{x_1} & \cdots & \pd{f_1}{x_n} \\
+      \vdots & \ddots & \vdots \\
+      \pd{f_m}{x_1} & \cdots & \pd{f_m}{x_n}
+    \end{bmatrix}
+  = \begin{bmatrix}
+      \grad f_1(\vecb{x})\T \\
+      \vdots \\
+      \grad f_m(\vecb{x})\T
+    \end{bmatrix}
+  \in \R^{m \times n}.
+  \label{eq:matcalc:jacobian_def}
+\end{equation}
+
+For a scalar function $f : \R^n \to \R$ ($m=1$) or $f : \R^{m \times n} \to \R$,
+optimization requires parameter updates $\vecb{x}_{k+1} = \vecb{x}_k - \eta \grad_{\vecb{x}} f(\vecb{x}_k)$
+and $\mat{X}_{k+1} = \mat{X}_k - \eta \grad_{\mat{X}} f(\mat{X}_k)$ in the
+same space as the primal variables. Accordingly, this monograph adopts a
+\textbf{consistent shape-preserving hybrid convention}:
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Jacobians follow numerator layout} ($\R^{m \times n}$, output
+        rows $\times$ input columns), matching linear operator application
+        $D\vecb{f}(\vecb{x})[\vecb{v}] = \jac_{\vecb{f}}(\vecb{x})\vecb{v}$.
+  \item \textbf{Scalar gradients preserve primal shape}:
+        $\grad_{\vecb{x}} f(\vecb{x}) = \jac_f(\vecb{x})\T \in \R^n$ is a column
+        vector and $(\grad_{\mat{X}} f(\mat{X}))_{ij} = \pd{f}{X_{ij}}$ has the
+        exact shape $\R^{m \times n}$ of $\mat{X}$.
+\end{enumerate}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation: Numerator vs.\ Denominator Layouts]
+\label{box:matcalc:layouts}
+Matrix calculus texts split across three incompatible layout conventions for
+$\pd{\vecb{y}}{\vecb{x}}$ and $\grad_{\vecb{x}} f$, causing factor-of-transpose
+bugs when formulas are mixed verbatim. Table~\ref{tab:matcalc:layouts}
+provides a unified Rosetta Stone across all six synthesized sources.
+
+\vspace{4pt}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.4cm}ccc>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Source Text} & \textbf{Convention} & $\grad_{\vecb{x}} f$ & $\pd{\mat{A}\vecb{x}}{\vecb{x}}$ & $\jac_{\vecb{f}}(\vecb{x})$ & \textbf{Chain Rule ($z = g(\vecb{f}(\vecb{x}))$)} \\
+\midrule
+Deisenroth et al.
+  & Pure Numerator
+  & $\R^{1\times n}$
+  & $\mat{A}$
+  & $\R^{m\times n}$
+  & $\pd{g}{\vecb{x}} = \pd{g}{\vecb{f}}\pd{\vecb{f}}{\vecb{x}}$ (no transposes) \\
+\addlinespace[2pt]
+Tiep Vu
+  & Pure Denominator
+  & $\R^{n\times 1}$
+  & $\mat{A}\T$
+  & $\R^{n\times m}$
+  & $\grad_{\vecb{x}} g = (\grad_{\vecb{x}} \vecb{f})(\grad_{\vecb{f}} g) = \jac_{\vecb{f}}\T \grad_{\vecb{f}} g$ \\
+\addlinespace[2pt]
+Murphy (Intro)
+  & Hybrid (Col / Num)
+  & $\R^{n\times 1}$
+  & $\mat{A}$
+  & $\R^{m\times n}$
+  & $\grad_{\vecb{x}} g = \jac_{\vecb{f}}(\vecb{x})\T \grad_{\vecb{f}} g$ ($\grad f = \jac_f\T$) \\
+\addlinespace[2pt]
+Goodfellow et al.
+  & Hybrid (Col / Num)
+  & $\R^{n\times 1}$
+  & $\mat{A}$
+  & $\R^{m\times n}$
+  & $\grad_{\vecb{x}} z = (\pd{\vecb{y}}{\vecb{x}})\T \grad_{\vecb{y}} z$ \\
+\addlinespace[2pt]
+Bishop \& Bishop
+  & Num.\ Jac / Adjoints
+  & $\delta_j = \pd{E_n}{a_j}$
+  & $W_{ki}$
+  & $\R^{m\times n}$
+  & $\bar{v}_i = \sum_{j\in\mathrm{Ch}(i)} \bar{v}_j \pd{v_j}{v_i}$ \\
+\addlinespace[2pt]
+Murphy (Adv)
+  & Functional Maps
+  & $\partial f(x)\T[1]$
+  & $v \mapsto \mat{A}v$
+  & $\R^n \multimap \R^m$
+  & $\partial(g \circ f)(x) = \partial g(f(x)) \circ \partial f(x)$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Cross-book Rosetta Stone reconciling scalar gradient shapes, Jacobian matrix layouts, and chain-rule transposition across all six synthesized sources:
+\bookcite{mathematics_machine_learning_orienly}{Ch.~5, pp.~146--151},
+\bookcite{machine_learning_co_ban_tiep_vu}{Ch.~2, pp.~30--34},
+\bookcite{probabilisticml_kevinmurphy_introduction}{pp.~270--273, 439},
+\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.2, p.~207},
+\bookcite{deep_learning_foundations_concepts}{Ch.~8, pp.~235--249}, and
+\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2, pp.~262--265}.}
+\label{tab:matcalc:layouts}
+
+\vspace{4pt}
+\textbf{Reconciliation Note on Denominator-Layout Chain Rules:} Under the denominator convention of \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~2, Eq.~(2.8) \& (2.11), pp.~32--33},
+$\grad_{\vecb{x}}\vecb{h} \in \R^{k\times n}$ already stores the transpose of
+$\jac_{\vecb{h}} \in \R^{n\times k}$, yielding $\grad_{\vecb{x}}(\mat{A}\vecb{x}) = \mat{A}\T$.
+When differentiating $g(\vecb{f}(\vecb{x})) \in \R$, dimension matching requires
+$\grad_{\vecb{x}} g = (\grad_{\vecb{x}} \vecb{f})(\grad_{\vecb{f}} g)$ (as applied in
+\bookcite{machine_learning_co_ban_tiep_vu}{Sec.~2.4.4, p.~34} to obtain
+$2\mat{A}\T(\mat{A}\vecb{x}-\vecb{b})$); Eq.~(2.10) therein prints an extra
+transpose $(\grad_{\mat{X}} f)\T$ that matches numerator-layout Jacobians
+(cf.\ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(6.46), p.~207}).
+Always verifying outer dimensions $(n \times m)(m \times 1) = (n \times 1)$
+immediately catches layout-transpose mismatches.
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:matcalc:derivations}
+% =============================================================================
+
+\subsection{The Multivariate Chain Rule \& Kronecker Flattening}
+\label{subsec:matcalc:chain}
+
+\begin{coremath}[Theorem 1: Multivariate Chain Rule \& Tensor-Matrix Isomorphism]
+Let $\vecb{f} : U \subseteq \R^n \to V \subseteq \R^p$ be differentiable at $\vecb{x} \in U$ and $\vecb{g} : V \to \R^m$ be differentiable at $\vecb{y} = \vecb{f}(\vecb{x})$. Then the composition $\vecb{h} = \vecb{g} \circ \vecb{f} : U \to \R^m$ is differentiable at $\vecb{x}$ with Fr\'{e}chet derivative $D\vecb{h}(\vecb{x}) = D\vecb{g}(\vecb{y}) \circ D\vecb{f}(\vecb{x})$, i.e., in matrix Jacobian form \bookcite{mathematics_machine_learning_orienly}{Eq.~(5.48), p.~148}; \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(7.252), p.~272}:
+\begin{equation}
+  \jac_{\vecb{g}\circ\vecb{f}}(\vecb{x})
+  = \jac_{\vecb{g}}(\vecb{f}(\vecb{x})) \, \jac_{\vecb{f}}(\vecb{x})
+  \in \R^{m \times n},
+  \qquad
+  \text{with entries }
+  \pd{h_i}{x_j} = \sum_{k=1}^{p} \pd{g_i}{y_k} \pd{f_k}{x_j}.
+  \label{eq:matcalc:chain_rule}
+\end{equation}
+\textbf{Proof Sketch.} Expanding $\vecb{f}(\vecb{x}+\vecb{s}) = \vecb{y} + \jac_{\vecb{f}}(\vecb{x})\vecb{s} + \vecb{r}_1(\vecb{s})$ with $\norm{\vecb{r}_1(\vecb{s})} = o(\norm{\vecb{s}})$ and substituting $\vecb{t} = \jac_{\vecb{f}}(\vecb{x})\vecb{s} + \vecb{r}_1(\vecb{s})$ into $\vecb{g}(\vecb{y}+\vecb{t}) = \vecb{g}(\vecb{y}) + \jac_{\vecb{g}}(\vecb{y})\vecb{t} + \vecb{r}_2(\vecb{t})$ yields
+\begin{equation}
+  (\vecb{g}\circ\vecb{f})(\vecb{x}+\vecb{s}) - (\vecb{g}\circ\vecb{f})(\vecb{x})
+  = \jac_{\vecb{g}}(\vecb{y})\jac_{\vecb{f}}(\vecb{x})\vecb{s}
+  + \underbrace{\jac_{\vecb{g}}(\vecb{y})\vecb{r}_1(\vecb{s}) + \vecb{r}_2(\vecb{t})}_{o(\norm{\vecb{s}})},
+\end{equation}
+because $\norm{\vecb{t}} \le (\norm{\jac_{\vecb{f}}(\vecb{x})}_2 + o(1))\norm{\vecb{s}}$. Uniqueness of the Fr\'{e}chet linear approximation gives~\eqref{eq:matcalc:chain_rule}. For scalar $g : \R^p \to \R$ ($m=1$), transposing~\eqref{eq:matcalc:chain_rule} gives the gradient pull-back \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(6.46), p.~207}:
+\begin{equation}
+  \grad_{\vecb{x}} (g \circ \vecb{f})(\vecb{x})
+  = \jac_{\vecb{f}}(\vecb{x})\T \grad_{\vecb{y}} g(\vecb{y}) \in \R^n.
+  \label{eq:matcalc:grad_pullback}
+\end{equation}
+
+\textbf{Matrix-Valued Maps via Vectorization:} For $\mat{F} : \R^{p \times q} \to \R^{m \times n}$, the raw derivative is a 4th-order tensor $\mathcal{J}_{ijkl} = \pd{F_{ij}}{X_{kl}}$ \bookcite{mathematics_machine_learning_orienly}{Sec.~5.4, p.~156}. Using column-major vectorization $\mathrm{vec} : \R^{m \times n} \xrightarrow{\sim} \R^{mn}$ and the Kronecker identity $\mathrm{vec}(\mat{A}\mat{X}\mat{B}) = (\mat{B}\T \otimes \mat{A})\mathrm{vec}(\mat{X})$, the linearized map $\mat{Y} = \mat{A}\mat{X}\mat{B}$ corresponds to the flat Jacobian $\jac_{\mathrm{vec}(\mat{Y})}(\mathrm{vec}(\mat{X})) = \mat{B}\T \otimes \mat{A} \in \R^{mn \times pq}$, allowing~\eqref{eq:matcalc:chain_rule} to compose directly as matrix products.
+\end{coremath}
+
+\subsection{Differential Calculus \& The Frobenius Trace Trick}
+\label{subsec:matcalc:trace_trick}
+
+Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in matrix size and obscures algebraic structure. Working directly with first-order differentials $\mathrm{d}\mat{X}$ and the Frobenius inner product eliminates explicit tensor indices altogether.
+
+\begin{coremath}[Theorem 2: Frobenius Identification (The Trace Trick) \& Matrix Identities]
+Equip $\R^{m \times n}$ with the Frobenius inner product $\inner{\mat{A}}{\mat{B}}_F \triangleq \Tr(\mat{A}\T \mat{B}) = \sum_{i,j} A_{ij} B_{ij}$. For any differentiable scalar function $f : \R^{m \times n} \to \R$, the total differential $\mathrm{d}f$ at $\mat{X}$ satisfies
+\begin{equation}
+  \mathrm{d}f(\mat{X})
+  = \sum_{i=1}^m \sum_{j=1}^n \pd{f}{X_{ij}}\,\mathrm{d}X_{ij}
+  = \Tr\!\big((\grad_{\mat{X}} f(\mat{X}))\T \, \mathrm{d}\mat{X}\big)
+  = \inner{\grad_{\mat{X}} f(\mat{X})}{\mathrm{d}\mat{X}}_F.
+  \label{eq:matcalc:trace_trick}
+\end{equation}
+By the Riesz representation theorem on $(\R^{m\times n}, \inner{\cdot}{\cdot}_F)$, if $\mathrm{d}f = \Tr(\mat{G}\T \mathrm{d}\mat{X})$ holds for all perturbations $\mathrm{d}\mat{X}$ and some $\mat{G} \in \R^{m\times n}$ independent of $\mathrm{d}\mat{X}$, then uniquely $\grad_{\mat{X}} f(\mat{X}) = \mat{G}$.
+
+\textbf{Proofs of Canonical Matrix Gradients:} Using~\eqref{eq:matcalc:trace_trick}, we derive the unified identities across \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.8.7.3, p.~274}, \bookcite{mathematics_machine_learning_orienly}{Sec.~5.5, p.~158}, and \bookcite{machine_learning_co_ban_tiep_vu}{Table~2.1, p.~35}:
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Trace Bilinear Form} $f(\mat{X}) = \Tr(\mat{A}\mat{X}\mat{B})$:
+        By linearity and cyclic invariance $\Tr(\mat{U}\mat{V}) = \Tr(\mat{V}\mat{U})$,
+        \begin{equation}
+          \mathrm{d}f = \Tr(\mat{A}\,\mathrm{d}\mat{X}\,\mat{B})
+          = \Tr(\mat{B}\mat{A}\,\mathrm{d}\mat{X})
+          = \Tr\!\big((\mat{A}\T\mat{B}\T)\T \mathrm{d}\mat{X}\big)
+          \implies \grad_{\mat{X}} \Tr(\mat{A}\mat{X}\mat{B}) = \mat{A}\T \mat{B}\T.
+          \label{eq:matcalc:grad_tr_axb}
+        \end{equation}
+        Specializing to rank-1 $\mat{A} = \vecb{a}\T$, $\mat{B} = \vecb{b}$ gives $\grad_{\mat{X}} (\vecb{a}\T \mat{X}\vecb{b}) = \vecb{a}\vecb{b}\T$.
+
+  \item \textbf{Matrix Quadratic Form} $f(\mat{X}) = \Tr(\mat{X}\T\mat{A}\mat{X})$:
+        Using $\mathrm{d}(\mat{U}\mat{V}) = (\mathrm{d}\mat{U})\mat{V} + \mat{U}(\mathrm{d}\mat{V})$ and $\Tr(\mat{M}) = \Tr(\mat{M}\T)$,
+        \begin{align}
+          \mathrm{d}f &= \Tr((\mathrm{d}\mat{X}\T)\mat{A}\mat{X} + \mat{X}\T\mat{A}\,\mathrm{d}\mat{X})
+          = \Tr(\mat{X}\T\mat{A}\T \mathrm{d}\mat{X}) + \Tr(\mat{X}\T\mat{A}\,\mathrm{d}\mat{X}) \nonumber \\
+          &= \Tr\!\big(((\mat{A}+\mat{A}\T)\mat{X})\T \mathrm{d}\mat{X}\big)
+          \implies \grad_{\mat{X}} \Tr(\mat{X}\T\mat{A}\mat{X}) = (\mat{A} + \mat{A}\T)\mat{X}.
+          \label{eq:matcalc:grad_quad}
+        \end{align}
+
+  \item \textbf{Matrix Multiplication VJP (\texttt{op.bprop})} for $\mat{C} = \mat{A}\mat{B}$ inside scalar $L(\mat{C})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.6, p.~216}:
+        Let $\mat{G} = \grad_{\mat{C}} L$. Using $\mathrm{d}\mat{C} = (\mathrm{d}\mat{A})\mat{B} + \mat{A}(\mathrm{d}\mat{B})$ inside~\eqref{eq:matcalc:trace_trick}:
+        \begin{equation}
+          \mathrm{d}L = \Tr(\mat{G}\T \mathrm{d}\mat{C})
+          = \Tr(\mat{B}\mat{G}\T \mathrm{d}\mat{A}) + \Tr(\mat{G}\T\mat{A}\,\mathrm{d}\mat{B})
+          \implies
+          \grad_{\mat{A}} L = \mat{G}\mat{B}\T,\quad
+          \grad_{\mat{B}} L = \mat{A}\T\mat{G}.
+          \label{eq:matcalc:matmul_vjp}
+        \end{equation}
+
+  \item \textbf{Matrix Inverse \& Log-Determinant} (for invertible $\mat{X} \in \R^{n\times n}$):
+        Differentiating $\mat{X}\mat{X}\inv = \eye$ yields $(\mathrm{d}\mat{X})\mat{X}\inv + \mat{X}\,\mathrm{d}(\mat{X}\inv) = \zeros \implies \mathrm{d}(\mat{X}\inv) = -\mat{X}\inv(\mathrm{d}\mat{X})\mat{X}\inv$. Hence for $f(\mat{X}) = \Tr(\mat{X}\inv \mat{A})$,
+        \begin{equation}
+        \begin{aligned}
+          \mathrm{d}f &= -\Tr(\mat{X}\inv (\mathrm{d}\mat{X}) \mat{X}\inv \mat{A})
+          = -\Tr(\mat{X}\inv \mat{A} \mat{X}\inv \mathrm{d}\mat{X}) \\
+          &\implies \grad_{\mat{X}} \Tr(\mat{X}\inv\mat{A}) = -\mat{X}^{-\top}\mat{A}\T\mat{X}^{-\top}.
+        \end{aligned}
+          \label{eq:matcalc:grad_inv}
+        \end{equation}
+        For $\log\abs{\det(\mat{X})}$, Jacobi's formula gives $\mathrm{d}\det(\mat{X}) = \det(\mat{X})\Tr(\mat{X}\inv \mathrm{d}\mat{X})$, so
+        \begin{equation}
+          \mathrm{d}\log\abs{\det(\mat{X})} = \Tr(\mat{X}\inv \mathrm{d}\mat{X})
+          \implies \grad_{\mat{X}} \log\abs{\det(\mat{X})} = \mat{X}^{-\top}.
+          \label{eq:matcalc:grad_logdet}
+        \end{equation}
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why the Trace Trick Equals Coordinate-Free Adjoint Propagation]
+The trace pairing $\mathrm{d}L = \inner{\mat{G}}{\mathrm{d}\mat{Y}}_F = \inner{\mat{G}}{\mathcal{L}[\mathrm{d}\mat{X}]}_F = \inner{\mathcal{L}^*[\mat{G}]}{\mathrm{d}\mat{X}}_F$ computes the Hilbert-space adjoint $\mathcal{L}^*$ of the linearized forward operator $\mathcal{L}(\cdot) = D\mat{Y}(\mat{X})[\cdot]$ directly. For $\mat{Y} = \mat{A}\mat{X}\mat{B}$, one never allocates the $(mn)\times(pq)$ Kronecker matrix $\mat{B}\T \otimes \mat{A}$; cyclic permutation inside $\Tr(\cdot)$ immediately delivers the VJP $\mathcal{L}^*(\mat{G}) = \mat{A}\T\mat{G}\mat{B}\T$ in native matrix multiplications.
+\end{intuition}
+
+\subsection{Implicit Differentiation \& Equilibrium Layers}
+\label{subsec:matcalc:implicit}
+
+Explicit layers compute $\vecb{y} = \vecb{f}(\vecb{x})$, whereas \emph{implicit layers}---including fixed-point networks, Neural ODEs, and differentiable convex optimization layers $\vecb{y}^* \in \argmin_{\vecb{y}} f(\vecb{x}, \vecb{y})$ subject to $\vecb{g}(\vecb{x},\vecb{y}) = \zeros$---define $\vecb{y}^*(\vecb{x})$ implicitly as the root of a stationarity residual $\vecb{g}(\vecb{x}, \vecb{y}^*(\vecb{x})) = \zeros$; see \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~16.2.10, pp.~640--641}.
+
+\begin{coremath}[Theorem 3: Implicit Function Theorem \& Constant-Memory Adjoint VJP]
+Let $\vecb{g} : \R^n \times \R^m \to \R^m$ be continuously differentiable ($C^1$) in a neighborhood of $(\vecb{x}_0, \vecb{y}_0)$ where $\vecb{g}(\vecb{x}_0, \vecb{y}_0) = \zeros$. If the partial Jacobian $\mat{A} \triangleq \pd{\vecb{g}}{\vecb{y}\T}(\vecb{x}_0, \vecb{y}_0) \in \R^{m\times m}$ is nonsingular, there exists a unique $C^1$ local solution map $\vecb{y}^*(\vecb{x})$ satisfying $\vecb{g}(\vecb{x}, \vecb{y}^*(\vecb{x})) = \zeros$. Differentiating $\vecb{g}(\vecb{x}, \vecb{y}^*(\vecb{x})) = \zeros$ via the chain rule yields
+\begin{equation}
+  \pd{\vecb{g}}{\vecb{x}\T} + \pd{\vecb{g}}{\vecb{y}\T} \jac_{\vecb{y}^*}(\vecb{x}) = \zeros
+  \quad \Longrightarrow \quad
+  \jac_{\vecb{y}^*}(\vecb{x})
+  = -\left(\pd{\vecb{g}}{\vecb{y}\T}\right)\inv \pd{\vecb{g}}{\vecb{x}\T} \in \R^{m \times n}.
+  \label{eq:matcalc:ift_jac}
+\end{equation}
+For a downstream scalar loss $L(\vecb{y}^*(\vecb{x}))$ with upstream gradient $\vecb{u} = \grad_{\vecb{y}^*} L \in \R^m$, we compute the VJP without forming $\jac_{\vecb{y}^*}$ or inverting $\mat{A}$ explicitly by solving a single $m \times m$ adjoint linear system for $\vecb{\lambda} \in \R^m$:
+\begin{equation}
+  \grad_{\vecb{x}} L
+  = \jac_{\vecb{y}^*}(\vecb{x})\T \vecb{u}
+  = -\left(\pd{\vecb{g}}{\vecb{x}\T}\right)\T \vecb{\lambda},
+  \qquad \text{where }
+  \left(\pd{\vecb{g}}{\vecb{y}\T}\right)\T \vecb{\lambda} = \vecb{u}.
+  \label{eq:matcalc:ift_vjp}
+\end{equation}
+Notice that $\vecb{\lambda}\mapsto \left(\pd{\vecb{g}}{\vecb{y}\T}\right)\T\vecb{\lambda}$ and $\vecb{\lambda} \mapsto \left(\pd{\vecb{g}}{\vecb{x}\T}\right)\T \vecb{\lambda}$ are both single reverse-mode VJPs of $\vecb{g}$ evaluated solely at $(\vecb{x}, \vecb{y}^*)$; thus Krylov solvers (GMRES/CG) or fixed-point iterations solve~\eqref{eq:matcalc:ift_vjp} using $O(m+n)$ memory regardless of the number of forward solver steps $K$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~16.2.10, p.~641}.
+\end{coremath}
+
+\subsection{Second-Order Derivatives \& Pearlmutter's Hessian-Vector Product}
+\label{subsec:matcalc:hvp}
+
+For a twice continuously differentiable scalar map $f : \R^n \to \R$, the \emph{Hessian matrix} $\hess f(\vecb{x}) \in \R^{n\times n}$ is defined as the Jacobian of the gradient $\jac_{\grad f}(\vecb{x})$ (\bookcite{mathematics_machine_learning_orienly}{Sec.~5.7, p.~165}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.8.6, p.~272}), with entries $(\hess f)_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}$ that are symmetric by Schwarz's theorem. Because forming $\hess f$ at modern scale ($n \sim 10^6\text{--}10^{11}$) demands $O(n^2)$ memory and arithmetic (\bookcite{deep_learning_foundations_concepts}{Sec.~8.1.6, p.~243}), second-order Krylov solvers such as Conjugate Gradient, Lanczos, and Newton-CG (\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.10, p.~224}) operate exclusively via matrix-free Hessian-vector products (HVPs) $\mat{H}\vecb{v}$.
+
+\begin{coremath}[Theorem 4: Exact $O(W)$ Hessian-Vector Products (Forward-over-Reverse)]
+For any direction $\vecb{v} \in \R^n$ independent of $\vecb{x}$, the directional derivative of the gradient field equals the Hessian-vector product \bookcite{deep_learning_foundations_concepts}{Sec.~8.2.2, p.~250}; \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(6.59), p.~224}:
+\begin{equation}
+  \hess f(\vecb{x})\,\vecb{v}
+  = \jac_{\grad f}(\vecb{x})\,\vecb{v}
+  = \left.\dd{}{\alpha}\,\grad_{\vecb{x}} f(\vecb{x} + \alpha\vecb{v})\right|_{\alpha=0}
+  = \grad_{\vecb{x}}\!\Big(\grad_{\vecb{x}} f(\vecb{x})\T \mathrm{stopgrad}(\vecb{v})\Big).
+  \label{eq:matcalc:hvp}
+\end{equation}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Forward-over-Reverse ($\mathcal{F} \circ \mathcal{R}$, Pearlmutter / $\mathcal{R}$-operator):} Construct the reverse-mode gradient function $\vecb{g}(\vecb{x}) = \grad_{\vecb{x}} f(\vecb{x})$, then execute one forward-mode JVP pass $\partial \vecb{g}(\vecb{x})[\vecb{v}]$ with tangent seed $\dot{\vecb{x}} = \vecb{v}$. This achieves exact $\mat{H}\vecb{v}$ in $O(W)$ FLOPs ($2\text{--}3\times$ gradient cost) and $O(W)$ memory without nested graph allocation.
+  \item \textbf{Reverse-over-Forward ($\mathcal{R} \circ \mathcal{F}$):} Evaluate the directional derivative scalar $s(\vecb{x}) = \partial f(\vecb{x})[\vecb{v}] = \grad_{\vecb{x}} f(\vecb{x})\T \vecb{v}$ in one JVP pass, and then apply reverse mode to recover $\grad_{\vecb{x}} s(\vecb{x}) = \mat{H}\vecb{v}$ (\bookcite{deep_learning_foundations_concepts}{Sec.~8.2.2, p.~250}).
+  \item \textbf{Reverse-over-Reverse ($\mathcal{R} \circ \mathcal{R}$):} Differentiate the scalar dot product $\grad_{\vecb{x}} f(\vecb{x})\T \vecb{v}$ via a second reverse tape; requires storing the first-order backward graph in memory unless symbol-to-symbol compilation is used \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.5 \& 6.5.10, pp.~214, 224}.
+\end{itemize}
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:matcalc:algorithms}
+% =============================================================================
+
+Automatic differentiation (AD) decomposes any differentiable program into a directed acyclic graph (DAG) $G = (V, E)$ of elementary primitives $f_t$, ordered topologically $t = 1, \dots, T$. Unlike numerical finite differences (truncated and unstable) and symbolic algebra (prone to exponential \emph{expression swell} \bookcite{deep_learning_foundations_concepts}{Eq.~(8.42)--(8.48), pp.~245--246}), AD evaluates exact numerical derivatives up to machine precision by accumulating chain-rule contractions along $G$.
+
+\subsection{Forward-Mode JVP vs.\ Reverse-Mode VJP Accumulation}
+\label{subsec:matcalc:fwd_rev}
+
+Consider a chain $\vecb{f} = \vecb{f}_T \circ \cdots \circ \vecb{f}_1$ with intermediate states $\vecb{x}_t = \vecb{f}_t(\vecb{x}_{t-1})$. Exploiting associativity of matrix multiplication (as formulated across \bookcite{mathematics_machine_learning_orienly}{Eqs.~(5.120)--(5.121), p.~161}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(6.58), p.~223}, and \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(13.26)--(13.27), p.~439}), the chain product can be parenthesized from the right or the left:
+\begin{align}
+  \text{Forward-Mode JVP:}\quad
+  \jac_{\vecb{f}}(\vecb{x})\vecb{v}
+  &= \jac_T \Big(\cdots \big(\jac_2 (\jac_1 \vecb{v})\big)\cdots\Big),
+  \label{eq:matcalc:jvp_assoc} \\
+  \text{Reverse-Mode VJP:}\quad
+  \jac_{\vecb{f}}(\vecb{x})\T \vecb{u}
+  &= \jac_1\T \Big(\jac_2\T \big(\cdots (\jac_T\T \vecb{u})\cdots\big)\Big).
+  \label{eq:matcalc:vjp_assoc}
+\end{align}
+
+In \textbf{forward-mode AD}, every primal intermediate $\vecb{x}_t$ is paired with a tangent variable $\dot{\vecb{x}}_t = \sum_{q \in \mathrm{Pa}(t)} \partial_{q} \vecb{f}_t(\vecb{x}_{\mathrm{Pa}(t)})[\dot{\vecb{x}}_q]$ (realized via dual numbers $x + \dot{x}\varepsilon$ with $\varepsilon^2 = 0$), propagating left-to-right in a single pass with zero activation retention \bookcite{deep_learning_foundations_concepts}{Sec.~8.2.1, pp.~246--249}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Alg.~6.3, p.~269}. Setting $\dot{\vecb{x}} = \vecb{e}_j$ computes column $j$ of $\jac_{\vecb{f}}(\vecb{x})$, so materializing the full Jacobian costs $n_{\text{in}}$ forward passes.
+
+In \textbf{reverse-mode AD}, a forward sweep evaluates and caches primal intermediates on an execution \emph{tape} (unless checkpointed), and a backward sweep traverses $t = T, \dots, 1$ accumulating \emph{adjoint} variables $\bar{\vecb{x}}_q \triangleq (\pd{\vecb{y}}{\vecb{x}_q\T})\T \vecb{u}$ from children $c \in \mathrm{Ch}(q)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Alg.~6.4, p.~270}:
+\begin{equation}
+  \bar{\vecb{x}}_q = \sum_{c \in \mathrm{Ch}(q)} \big(\partial_q \vecb{f}_c(\vecb{x}_{\mathrm{Pa}(c)})\big)\T [\bar{\vecb{x}}_c].
+  \label{eq:matcalc:adjoint_fanout}
+\end{equation}
+Fan-out (shared variables $x \mapsto \mathrm{dup}(x) = (x, x)$) has forward Jacobian $[\eye;\,\eye]$ whose transpose $[\eye\;\,\eye]$ enforces summation across outgoing paths in~\eqref{eq:matcalc:adjoint_fanout} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(6.36)--(6.40), p.~269}. Setting $\vecb{u} = \vecb{e}_i$ yields row $i$ of $\jac_{\vecb{f}}(\vecb{x})$ in one sweep, so computing $\grad_{\vecb{x}} L$ for scalar losses ($n_{\text{out}} = 1$) requires only $O(1)$ sweeps regardless of $n_{\text{in}}$. By the Baur--Strassen theorem, a single reverse sweep costs at most $c \le 5\text{--}6\times$ (typically $2\text{--}3\times$) the arithmetic operations of one forward evaluation \bookcite{deep_learning_foundations_concepts}{Sec.~8.2.2, p.~250}.
+
+\begin{algorithm}[htbp]
+\caption{Topological Reverse-Mode Tape AD (VJP with Fan-Out Accumulation)}
+\label{alg:matcalc:reverse_ad}
+\KwIn{DAG $G = (V, E)$ in topological order $1, \dots, T$; inputs $\vecb{x} = (\vecb{x}_1, \dots, \vecb{x}_{n_{\text{in}}})$; output seed $\vecb{u} \in \R^{n_{\text{out}}}$; optional checkpoint set $\mathcal{C} \subseteq V$.}
+\KwOut{Primal evaluation $\vecb{y} = \vecb{x}_T$ and parameter VJP $\{\bar{\vecb{x}}_i = (\jac_{\vecb{f},\, i}(\vecb{x}))\T \vecb{u}\}_{i=1}^{n_{\text{in}}}$.}
+\BlankLine
+\Comment{Phase 1: Forward primal pass and tape construction}
+Initialize $\mathcal{T} \leftarrow \emptyset$ (activation tape), adjoints $\bar{\vecb{x}}_t \leftarrow \zeros$ for $t = 1, \dots, T$\;
+\For{$t \leftarrow n_{\text{in}} + 1$ \KwTo $T$}{
+  Retrieve parent tuple $\vecb{p}_t \leftarrow (\vecb{x}_q : q \in \mathrm{Pa}(t))$\;
+  Compute primal $\vecb{x}_t \leftarrow f_t(\vecb{p}_t)$\;
+  \uIf{checkpointing enabled \textbf{and} $t \notin \mathcal{C}$}{
+    Discard intermediate $\vecb{x}_t$ from $\mathcal{T}$ (retain only inputs needed for recomputation)\;
+  }\Else{
+    Push $(t, \vecb{x}_t, \mathrm{Pa}(t))$ onto tape $\mathcal{T}$\;
+  }
+}
+\BlankLine
+\Comment{Phase 2: Reverse topological adjoint sweep (VJP)}
+Set output adjoint $\bar{\vecb{x}}_T \leftarrow \vecb{u}$\;
+\For{$t \leftarrow T$ \KwTo $n_{\text{in}} + 1$}{
+  \If{$\vecb{x}_{\mathrm{Pa}(t)}$ was discarded from $\mathcal{T}$}{
+    Recompute local segment from nearest prior checkpoint in $\mathcal{C}$\;
+  }
+  For each parent $q_k \in \mathrm{Pa}(t)$ ($k = 1, \dots, \abs{\mathrm{Pa}(t)}$), pull back local VJP\;
+  \Indp $\bar{\vecb{x}}_{q_k} \leftarrow \bar{\vecb{x}}_{q_k} + \big(\partial_k f_t(\vecb{x}_{\mathrm{Pa}(t)})\big)\T [\bar{\vecb{x}}_t]$ \Comment*{Accumulate over fan-out edges}
+  \Indm Free cached activation $\vecb{x}_t$ once all parents of $t$ are processed\;
+}
+\Return $\vecb{x}_T$ and $\{\bar{\vecb{x}}_1, \dots, \bar{\vecb{x}}_{n_{\text{in}}}\}$\;
+\end{algorithm}
+
+\subsection{Comparative Complexity \& Paradigm Synthesis}
+\label{subsec:matcalc:complexity}
+
+Table~\ref{tab:matcalc:complexity} summarizes asymptotic FLOPs and memory requirements across all differentiation strategies for a program $\vecb{f} : \R^{n_{\text{in}}} \to \R^{n_{\text{out}}}$ with $T$ primitive operations of average cost $c_{\text{op}}$.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.65cm}cccc>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Precision} & \textbf{Full $\jac$ FLOPs} & \textbf{Scalar ($n_{\text{out}}\!=\!1$)} & \textbf{Peak Mem.} & \textbf{Primary Strength / Regime} \\
+\midrule
+Forward Finite Diff. & $O(\epsilon)$ & $O(n_{\text{in}} T)$ & $O(n_{\text{in}} T)$ & $O(\text{width})$ & Black-box quick check only \\
+Central Finite Diff. & $O(\epsilon^2)$ & $O(2 n_{\text{in}} T)$ & $O(2 n_{\text{in}} T)$ & $O(\text{width})$ & Unit-testing AD implementations \\
+Symbolic Algebra & Exact & Exp.\ swell & Exp.\ swell & Exp.\ swell & Small closed-form proofs \\
+Forward AD (JVP) & Exact & $O(n_{\text{in}} T)$ & $O(n_{\text{in}} T)$ & $O(\text{width})$ & $n_{\text{out}} \gg n_{\text{in}}$; directional/HVP \\
+Reverse AD (VJP) & Exact & $O(n_{\text{out}} T)$ & $O(T)$ & $O(T)$ & $n_{\text{in}} \gg n_{\text{out}}$ (deep learning) \\
+Checkpointed VJP & Exact & $O(n_{\text{out}} T \log T)$ & $O(T \log T)$ & $O(\log T)$ or $O(\sqrt{T})$ & Memory-bound deep/long graphs \\
+Implicit Diff. (IFT) & Exact & $O(n_{\text{out}} m^2)$ & $O(m^2)$ & $O(m+n_{\text{in}})$ & Deep equilibrium / optimization layers \\
+\bottomrule
+\end{tabularx}
+\caption{Asymptotic time, memory, and accuracy comparison across differentiation paradigms for $\vecb{f} : \R^{n_{\text{in}}} \to \R^{n_{\text{out}}}$ ($T$ primitives, implicit state dimension $m$) \bookcite{deep_learning_foundations_concepts}{Sec.~8.1.4, 8.2, pp.~239--250}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.2, 16.2.10, pp.~267--270, 641}.}
+\label{tab:matcalc:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Static Symbol-to-Symbol Graphs vs.\ Dynamic Tracing]
+\label{box:matcalc:paradigms}
+Across software realizations, the six sources emphasize complementary architectural trade-offs:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Symbol-to-Number vs.\ Symbol-to-Symbol:} Early libraries (Torch/Caffe) executed imperative numeric backward passes (symbol-to-number), whereas Theano and TensorFlow~1 lowered expressions into explicit static derivative subgraphs (symbol-to-symbol), enabling algebraic fusion and recursive higher-order differentiation (\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.5, p.~214}).
+  \item \textbf{Dynamic Tape Tracing vs.\ Functional Transforms:} PyTorch eager mode constructs a dynamic tape just-in-time on each forward run, supporting arbitrary Python control flow (\texttt{if}/\texttt{while}; see \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~13.3.4, p.~446}). Conversely, JAX traces pure side-effect-free primitives (\texttt{jaxpr}) into composable \texttt{jvp}/\texttt{vjp} transforms that eliminate fan-out redundancy via \texttt{dup} and XLA fusion (\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.2.3, pp.~270--271}).
+  \item \textbf{NP-Hard Optimal Accumulation:} Finding the minimum-FLOP elimination order of intermediate Jacobians (vertex, edge, or face elimination on a general DAG) is NP-complete (Naumann, 2008; discussed in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.9, p.~222}). Reverse mode and forward mode sit at the two extreme linear-schedule poles, whereas mixed-mode Jacobian accumulation can outperform both on bottlenecked graphs.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:matcalc:visuals}
+% =============================================================================
+
+\subsection{Evaluation Traces \& Computational Graph Topology}
+
+Figures~\ref{fig:matcalc:bishop_trace} and~\ref{fig:matcalc:murphy_mlp} illustrate two complementary computational graph abstractions from the literature: fine-grained scalar evaluation traces showing primal node dependencies and fan-out, and coarse-grained tensor DAGs coupling parameter weights simultaneously to a predictive loss and a weight-decay regularizer.
+
+\monographfig[0.64\textwidth]{deep_learning_foundations_concepts_p264_fig1.png}{Primal evaluation trace DAG for $f(x_1, x_2) = x_1 x_2 + \exp(x_1 x_2) - \sin(x_2)$, decomposing the expression into elementary operations $v_1, \dots, v_7$ so shared subexpressions ($v_3 = v_1 v_2$) are computed once and fan-out edges accumulate during reverse mode \bookcite{deep_learning_foundations_concepts}{Ch.~8, Fig.~8.4, p.~247}.}{fig:matcalc:bishop_trace}
+
+\monographfig[0.74\textwidth]{probabilisticml_kevinmurphy_introduction_p476_fig2.png}{Tensor-level computational graph of a single-hidden-layer MLP with weight decay: pre-activation $\vecb{z} = \mat{W}^{(1)}\vecb{x}$, activation $\vecb{h} = \phi(\vecb{z})$, output $\vecb{o} = \mat{W}^{(2)}\vecb{h}$, loss $L = \ell(\vecb{o}, y)$, regularizer $s = \frac{\lambda}{2}(\norm{\mat{W}^{(1)}}_F^2 + \norm{\mat{W}^{(2)}}_F^2)$, and total objective $J = L + s$. Fan-out at $\mat{W}^{(1)}$ and $\mat{W}^{(2)}$ sums gradients from the data-loss and regularization branches \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~13.3.4, Fig.~13.13, p.~446}.}{fig:matcalc:murphy_mlp}
+
+\subsection{Forward-Mode JVP vs.\ Reverse-Mode VJP Signal Flow}
+
+Figure~\ref{fig:matcalc:fwd_rev_dag} contrasts forward-mode tangent propagation and reverse-mode adjoint propagation side by side on the branching DAG of $f(x_1, x_2) = x_1 x_2 + \exp(x_1 x_2) - \sin(x_2)$, following the evaluation trace of \bookcite{deep_learning_foundations_concepts}{Eqs.~(8.49)--(8.76), pp.~247--250} to show how fan-out at $v_3$ splits forward tangents and sums backward adjoints.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  every node/.append style={font=\small},
+  node distance=2.05cm and 1.15cm
+]
+  % Input nodes
+  \node[monoBox, inner sep=5pt] (x1) {$x_1 = v_1$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_1=1$}};
+  \node[monoBox, inner sep=5pt, below=2.05cm of x1] (x2) {$x_2 = v_2$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_2=0$}};
+
+  % Layer 1 intermediate nodes
+  \node[monoIndigoBox, inner sep=5pt, right=1.1cm of x1] (v3) {$v_3 = v_1 v_2$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_3 = \dot{v}_1 v_2 + v_1 \dot{v}_2$}};
+  \node[monoIndigoBox, inner sep=5pt, at=(v3 |- x2)] (v4) {$v_4 = \sin(v_2)$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_4 = \dot{v}_2 \cos(v_2)$}};
+
+  % Layer 2 intermediate nodes
+  \node[monoIndigoBox, inner sep=5pt, right=1.15cm of v3] (v5) {$v_5 = \exp(v_3)$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_5 = \dot{v}_3 e^{v_3}$}};
+  \node[monoIndigoBox, inner sep=5pt, at=(v5 |- x2)] (v6) {$v_6 = v_3 - v_4$\\[-1pt]{\scriptsize\color{monographTeal}$\dot{v}_6 = \dot{v}_3 - \dot{v}_4$}};
+
+  % Output node
+  \node[monoTealBox, inner sep=5pt, right=1.1cm of $(v5)!0.5!(v6)$] (v7) {$v_7 = v_5 + v_6 = f$\\[-1pt]{\scriptsize\color{monographCrimson}$\bar{v}_7 = 1$}};
+
+  % Forward solid arrows
+  \draw[monoArrow, monographNavy] (x1) -- (v3);
+  \draw[monoArrow, monographNavy] (x2.north east) -- (v3.south west);
+  \draw[monoArrow, monographNavy] (x2) -- (v4);
+  \draw[monoArrow, monographNavy] (v3) -- (v5);
+  \draw[monoArrow, monographNavy] (v3.south east) -- (v6.north west);
+  \draw[monoArrow, monographNavy] (v4) -- (v6);
+  \draw[monoArrow, monographNavy] (v5) -- (v7);
+  \draw[monoArrow, monographNavy] (v6) -- (v7);
+
+  % Reverse dashed adjoint arrows (curved cleanly clear of forward edges)
+  \draw[->, dashed, thick, monographCrimson] (v7.north west) to[bend right=18] node[above right=2pt and 0pt, pos=0.42, font=\scriptsize, color=monographCrimson] {$\bar{v}_5 = \bar{v}_7$} (v5.north east);
+  \draw[->, dashed, thick, monographCrimson] (v7.south west) to[bend left=18] node[below right=2pt and 0pt, pos=0.42, font=\scriptsize, color=monographCrimson] {$\bar{v}_6 = \bar{v}_7$} (v6.south east);
+
+  \draw[->, dashed, thick, monographCrimson] (v5.north west) to[bend right=24] node[above=1pt, font=\scriptsize, color=monographCrimson] {$\bar{v}_5 e^{v_3}$} (v3.north east);
+  \draw[->, dashed, thick, monographCrimson] (v6.north west) to[bend left=18] node[below left=1pt, pos=0.52, font=\scriptsize, color=monographCrimson] {$+\bar{v}_6$} (v3.south east);
+  \draw[->, dashed, thick, monographCrimson] (v6.south west) to[bend left=24] node[below=1pt, font=\scriptsize, color=monographCrimson] {$\bar{v}_4 = -\bar{v}_6$} (v4.south east);
+
+  \draw[->, dashed, thick, monographCrimson] (v3.north west) to[bend right=24] node[above=1pt, font=\scriptsize, color=monographCrimson] {$\bar{v}_1 = \bar{v}_3 v_2$} (x1.north east);
+  \draw[->, dashed, thick, monographCrimson] (v3.south west) to[bend left=18] node[below right=1pt, pos=0.45, font=\scriptsize, color=monographCrimson] {$+\bar{v}_3 v_1$} (x2.north east);
+  \draw[->, dashed, thick, monographCrimson] (v4.south west) to[bend left=24] node[below=1pt, font=\scriptsize, color=monographCrimson] {$+\bar{v}_4 \cos(v_2)$} (x2.south east);
+
+  % Legend / summary banner centered cleanly inside \textwidth
+  \node[draw=monographRule, fill=monographCodeBg, rounded corners=2pt, inner sep=6pt, font=\footnotesize, text width=0.92\textwidth, align=left, anchor=north]
+    at ($(current bounding box.south)+(0,-0.25cm)$) (legend) {%
+    \textcolor{monographNavy}{\textbf{Solid $\rightarrow$ Forward (Primal + Tangent JVP):}} Computes $(v_i, \dot{v}_i)$ left-to-right in $O(1)$ depth memory; yields $\dot{v}_7 = \pd{f}{x_1}$.\\[2pt]
+    \textcolor{monographCrimson}{\textbf{Dashed $\dashleftarrow$ Reverse (Tape + Adjoint VJP):}} Replays cached $(v_3,v_2)$ right-to-left; sums fan-out $\bar{v}_3 = \bar{v}_5 e^{v_3} + \bar{v}_6$ and $\bar{v}_2 = \bar{v}_3 v_1 + \bar{v}_4\cos(v_2)$ to recover $\grad f$ in one sweep.%
+  };
+\end{tikzpicture}
+\caption{Forward-mode JVP vs.\ reverse-mode VJP execution on the branching DAG of $f(x_1, x_2) = x_1 x_2 + \exp(x_1 x_2) - \sin(x_2)$. Fan-out edges exiting $v_3$ duplicate tangent perturbations forward and sum adjoint sensitivities backward \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(6.39)--(6.40), p.~269}; \bookcite{deep_learning_foundations_concepts}{Sec.~8.2, pp.~247--250}.}
+\label{fig:matcalc:fwd_rev_dag}
+\end{figure}
+
+\subsection{Asymptotic Compute \& Activation-Memory Scaling Laws}
+
+Figure~\ref{fig:matcalc:complexity_scaling} plots the exact arithmetic and memory crossover regimes governing forward-mode AD, reverse-mode AD, finite differences, and checkpointing. In Panel~(a), reverse-mode VJP dominates whenever $n_{\text{in}} \gg n_{\text{out}}$, achieving $O(1)\times$ primal cost for scalar losses ($n_{\text{out}} = 1$), whereas forward-mode JVP dominates when $n_{\text{out}} > n_{\text{in}}$. In Panel~(b), uniform $\sqrt{L}$-segment and binomial Revolve checkpointing break the linear $O(L)$ activation-memory bottleneck of standard reverse-mode backpropagation.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=1.5cm
+  },
+  width=0.45\textwidth,
+  height=5.8cm,
+  grid=both,
+  grid style={monographRule!55, dashed},
+  tick label style={font=\scriptsize, color=monographSlate},
+  label style={font=\footnotesize, color=monographNavy},
+  title style={font=\small\bfseries, color=monographNavy},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9, text opacity=1, cells={anchor=west}}
+]
+\nextgroupplot[
+  title={(a) Jacobian Cost vs.\ Input Dim.\ $n_{\text{in}}$},
+  xlabel={Input dimension $n_{\text{in}}$ (log scale)},
+  ylabel={Normalized compute ($T_{\text{grad}} / T_{\text{fwd}}$)},
+  xmode=log,
+  ymode=log,
+  xmin=1, xmax=1e6,
+  ymin=1, ymax=2e6,
+  legend pos=north west
+]
+\addplot[color=monographCrimson, thick, domain=1:1e6, samples=40] {2*x};
+\addlegendentry{Central FD ($2n_{\text{in}}$)}
+
+\addplot[color=monographNavy, very thick, domain=1:1e6, samples=40] {2.5*x};
+\addlegendentry{Forward AD ($c n_{\text{in}}$)}
+
+\addplot[color=monographIndigo, thick, dashed, domain=1:1e6, samples=40] {2.5*100};
+\addlegendentry{Reverse AD ($n_{\text{out}}=100$)}
+
+\addplot[color=monographTeal, very thick, domain=1:1e6, samples=40] {2.5};
+\addlegendentry{Reverse AD ($n_{\text{out}}=1$)}
+
+% Mark crossover n_in = n_out = 100
+\addplot[only marks, mark=*, mark size=2.2pt, color=monographIndigo] coordinates {(100, 250)};
+\node[font=\scriptsize, color=monographIndigo, fill=white, fill opacity=0.88, text opacity=1, inner sep=1.5pt, anchor=north west] at (axis cs:150, 180) {Crossover ($n_{\text{in}}=n_{\text{out}}$)};
+
+\nextgroupplot[
+  title={(b) Peak Tape Memory vs.\ Depth $L$},
+  xlabel={Sequential depth $L$ (log scale)},
+  ylabel={Stored activation checkpoints (units)},
+  xmode=log,
+  ymode=log,
+  xmin=4, xmax=1e4,
+  ymin=0.8, ymax=1.5e4,
+  legend pos=north west
+]
+\addplot[color=monographCrimson, very thick, domain=4:1e4, samples=40] {x};
+\addlegendentry{Standard VJP $O(L)$}
+
+\addplot[color=monographIndigo, very thick, domain=4:1e4, samples=40] {2*sqrt(x)};
+\addlegendentry{$\sqrt{L}$-Checkpoint $O(\sqrt{L})$}
+
+\addplot[color=monographTeal, thick, dashed, domain=4:1e4, samples=40] {2.5*ln(x)/ln(2)};
+\addlegendentry{Binomial Revolve $O(\log L)$}
+
+\addplot[color=monographNavy, thick, dotted, domain=4:1e4, samples=40] {1};
+\addlegendentry{Forward JVP $O(1)$}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Asymptotic compute and memory scaling across AD modes ($c = 2.5$ tape overhead factor). (a)~Full Jacobian cost scaling with $n_{\text{in}}$: reverse mode runs in $O(n_{\text{out}})$ sweeps regardless of $n_{\text{in}}$, overtaking forward mode at $n_{\text{in}} > n_{\text{out}}$. (b)~Peak activation storage vs.\ sequential depth $L$: $\sqrt{L}$-checkpointing and binomial Revolve trade one or $O(\log L)$ recomputations for sublinear memory \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~13.3.1, pp.~439--440}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.2.1, pp.~267--268}.}
+\label{fig:matcalc:complexity_scaling}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:matcalc:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Pitfall 1: Tape Memory Explosion vs.\ Recomputation (Checkpointing)]
+\textbf{Failure Mode:} Reverse-mode VJP must retain primal intermediates $\vecb{x}_t$ needed by local Jacobian adjoints $(\partial \vecb{f}_t/\partial \vecb{x}_q)\T$ from the forward pass until the backward sweep reaches step $t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.3 \& 6.5.7, pp.~208, 221}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.2.1, pp.~267--268}. For an $L$-layer transformer or $T$-step RNN with batch size $B$ and width $d$, activation memory scales as $\Theta(L B d)$, rapidly exceeding accelerator HBM even when weights fit comfortably.\\
+\textbf{Remedy:} Partition the sequence into $k$ segments storing only $k$ boundary checkpoints and recomputing intra-segment activations during backprop, yielding peak memory $O(k + L/k)$. Choosing $k = \sqrt{L}$ minimizes memory to $O(\sqrt{L})$ at the cost of only $1$ extra forward pass ($+33\%$ total compute). Optimal Griewank--Walther (Revolve) binomial checkpointing attains $O(\log L)$ memory in $O(L \log L)$ FLOPs; reversible layers (RevNets) and implicit layers (Theorem~3) achieve $O(1)$ depth memory \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.2.2.1, 16.2.10, pp.~268, 641}.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 2: Non-Smooth Activations, Subdifferentials \& Broken Chain Rules]
+\textbf{Failure Mode:} Deep networks routinely apply piecewise-linear primitives such as $\ReLU(a) = \max(0, a)$ or $\abs{x}$, which fail to be classically differentiable at $a = 0$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1.4.1, pp.~282--283; Sec.~13.3.3.2, p.~443}. At $a = 0$, the convex subdifferential of $\abs{x}$ is $[-1, 1]$ and of $\ReLU(a)$ is $[0, 1]$; AD frameworks pick a deterministic branch convention (typically $\ReLU'(0) = 0$, i.e., Heaviside $H(a)$). Because the standard chain rule fails on Clarke subdifferentials at kinks, AD can return values outside the true subdifferential: for $f(x) = \ReLU(x) - \ReLU(-x) = x$, setting $\ReLU'(0)=0$ causes AD to output $0$ at $x=0$ instead of $1$! Moreover, negative pre-activations induce zero-gradient blocking (``dead ReLUs''), and discrete operators ($\argmax$, hard thresholding) possess identically zero gradients a.e. \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.8, p.~221}.\\
+\textbf{Remedy:} Substitute $C^\infty$ smooth surrogates ($\softplus(a) = \log(1 + e^a)$, $\mathrm{GELU}$, $\mathrm{SiLU}$) when computing Hessians, implicit derivatives, or sensitivity checks, and use straight-through or Gumbel-Softmax relaxations for discrete operations.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 3: Finite-Difference Truncation vs.\ Floating-Point Cancellation]
+\textbf{Failure Mode:} Numerical gradient checks verify AD implementations against finite differences (\bookcite{mathematics_machine_learning_orienly}{Sec.~5.2.1, p.~149}; \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~2.6, pp.~36--39}). Shrinking the step size $\epsilon$ reduces Taylor truncation error, but below a precision-dependent threshold, subtracting nearly equal values $f(\vecb{x}+\epsilon\vecb{e}_i) - f(\vecb{x}-\epsilon\vecb{e}_i)$ amplifies machine-epsilon round-off $\varepsilon_{\text{mach}}$ by $O(\varepsilon_{\text{mach}}/\epsilon)$ (\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.8.1, p.~270}; \bookcite{deep_learning_foundations_concepts}{Sec.~8.1.4, Fig.~8.2, pp.~239--240}):
+\begin{equation}
+\begin{aligned}
+  E_{\text{fwd}}(\epsilon) &\lesssim \frac{\abs{f''}}{2}\epsilon + \frac{2\abs{f}\varepsilon_{\text{mach}}}{\epsilon}
+  \;\implies\; \epsilon^*_{\text{fwd}} \sim \varepsilon_{\text{mach}}^{1/2}, \\
+  E_{\text{cen}}(\epsilon) &\lesssim \frac{\abs{f'''}}{6}\epsilon^2 + \frac{\abs{f}\varepsilon_{\text{mach}}}{\epsilon}
+  \;\implies\; \epsilon^*_{\text{cen}} \sim \varepsilon_{\text{mach}}^{1/3}.
+\end{aligned}
+  \label{eq:matcalc:fd_error}
+\end{equation}
+In IEEE~754 \texttt{float64} ($\varepsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$), $\epsilon^*_{\text{cen}} \approx 6 \times 10^{-6}$; running central differences in \texttt{float32} ($\varepsilon_{\text{mach}} \approx 1.19 \times 10^{-7}$) with $\epsilon = 10^{-6}$ falls deep inside the cancellation regime ($\epsilon^*_{\text{cen}} \approx 5 \times 10^{-3}$), producing $O(1)$ relative errors even for bug-free AD.\\
+\textbf{Remedy:} Always execute gradient checks using \textbf{central differences} in \texttt{float64} with $\epsilon \in [10^{-6}, 10^{-5}]$ and relative discrepancy tolerance $\norm{\vecb{g}_{\text{AD}} - \vecb{g}_{\text{FD}}}_2 / \max(\norm{\vecb{g}_{\text{AD}}}_2, \norm{\vecb{g}_{\text{FD}}}_2, 10^{-8}) < 10^{-6}$, or use complex-step differentiation $\mathrm{Im}(f(\vecb{x} + \mathrm{i}\epsilon\vecb{e}_i))/\epsilon$ which avoids subtractive cancellation down to $\epsilon = 10^{-15}$.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 4: Higher-Order Graph Leaks, In-Place Tape Corruption \& Spectral Blow-Up]
+\textbf{Failure Mode:} Three subtle implementation bugs corrupt automatic derivatives in deep networks:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Differentiating through HVP tangent vectors:} Evaluating $\hess f(\vecb{x})\vecb{v} = \grad_{\vecb{x}}((\grad_{\vecb{x}} f(\vecb{x}))\T \vecb{v})$ when $\vecb{v} = \vecb{v}(\vecb{x})$ depends on $\vecb{x}$ (e.g., $\vecb{v} = \grad f(\vecb{x})$) without detaching $\vecb{v}$ erroneously adds $\jac_{\vecb{v}}(\vecb{x})\T \grad f(\vecb{x})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~6.5.10, p.~224}. Always wrap $\vecb{v}$ in \texttt{stop\_gradient} or use forward-mode tangent seeds.
+  \item \textbf{In-place buffer mutation:} Overwriting a cached activation $\vecb{x}_t$ in place on the forward pass silently invalidates local Jacobian rules $(\partial f_c/\partial \vecb{x}_t)$ during the reverse tape sweep.
+  \item \textbf{Jacobian spectral instability:} Across $L$ layers with layer Jacobians $\jac_l$, backward adjoints evolve via $\vecb{g}_1 = (\prod_{l=1}^L \jac_l)\T \vecb{g}_{L+1}$; if the spectral radius $\rho(\jac_l) < 1$ or $> 1$, gradients vanish or explode exponentially with $L$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~13.4.2, p.~447}, requiring residual connections ($\jac_l = \eye + \jac_{\text{res}}$), normalization, and gradient norm clipping $\vecb{g}' = \min(1, c/\norm{\vecb{g}}_2)\vecb{g}$.
+\end{enumerate}
+\end{pitfall}
+
+\end{document}

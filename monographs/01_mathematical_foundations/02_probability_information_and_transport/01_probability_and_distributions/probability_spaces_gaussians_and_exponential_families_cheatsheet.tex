@@ -1,0 +1,225 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Probability \& Information Theory}{Probability Spaces, Multivariate Gaussians \& Exponential Families}
+  {Gaussians turn conditioning into Schur complements; exponential families turn log-partition derivatives into moments}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Gaussians \&\\Exp.\ Families\\ \footnotesize\mdseries Measure $\cdot$ MVN $\cdot$ Duality}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[gray!50, thin] (-1.8,0)--(1.8,0) (0,-1.2)--(0,1.2);
+    \draw[csDom, very thick, rotate=28] (0,0) ellipse (1.45 and 0.55);
+    \draw[csDom!60, thick, rotate=28] (0,0) ellipse (0.85 and 0.32);
+    \draw[csA, very thick, dashed] (-1.6,0.38)--(1.6,0.38) node[right, font=\tiny] {$x_b$};
+    \fill[csA] (0.52,0.38) circle (2.2pt) node[above, font=\tiny] {$\mu_{a\mid b}$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; PROBABILITY SPACES \& JACOBIANS}{%
+  \csfm{p_{\vecb{y}}(\vecb{y}) = p_{\vecb{x}}(\vecb{f}\inv(\vecb{y}))\abs{\det\jac_{\vecb{f}\inv}(\vecb{y})}}
+  \begin{csbul}
+    \item \textbf{Kolmogorov $(\Omega,\mathcal{F},P)$:} $P(A)\ge 0$, $P(\Omega)=1$, $P(\bigsqcup_i A_i)=\sum_i P(A_i)$
+    \item \textbf{Sum \& Product:} $p(\vecb{x}_a)=\int p(\vecb{x}_a,\vecb{x}_b)\,\mathrm{d}\nu(\vecb{x}_b)$,\; $p(\vecb{x}_a,\vecb{x}_b)=p(\vecb{x}_a\mid\vecb{x}_b)p(\vecb{x}_b)$
+    \item \textbf{1D PIT:} $U = F_X(X) \sim \Uniform(0,1)$ and $F_X\inv(U) \sim p_X$
+    \item \textbf{MGF/CGF:} $M_{\vecb{X}}(\vecb{s})=\E[e^{\inner{\vecb{s}}{\vecb{X}}}]$; $K_{\vecb{X}}=\log M_{\vecb{X}}$ sums over $\indep$ RVs
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; MVN GEOMETRY \& WHITENING}{%
+  \begin{minipage}[t]{0.64\linewidth}
+    \csfm{p(\vecb{x}) = (2\pi)^{-D/2}\abs{\mat{\Sigma}}^{-1/2}e^{-\frac{1}{2}\Delta^2(\vecb{x})}}
+    \begin{csbul}
+      \item \textbf{Mahalanobis:} $\Delta^2 = (\vecb{x}-\vecb{\mu})\T\mat{\Sigma}\inv(\vecb{x}-\vecb{\mu})$
+      \item \textbf{Eigen-axes:} $\mat{\Sigma}=\mat{U}\mat{\Gamma}\mat{U}\T$, semi-axes $c\sqrt{\gamma_i}$
+      \item \textbf{Whitening:} $\vecb{z}=\mat{\Gamma}^{-1/2}\mat{U}\T(\vecb{x}-\vecb{\mu})\sim\Normal(\zeros,\eye_D)$
+      \item \textbf{ZCA:} $\vecb{z}_{\mathrm{ZCA}} = \mat{\Sigma}^{-1/2}(\vecb{x}-\vecb{\mu})$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.33\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \begin{scope}[rotate=30]
+        \draw[csB, very thick, fill=csB!10] (0,0) ellipse (1.25 and 0.48);
+        \draw[->, csDom, thick] (0,0)--(1.25,0) node[right] {$\sqrt{\gamma_1}\vecb u_1$};
+        \draw[->, csDom, thick] (0,0)--(0,0.48);
+      \end{scope}
+      \draw[->, csB, thick] (1.35,0)--(2.20,0) node[midway, above=5pt] {$\mat\Sigma^{-1/2}$};
+      \draw[csD, very thick, fill=csD!10] (3.0,0) circle (0.65);
+      \node[csD] at (3.0,-1.15) {$\Normal(\zeros,\eye)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; SCHUR CONDITIONING \& DUALITY}{%
+  \csfm{\vecb{\mu}_{a\mid b} = \vecb{\mu}_a + \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv(\vecb{x}_b-\vecb{\mu}_b) = \vecb{\mu}_a - \mat{\Lambda}_{aa}\inv\mat{\Lambda}_{ab}(\vecb{x}_b-\vecb{\mu}_b)}
+  \csfm{\mat{\Sigma}_{a\mid b} = \mat{\Lambda}_{aa}\inv = \mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba}}
+  \begin{csbul}
+    \item \textbf{Marginalization} is $\mathcal{O}(1)$ in $\mat{\Sigma}$ ($p(\vecb{x}_a)=\Normal(\vecb{\mu}_a,\mat{\Sigma}_{aa})$)
+    \item \textbf{Conditioning} is $\mathcal{O}(1)$ in precision $\mat{\Lambda}=\mat{\Sigma}\inv$ ($\mat{\Lambda}_{a\mid b}=\mat{\Lambda}_{aa}$)
+    \item \textbf{Markov graph:} $\Lambda_{ij}=0 \iff X_i \indep X_j \mid \vecb{X}_{-ij}$
+    \item \textbf{Linear-Gaussian Bayes:} $\mat{\Sigma}_{z\mid y}\inv = \mat{\Sigma}_z\inv + \mat{W}\T\mat{\Sigma}_y\inv\mat{W}$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CANONICAL EXPONENTIAL FAMILIES}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{p(\vecb{x}\mid\vecb{\eta}) = h(\vecb{x})\exp\!\big(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})} - A(\vecb{\eta})\big)}
+    \begin{csbul}
+      \item \textbf{1st deriv (Mean):} $\grad_{\vecb{\eta}} A(\vecb{\eta}) = \E[\vecb{T}(\vecb{x})] = \vecb{m}$
+      \item \textbf{2nd deriv (Fisher):} $\hess_{\vecb{\eta}} A(\vecb{\eta}) = \Cov[\vecb{T}(\vecb{x})] = \mat{I}_F(\vecb{\eta})$
+      \item \textbf{Legendre dual:} $\vecb{\eta} = \grad A^*(\vecb{m})$ ($A^*$ neg.\ entropy)
+      \item \textbf{MVN natural:} $\vecb{\eta}_1=\mat{\Lambda}\vecb{\mu}$, $\mat{\eta}_2=-\tfrac{1}{2}\mat{\Lambda}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{6pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \node[draw=csD, thick, fill=csD!10, rounded corners=2pt, inner sep=3pt] (eta) at (0,1.4) {$\vecb{\eta}\in\Omega_\eta^\circ$};
+      \node[draw=csDom, thick, fill=csDom!10, rounded corners=2pt, inner sep=3pt] (m) at (0,-0.4) {$\vecb{m}\in\mathcal{M}^\circ$};
+      \draw[->, thick, csD] (eta.240) to[bend right=25] node[left] {$\grad A$} (m.120);
+      \draw[->, thick, csDom] (m.60) to[bend right=25] node[right] {$\grad A^*$} (eta.300);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; MLE, MAXENT \& CONJUGATE UPDATES}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.95cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{2.05cm}@{}}
+    \textbf{\textcolor{csE}{Model}} & \textbf{\textcolor{csE}{Params}} & \textbf{\textcolor{csE}{Conditioning}} & \textbf{\textcolor{csE}{Marginal}}\\ \hline
+    Full MVN $(\vecb\mu,\mat\Sigma)$ & $O(D^2)$ & $O(D_b^3)$ Schur & $O(1)$ slice\\
+    Precision $(\vecb h,\mat K)$ & $O(D^2)$ & $O(1)$ slice & $O(D_b^3)$ Schur\\
+    Diagonal MVN & $2D$ & $O(1)$ & $O(1)$\\
+    Conjugate $(\vecb\tau,\nu)$ & $K+1$ & $\grad A^*(\vecb m)$ & $O(NK)$ sum\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{MLE Moment Match:} $\grad A(\hat{\vecb{\eta}}_{\mathrm{MLE}}) = \frac{1}{N}\sum_{n=1}^N \vecb{T}(\vecb{x}_n) = \bar{\vecb{t}}_{\mathcal{D}}$.\\
+  \textbf{Conjugate Posterior:} $(\vecb{\tau}_N, \nu_N) = \big(\vecb{\tau}_0 + \sum_{n=1}^N \vecb{T}(\vecb{x}_n),\; \nu_0 + N\big)$.}
+
+\csbranch{6}{F}{6\;\; ML USE-CASES $-$ where you meet it}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Gaussian Processes / Kalman:} Schur conditioning on observations
+      \item \textbf{Normalizing Flows:} exact density via $\sum_l \log\abs{\det\jac_l}$
+      \item \textbf{GLMs \& Softmax:} canonical link $\vecb{\eta} = \mat{W}\vecb{x}$
+      \item \textbf{Bayesian Bandits:} Beta--Bernoulli, Dirichlet, NIW updates
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[csF!40, thick] (0,0) circle (1.25);
+      \draw[csF, line width=3.5pt, opacity=0.45] (0,0) circle (1.05);
+      \fill[csA] (0,0) circle (1.8pt) node[below] {$\vecb{\mu}$};
+      \draw[<->, csDom, thin] (0,0)--(0.74,0.74) node[midway, above left] {$\sigma\sqrt{D}$};
+      \node[csF, align=center] at (0,-1.65) {High-$D$ typical shell\\radius $\sigma\sqrt{D}\pm O(D^{1/4})$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Slice $\mat{\Sigma}$ for Marginals, Slice $\mat{\Lambda}$ for Conditionals; Differentiate $A(\vecb{\eta})$ for Moments!} \\[1pt]
+  \footnotesize\mdseries \textbf{In exponential families, Bayesian updating is just adding sufficient statistics $\vecb{\tau}_0 + \sum_n\vecb{T}(\vecb{x}_n)$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{$\Cov[X,Y]=0 \not\Rightarrow X\indep Y$} unless $(X,Y)$ are jointly Gaussian
+    \item \textbf{Singular $\hat{\mat{\Sigma}}$ ($N \le D$):} $\rank(\hat{\mat{\Sigma}})\le N-1$; add shrinkage or jitter $\epsilon\eye$
+    \item \textbf{High-$D$ soap-bubble:} mass sits on shell $\sigma\sqrt{D}$, not near mode $\vecb{\mu}$
+    \item \textbf{Mode non-invariance:} $\hat{y}_{\mathrm{MAP}} \neq f(\hat{x}_{\mathrm{MAP}})$ under nonlinear $f$ ($\abs{\det\jac}$)
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Probability Spaces, Multivariate Gaussians \& Exponential Families}\;---\;Domain 01 $\cdot$ Probability \& Information Theory}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Change of variables ($\vecb{y}=\vecb{f}(\vecb{x})$):\csfm{p_{\vecb{y}}(\vecb{y}) = p_{\vecb{x}}\!\left(\vecb{f}\inv(\vecb{y})\right)\abs{\det\jac_{\vecb{f}\inv}(\vecb{y})}}
+    \item MVN conditional $\vecb{x}_a\mid\vecb{x}_b \sim \Normal(\vecb{\mu}_{a\mid b},\mat{\Sigma}_{a\mid b})$:\csfm{\vecb{\mu}_{a\mid b} = \vecb{\mu}_a + \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv(\vecb{x}_b-\vecb{\mu}_b),\quad \mat{\Sigma}_{a\mid b} = \mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba}}
+    \item Linear-Gaussian Bayes ($\vecb{y}=\mat{W}\vecb{z}+\vecb{b}+\vecb{\varepsilon}$):\csfm{\mat{\Sigma}_{z\mid y}\inv = \mat{\Sigma}_z\inv + \mat{W}\T\mat{\Sigma}_y\inv\mat{W},\quad \vecb{\mu}_{z\mid y} = \mat{\Sigma}_{z\mid y}\big(\mat{W}\T\mat{\Sigma}_y\inv(\vecb{y}-\vecb{b})+\mat{\Sigma}_z\inv\vecb{\mu}_z\big)}
+    \item Log-partition cumulants:\csfm{\grad_{\vecb{\eta}} A(\vecb{\eta}) = \E[\vecb{T}(\vecb{x})] = \vecb{m},\qquad \hess_{\vecb{\eta}} A(\vecb{\eta}) = \Cov[\vecb{T}(\vecb{x})] = \mat{I}_F(\vecb{\eta})}
+    \item Conjugate prior \& log marginal evidence:\csfm{\vecb{\tau}_N = \vecb{\tau}_0 + \sum_{n=1}^N\vecb{T}(\vecb{x}_n),\quad \log p(\mathcal{D}) = \sum_{n=1}^N\log h(\vecb{x}_n) + \psi(\vecb{\tau}_N,\nu_N) - \psi(\vecb{\tau}_0,\nu_0)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: CHOLESKY SCHUR \& CONJUGATE UPDATE}
+  \textbf{Cholesky-Stabilized MVN Conditioning:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Factor $\mat{L}_{bb} = \mathrm{Cholesky}(\mat{\Sigma}_{bb} + \epsilon\eye_{D_b})$ in $\mathcal{O}(D_b^3)$.
+    \item Forward-solve $\mat{L}_{bb}\vecb{\alpha} = \vecb{x}_b - \vecb{\mu}_b$ and $\mat{L}_{bb}\mat{K}\T = \mat{\Sigma}_{ba}$.
+    \item Return $\vecb{\mu}_{a\mid b} = \vecb{\mu}_a + \mat{K}\vecb{\alpha}$ and $\mat{\Sigma}_{a\mid b} = \mat{\Sigma}_{aa} - \mat{K}\mat{K}\T$ (never form $\mat{\Sigma}_{bb}\inv$!).
+  \end{enumerate}
+  \vspace{1pt}
+  \textbf{Exponential-Family Conjugate Update:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Accumulate sufficient statistics $\vecb{S}_{\mathcal{D}} = \sum_{n=1}^N \vecb{T}(\vecb{x}_n)$.
+    \item Update $\vecb{\tau}_N = \vecb{\tau}_0 + \vecb{S}_{\mathcal{D}}$, $\nu_N = \nu_0 + N$; posterior mean $\E[\vecb{m}\mid\mathcal{D}] = \vecb{\tau}_N/\nu_N$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    frequent marginalization & Moment form $(\vecb{\mu},\mat{\Sigma})$\\
+    frequent conditioning / fusion & Information form $(\vecb{h}=\mat{\Lambda}\vecb{\mu},\mat{K}=\mat{\Lambda})$\\
+    small sample size $N \le D$ & Shrinkage $\lambda\diag(\hat{\mat{\Sigma}}) + (1-\lambda)\hat{\mat{\Sigma}}$\\
+    i.i.d.\ data with fixed-dim stat & Canonical exponential family\\
+    zero-count discrete categories & Dirichlet / Laplace prior ($\vecb{\tau}_0>\zeros$)\\
+    heavy tails (Student-$t$, Cauchy) & Characteristic fn $\varphi_X(\omega)=\E[e^{i\omega X}]$\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item Correlation bound: $\abs{\Corr[X,Y]} = \abs{\Cov[X,Y]}/\sqrt{\Var[X]\Var[Y]} \le 1$
+    \item Conditioning reduces variance: $\mat{\Sigma}_{a\mid b} = \mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba} \preceq \mat{\Sigma}_{aa}$
+    \item High-$D$ typical radius: $\norm{\vecb{x}-\vecb{\mu}}_2 = \sigma\sqrt{D} + \mathcal{O}_P(\sigma)$ as $D\to\infty$
+    \item Log-MVN via Cholesky: $\log\abs{\mat{\Sigma}} = 2\sum_{i=1}^D \log L_{ii}$ (avoids $\det$ overflow)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{LOG-DENSITY TAIL DECAY (EXP.\ FAMILY vs.\ HEAVY TAILS)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=0, xmax=4.5, ymin=-9.5, ymax=0.5,
+      xlabel={$\abs{x}$}, ylabel={$\log p(x) - \log p(0)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,1,2,3,4}, ytick={-8,-6,-4,-2,0}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.03,0.04)}, anchor=south west, fill=white, fill opacity=0.9, draw=gray!40}]
+      \addplot[csDom, very thick, domain=0:4.3, samples=60] {-0.5*x^2};
+      \addlegendentry{Gaussian $-x^2/2$ (MGF $\forall s$)}
+      \addplot[csE, thick, dashed, domain=0:4.5, samples=30] {-x};
+      \addlegendentry{Laplace $-\abs{x}$ ($M_X$ for $\abs{s}<1$)}
+      \addplot[csF, thick, dashdotted, domain=0:4.5, samples=60] {-2*ln(1 + x^2/3)};
+      \addlegendentry{Student-$t$ ($\nu=3$, $M_X=\infty$)}
+      \addplot[csA, very thick, dotted, domain=0:4.5, samples=60] {-ln(1 + x^2)};
+      \addlegendentry{Cauchy ($\nu=1$, no mean)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Uncorrelated $\neq$ independent:} $X\sim\Normal(0,1)$ and $Y=\pm X$ have $\Cov[X,Y]=0$ yet $X^2=Y^2$; joint normality is required
+    \item \textbf{Sample covariance collapse ($N\le D$):} $\hat{\mat{\Sigma}}_{\mathrm{MLE}}$ has $D-(N-1)$ zero eigenvalues; never invert without ridge/shrinkage
+    \item \textbf{Evaluating $\det(\mat{\Sigma})$ directly:} underflows or overflows in float64 for $D\gtrsim 100$; always sum $2\sum_i\log L_{ii}$ in log space
+    \item \textbf{Zero-count MLE divergence:} when empirical count $\bar{t}_k=0$, natural parameter $\hat{\eta}_k\to -\infty$ (black-swan trap); regularize with prior $\vecb{\tau}_0>\zeros$
+    \item \textbf{Overcomplete exponential family:} linearly dependent $\vecb{T}(\vecb{x})$ makes $\hess A(\vecb{\eta})$ singular and $\vecb{\eta}$ non-unique
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Two dual coordinates:} for Gaussians, $\mat{\Sigma}$ makes marginals free while $\mat{\Lambda}=\mat{\Sigma}\inv$ makes conditioning and Bayes rule additive.
+  For any exponential family, $A(\vecb{\eta})$ is a convex cumulant machine: $\grad A=\E[\vecb{T}]$, $\hess A=\Cov[\vecb{T}]$, and Bayes updates just count $\vecb{T}(\vecb{x})$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

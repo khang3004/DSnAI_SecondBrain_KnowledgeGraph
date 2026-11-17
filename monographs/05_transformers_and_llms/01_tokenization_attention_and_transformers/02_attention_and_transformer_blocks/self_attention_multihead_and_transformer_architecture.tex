@@ -1,0 +1,313 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 05: Transformers \& Large Language Models}{Tokenization, Embeddings, Attention \& Transformer Architectures}{Attention Mechanisms \& Transformer Architectures}{Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention \& GPT/BERT Blocks}{Raschka Ch.~3--4, Bishop Ch.~12, Prince Ch.~12, Jurafsky \& Martin Ch.~7 \& 9, Murphy Intro Sec.~15.4--15.6}
+\sloppy\setlength{\emergencystretch}{3em}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:attn:formulation}
+
+Given an input sequence of $N$ token embeddings, a Transformer layer computes a length-preserving contextualized representation $\tilde{\mat{X}} = \mathrm{TransformerLayer}(\mat{X}) \in \R^{N \times d_{\mathrm{model}}}$ without sequential recurrence \bookcite{deep_learning_foundations_concepts}{Ch.~12, Eq.~12.1, p.~377}. Unlike convolutional or recurrent layers whose receptive fields grow linearly with depth or time, self-attention establishes direct, data-dependent routing paths between every pair of positions $(i, j) \in \{1, \dots, N\}^2$ in $O(1)$ sequential steps \bookcite{understandingdl_simonprince}{Ch.~12, Sec.~12.2, p.~222}.
+
+Let $\mat{X} \in \R^{N \times d_{\mathrm{model}}}$ denote the row-major input matrix whose $i$-th row is $\vecb{x}_i\T \in \R^{1 \times d_{\mathrm{model}}}$. Single-head attention projects $\mat{X}$ into three distinct subspaces---queries $\mat{Q}$, keys $\mat{K}$, and values $\mat{V}$---via learned parameter matrices $\mat{W}_Q \in \R^{d_{\mathrm{model}} \times d_k}$, $\mat{W}_K \in \R^{d_{\mathrm{model}} \times d_k}$, and $\mat{W}_V \in \R^{d_{\mathrm{model}} \times d_v}$:
+\begin{equation}
+  \mat{Q} = \mat{X}\mat{W}_Q \in \R^{N \times d_k}, \qquad
+  \mat{K} = \mat{X}\mat{W}_K \in \R^{N \times d_k}, \qquad
+  \mat{V} = \mat{X}\mat{W}_V \in \R^{N \times d_v}.
+  \label{eq:attn:qkv_proj}
+\end{equation}
+Separating $\mat{W}_Q$ and $\mat{W}_K$ breaks the symmetry of $\mat{X}\mat{U}\mat{U}\T\mat{X}\T$, enabling asymmetric token affinities such as ``chisel'' attending strongly to ``tool'' without forcing the converse \bookcite{deep_learning_foundations_concepts}{Ch.~12, p.~380}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Source textbooks differ in matrix orientation (row-major vs.\ column-major), bias conventions, and LayerNorm placement. Table~\ref{tab:attn:notation} establishes a canonical translation across all five synthesized references.
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\linewidth}{@{}p{1.35cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Canonical Here} & \textbf{Raschka / J\&M} & \textbf{Bishop (Ch.~12)} & \textbf{Prince / Murphy} \\
+\midrule
+Input $\mat{X}$ & $\mat{X} \in \R^{N \times d_{\mathrm{model}}}$ (row-major) & $\mathcal{X} \in \R^{B \times T \times d_{\mathrm{in}}}$ (Raschka); $\mat{X} \in \R^{N \times d}$ (J\&M) & $\mat{X} \in \R^{N \times D}$ (row $\vecb{x}_n\T$, Fig.~12.3) & $\mat{X} \in \R^{D \times N}$ col-major (Prince); $\vecb{x}_{1:n}$ (Murphy) \\
+QKV weights & $\mat{W}_Q, \mat{W}_K, \mat{W}_V$ & \texttt{W\_query}, \texttt{W\_key}, \texttt{W\_value}; $\mat{W}^{Q,K,V}$ & $\mat{W}^{(q)}, \mat{W}^{(k)}, \mat{W}^{(v)}$ (bias absorbed) & $\mat{\Omega}_{q,k,v}$ + $\vecb{\beta}$ (Prince); $\mat{W}_i^{(q,k,v)}$ (Murphy) \\
+Head dims & $H$ heads; $d_k = d_v = d_{\mathrm{model}}/H$ & \texttt{num\_heads}, \texttt{head\_dim} ($d_{\mathrm{out}}/H$) & $H$ heads; $D_k, D_v = D/H$ & $H$ heads, $D_q = D/H$ (Prince); $h, p_k, p_v$ (Murphy) \\
+Softmax & Row $\softmax(\mat{Q}\mat{K}\T/\sqrt{d_k})\mat{V}$ & Row-wise softmax over keys & Row $\softmax(\mat{Q}\mat{K}\T/\sqrt{D_k})\mat{V}$ & Col $\mat{V}\cdot\allowbreak\softmax(\mat{K}\T\mat{Q}/\sqrt{D_q})$ (Prince) \\
+Norm & Pre-LN: $\mat{X} + F(\mathrm{LN}(\mat{X}))$ & Pre-LN in GPT block (Raschka L4.6; J\&M Fig.~7.7) & Post-LN (Eq.~12.20) \& Pre-LN (Eq.~12.21) & Post-LN $\mat{X} \leftarrow \mathrm{LN}(\mat{X} + F(\mat{X}))$ (Prince Eq.~12.13) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\captionof{table}{Reconciled notation across Raschka \bookcite{build_large_language_model_from_scratch}{Ch.~3--4}, Bishop \bookcite{deep_learning_foundations_concepts}{Ch.~12}, Prince \bookcite{understandingdl_simonprince}{Ch.~12}, Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~7}, and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.5}.}
+\label{tab:attn:notation}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:attn:derivations}
+
+\subsection{Scaled Dot-Product Attention \& Variance Stabilization}
+
+\begin{coremath}[Theorem: Variance Scaling of Dot-Product Logits \& Softmax Jacobians]
+Let $\vecb{q}, \vecb{k} \in \R^{d_k}$ be independent random vectors whose entries satisfy $\E[q_r] = \E[k_r] = 0$, $\Var(q_r) = \Var(k_r) = 1$, and $\Cov(q_r, q_s) = \Cov(k_r, k_s) = 0$ for $r \neq s$. Then the unscaled dot-product logit $s = \vecb{q}\T \vecb{k} = \sum_{r=1}^{d_k} q_r k_r$ satisfies:
+\begin{equation}
+  \E[s] = \sum_{r=1}^{d_k} \E[q_r]\E[k_r] = 0, \qquad
+  \Var(s) = \sum_{r=1}^{d_k} \Var(q_r k_r) = \sum_{r=1}^{d_k} \Big(\E[q_r^2]\E[k_r^2] - (\E[q_r]\E[k_r])^2\Big) = d_k.
+  \label{eq:attn:variance_proof}
+\end{equation}
+Scaling the logits by $1/\sqrt{d_k}$ restores unit variance independent of head width: $\Var(\vecb{q}\T \vecb{k} / \sqrt{d_k}) = d_k / d_k = 1$.
+
+Moreover, for any logit vector $\vecb{s} \in \R^N$ and attention probability vector $\vecb{p} = \softmax(\vecb{s})$ with $p_i = \exp(s_i) / \sum_{m=1}^N \exp(s_m)$, the softmax Jacobian has entries
+\begin{equation}
+  \pd{p_i}{s_j} = p_i (\delta_{ij} - p_j),
+  \label{eq:attn:softmax_jacobian}
+\end{equation}
+where $\delta_{ij}$ is the Kronecker delta. As $\Var(s)$ grows with $d_k$, the maximum logit dominates ($p_{i^*} \to 1$, $p_{j \neq i^*} \to 0$), driving $\pd{p_i}{s_j} \to 0$ exponentially and stalling gradient flow \bookcite{deep_learning_foundations_concepts}{Ch.~12, Eq.~12.14, p.~382} \bookcite{understandingdl_simonprince}{Ch.~12, Sec.~12.3.2, p.~228}.
+
+The resulting \textbf{Scaled Dot-Product Attention} operator is:
+\begin{equation}
+  \mathrm{Attention}(\mat{Q}, \mat{K}, \mat{V}) = \softmax\!\left(\frac{\mat{Q}\mat{K}\T}{\sqrt{d_k}}\right)\mat{V} \in \R^{N \times d_v},
+  \label{eq:attn:scaled_attn}
+\end{equation}
+where $\softmax$ is applied row-wise so each output row $\vecb{y}_i\T = \sum_{j=1}^N A_{ij} \vecb{v}_j\T$ is a convex combination of value vectors ($A_{ij} \ge 0$, $\sum_{j=1}^N A_{ij} = 1$).
+\end{coremath}
+
+\begin{intuition}[Attention as Differentiable Dictionary Lookup \& Kernel Smoothing]
+Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.4.1--15.4.2, pp.~549--551} frames attention as a soft dictionary lookup and a parametric Nadaraya--Watson kernel smoother: each query $\vecb{q}_i$ evaluates a similarity kernel $\kappa(\vecb{q}_i, \vecb{k}_j) = \exp(\vecb{q}_i\T \vecb{k}_j / \sqrt{d_k})$ against all keys $\{\vecb{k}_j\}_{j=1}^N$, normalizes by $\sum_m \kappa(\vecb{q}_i, \vecb{k}_m)$ to form a partition of unity on the simplex $\Delta^{N-1}$, and returns the conditional expectation of the values $\{\vecb{v}_j\}$. Prince \bookcite{understandingdl_simonprince}{Sec.~12.2, Fig.~12.1, p.~223} emphasizes that unlike fixed MLP weights, attention weights $A_{ij}$ are dynamic, input-dependent routing coefficients.
+\end{intuition}
+
+\subsection{Causal Lower-Triangular Masking \& Autoregressive Factorization}
+
+Autoregressive language models factorize the joint sequence likelihood as $\Prob(t_1, \dots, t_N) = \Prob(t_1)\prod_{i=2}^N \Prob(t_i \mid t_1, \dots, t_{i-1})$ \bookcite{understandingdl_simonprince}{Eq.~12.15, p.~237}. During parallel training on the full sequence $\mat{X}$, position $i$ must be strictly prevented from attending to future positions $j > i$.
+
+\begin{coremath}[Causal Masking Equivalence \& Zero Future-Token Leakage]
+Define the upper-triangular additive causal mask $\mat{M} \in \{0, -\infty\}^{N \times N}$ with entries $M_{ij} = 0$ if $j \le i$ and $M_{ij} = -\infty$ if $j > i$. Causal scaled dot-product attention computes:
+\begin{equation}
+  \mat{A}_{\mathrm{causal}} = \softmax\!\left(\frac{\mat{Q}\mat{K}\T}{\sqrt{d_k}} + \mat{M}\right).
+  \label{eq:attn:causal_mask}
+\end{equation}
+For any future position $j > i$, $\lim_{M_{ij} \to -\infty} \exp(S_{ij} + M_{ij}) = 0$, so $(\mat{A}_{\mathrm{causal}})_{ij} = 0$ and the softmax denominator sums exclusively over past and current tokens $m \in \{1, \dots, i\}$:
+\begin{equation}
+  (\mat{A}_{\mathrm{causal}})_{ij} = \frac{\exp(S_{ij})\,\mathbb{I}[j \le i]}{\sum_{m=1}^{i} \exp(S_{im})}.
+  \label{eq:attn:causal_denom}
+\end{equation}
+Raschka \bookcite{build_large_language_model_from_scratch}{Ch.~3, Sec.~3.5.1, pp.~200--205} demonstrates that post-softmax zeroing ($\mat{A} \odot \mat{L}_{\mathrm{tril}}$) followed by row-wise renormalization is mathematically identical to Eq.~\eqref{eq:attn:causal_denom} because masked terms cancel from the ratio, but pre-softmax $-\infty$ masking achieves this in a single fused pass with zero future-token influence on the normalization constant.
+\end{coremath}
+
+\monographfig[0.92\textwidth]{speech_language_processing_aug26_p198_fig2.png}{Parallel matrix-form causal self-attention: $\mat{X}$ is projected into $\mat{Q}, \mat{K}, \mat{V}$; $\mat{Q}\mat{K}\T$ computes all pairwise affinities simultaneously; upper-triangular $-\infty$ masking enforces causality before softmax; and multiplication by $\mat{V}$ yields contextual outputs $\mat{A}$. Source: \bookcite{speech_language_processing_aug26}{Ch.~7, Fig.~7.11, PDF p.~198}.}{fig:attn:slp_matrix_causal}
+
+\subsection{Multi-Head Attention, GQA, and Pre-LN Transformer Blocks}
+
+A single attention head averages over all token relationships with one similarity metric, whereas natural language requires tracking syntactic dependencies, coreference, and local phrasing simultaneously \bookcite{deep_learning_foundations_concepts}{Sec.~12.1.6, p.~383}.
+
+\begin{coremath}[Multi-Head Attention (MHA) \& Fused Tensor Splitting]
+With $H$ parallel heads ($h = 1, \dots, H$), each head learns independent projections $\mat{W}_{Q,h}, \mat{W}_{K,h} \in \R^{d_{\mathrm{model}} \times d_k}$ and $\mat{W}_{V,h} \in \R^{d_{\mathrm{model}} \times d_v}$ (typically $d_k = d_v = d_{\mathrm{model}}/H$):
+\begin{align}
+  \mat{H}_h &= \mathrm{Attention}\!\left(\mat{X}\mat{W}_{Q,h},\; \mat{X}\mat{W}_{K,h},\; \mat{X}\mat{W}_{V,h}\right) \in \R^{N \times d_v}, \label{eq:attn:mha_head} \\
+  \mathrm{MHA}(\mat{X}) &= \mathrm{Concat}(\mat{H}_1, \dots, \mat{H}_H)\,\mat{W}_O \in \R^{N \times d_{\mathrm{model}}}, \label{eq:attn:mha_concat}
+\end{align}
+where $\mat{W}_O \in \R^{(H d_v) \times d_{\mathrm{model}}}$ mixes subspaces across heads \bookcite{deep_learning_foundations_concepts}{Eq.~12.15--12.19, p.~383} \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~15.55--15.56, p.~557}. In practice \bookcite{build_large_language_model_from_scratch}{Listing~3.5, pp.~227--232}, all $H$ projections are fused into single dense layers $\mat{W}_Q, \mat{W}_K, \mat{W}_V \in \R^{d_{\mathrm{model}} \times (H d_k)}$ and reshaped via $[B, T, d_{\mathrm{model}}] \to [B, T, H, d_k] \xrightarrow{\mathrm{transpose}} [B, H, T, d_k]$.
+
+\textbf{Grouped-Query Attention (GQA) \& Cross-Attention:} To shrink the autoregressive KV-cache by a factor of $H / H_{\mathrm{kv}}$, GQA partitions the $H$ query heads into $H_{\mathrm{kv}}$ groups that share key-value heads ($H_{\mathrm{kv}}=1$ recovers Multi-Query Attention, MQA). In encoder-decoder cross-attention \bookcite{deep_learning_foundations_concepts}{Fig.~12.19, p.~407}, queries come from decoder states ($\mat{Q} = \mat{X}_{\mathrm{dec}}\mat{W}_Q$) while keys and values come from the encoder output ($\mat{K} = \mat{Z}_{\mathrm{enc}}\mat{W}_K$, $\mat{V} = \mat{Z}_{\mathrm{enc}}\mat{W}_V$).
+\end{coremath}
+
+Because attention outputs are convex combinations of linearly transformed inputs, a Transformer layer pairs MHA with a position-wise nonlinear $\mathrm{MLP}$ (GELU in GPT-2 \bookcite{build_large_language_model_from_scratch}{Sec.~4.3, p.~274} or gated SwiGLU in modern LLMs), residual shortcuts, and LayerNorm (or RMSNorm). While the original Transformer \bookcite{understandingdl_simonprince}{Eq.~12.13, p.~230} used \textbf{Post-LN}, modern LLMs adopt \textbf{Pre-LN} \bookcite{build_large_language_model_from_scratch}{Listing~4.6, pp.~292--293} \bookcite{deep_learning_foundations_concepts}{Eq.~12.21--12.23, pp.~385--386} so the residual highway remains unscaled:
+\begin{align}
+  \mat{Z}^{(\ell)} &= \mat{X}^{(\ell)} + \mathrm{MHA}\!\left(\mathrm{LN}_1\!\left(\mat{X}^{(\ell)}\right)\right), \label{eq:attn:preln_1} \\
+  \mat{X}^{(\ell+1)} &= \mat{Z}^{(\ell)} + \mathrm{MLP}\!\left(\mathrm{LN}_2\!\left(\mat{Z}^{(\ell)}\right)\right). \label{eq:attn:preln_2}
+\end{align}
+At the output of layer $L$, a final normalization feeds the language modeling head, which often ties the unembedding matrix to the transpose of the token embedding matrix: $\mat{U} = \mat{E}\T \in \R^{d_{\mathrm{model}} \times |V|}$, yielding logits $\vecb{u}_i = \vecb{h}_i^{(L)\top}\mat{E}\T$ and next-token probabilities $\vecb{y}_i = \softmax(\vecb{u}_i)$ \bookcite{speech_language_processing_aug26}{Eq.~7.47--7.48, p.~203}.
+
+\monographfig[0.92\textwidth]{probabilisticml_kevinmurphy_introduction_p560_fig1.png}{Full encoder--decoder Transformer architecture with zoom-ins on Multi-Head Attention and Scaled Dot-Product Attention (optional causal mask). Source: \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.5.4, Fig.~15.26, PDF p.~560}.}{fig:attn:murphy_transformer}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:attn:algorithms}
+
+Algorithm~\ref{alg:attn:causal_mha_preln} consolidates the batched tensor-splitting MHA implementation \bookcite{build_large_language_model_from_scratch}{Listing~3.5} and Pre-LN Transformer block \bookcite{build_large_language_model_from_scratch}{Listing~4.6} with optional causal masking.
+
+\begin{algorithm}[htbp]
+\caption{Batched Causal Multi-Head Self-Attention \& Pre-LN Transformer Block}
+\label{alg:attn:causal_mha_preln}
+\KwIn{Input tensor $\mathcal{X} \in \R^{B \times T \times d}$; weights $\mat{W}_Q, \mat{W}_K, \mat{W}_V, \mat{W}_O \in \R^{d \times d}$; head count $H$ with $d_k = d / H$; causal flag $\mathrm{is\_causal} \in \{\mathrm{true}, \mathrm{false}\}$; dropout rate $p$.}
+\KwOut{Transformed tensor $\mathcal{Y} \in \R^{B \times T \times d}$.}
+$\tilde{\mathcal{X}} \leftarrow \mathrm{LayerNorm}_1(\mathcal{X})$ \tcp*{Pre-LN preserves unscaled residual highway}
+$\mathcal{Q}, \mathcal{K}, \mathcal{V} \leftarrow \tilde{\mathcal{X}}\mat{W}_Q,\; \tilde{\mathcal{X}}\mat{W}_K,\; \tilde{\mathcal{X}}\mat{W}_V$ \tcp*{Shape: $[B, T, d]$}
+Reshape \& transpose $\mathcal{Q}, \mathcal{K}, \mathcal{V}$ to $[B, H, T, d_k]$\;
+$\mathcal{S} \leftarrow (\mathcal{Q} \, \mathcal{K}\T) / \sqrt{d_k}$ \tcp*{Pairwise scaled logits: $[B, H, T, T]$}
+\If{$\mathrm{is\_causal}$}{
+  Set $S_{b,h,i,j} \leftarrow -\infty$ for all $j > i$ \tcp*{Upper-triangular causal mask}
+}
+$\mathcal{A} \leftarrow \mathrm{Dropout}_p\!\big(\softmax(\mathcal{S}, \mathrm{dim}=-1)\big)$ \tcp*{Row-wise attention weights}
+$\mathcal{H} \leftarrow \mathcal{A} \, \mathcal{V}$ \tcp*{Shape: $[B, H, T, d_k]$}
+Transpose \& reshape $\mathcal{H}$ back to $[B, T, d]$, then $\mathcal{O} \leftarrow \mathcal{H}\mat{W}_O$\;
+$\mathcal{Z} \leftarrow \mathcal{X} + \mathrm{Dropout}_p(\mathcal{O})$ \tcp*{First residual shortcut}
+$\mathcal{Y} \leftarrow \mathcal{Z} + \mathrm{Dropout}_p\!\big(\mathrm{MLP}(\mathrm{LayerNorm}_2(\mathcal{Z}))\big)$ \tcp*{Position-wise GELU/SwiGLU + shortcut}
+\Return{$\mathcal{Y}$}\;
+\end{algorithm}
+
+\subsection{Computational Complexity \& Hardware-Aware Variants}
+
+Standard self-attention incurs $O(N^2 d_{\mathrm{model}} + N d_{\mathrm{model}}^2)$ FLOPs and materializes an $O(H N^2)$ attention matrix in GPU high-bandwidth memory (HBM) \bookcite{deep_learning_foundations_concepts}{Sec.~12.1.8, p.~386}. Table~\ref{tab:attn:complexity} compares exact and approximate attention regimes synthesized in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.5.5, 15.6, pp.~561--566} and \bookcite{understandingdl_simonprince}{Sec.~12.9, p.~241}.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}p{2.7cm} p{2.1cm} p{2.0cm} p{1.2cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Attention Variant} & \textbf{Time (FLOPs)} & \textbf{HBM Memory} & \textbf{Seq.\ Path} & \textbf{Mechanism \& Trade-off} \\
+\midrule
+Dense Scaled MHA & $O(N^2 d + N d^2)$ & $O(H N^2 + N d)$ & $O(1)$ & Exact global routing; HBM-bound for large $N$. \\
+FlashAttention (Tiled) & $O(N^2 d + N d^2)$ & $O(N d)$ & $O(1)$ & Exact; fuses QK\textsuperscript{T}--softmax--V in SRAM via online softmax rescaling. \\
+Local / Strided Sparse & $O(N w d + N d^2)$ & $O(H N w + N d)$ & $O(N/w)$ & Window size $w \ll N$; loses arbitrary-range single-hop mixing. \\
+LSH (Reformer) & $O(N d \log N)$ & $O(N d \log N)$ & $O(1)$ & Locality-sensitive hashing buckets (Murphy Sec.~15.6.2); requires $\mat{Q}=\mat{K}$. \\
+Kernel / Random Feat.\ (Performer) & $O(N M d)$ & $O(N M + M d)$ & $O(1)$ & Positive random features $\phi(\vecb{q})\T\phi(\vecb{k})$ (Murphy Eq.~15.66--15.68); approximate. \\
+\bottomrule
+\end{tabularx}
+\caption{Complexity comparison of exact and sub-quadratic attention mechanisms ($d = d_{\mathrm{model}}$, $M$ = random feature dimension) \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.5.5, 15.6, pp.~561--566}.}
+\label{tab:attn:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: GPT (Decoder) vs.\ BERT (Encoder) vs.\ Seq2Seq \& ViT]
+{\raggedright Across \bookcite{deep_learning_foundations_concepts}{Sec.~12.3--12.4}, \bookcite{understandingdl_simonprince}{Sec.~12.6--12.10}, and \bookcite{speech_language_processing_aug26}{Ch.~7 \& 9}, the same Transformer block specializes into four canonical macro-architectures:\par}
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\linewidth}{@{}p{2.0cm} p{2.3cm} p{2.1cm} p{2.3cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Family} & \textbf{Canonical Model} & \textbf{Attention Mask} & \textbf{Pretraining Obj.} & \textbf{Primary Strength \& Caveat} \\
+\midrule
+Decoder-only & GPT-2 / GPT-3 / LLaMA & Causal ($j \le i$) & Next-token prediction (NTP) & Uses 100\% of tokens per step; supports KV-cache generation; unidirectional context only. \\
+Encoder-only & BERT / RoBERTa & Bidirectional (full) & Masked LM (15\% tokens) & Rich bidirectional representations for classification/NER; cannot autoregressively generate. \\
+Encoder--Decoder & Original Transformer / T5 & Enc: full; Dec: causal + cross & Span corruption / Seq2Seq MLE & Decouples source encoding from target generation via cross-attention. \\
+Vision (ViT) & ViT-B/16 (Bishop Fig.~12.22) & Bidirectional (+ \texttt{[CLS]}) & Supervised / MIM on $P \times P$ patches & Global spatial mixing from layer~1; lacks CNN translation equivariance inductive bias. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\label{tab:attn:arch_compare}
+\end{crossbook}
+
+\monographfig[0.76\textwidth]{deep_learning_foundations_concepts_p400_fig1.png}{Stacked GPT-style decoder Transformer: shifted token embeddings plus positional encodings pass through $L$ masked Transformer layers, followed by shared linear-softmax (LSM) language modeling heads. Source: \bookcite{deep_learning_foundations_concepts}{Sec.~12.3.1, Fig.~12.15, p.~400}.}{fig:attn:bishop_gpt_decoder}
+
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:attn:visuals}
+
+Figure~\ref{fig:attn:mha_gpt_block} contrasts the tensor routing of a Pre-LN GPT decoder block (causal mask, unscaled residual stream) against a bidirectional BERT encoder block.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.48cm and 0.6cm]
+  % --- Left Panel: Pre-LN GPT Decoder Block ---
+  \node[font=\small\bfseries\color{monographNavy}] (gpt_title) at (0,0) {Pre-LN GPT Decoder Block};
+  \node[monoBox, below=0.35cm of gpt_title, minimum width=4.6cm] (gx_in) {$\mat{X} \in \R^{B \times T \times d_{\mathrm{model}}}$};
+  \node[monoTealBox, below=0.45cm of gx_in, minimum width=4.6cm] (gln1) {$\mathrm{LayerNorm}_1$ / $\mathrm{RMSNorm}$};
+  \node[monoIndigoBox, below=0.45cm of gln1, minimum width=4.6cm] (gqkv) {Fused $\mat{W}_{QKV}$ $\to$ $[B, H, T, d_k]$};
+  \node[monoWarnBox, below=0.45cm of gqkv, minimum width=4.6cm] (gattn) {Scaled Dot-Product $+\,\mat{M}_{\mathrm{causal}}\,(-\infty)$};
+  \node[monoIndigoBox, below=0.45cm of gattn, minimum width=4.6cm] (gwo) {Concat Heads $\to$ $\mat{W}_O$};
+  \node[monoBox, below=0.45cm of gwo, minimum width=2.2cm] (gadd1) {$+$ Residual ($\mat{Z}$)};
+  \node[monoTealBox, below=0.45cm of gadd1, minimum width=4.6cm] (gln2) {$\mathrm{LayerNorm}_2$ $\to$ GELU/SwiGLU MLP};
+  \node[monoBox, below=0.45cm of gln2, minimum width=2.2cm] (gadd2) {$+$ Residual ($\tilde{\mat{X}}$)};
+
+  \draw[monoArrow] (gx_in) -- (gln1);
+  \draw[monoArrow] (gln1) -- (gqkv);
+  \draw[monoArrow] (gqkv) -- (gattn);
+  \draw[monoArrow] (gattn) -- (gwo);
+  \draw[monoArrow] (gwo) -- (gadd1);
+  \draw[monoArrow] (gadd1) -- (gln2);
+  \draw[monoArrow] (gln2) -- (gadd2);
+
+  % Residual bypasses (left side, clearing 4.6cm-wide boxes cleanly)
+  \draw[monoArrow, color=monographTeal, dashed] (gx_in.west) -- ++(-0.55,0) |- (gadd1.west);
+  \draw[monoArrow, color=monographTeal, dashed] (gadd1.west) -- ++(-2.15,0) |- (gadd2.west);
+
+  % --- Right Panel: BERT Bidirectional Encoder Block ---
+  \node[font=\small\bfseries\color{monographNavy}] (bert_title) at (7.4,0) {Bidirectional BERT Encoder Block};
+  \node[monoBox, below=0.35cm of bert_title, minimum width=4.6cm] (bx_in) {$\mat{X} \in \R^{B \times T \times d_{\mathrm{model}}}$ (\texttt{[CLS]} + tokens)};
+  \node[monoIndigoBox, below=0.45cm of bx_in, minimum width=4.6cm] (bqkv) {$\mat{W}_Q, \mat{W}_K, \mat{W}_V$ $\to$ $[B, H, T, d_k]$};
+  \node[monoTealBox, below=0.45cm of bqkv, minimum width=4.6cm] (battn) {Unmasked Full $T \times T$ Attention};
+  \node[monoIndigoBox, below=0.45cm of battn, minimum width=4.6cm] (bwo) {Concat Heads $\to$ $\mat{W}_O$};
+  \node[monoBox, below=0.45cm of bwo, minimum width=4.6cm] (badd1) {Add \& Post-LayerNorm ($\mat{Z}$)};
+  \node[monoTealBox, below=0.45cm of badd1, minimum width=4.6cm] (bmlp) {Position-wise MLP (GELU)};
+  \node[monoBox, below=0.45cm of bmlp, minimum width=4.6cm] (badd2) {Add \& Post-LayerNorm ($\tilde{\mat{X}}$)};
+
+  \draw[monoArrow] (bx_in) -- (bqkv);
+  \draw[monoArrow] (bqkv) -- (battn);
+  \draw[monoArrow] (battn) -- (bwo);
+  \draw[monoArrow] (bwo) -- (badd1);
+  \draw[monoArrow] (badd1) -- (bmlp);
+  \draw[monoArrow] (bmlp) -- (badd2);
+
+  \draw[monoArrow, color=monographIndigo, dashed] (bx_in.east) -- ++(0.55,0) |- (badd1.east);
+  \draw[monoArrow, color=monographIndigo, dashed] (badd1.east) -- ++(0.55,0) |- (badd2.east);
+\end{tikzpicture}
+\caption{Architectural comparison of a Pre-LN GPT decoder block (left, unscaled residual stream + upper-triangular $-\infty$ causal mask) versus a Post-LN bidirectional BERT encoder block (right, full $T \times T$ attention).}
+\label{fig:attn:mha_gpt_block}
+\end{figure}
+
+Figure~\ref{fig:attn:scaling_softmax_variance} quantifies both the variance-stabilizing role of $1/\sqrt{d_k}$ scaling on softmax sensitivity and the HBM memory savings of SRAM-tiled FlashAttention over naive $O(H N^2)$ materialization.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.7cm},
+  width=0.46\textwidth,
+  height=5.6cm,
+  grid=major,
+  grid style={monographRule, dotted},
+  tick label style={font=\footnotesize},
+  label style={font=\small\color{monographNavy}},
+  title style={font=\small\bfseries\color{monographNavy}},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9}
+]
+  % Left: Variance of logits & Softmax gradient norm proxy
+  \nextgroupplot[
+    title={Logit Std.\ Dev.\ vs.\ Head Dim $d_k$},
+    xlabel={Head Dimension $d_k$},
+    ylabel={Logit Std.\ Dev.\ $\sigma(s)$},
+    xmode=log,
+    ymode=log,
+    xmin=4, xmax=512,
+    ymin=0.5, ymax=32,
+    legend pos=north west
+  ]
+  \addplot[monographCrimson, very thick, domain=4:512, samples=60] {sqrt(x)};
+  \addlegendentry{Unscaled $\vecb{q}\T\vecb{k}$ ($\sqrt{d_k}$)}
+  \addplot[monographTeal, very thick, dashed, domain=4:512, samples=10] {1};
+  \addlegendentry{Scaled $\vecb{q}\T\vecb{k}/\sqrt{d_k}$ ($1$)}
+
+  % Right: Attention HBM Memory vs Sequence Length N
+  \nextgroupplot[
+    title={Attention Matrix Memory ($H=32$, FP16)},
+    xlabel={Sequence Length $N$},
+    ylabel={HBM Memory (MB)},
+    xmode=log,
+    ymode=log,
+    xmin=256, xmax=32768,
+    ymin=0.05, ymax=100000,
+    legend pos=north west
+  ]
+  % Naive H * N^2 * 2 bytes in MB = 64 * N^2 / 1e6
+  \addplot[monographCrimson, very thick, domain=256:32768, samples=40] {64 * x^2 / 1e6};
+  \addlegendentry{Naive $O(H N^2)$}
+  % FlashAttention O(N * d_model) ~ 2 * N * 4096 * 2 bytes in MB = 16384 * N / 1e6
+  \addplot[monographIndigo, very thick, domain=256:32768, samples=40] {16384 * x / 1e6};
+  \addlegendentry{Tiled $O(N d_{\mathrm{model}})$}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Left: Unscaled dot-product logits grow in standard deviation as $\sqrt{d_k}$, driving softmax into gradient-vanishing saturation, whereas $1/\sqrt{d_k}$ scaling preserves unit variance. Right: Log-log HBM memory scaling ($B=1, H=32, d_{\mathrm{model}}=4096$, FP16) showing quadratic blowup of naive $N \times N$ score materialization versus linear SRAM-tiled FlashAttention.}
+\label{fig:attn:scaling_softmax_variance}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:attn:pitfalls}
+
+\begin{pitfall}[Pitfall 1: Unscaled Logits \& Softmax Saturation in Wide Heads]
+Omitting the $1/\sqrt{d_k}$ factor causes $\Var(\vecb{q}\T\vecb{k}) = d_k$ to grow linearly with head width \bookcite{deep_learning_foundations_concepts}{Sec.~12.1.5, p.~382} \bookcite{understandingdl_simonprince}{Sec.~12.3.2, p.~228}. In FP16/BF16 mixed precision, large logits push $\softmax$ into near-one-hot distributions where $\pd{p_i}{s_j} = p_i(\delta_{ij} - p_j) \approx 0$ and $\exp(S_{ij})$ risks overflow. \textbf{Remedy:} Always scale by $1/\sqrt{d_k}$ and compute the softmax log-sum-exp reduction in FP32 after subtracting $\max_j S_{ij}$ row-wise.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 2: Post-Softmax Masking Leakage \& All-Masked \texttt{NaN}s]
+Zeroing out upper-triangular entries \emph{after} $\softmax$ breaks row stochasticity ($\sum_j A_{ij} < 1$) unless explicitly renormalized \bookcite{build_large_language_model_from_scratch}{Sec.~3.5.1, pp.~200--204}. Conversely, when combining causal masks with padding masks via $-\infty$, if every key in a row is masked ($S_{ij} = -\infty \;\forall j$), $\exp(-\infty)/\sum \exp(-\infty) = 0/0$ produces \texttt{NaN} gradients across the batch. \textbf{Remedy:} Apply $-\infty$ (or a large negative finite sentinel in FP16) \emph{before} $\softmax$, and ensure every non-padding query attends to at least itself ($j=i$).
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 3: Post-LN Warmup Instability \& KV-Cache Memory Wall]
+Post-LN (Eq.~12.20 in \bookcite{deep_learning_foundations_concepts}{p.~385}) passes the residual highway through LayerNorm at every block, attenuating or amplifying gradients in deep stacks and requiring delicate learning-rate warmup \bookcite{build_large_language_model_from_scratch}{Sec.~4.5, p.~293}. During autoregressive inference, caching $\mat{K}, \mat{V}$ across $L$ layers consumes $2 B L H_{\mathrm{kv}} N d_k \cdot b_{\mathrm{dtype}}$ bytes, quickly saturating GPU HBM. \textbf{Remedy:} Use Pre-LN (or RMSNorm) for stable deep training, and pair GQA ($H_{\mathrm{kv}} \ll H$) with FlashAttention tiling to eliminate $O(H N^2)$ training memory.
+\end{pitfall}
+
+\end{document}

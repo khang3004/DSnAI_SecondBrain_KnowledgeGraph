@@ -1,0 +1,225 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{MLPs, KANs, Residuals \& Regularization}{Feedforward Networks, Universal Approximation \& Kolmogorov-Arnold Networks (KAN)}
+  {MLPs fold input space with fixed node hinges; KANs bend graph edges with learnable B-splines}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MLP vs.\ KAN\\ \footnotesize\mdseries UAT $\cdot$ Folding $\cdot$ B-Splines}{%
+  \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+    % Left: MLP node activation
+    \draw[csA, thick] (-1.6,0.55) -- (-0.4,0);
+    \draw[csA, thick] (-1.6,-0.55) -- (-0.4,0);
+    \draw[csA, very thick, fill=csA!12] (-0.4,0) circle (0.48);
+    \draw[csA, thick] (-0.65,-0.18) -- (-0.4,-0.18) -- (-0.15,0.22);
+    \node[csA, below] at (-1.25,-0.66) {MLP: $\sigma(\mat W\vecb x)$};
+    % Divider
+    \draw[dashed, gray] (0.35,-0.85) -- (0.35,0.85);
+    % Right: KAN spline edge
+    \draw[csF, thick, domain=0.75:2.15, samples=25] plot (\x, {0.35 + 0.28*sin((\x-0.75)*240)});
+    \draw[csF, thick, domain=0.75:2.15, samples=25] plot (\x, {-0.35 + 0.25*cos((\x-0.75)*220)});
+    \draw[csB, very thick, fill=csB!12] (2.55,0) circle (0.44);
+    \node[font=\scriptsize\bfseries, csB] at (2.55,0) {$\Sigma$};
+    \node[csF, below] at (2.05,-0.66) {KAN: $\sum_p \phi_{qp}(x_p)$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Node vs.\ Edge Duality}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{MLP:} linear weights on edges, fixed $\sigma(\cdot)$ on nodes:
+        $\vecb h^{(\ell)}=\sigma(\mat W^{(\ell)}\vecb h^{(\ell-1)}+\vecb b^{(\ell)})$
+      \item \textbf{KAN:} learnable 1D splines $\phi_{\ell,q,p}$ on edges, pure $\sum$ on nodes:
+        $h_q^{(\ell)}=\sum_{p=1}^{n_{\ell-1}}\phi_{\ell,q,p}(h_p^{(\ell-1)})$
+      \item \textbf{KAN Edge:} $\phi(x)=w_b\,\mathrm{SiLU}(x)+w_s\sum_m c_m B_{m,k}(x)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \node[draw=csA, rounded corners=2pt, fill=csA!10] (x) at (0,1.6) {$x_p$};
+      \node[draw=csA, circle, fill=csA!20, inner sep=1.5pt] (s) at (2.8,1.6) {$\sigma$};
+      \draw[-{Stealth}, thick, csA] (x) -- node[above] {$w_{qp}$} (s);
+      \node[draw=csF, rounded corners=2pt, fill=csF!10] (xk) at (0,-0.4) {$x_p$};
+      \node[draw=csB, circle, fill=csB!20, inner sep=1.5pt] (sum) at (2.8,-0.4) {$\Sigma$};
+      \draw[-{Stealth}, thick, csF] (xk) to[out=25,in=155] node[above] {$\phi_{qp}(x_p)$} (sum);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; ACTIVATIONS \& COX--DE BOOR B-SPLINES}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item $\ReLU(a)=\max(0,a)$; $\mathrm{LeakyReLU}_\alpha=\max(0,a)+\alpha\min(0,a)$
+      \item $\mathrm{GELU}(a)=a\Phi(a)$;\; $\mathrm{SiLU}(a)=a/(1+e^{-a})$ ($C^\infty$)
+      \item \textbf{Cox--de Boor} recursion ($B_{m,0}=\mathbb{I}[t_m\le x<t_{m+1}]$):
+      \item Local support $[t_m,t_{m+k+1})$ ($k{+}1$ active); $\sum_m B_{m,k}(x)=1$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[->, gray] (-0.2,0) -- (3.4,0) node[right] {$x$};
+      \draw[->, gray] (0,-0.2) -- (0,2.1);
+      \draw[csA, very thick, domain=0:3, samples=30] plot (\x, {1.7*(1-\x/3)^3});
+      \draw[csB, very thick, domain=0:3, samples=30] plot (\x, {1.7*3*(\x/3)*(1-\x/3)^2});
+      \draw[csD, very thick, domain=0:3, samples=30] plot (\x, {1.7*3*(\x/3)^2*(1-\x/3)});
+      \draw[csF, very thick, domain=0:3, samples=30] plot (\x, {1.7*(\x/3)^3});
+      \draw[dashed, black] (0,1.7) -- (3,1.7) node[right] {$1$};
+      \node[below] at (1.5,-0.25) {Cubic $B_{m,3}(x)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREMS $-$ UAT, Regions \& K--A}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \begin{csbul}
+      \item \textbf{Cybenko--Hornik UAT:} non-polynomial $\sigma\Rightarrow$ 1 hidden layer is dense in $C(K)$, width $N=\Omega(\epsilon^{-D_i})$
+      \item \textbf{1D Depth Regions:} $R_{\max}=(D+1)^K$ vs.\ shallow $D+1$
+      \item \textbf{Mont\'ufar:} $R_{\max}=\Omega\bigl((n/d)^{(l-1)d}n^d\bigr)$
+      \item \textbf{K--A Theorem:} $f(\vecb x)=\sum_{q=0}^{2n}\Phi_q(\sum_{p=1}^n\phi_{q,p}(x_p))$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[gray, thin] (0,0) rectangle (3.2,2.6);
+      \draw[csC, thick] (0,0.6) -- (3.2,2.2);
+      \draw[csC, thick] (0.5,2.6) -- (2.7,0);
+      \draw[csA, thick] (0,1.9) -- (3.2,0.5);
+      \draw[csF, thick] (1.6,0) -- (1.1,2.6);
+      \node[below] at (1.6,-0.05) {Polyhedral cells};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Space Folding vs.\ Grid Extension}{%
+  \begin{csbul}
+    \item \textbf{Fixed Basis vs.\ Adaptive:} Polynomial basis needs $O(D_i^M)$ coeffs; MLPs adapt basis directions $\vecb w_j$
+    \item \textbf{Input-Space Folding:} Each ReLU layer folds $\R^{D_i}$ along hyperplanes $\vecb w_j\T\vecb h+b_j=0$, multiplying linear regions across depth ($11^5=161{,}051$ regions with $471$ params for $K=5,D=10$)
+    \item \textbf{Coarse-to-Fine KAN Grid Extension:} Refine $G_1\to G_2$ without retraining from scratch via local least-squares B-spline projection $\min_{\vecb c'}\sum_s(\sum_j c'_j B_{j,k}^{\text{fine}}(x_s)-\sum_m c_m B_{m,k}^{\text{coarse}}(x_s))^2$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Shallow vs.\ Deep MLP vs.\ KAN}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{2.05cm}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.8cm}@{}}
+    \textbf{\textcolor{csE}{Model}} & \textbf{\textcolor{csE}{Params/Layer}} & \textbf{\textcolor{csE}{FLOPs}} & \textbf{\textcolor{csE}{Regime}}\\ \hline
+    Shallow MLP & $N(D_i+D_o+1)$ & $O(N(D_i+D_o))$ & $O(\epsilon^{-D_i})$ curse\\
+    Deep MLP ($L$) & $N^2+N$ & $O(N^2)$ GEMM & fast GPU tensor cores\\
+    KAN ($G,k$) & $N^2(G+k+2)$ & $O(N^2 k^2)$ & symbolic / PDE laws\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Trade-off:} Deep MLPs win on dense GPU GEMM throughput; KANs win on parameter efficiency \& symbolic interpretability for low-$D_i$ compositional laws.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Where Each Excels}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Deep MLP (GELU/SiLU):} Transformer FFN blocks, high-dim representation learning
+      \item \textbf{KAN:} Physics formula discovery, PDE solving, symbolic regression with tiny $[n_0,n_1,n_L]$
+      \item \textbf{Coordinate MLPs:} NeRF / implicit fields (needs positional encoding to beat spectral bias)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csF, thick, rounded corners=2pt] (0,0) rectangle (3.2,2.2);
+      \draw[csA, very thick, domain=0.2:3.0, samples=30] plot (\x, {1.1 + 0.75*sin((\x-0.2)*180)});
+      \foreach \x in {0.2,0.9,1.6,2.3,3.0} \draw[gray!60, densely dotted] (\x,0)--(\x,2.2);
+      \node[below] at (1.6,-0.05) {Grid extension $G\!\uparrow$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{MLPs = Fixed Node Hinges $\cdot$ KANs = Learnable Edge Splines} \\[1pt]
+  \footnotesize\mdseries \textbf{Depth folds input space exponentially; B-spline edges refine resolution locally.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Dying ReLU:} $\vecb w_j\T\vecb x+b_j<0\;\forall\vecb x\Rightarrow\grad\mathcal{L}=\vecb 0$ (fix: He init, GELU)
+    \item \textbf{KAN OOD:} $B_{m,k}(x)=0$ outside $[t_k,t_{G+k}]$ (call \texttt{update\_grid})
+    \item \textbf{Spectral bias:} ReLU MLPs need Fourier RFF for high freqs
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Feedforward Networks, Universal Approximation \& Kolmogorov-Arnold Networks (KAN)}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item MLP Layer \& Readout:\csfm{\vecb h^{(\ell)}=\sigma\!\left(\mat W^{(\ell)}\vecb h^{(\ell-1)}+\vecb b^{(\ell)}\right)}
+    \item KAN Layer \& Edge Parametrization:\csfm{h_q^{(\ell)}=\sum_{p=1}^{n_{\ell-1}}\!\left[w_b\,\mathrm{SiLU}(h_p^{(\ell-1)})+w_s\sum_{m=0}^{G+k-1}c_m B_{m,k}(h_p^{(\ell-1)})\right]}
+    \item Cox--de Boor Recursion ($r=1,\dots,k$):\csfm{B_{m,r}(x)=\frac{x-t_m}{t_{m+r}-t_m}B_{m,r-1}(x)+\frac{t_{m+r+1}-x}{t_{m+r+1}-t_{m+1}}B_{m+1,r-1}(x)}
+    \item Linear Regions (1D vs.\ Mont\'ufar $d$-D):\csfm{R_{\max}(1,K,D)=(D{+}1)^K,\quad R_{\max}(d,l,n)=\Omega\!\left(\Bigl(\frac{n}{d}\Bigr)^{(l-1)d}n^d\right)}
+    \item Kolmogorov--Arnold Superposition:\csfm{f(x_1,\dots,x_n)=\sum_{q=0}^{2n}\Phi_q\!\left(\sum_{p=1}^n\phi_{q,p}(x_p)\right)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: KAN FORWARD \& GRID EXTENSION}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Base indicators:} evaluate $B_{m,0}(x)=\mathbb{I}[t_m\le x<t_{m+1}]$ for knot vector $\vecb t\in\R^{G+2k+1}$.
+    \item \textbf{Upward sweep:} run Cox--de Boor for $r=1\dots k$; only $k{+}1$ bases are non-zero per input $x$.
+    \item \textbf{Edge combine:} add residual $w_b\,\mathrm{SiLU}(x)$ to spline sum $w_s\sum_m c_m B_{m,k}(x)$ and sum over $p$.
+    \item \textbf{Grid extension ($G\to G_{\text{new}}$):} sample collocation points $\{x_s\}\subset[t_k,t_{G+k}]$ and solve least-squares $\argmin_{\vecb c'}\sum_s(\sum_j c'_j B_{j,k}^{\text{fine}}(x_s)-\sum_m c_m B_{m,k}(x_s))^2$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    large-scale tokens / vision & Deep MLP (GELU/SiLU) on Tensor Cores\\
+    scientific law / symbolic fit & KAN with small width + grid extension\\
+    dying units at init & LeakyReLU / GELU / SiLU + He init\\
+    high-freq coordinate signal & sinusoidal / Fourier features + MLP\\
+    OOD activation drift in KAN & periodic knot rescaling (\texttt{update\_grid})\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& CAPACITY CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Shallow UAT width curse:} $N=\Omega(\epsilon^{-D_i})$ for generic Lipschitz $f$
+    \item \textbf{B-spline smoothness:} degree $k$ on uniform knots $\Rightarrow C^{k-1}$ continuity, partition of unity $\sum_m B_{m,k}(x)=1$
+    \item \textbf{1D depth leverage:} $K=5, D=10\Rightarrow 471$ params yield $11^5=161{,}051$ regions
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{EXPONENTIAL DEPTH SEPARATION (1D ReLU Regions)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, ymode=log, xmin=1, xmax=5, ymin=5, ymax=5000000,
+      xlabel={Hidden Layers $K$ (width $D=10$)}, ylabel={Max Regions $R_{\max}$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,2,3,4,5}, ytick={10,100,1000,10000,100000}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.93)}, anchor=north west, font=\tiny, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csF, very thick, mark=*, mark size=1.5pt] coordinates {(1,11)(2,121)(3,1331)(4,14641)(5,161051)};
+      \addlegendentry{Deep $(D{+}1)^K$}
+      \addplot[csA, dashed, very thick, mark=square*, mark size=1.4pt] coordinates {(1,11)(2,48)(3,84)(4,121)(5,157)};
+      \addlegendentry{Shallow (same params)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Linear collapse:} stacking linear layers without nonlinear $\sigma$ collapses to a single matrix $\mat W'\vecb x+\vecb b'$
+    \item \textbf{Saturating sigmoids:} $\sigma(a)=(1+e^{-a})^{-1}$ and $\tanh(a)$ kill gradients for $|a|\gg 1$
+    \item \textbf{Dying ReLU:} negative bias shift zeroes out both forward activation and backward gradient forever
+    \item \textbf{KAN knot overflow:} inputs outside $[t_k,t_{G+k}]$ evaluate $B_{m,k}(x)=0$, falling back solely to $w_b\,\mathrm{SiLU}(x)$
+    \item \textbf{Non-GEMM bottleneck:} B-spline evaluation takes $5\times$--$10\times$ higher wall-clock time per parameter than dense matmul
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{MLPs} place learnable weights on edges and fixed nonlinear hinges on nodes; stacking layers \emph{folds} input space to create $(D{+}1)^K$ polyhedral regions.
+  \textbf{KANs} dualize the graph: learnable B-splines $\phi(x)=w_b\,\mathrm{SiLU}(x)+w_s\sum_m c_m B_{m,k}(x)$ live on edges and nodes simply sum, trading dense GEMM speed for local grid extension and symbolic interpretability.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

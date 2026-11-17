@@ -1,0 +1,136 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{Computer Vision \& Visual Geometry}{Object Detection (R-CNN, SSD, DETR), Segmentation (FCN, U-Net, SAM) \& VLM}
+  {Localize with anchors or Hungarian set matching, decode dense masks via FCN/U-Net, and align vision with language via CLIP}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Detection, Segm.\\ \& CLIP / SAM\\ \footnotesize\mdseries IoU $\cdot$ DETR $\cdot$ U-Net}{%
+  \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+    \draw[csDom, thick, fill=csDom!10] (-1.6,-0.9) rectangle (1.6,0.9);
+    \draw[csA, very thick] (-1.2,-0.5) rectangle (0.2,0.7);
+    \draw[csD, very thick, dashed] (-0.3,-0.7) rectangle (1.1,0.5);
+    \node[csA, fill=white, inner sep=1pt] at (-0.5,0.45) {Box $A$};
+    \node[csD, fill=white, inner sep=1pt] at (0.45,-0.45) {GT $B$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; BOUNDING BOXES, IoU \& GIoU}{%
+  \csfm{\mathrm{IoU}(A,B)=\frac{|A\cap B|}{|A\cup B|},\quad \mathcal{L}_{\mathrm{GIoU}}=1-\mathrm{IoU}+\frac{|C\setminus(A\cup B)|}{|C|}}
+  \begin{csbul}
+    \item \textbf{Zero-overlap fix:} IoU gradient vanishes when $A\cap B=\emptyset$; GIoU/CIoU stays smooth
+    \item \textbf{Box parameterization:} $(t_x,t_y,t_w,t_h)$ regresses log-scale and normalized offsets
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; TWO-STAGE vs ONE-STAGE vs DETR}{%
+  \begin{csbul}
+    \item \textbf{Faster R-CNN:} RPN proposals $\to$ RoIAlign $\to$ per-region class + box refinement
+    \item \textbf{SSD / YOLO:} dense multi-scale anchor grid + Focal Loss $(1-p_t)^\gamma\log p_t$ + NMS
+    \item \textbf{DETR:} transformer object queries + bipartite Hungarian matching (no anchors, no NMS!)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; MULTISCALE FPN \& RECEPTIVE FIELD}{%
+  \begin{csbul}
+    \item \textbf{Feature Pyramid (FPN):} top-down semantics + lateral high-res skips catch tiny objects
+    \item \textbf{Anchor geometry:} $w_a=s\sqrt{r}$, $h_a=s/\sqrt{r}$ across pyramid levels $P_3\dots P_7$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; SEMANTIC \& INSTANCE SEGMENTATION}{%
+  \csfm{\text{Fwd: } \mat W\T\vecb x\;\text{(Transp.\ Conv)},\;\; \text{U-Net: } \mathrm{Dec}(\mathrm{Up}(\vecb z)\,\|\,\vecb f_{\mathrm{enc}})}
+  \begin{csbul}
+    \item \textbf{FCN / U-Net:} fuse deep semantics with shallow edge skips for crisp pixel boundaries
+    \item \textbf{Mask R-CNN / SAM:} RoIAlign / promptable mask decoder predicts per-instance masks
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; NEURAL STYLE TRANSFER \& GRAM MATRICES}{%
+  \csfm{G_{ij}^l = \sum_k F_{ik}^l F_{jk}^l,\qquad \mathcal{L}=\alpha\mathcal{L}_{\mathrm{content}}+\beta\mathcal{L}_{\mathrm{style}}}
+  \begin{csbul}
+    \item \textbf{Gram matrix:} spatial-mean channel correlation discards layout, keeps texture
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; VISION--LANGUAGE ALIGNMENT (CLIP)}{%
+  \csfm{\mathcal{L}_{\mathrm{CLIP}}=-\frac{1}{2B}\sum_i\Big[\log\frac{e^{\inner{\vecb u_i}{\vecb v_i}/\tau}}{\sum_j e^{\inner{\vecb u_i}{\vecb v_j}/\tau}}+\log\frac{e^{\inner{\vecb u_i}{\vecb v_i}/\tau}}{\sum_j e^{\inner{\vecb u_j}{\vecb v_i}/\tau}}\Big]}
+  \begin{csbul}
+    \item \textbf{Zero-shot transfer:} prompt templates ``a photo of a \{class\}'' embed into shared $\mathbb S^{D-1}$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+% =============================================================================
+%                                 PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item \textbf{IoU \& GIoU:} $\mathrm{IoU}=\frac{|A\cap B|}{|A\cup B|}$, $\mathcal{L}_{\mathrm{GIoU}}=1-\mathrm{IoU}+\frac{|C\setminus(A\cup B)|}{|C|}$
+    \item \textbf{Focal Loss:} $\mathcal{L}_{\mathrm{FL}}(p_t)=-\alpha_t(1-p_t)^\gamma\log p_t$ ($\gamma=2$)
+    \item \textbf{Hungarian Match:} $\hat\sigma=\argmin_{\sigma\in\mathfrak S_N}\sum_i\mathcal{L}_{\mathrm{match}}(y_i,\hat y_{\sigma(i)})$
+    \item \textbf{Dice Loss:} $\mathcal{L}_{\mathrm{Dice}} = 1 - \frac{2\sum p_i g_i + \epsilon}{\sum p_i + \sum g_i + \epsilon}$ (class-imbalance safe)
+    \item \textbf{CLIP InfoNCE:} symmetric image-to-text \& text-to-image cross-entropy with learnable $\tau$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{DETECTION \& SEGMENTATION RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Backbone + FPN:} extract multi-scale maps $\{C_3,C_4,C_5\}\to\{P_3,\dots,P_7\}$.
+    \item \textbf{Assign / Match:} match predictions to GT via IoU threshold (anchors) or Hungarian cost (DETR).
+    \item \textbf{Optimize:} combine Focal/CE class loss + L1/GIoU box loss (+ Dice/BCE for masks).
+    \item \textbf{Post-process:} apply NMS ($\tau\approx 0.5$) for dense detectors; none needed for DETR.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    real-time edge detection & One-stage YOLO / SSD + FPN\\
+    crowded scenes, no NMS & DETR / Deformable DETR\\
+    biomedical pixel masks & U-Net + Dice + BCE loss\\
+    zero-shot segmentation & SAM (promptable ViT decoder)\\
+    open-vocab recognition & CLIP dual-encoder contrastive features\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csF}{FOCAL LOSS SUPPRESSION OF EASY NEGATIVES}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=0.02, xmax=1.0, ymin=0, ymax=3.5,
+      xlabel={Predicted Probability $p_t$}, ylabel={Loss $\mathcal{L}(p_t)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.97,0.92)}, anchor=north east, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csA, very thick, domain=0.03:1.0, samples=60] {-ln(x)};
+      \addlegendentry{Standard CE ($\gamma=0$)}
+      \addplot[csB, very thick, domain=0.03:1.0, samples=60] {-(1-x)*ln(x)};
+      \addlegendentry{Focal ($\gamma=1$)}
+      \addplot[csD, very thick, domain=0.03:1.0, samples=60] {-(1-x)^2*ln(x)};
+      \addlegendentry{Focal ($\gamma=2$)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Checkerboard upsampling:} transposed conv with stride not dividing kernel size creates grid artifacts; use `Resize + Conv`.
+    \item \textbf{RoIPool quantization:} integer rounding misaligns small-box features; always use bilinear `RoIAlign`.
+    \item \textbf{NMS crowd suppression:} hard IoU NMS drops valid occluded objects in dense scenes.
+    \item \textbf{Pixel CE imbalance:} rare foreground classes vanish under pixel CE; pair with Dice or Focal loss.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csE}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Object detectors localize via FPN anchor grids + NMS or anchor-free DETR Hungarian matching; FCN/U-Net/SAM decode high-res masks via skip-connected upsampling; CLIP bridges vision and language in a shared contrastive hypersphere.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+\end{document}

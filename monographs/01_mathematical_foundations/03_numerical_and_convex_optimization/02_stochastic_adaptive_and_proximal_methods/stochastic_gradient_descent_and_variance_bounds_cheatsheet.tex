@@ -1,0 +1,222 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Numerical \& Convex Optimization}{Stochastic Gradient Descent, Noise Ball, Step Decay \& SVRG/Proximal}
+  {Constant-step SGD hits an $O(\eta\sigma_f^*/\mu)$ noise ball; pierce it via Robbins--Monro decay, $b_{\mathrm{crit}}$ batching, SVRG, or $\operatorname{prox}_{\eta g}$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{SGD \& Proximal\\ \footnotesize\mdseries Noise Ball $\cdot$ SVRG $\cdot$ $\operatorname{prox}_{\eta g}$}{%
+  \begin{tikzpicture}[scale=0.52, >=Stealth]
+    % Noise ball around theta* on left
+    \fill[csA!16, draw=csA, dashed, thick] (0,0) circle (0.95);
+    \draw[->, csDom, thick] (-1.55,0.85)--(-0.85,0.35)--(-0.25,0.55)--(0.35,-0.35)--(-0.15,-0.25)--(0.2,0.18);
+    \fill[csA] (0,0) circle (2.4pt);
+    \node[font=\tiny, csA] at (0,-1.28) {noise $2\eta\sigma_f^*/\mu$};
+    % Soft thresholding icon on right
+    \begin{scope}[xshift=3.0cm, yshift=0.0cm]
+      \draw[->, gray, thin] (-1.2,0)--(1.2,0);
+      \draw[->, gray, thin] (0,-1.0)--(0,1.0);
+      \draw[csF, very thick] (-1.1,-0.75)--(-0.35,0)--(0.35,0)--(1.1,0.75);
+      \node[font=\tiny, csF] at (0,-1.2) {$\operatorname{prox}_{\eta\lambda\norm{\cdot}_1}$};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; EXPECTED SMOOTHNESS \& VARIANCE TRANSFER}{%
+  \csfm{\E\bigl[\norm{\grad f_i(\vecb\theta)-\grad f_i(\vecb\theta^*)}^2\bigr]\le 2L_{\max}\bigl(f(\vecb\theta)-\inf f\bigr)}
+  \begin{csbul}
+    \item \textbf{Unbiased:} $\E[\grad f_{B_t}(\vecb\theta)\mid\vecb\theta]=\grad f(\vecb\theta)$,\; $\Var[\vecb g]=\E\norm{\vecb g}^2-\norm{\grad f}^2$
+    \item \textbf{Optimum noise:} $\sigma_f^*=\inf_{\vecb\theta^*}\E\norm{\grad f_i(\vecb\theta^*)}^2$,\; $\Delta_f^*=\inf f-\tfrac{1}{n}\sum_i\inf f_i$
+    \item \textbf{Variance transfer:} $\E\norm{\grad f_i(\vecb\theta)}^2\le 4L_{\max}(f(\vecb\theta)-\inf f)+2\sigma_f^*$
+    \item \textbf{Interpolation ($d\gg n$):} $\Delta_f^*=0\iff\sigma_f^*=0\implies$ noise ball vanishes!
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; NOISE BALL vs.\ ROBBINS--MONRO DECAY}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\E\norm{\vecb\theta_t-\vecb\theta^*}^2\le(1-\eta\mu)^t D_0^2+\frac{2\eta\sigma_f^*}{\mu}}
+    \begin{csbul}
+      \item \textbf{Robbins--Monro:} $\sum_{t=0}^\infty\eta_t=\infty$, $\sum_{t=0}^\infty\eta_t^2<\infty$
+      \item \textbf{Convex const.\ $\eta$:} $\frac{D_0^2}{2\eta(1-2\eta L_{\max})T}+\frac{\eta\sigma_f^*}{1-2\eta L_{\max}}$
+      \item \textbf{Convex $\eta_t=\frac{\eta_0}{\sqrt{t+1}}$:} $O\bigl(\frac{\log T}{\sqrt T}\bigr)$ anytime rate
+      \item \textbf{$\mu$-SC $\eta_t=\frac{2}{\mu(t+t_0)}$:} $\E\norm{\vecb\theta_t-\vecb\theta^*}^2=O\bigl(\frac{\sigma_f^*}{\mu^2 t}\bigr)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(2.6,0) node[right] {$t$};
+      \draw[->, gray] (0,0)--(0,1.8) node[above] {err};
+      \draw[csA, very thick] plot[domain=0:2.4, samples=25] (\x,{1.1*exp(-1.8*\x)+0.55});
+      \draw[csB, very thick] plot[domain=0:2.4, samples=25] (\x,{1.45*exp(-0.6*\x)+0.20});
+      \draw[csD, very thick, dashed] plot[domain=0:2.4, samples=25] (\x,{1.65/(1+1.8*\x)});
+      \node[csA, anchor=west] at (1.5,0.72) {big $\eta$};
+      \node[csD, anchor=north] at (2.0,0.32) {$\eta_t\propto 1/t$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; MINIBATCH SCALING \& CRITICAL BATCH $b_{\mathrm{crit}}$}{%
+  \csfm{L_b=\frac{n(b-1)}{b(n-1)}L_f+\frac{n-b}{b(n-1)}L_{\max},\qquad \sigma_b^*=\frac{n-b}{b(n-1)}\sigma_f^*}
+  \begin{csbul}
+    \item \textbf{Complexity ($\mu$-SC):} $T_\varepsilon(b)=\max\bigl\{\frac{2L_b}{\mu},\frac{4\sigma_b^*}{\varepsilon\mu^2}\bigr\}\log\frac{2D_0^2}{\varepsilon}$
+    \item \textbf{Critical batch size:} $b_{\mathrm{crit}}\approx\frac{2\sigma_f^*}{\varepsilon\mu L_f}$ (equating curvature \& noise terms)
+    \item \textbf{Linear regime ($b\ll b_{\mathrm{crit}}$):} scale $\eta\propto b \implies T_\varepsilon(b)\propto 1/b$, constant work $bT_\varepsilon$
+    \item \textbf{Saturation ($b\ge b_{\mathrm{crit}}$):} $\eta\le\frac{1}{2L_f}$ caps step; extra batch size wastes FLOPs
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; VARIANCE REDUCTION $-$ SVRG \& SAGA}{%
+  \csfm{\vecb g_t^{\mathrm{SVRG}}=\grad f_{i_t}(\vecb\theta_t)-\grad f_{i_t}(\tilde{\vecb\theta})+\grad f(\tilde{\vecb\theta})}
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{2.0cm}@{}}
+    \textbf{\textcolor{csD}{Method}} & \textbf{\textcolor{csD}{Control Variate / Variance}} & \textbf{\textcolor{csD}{Cost \& Mem}}\\ \hline
+    SVRG & snapshot $\tilde{\vecb\theta}$; $\Var\le 4L_{\max}[(f(\vecb\theta_t)-f^*)+(f(\tilde{\vecb\theta})-f^*)]$ & $O((n+\frac{L_{\max}}{\mu})\log\frac{1}{\varepsilon})$, $O(d)$ mem\\
+    SAGA & cached table $\vecb g_i^{\mathrm{loc}}$; $\vecb g_t=\grad f_{i_t}-\vecb g_{i_t}^{\mathrm{loc}}+\bar{\vecb g}$ & same rate, $O(nd)$ mem\\
+  \end{tabular}\par\vspace{2pt}
+  \small \textbf{Key:} $\Var[\vecb g_t]\to 0$ as $\vecb\theta_t,\tilde{\vecb\theta}\to\vecb\theta^*\implies$ \textbf{linear rate} with constant $\eta$!}
+
+\csbranch{5}{E}{5\;\; SUBGRADIENTS vs.\ PROXIMAL SPLITTING ($f+g$)}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\operatorname{prox}_{\eta g}(\vecb v)=\argmin_{\vecb z}\bigl\{g(\vecb z)+\tfrac{1}{2\eta}\norm{\vecb z-\vecb v}_2^2\bigr\}}
+    \begin{csbul}
+      \item \textbf{Subdiff:} $\partial f(\vecb\theta)=\{\vecb g:f(\vecb y)\ge f(\vecb\theta)+\inner{\vecb g}{\vecb y-\vecb\theta}\}$
+      \item \textbf{SSD ($G$-Lip.):} $O(G^2D_0^2/\varepsilon^2)$, non-descent, no exact $0$s
+      \item \textbf{PGD ($\operatorname{prox}_{\eta g}(\vecb\theta_t-\eta\grad f)$):} $1$-Lip., keeps $O(1/T)$ / $(1-\eta\mu)^T$!
+      \item \textbf{ISTA ($g=\lambda\norm{\cdot}_1$):} $\operatorname{sign}(v_j)\max(\abs{v_j}-\eta\lambda,0)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.44, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, gray] (-1.4,0)--(1.4,0) node[right] {$v$};
+      \draw[->, gray] (0,-1.1)--(0,1.1);
+      \draw[csE!85!black, very thick] (-1.3,-0.85)--(-0.45,0)--(0.45,0)--(1.3,0.85);
+      \draw[csA, thick, dashed] (-0.45,-0.25)--(-0.45,0.25) (0.45,-0.25)--(0.45,0.25);
+      \node[csA, anchor=north] at (0,-0.22) {$[-\eta\lambda,\eta\lambda]\!\to\!0$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; IMPLICIT REGULARIZATION \& AVERAGING}{%
+  \begin{csbul}
+    \item \textbf{Modified loss (Prince):} finite-$(\eta,b)$ SGD implicitly minimizes $\tilde L(\vecb\theta)=L(\vecb\theta)+\frac{\eta}{4}\norm{\grad L}^2+\frac{\eta}{4K}\sum_k\norm{\grad L_{B_k}-\grad L}^2 \implies$ seeks \textbf{flat, low-variance basins}
+    \item \textbf{Cram\'er--Rao ceiling:} single-pass SGD optimizes true population risk; over-optimizing empirical sum past $O(1/k)$ statistical floor yields diminishing returns
+    \item \textbf{Polyak--Ruppert / SWA:} $\bar{\vecb\theta}_T=\frac{1}{T}\sum_{t=0}^{T-1}\vecb\theta_t$ (or step-weighted) damps oscillation
+    \item \textbf{Composite SPGD noise:} $\sigma_F^*=\inf_{\vecb\theta^*\in\argmin F}\Var[\grad f_i(\vecb\theta^*)]\le 4L_{\max}(f(\vecb\theta^*)-\inf f)+2\sigma_f^*$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Gradient variance = state-dependent curvature $4L_{\max}(f-f^*)$ + optimum conflict $2\sigma_f^*$.} \\[1pt]
+  \footnotesize\mdseries \textbf{Kill $\sigma_f^*$ by decaying $\eta_t$, batching up to $b_{\mathrm{crit}}$, or subtracting SVRG control variates; handle kinks via $\operatorname{prox}_{\eta g}$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{LR scaling past $b_{\mathrm{crit}}$:} $L_b\to L_f$ saturates; $\eta\propto b>\frac{1}{2L_f}$ diverges
+    \item \textbf{Exp.\ LR decay:} $\eta_t=\eta_0 e^{-\lambda t}$ violates $\sum\eta_t=\infty$, freezing far from $\vecb\theta^*$
+    \item \textbf{Subgradient line search:} $-\vecb g\in-\partial f$ is not descent; Armijo stalls at $\eta\to 0$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Stochastic \& Minibatch SGD, Expected Smoothness, Subgradients \& Proximal Methods}\;---\;Domain 01 $\cdot$ Numerical \& Convex Optimization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Convex SGD master bound ($\eta_t<\frac{1}{2L_{\max}}$, weighted $\bar{\vecb\theta}_T$):
+      \csfm{\E\bigl[f(\bar{\vecb\theta}_T)-f(\vecb\theta^*)\bigr]\le\frac{\norm{\vecb\theta_0-\vecb\theta^*}^2+2\sigma_f^*\sum_{t=0}^{T-1}\eta_t^2}{2\sum_{t=0}^{T-1}\eta_t(1-2\eta_t L_{\max})}}
+    \item Strongly convex \& $\mu$-PL constant-step noise balls:
+      \csfm{\E\norm{\vecb\theta_t-\vecb\theta^*}^2\le(1-\eta\mu)^t D_0^2+\frac{2\eta\sigma_b^*}{\mu},\quad \E[f(\vecb\theta_t)-f^*]\le(1-\eta\mu)^t\delta_0+\frac{\eta L_f L_b\Delta_b^*}{\mu}}
+    \item Minibatch smoothness, noise \& critical batch size:
+      \csfm{L_b=\frac{n(b-1)}{b(n-1)}L_f+\frac{n-b}{b(n-1)}L_{\max},\quad \sigma_b^*=\frac{n-b}{b(n-1)}\sigma_f^*,\quad b_{\mathrm{crit}}\approx\frac{2\sigma_f^*}{\varepsilon\mu L_f}}
+    \item Forward--backward proximal splitting \& ISTA ($\ell_1$):
+      \csfm{\vecb\theta_{t+1}=\operatorname{prox}_{\eta_t g}(\vecb\theta_t-\eta_t\vecb g_t),\quad [\operatorname{prox}_{\eta\lambda\norm{\cdot}_1}(\vecb v)]_j=\operatorname{sign}(v_j)(\abs{v_j}-\eta\lambda)_+}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ MINI-SPGD \& SVRG}
+  \footnotesize
+  \textbf{Minibatch Stochastic Proximal GD (Mini-SPGD / ISTA):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item Shuffle dataset each epoch; draw minibatch $B_t$ of size $b\le b_{\mathrm{crit}}$.
+    \item Forward step: $\vecb v_t=\vecb\theta_t-\eta_t\bigl(\frac{1}{b}\sum_{i\in B_t}\grad f_i(\vecb\theta_t)\bigr)$ with $\eta_t\le\frac{1}{2L_b}$.
+    \item Backward prox: $\vecb\theta_{t+1}=\operatorname{prox}_{\eta_t g}(\vecb v_t)$ (soft-threshold or $\Pi_{\mathcal C}$).
+    \item Maintain Polyak--Ruppert / step-weighted average $\bar{\vecb\theta}_{t+1}$.
+  \end{enumerate}
+  \vspace{1pt}
+  \textbf{Epoch SVRG ($m\approx 2n$, $\eta\le\frac{1}{10L_{\max}}$):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item Outer $s$: compute full gradient $\tilde{\vecb\mu}_s=\frac{1}{n}\sum_{i=1}^n\grad f_i(\tilde{\vecb\theta}_s)$, set $\vecb\theta_0^{(s)}=\tilde{\vecb\theta}_s$.
+    \item Inner $k$: sample $i_k$, step $\vecb\theta_{k+1}^{(s)}=\operatorname{prox}_{\eta g}\bigl(\vecb\theta_k^{(s)}-\eta(\grad f_{i_k}(\vecb\theta_k^{(s)})-\grad f_{i_k}(\tilde{\vecb\theta}_s)+\tilde{\vecb\mu}_s)\bigr)$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.14}\footnotesize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    overparameterized ($d\gg n$) & const.\ $\eta=\frac{1}{2L_b}$ ($\sigma_f^*=0\implies$ linear/fast)\\
+    convex finite sum, fixed data & SVRG / SAGA ($O((n+L_{\max}/\mu)\log\frac{1}{\varepsilon})$)\\
+    smooth $f$ + $\lambda\norm{\vecb\theta}_1$ or $\delta_{\mathcal C}$ & Proximal GD / SPGD (never subgradients!)\\
+    pure nonsmooth $f_\xi$ (hinge) & Stochastic Subgradient $\eta_t\propto 1/\sqrt{t+1}$\\
+    scaling to $K$ GPUs & grow $b$ up to $b_{\mathrm{crit}}$ with $\eta(b)=b\,\eta(1)$\\
+    deep net with dropout/aug & Minibatch SGD + cosine decay + SWA\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{ORACLE COMPLEXITY CHEAT-LINE (to error $\varepsilon$)}
+  \footnotesize
+  \begin{csbul}
+    \item \textbf{Convex smooth:} Full GD $O(\frac{nL_f}{\varepsilon})$ vs.\ SGD $O(\frac{L_{\max}}{\varepsilon}+\frac{\sigma_f^*}{\varepsilon^2})$ vs.\ SVRG $O(n+\frac{L_{\max}}{\varepsilon})$
+    \item \textbf{$\mu$-Strongly convex:} Full GD $O(\frac{nL_f}{\mu}\log\frac{1}{\varepsilon})$ vs.\ SGD $\tilde O(\frac{L_{\max}}{\mu}+\frac{\sigma_f^*}{\varepsilon\mu^2})$ vs.\ SVRG $O((n+\frac{L_{\max}}{\mu})\log\frac{1}{\varepsilon})$
+    \item \textbf{Nonsmooth $G$-Lipschitz SSD:} $O(\frac{G^2 D_0^2}{\varepsilon^2})$ (convex) and $\tilde O(\frac{G^2}{\varepsilon\mu^2})$ ($\mu$-SC)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{NOISE BALL vs.\ DECAY vs.\ SVRG TRAJECTORIES}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmode=log, ymode=log, xmin=1, xmax=1000, ymin=1e-4, ymax=1500,
+      xlabel={Iteration $t$}, ylabel={$\E\norm{\vecb\theta_t-\vecb\theta^*}^2$ upper bound},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.98,0.92)}, anchor=north east, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csA, very thick, domain=1:1000, samples=80] {(0.92^x)*2.0 + 1.0*(1-0.92^x)};
+      \addlegendentry{Const.\ $\eta=0.20$ (stalls at $\frac{2\eta\sigma_f^*}{\mu}=1$)}
+      \addplot[csB, very thick, domain=1:1000, samples=80] {(0.984^x)*2.0 + 0.20*(1-0.984^x)};
+      \addlegendentry{Const.\ $\eta=0.04$ (floor $0.20$)}
+      \addplot[csD, very thick, dashed, domain=1:1000, samples=80] {50.0/(x+25.0)};
+      \addlegendentry{Robbins--Monro $\eta_t\propto 1/t$ ($O(1/t)$)}
+      \addplot[csF, very thick, dash dot, domain=1:150, samples=60] {max(1e-4, 2.0*(0.92^x))};
+      \addlegendentry{SVRG / Interp.\ ($\sigma_f^*=0$): $(1-\eta\mu)^t$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Unshuffled class-sorted batches:} consecutive batches from sorted data yield biased gradients $\E[\grad f_{B_t}]\neq\grad f$; permute indices every epoch
+    \item \textbf{SVRG + Dropout / Augmentation:} stochastic data augmentation or dropout changes $f_i$ every step, breaking $\grad f_i(\vecb\theta_t)-\grad f_i(\tilde{\vecb\theta})$ correlation
+    \item \textbf{Using subgradients for Lasso ($\ell_1$):} $\vecb\theta_t-\eta(\grad f+\lambda\operatorname{sign}(\vecb\theta_t))$ overshoots zero and crawls at $O(1/\sqrt T)$; ISTA $\operatorname{SoftThreshold}$ gives exact zeros at $O(1/T)$
+    \item \textbf{Assuming bounded $\E\norm{\grad f_i}^2\le G^2$ on $\R^d$:} contradicts $\mu$-strong convexity ($\norm{\grad f}\ge\mu\norm{\vecb\theta-\vecb\theta^*}\to\infty$); always use expected smoothness $(L_{\max},\sigma_f^*)$
+    \item \textbf{Composite noise mismatch:} in SPGD on $f+g$, $\grad f(\vecb\theta^*)\neq\zeros$, so the noise floor is governed by $\sigma_F^*=\Var[\grad f_i(\vecb\theta^*)]$, not $\sigma_f^*$!
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{SGD gradient variance} splits into a vanishing curvature piece $4L_{\max}(f-f^*)$ and an irreducible conflict floor $2\sigma_f^*$ at $\vecb\theta^*$.
+  Under constant $\eta$, iterates bounce inside a ball of size $\frac{2\eta\sigma_b^*}{\mu}$.
+  To reach $\vecb\theta^*$: \textbf{decay $\eta_t\propto t^{-\alpha}$}, \textbf{scale minibatches up to $b_{\mathrm{crit}}$}, or \textbf{subtract SVRG/SAGA snapshots}; for nonsmooth penalties $g$, apply \textbf{backward $\operatorname{prox}_{\eta g}$} to preserve smooth rates and exact sparsity.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,288 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Diffusion Models, Score SDEs, Flow Matching \& Fast Samplers}{DDPM, NCSN, Score SDEs \& Flow Matching}{Score SDEs, It\^o/Girsanov/Fokker-Planck Equations \& Flow Matching}{Diffusion Principles Sec.~B.3, B.4 \& App., Chan Sec.~4, Murphy Adv. Sec.~25.4}
+
+\section{Problem Formulation \& Unified Notation}\label{sec:sde:formulation}
+
+Discrete-time Denoising Diffusion Probabilistic Models (DDPMs) and Noise-Conditional Score Networks (NCSNs / SMLD) both corrupt data $\vecb{x}_0 \sim p_{\mathrm{data}}$ through a finite sequence of noise perturbations and learn to invert the process. Passing to the continuum limit ($\Delta t \to 0$, $N \to \infty$) unifies both paradigms under a single mathematical object: an It\^o stochastic differential equation (SDE) over $t \in [0, T]$ \bookcite{theprinciple_diffusion_models}{Sec.~4.1.1, pp.~87--89} \bookcite{diffusionmodels_stanleychan}{Sec.~4.1, pp.~39--40} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.1, p.~877}:
+\begin{equation}\label{eq:sde:forward_sde}
+  \mathrm{d}\vecb{x}_t = \vecb{f}(\vecb{x}_t, t)\,\mathrm{d}t + g(t)\,\mathrm{d}\vecb{w}_t, \qquad \vecb{x}_0 \sim p_0 = p_{\mathrm{data}},
+\end{equation}
+where $\vecb{f} : \R^D \times [0, T] \to \R^D$ is the \emph{drift coefficient}, $g : [0, T] \to \R_{\ge 0}$ is the scalar \emph{diffusion coefficient}, and $\vecb{w}_t \in \R^D$ is a standard $D$-dimensional Wiener process (Brownian motion) whose infinitesimal increments satisfy $\mathrm{d}\vecb{w}_t \sim \Normal(\zeros, \mathrm{d}t\,\eye)$. The forward SDE induces a continuous family of marginal densities $\{p_t(\vecb{x})\}_{t \in [0, T]}$ evolving from $p_0 = p_{\mathrm{data}}$ to a tractable terminal prior $p_T \approx p_{\mathrm{prior}}$.
+
+Flow Matching (FM) and Rectified Flow (RF) generalize this transport perspective beyond Gaussian diffusion \bookcite{theprinciple_diffusion_models}{Sec.~5.2, p.~136}. Instead of prescribing a stochastic forward noising SDE, one directly parameterizes a time-dependent velocity field $\vecb{v}_\phi(\vecb{x}_t, t)$ governing an ordinary differential equation (ODE) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.7, p.~881},
+\begin{equation}\label{eq:sde:flow_ode}
+  \frac{\mathrm{d}\vecb{x}_t}{\mathrm{d}t} = \vecb{v}_\phi(\vecb{x}_t, t), \qquad \vecb{x}_0 \sim p_{\mathrm{src}},
+\end{equation}
+whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mathrm{src}}$ to a target distribution $p_{\mathrm{tgt}}$ along a prescribed probability path $\{p_t\}_{t \in [0, 1]}$.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:sde:notation}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Diffusion Principles (Ch.~4--5, App.~B--C)} & \textbf{Chan (Sec.~4)} & \textbf{Murphy Adv. (Sec.~25.4)} \\
+\midrule
+\textbf{Time Direction} & $t=0$ (data) $\to T$ (noise) in Score SDE; $t=0$ ($p_{\mathrm{src}}$) $\to 1$ ($p_{\mathrm{tgt}}$) in FM. & $t=0$ (data) $\to t=1$ (noise) with $\Delta t = 1/N$. & $t=0$ (data) $\to t=1$ (noise), $t \in [0, 1]$. \\
+\textbf{Marginal Density} & $p_t(\vecb{x}_t)$ (with $p_{\mathrm{prior}} \approx p_T$); conditional $p_t(\vecb{x}_t \mid \vecb{x}_0)$. & $p_t(\vecb{x})$ in continuous limit; $p_i(\vecb{x}_i)$ at step $i$. & $q_t(\vecb{x}_t)$ for forward marginals; $p_t(\vecb{x})$ in PF-ODE. \\
+\textbf{Score Network} & $\vecb{s}_\phi(\vecb{x}, t) \approx \grad_{\vecb{x}}\log p_t(\vecb{x})$. & $\vecb{s}_\theta(\vecb{x}_i, i)$ or $\vecb{\epsilon}_\theta(\vecb{x}(t), t)$. & $\vecb{s}_\theta(\vecb{x}_t, t) = -\vecb{\epsilon}_\theta(\vecb{x}_t, t)/\sigma_t$. \\
+\textbf{Reverse Time} & $\bar{\vecb{x}}(t)$ with reverse Wiener $\bar{\vecb{w}}(t) := \vecb{w}(T-t)-\vecb{w}(T)$. & Uses $\mathrm{d}\vecb{x} = \vecb{x}(t) - \vecb{x}(t-\Delta t)$ and $\mathrm{d}\vecb{w} = -\vecb{z}(t)\sqrt{\Delta t}$. & $\mathrm{d}\vecb{x}_t = [\vecb{f} - g^2 \grad \log q_t]\,\mathrm{d}t + g\,\mathrm{d}\vecb{w}_t$ with $\mathrm{d}t < 0$. \\
+\textbf{FM Velocity} & $\vecb{v}_t(\vecb{x}_t)$ (Eulerian) or $\partial_t \Psi_{0 \to t} \circ \Psi_{0 \to t}^{-1}$ (Lagrangian). & Focuses on semi-linear ODE $\dot{\vecb{x}} = a(t)\vecb{x} + b(t)$ for fast solvers. & Notes FM as simulation-free CNF without Gaussian noise. \\
+\bottomrule
+\end{tabularx}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}\label{sec:sde:derivations}
+
+\subsection{Continuous-Time Limits of DDPM (VP-SDE) and SMLD (VE-SDE)}\label{sec:sde:vp_ve}
+
+\begin{coremath}[Derivation of VP-SDE and VE-SDE Perturbation Kernels]
+\textbf{1. DDPM $\to$ Variance Preserving (VP) SDE.} Let $\Delta t = 1/N$, $t = i/N \in [0, 1]$, and $\beta_i = \beta(t)\Delta t$ for a continuous schedule $\beta : [0, 1] \to \R_{\ge 0}$ \bookcite{diffusionmodels_stanleychan}{Sec.~4.3, p.~43} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.1, p.~877}. Expanding the DDPM step $\vecb{x}_{t+\Delta t} = \sqrt{1 - \beta(t)\Delta t}\,\vecb{x}_t + \sqrt{\beta(t)\Delta t}\,\vecb{\epsilon}_t$ via $\sqrt{1 - u} = 1 - \frac{1}{2}u + \mathcal{O}(u^2)$ yields
+\begin{equation}\label{eq:sde:vp_euler}
+  \vecb{x}_{t+\Delta t} - \vecb{x}_t = -\frac{1}{2}\beta(t)\vecb{x}_t\,\Delta t + \sqrt{\beta(t)}\,\sqrt{\Delta t}\,\vecb{\epsilon}_t + \mathcal{O}(\Delta t^2)
+  \;\xrightarrow{\Delta t \to 0}\;
+  \mathrm{d}\vecb{x}_t = -\frac{1}{2}\beta(t)\vecb{x}_t\,\mathrm{d}t + \sqrt{\beta(t)}\,\mathrm{d}\vecb{w}_t.
+\end{equation}
+
+\textbf{2. SMLD / NCSN $\to$ Variance Exploding (VE) SDE.} Discretizing a strictly increasing noise scale $\sigma(t)$ gives the Markov chain $\vecb{x}_{t+\Delta t} = \vecb{x}_t + \sqrt{\sigma^2(t+\Delta t) - \sigma^2(t)}\,\vecb{\epsilon}_t$ \bookcite{diffusionmodels_stanleychan}{Sec.~4.4, p.~45} \bookcite{theprinciple_diffusion_models}{Sec.~4.3.1, p.~110}. Letting $\Delta t \to 0$ produces zero drift and diffusion $g(t) = \sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}}$:
+\begin{equation}\label{eq:sde:ve_sde}
+  \mathrm{d}\vecb{x}_t = \sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}}\,\mathrm{d}\vecb{w}_t.
+\end{equation}
+
+\textbf{3. Closed-Form Transition Kernels for Linear SDEs.} Whenever $\vecb{f}(\vecb{x}, t) = f(t)\vecb{x}$ is linear in $\vecb{x}$, the conditional distribution $p_t(\vecb{x}_t \mid \vecb{x}_0) = \Normal(\vecb{x}_t;\, \vecb{m}(t), P(t)\eye)$ remains Gaussian even for non-Gaussian $p_{\mathrm{data}}$ \bookcite{theprinciple_diffusion_models}{Sec.~4.3.3, pp.~112--114}. Its moments satisfy the linear ODEs
+\begin{equation}\label{eq:sde:moment_odes}
+  \frac{\mathrm{d}\vecb{m}(t)}{\mathrm{d}t} = f(t)\vecb{m}(t), \qquad \frac{\mathrm{d}P(t)}{\mathrm{d}t} = 2f(t)P(t) + g^2(t),
+\end{equation}
+with $\vecb{m}(0) = \vecb{x}_0$ and $P(0) = 0$. Solving via the integrating factor $E(s \to t) = \exp\!\left(\int_s^t f(u)\,\mathrm{d}u\right)$ gives:
+\begin{align}
+  \text{VP-SDE:}\quad & p_t(\vecb{x}_t \mid \vecb{x}_0) = \Normal\!\left(\vecb{x}_t;\, e^{-\frac{1}{2}B(t)}\vecb{x}_0,\, \bigl(1 - e^{-B(t)}\bigr)\eye\right), \qquad B(t) := \int_0^t \beta(s)\,\mathrm{d}s, \label{eq:sde:vp_kernel} \\
+  \text{VE-SDE:}\quad & p_t(\vecb{x}_t \mid \vecb{x}_0) = \Normal\!\left(\vecb{x}_t;\, \vecb{x}_0,\, \bigl(\sigma^2(t) - \sigma^2(0)\bigr)\eye\right). \label{eq:sde:ve_kernel}
+\end{align}
+\end{coremath}
+
+\subsection{It\^o's Lemma \& Derivation of the Fokker-Planck Equation}\label{sec:sde:ito_fp}
+
+Because sample paths of a Wiener process are almost surely continuous yet nowhere differentiable, classical calculus fails. Specifically, Brownian increments scale as $\mathrm{d}\vecb{w}_t = \mathcal{O}(\sqrt{\mathrm{d}t})$ and obey the quadratic variation rule $(\mathrm{d}w_{t,i})(\mathrm{d}w_{t,j}) = \delta_{ij}\,\mathrm{d}t$ \bookcite{theprinciple_diffusion_models}{Sec.~C.1.1--C.1.2, pp.~413--415}. Retaining $\mathcal{O}(\mathrm{d}t)$ terms in a second-order stochastic Taylor expansion yields It\^o's Lemma.
+
+\begin{coremath}[Multidimensional It\^o's Lemma \& Fokker-Planck Derivation]
+Let $\vecb{x}_t \in \R^D$ solve $\mathrm{d}\vecb{x}_t = \vecb{f}(\vecb{x}_t, t)\,\mathrm{d}t + g(t)\,\mathrm{d}\vecb{w}_t$, and let $\varphi : \R^D \times [0, T] \to \R$ be $C^{2,1}$-smooth. Expanding $\varphi(\vecb{x}_{t+\mathrm{d}t}, t+\mathrm{d}t) - \varphi(\vecb{x}_t, t)$ and substituting $\mathrm{d}\vecb{x}_t\,\mathrm{d}\vecb{x}_t^\top = g^2(t)\,\mathrm{d}t\,\eye + \mathcal{O}(\mathrm{d}t^{3/2})$ yields \textbf{It\^o's Formula} \bookcite{theprinciple_diffusion_models}{Sec.~C.1.3, Eq.~(C.1.1), p.~416}:
+\begin{equation}\label{eq:sde:ito_lemma}
+  \mathrm{d}\varphi(\vecb{x}_t, t) = \left( \frac{\partial \varphi}{\partial t} + (\grad_{\vecb{x}}\varphi)^\top \vecb{f}(\vecb{x}_t, t) + \frac{1}{2}g^2(t)\,\Tr\!\left(\grad_{\vecb{x}}^2 \varphi\right) \right)\mathrm{d}t + g(t)(\grad_{\vecb{x}}\varphi)^\top \mathrm{d}\vecb{w}_t.
+\end{equation}
+\textbf{Derivation of the Fokker-Planck Equation} \bookcite{theprinciple_diffusion_models}{Sec.~C.1.4, pp.~417--418}: Take expectations under $\vecb{x}_t \sim p_t$ for a compactly supported test function $\varphi(\vecb{x})$ independent of $t$. Since $\E[(\grad_{\vecb{x}}\varphi)^\top \mathrm{d}\vecb{w}_t] = 0$,
+\begin{equation}\label{eq:sde:fp_step1}
+  \frac{\mathrm{d}}{\mathrm{d}t}\E_{p_t}[\varphi(\vecb{x}_t)] = \int_{\R^D} \varphi(\vecb{x})\,\frac{\partial p_t(\vecb{x})}{\partial t}\,\mathrm{d}\vecb{x} = \int_{\R^D} \left( (\grad_{\vecb{x}}\varphi)^\top \vecb{f}(\vecb{x}, t) + \frac{1}{2}g^2(t)\,\Delta \varphi(\vecb{x}) \right) p_t(\vecb{x})\,\mathrm{d}\vecb{x},
+\end{equation}
+where $\Delta = \Tr(\grad_{\vecb{x}}^2)$ is the Laplacian. Applying the divergence theorem (integration by parts) with vanishing boundary terms gives
+\begin{equation}\label{eq:sde:fp_ibp}
+  \int_{\R^D} \varphi(\vecb{x}) \left[ \frac{\partial p_t(\vecb{x})}{\partial t} + \nabla_{\vecb{x}} \cdot \bigl(\vecb{f}(\vecb{x}, t) p_t(\vecb{x})\bigr) - \frac{1}{2}g^2(t)\,\Delta p_t(\vecb{x}) \right] \mathrm{d}\vecb{x} = 0.
+\end{equation}
+Since $\varphi$ is arbitrary, the integrand vanishes pointwise, yielding the \textbf{Fokker-Planck Equation}:
+\begin{equation}\label{eq:sde:fokker_planck}
+  \frac{\partial p_t(\vecb{x})}{\partial t} = -\nabla_{\vecb{x}} \cdot \bigl(\vecb{f}(\vecb{x}, t) p_t(\vecb{x})\bigr) + \frac{1}{2}g^2(t)\,\Delta p_t(\vecb{x}).
+\end{equation}
+\end{coremath}
+
+\subsection{Anderson's Reverse-Time SDE \& the Probability Flow ODE}\label{sec:sde:anderson_pfode}
+
+To construct a deterministic ODE or a reverse-time SDE that shares the exact marginal densities $\{p_t\}_{t \in [0, T]}$ of the forward SDE \eqref{eq:sde:forward_sde}, we rewrite the diffusive Laplacian in \eqref{eq:sde:fokker_planck} as a transport term using the log-derivative identity $\Delta p_t = \nabla_{\vecb{x}} \cdot (p_t \grad_{\vecb{x}}\log p_t)$ \bookcite{theprinciple_diffusion_models}{Sec.~B.1.3, p.~407}:
+\begin{equation}\label{eq:sde:fp_as_continuity}
+  \frac{\partial p_t(\vecb{x})}{\partial t} = -\nabla_{\vecb{x}} \cdot \Bigl( \underbrace{\bigl[\vecb{f}(\vecb{x}, t) - \tfrac{1}{2}g^2(t)\grad_{\vecb{x}}\log p_t(\vecb{x})\bigr]}_{:=\,\tilde{\vecb{v}}_t(\vecb{x})} p_t(\vecb{x}) \Bigr).
+\end{equation}
+Comparing \eqref{eq:sde:fp_as_continuity} with the deterministic continuity equation $\partial_t p_t + \nabla_{\vecb{x}}\cdot(p_t \vecb{v}_t) = 0$ immediately reveals two canonical generative dynamics \bookcite{theprinciple_diffusion_models}{Thm.~4.1.1, pp.~98--99} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.2--25.4.4, pp.~878--880}:
+\begin{align}
+  \textbf{Probability Flow ODE (PF-ODE):}\quad & \mathrm{d}\tilde{\vecb{x}}_t = \left[\vecb{f}(\tilde{\vecb{x}}_t, t) - \frac{1}{2}g^2(t)\grad_{\vecb{x}}\log p_t(\tilde{\vecb{x}}_t)\right]\mathrm{d}t, \label{eq:sde:pf_ode} \\
+  \textbf{Anderson Reverse-Time SDE:}\quad & \mathrm{d}\bar{\vecb{x}}_t = \left[\vecb{f}(\bar{\vecb{x}}_t, t) - g^2(t)\grad_{\vecb{x}}\log p_t(\bar{\vecb{x}}_t)\right]\mathrm{d}t + g(t)\,\mathrm{d}\bar{\vecb{w}}_t, \label{eq:sde:reverse_sde}
+\end{align}
+where $\bar{\vecb{w}}_t$ is a standard Wiener process in reverse time ($t$ running from $T$ down to $0$).
+
+\begin{intuition}[Why $\frac{1}{2}g^2$ in PF-ODE vs.\ $g^2$ in Reverse SDE?]
+Rewriting the reverse SDE \eqref{eq:sde:reverse_sde} as
+\[
+  \mathrm{d}\bar{\vecb{x}}_t = \underbrace{\left[\vecb{f}(\bar{\vecb{x}}_t, t) - \tfrac{1}{2}g^2(t)\grad_{\vecb{x}}\log p_t(\bar{\vecb{x}}_t)\right]\mathrm{d}t}_{\text{Deterministic PF-ODE}} \;-\; \underbrace{\tfrac{1}{2}g^2(t)\grad_{\vecb{x}}\log p_t(\bar{\vecb{x}}_t)\,\mathrm{d}t + g(t)\,\mathrm{d}\bar{\vecb{w}}_t}_{\text{Time-Varying Langevin Corrector}}
+\]
+shows that the extra $-\frac{1}{2}g^2 \grad \log p_t$ drift exactly counterbalances the diffusive spreading of $g(t)\,\mathrm{d}\bar{\vecb{w}}_t$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.5, Eq.~(25.57), p.~881} \bookcite{theprinciple_diffusion_models}{Sec.~4.1.3, p.~94}. In practice, the continuous noise injection in the SDE acts as an error-correcting Langevin step that compensates for discretization errors and imperfect score estimates, whereas the PF-ODE is deterministic, invertible, uniquely identifiable across architectures, and enables exact log-likelihood evaluation via the instantaneous change-of-variables formula \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.4, p.~880}:
+\begin{equation}\label{eq:sde:exact_nll}
+  \log p_0(\vecb{x}_0) = \log p_T(\vecb{x}_T) + \int_0^T \nabla_{\vecb{x}} \cdot \tilde{\vecb{v}}_t(\vecb{x}_t)\,\mathrm{d}t, \qquad \tilde{\vecb{v}}_t(\vecb{x}) = \vecb{f}(\vecb{x}, t) - \frac{1}{2}g^2(t)\vecb{s}_\phi(\vecb{x}, t).
+\end{equation}
+\end{intuition}
+
+\subsection{Girsanov's Theorem \& Path-Measure Likelihood}\label{sec:sde:girsanov}
+
+While the Fokker-Planck equation guarantees \emph{marginal} alignment $q_t(\vecb{x}_t) = p_t(\vecb{x}_t)$ at every fixed $t$, it does not constrain the joint trajectory distribution $p(\vecb{x}_{0:T})$. Girsanov's theorem provides the Radon-Nikodym derivative (change-of-measure) between path measures $\mathbb{P}$ and $\mathbb{P}_\phi$ induced by two SDEs sharing the same diffusion $g(t)$ and differing only in their drifts $\vecb{f}$ and $\tilde{\vecb{f}}$ \bookcite{theprinciple_diffusion_models}{Sec.~C.2, pp.~422--425}.
+
+\begin{coremath}[Girsanov Path-Measure KL \& Implicit Likelihood Equivalence]
+Let $\vecb{\delta}_t := \vecb{f}(\vecb{x}_t, t) - \tilde{\vecb{f}}(\vecb{x}_t, t)$ denote the drift discrepancy along a path $\vecb{x}_{0:T}$. Under Novikov's regularity condition, Girsanov's theorem gives the path likelihood ratio \bookcite{theprinciple_diffusion_models}{Sec.~C.2, p.~423}:
+\begin{equation}\label{eq:sde:girsanov_ratio}
+  \frac{\mathrm{d}\mathbb{P}_{\vecb{f}}}{\mathrm{d}\mathbb{P}_{\tilde{\vecb{f}}}}(\vecb{x}_{0:T}) = \exp\!\left( \int_0^T \frac{\vecb{\delta}_t^\top}{g(t)}\,\mathrm{d}\vecb{w}_t - \frac{1}{2}\int_0^T \frac{\|\vecb{\delta}_t\|_2^2}{g^2(t)}\,\mathrm{d}t \right).
+\end{equation}
+Taking $\mathbb{P}$ as the true reverse-time SDE (drift $\vecb{f} - g^2\grad_{\vecb{x}}\log p_t$) and $\mathbb{P}_\phi$ as the learned reverse SDE (drift $\vecb{f} - g^2\vecb{s}_\phi$), we have $\vecb{\delta}_t = g^2(t)(\vecb{s}_\phi(\vecb{x}_t, t) - \grad_{\vecb{x}}\log p_t(\vecb{x}_t))$. Since the It\^o integral has zero expectation under $\mathbb{P}$, the KL divergence between the full path measures simplifies to \bookcite{theprinciple_diffusion_models}{Sec.~C.2.1, Eq.~(C.2.1), p.~425}:
+\begin{equation}\label{eq:sde:girsanov_kl}
+  D_{\mathrm{KL}}(\mathbb{P} \,\|\, \mathbb{P}_\phi) = \frac{1}{2}\,\E_{\mathbb{P}}\!\left[ \int_0^T g^2(t)\,\bigl\|\vecb{s}_\phi(\vecb{x}_t, t) - \grad_{\vecb{x}}\log p_t(\vecb{x}_t)\bigr\|_2^2\,\mathrm{d}t \right] + \mathrm{Const.}
+\end{equation}
+By the data-processing inequality, $D_{\mathrm{KL}}(p_{\mathrm{data}} \,\|\, p_\phi(\vecb{x}_0)) \le D_{\mathrm{KL}}(\mathbb{P} \,\|\, \mathbb{P}_\phi)$. Consequently, weighting score matching by $\lambda(t) = g^2(t)$ (the likelihood-weighting schedule) directly minimizes an upper bound on the negative data log-likelihood $-\E_{p_{\mathrm{data}}}[\log p_\phi(\vecb{x}_0)]$.
+\end{coremath}
+
+\subsection{Flow Matching, Conditional Flow Matching \& Rectified Flow}\label{sec:sde:flow_matching}
+
+Flow Matching (FM) bypasses stochastic forward SDEs by learning a deterministic velocity field $\vecb{v}_\phi(\vecb{x}_t, t)$ directly from a tractable conditional probability path \bookcite{theprinciple_diffusion_models}{Sec.~5.2--5.3, pp.~136--150}. Let $\vecb{z}$ be a conditioning variable (e.g., $\vecb{z} = \vecb{x}_1$ or $(\vecb{x}_0, \vecb{x}_1) \sim \pi$) generating a conditional path $p_t(\vecb{x} \mid \vecb{z})$ and velocity $\vecb{v}_t(\vecb{x} \mid \vecb{z})$ that obey $\partial_t p_t(\vecb{x} \mid \vecb{z}) + \nabla_{\vecb{x}} \cdot (p_t(\vecb{x} \mid \vecb{z})\,\vecb{v}_t(\vecb{x} \mid \vecb{z})) = 0$.
+
+\begin{coremath}[Conditional Flow Matching (CFM) Equivalence \& Affine Rectified Flow]
+Define the marginal density $p_t(\vecb{x}) = \int p_t(\vecb{x} \mid \vecb{z})\,\pi(\vecb{z})\,\mathrm{d}\vecb{z}$ and the marginal velocity field
+\begin{equation}\label{eq:sde:marginal_velocity}
+  \vecb{v}_t(\vecb{x}) := \E_{\vecb{z} \sim p_t(\vecb{z} \mid \vecb{x})}\!\left[\vecb{v}_t(\vecb{x} \mid \vecb{z})\right] = \int \vecb{v}_t(\vecb{x} \mid \vecb{z})\,\frac{p_t(\vecb{x} \mid \vecb{z})\,\pi(\vecb{z})}{p_t(\vecb{x})}\,\mathrm{d}\vecb{z}.
+\end{equation}
+Then $(p_t, \vecb{v}_t)$ satisfies the marginal continuity equation $\partial_t p_t + \nabla_{\vecb{x}}\cdot(p_t \vecb{v}_t) = 0$. Moreover, the intractable Marginal FM objective $\mathcal{L}_{\mathrm{FM}}(\phi) = \E_{t, \vecb{x}_t \sim p_t}[\|\vecb{v}_\phi(\vecb{x}_t, t) - \vecb{v}_t(\vecb{x}_t)\|_2^2]$ and the simulation-free \textbf{Conditional Flow Matching (CFM)} objective
+\begin{equation}\label{eq:sde:cfm_loss}
+  \mathcal{L}_{\mathrm{CFM}}(\phi) := \E_{t \sim \mathcal{U}[0,1],\, \vecb{z} \sim \pi,\, \vecb{x}_t \sim p_t(\cdot \mid \vecb{z})}\!\left[ \bigl\|\vecb{v}_\phi(\vecb{x}_t, t) - \vecb{v}_t(\vecb{x}_t \mid \vecb{z})\bigr\|_2^2 \right]
+\end{equation}
+have identical gradients: $\grad_\phi \mathcal{L}_{\mathrm{FM}}(\phi) = \grad_\phi \mathcal{L}_{\mathrm{CFM}}(\phi)$ \bookcite{theprinciple_diffusion_models}{Sec.~5.2.2, pp.~141--147}.
+
+\textbf{Gaussian Bridge \& Canonical Linear Interpolant.} For a Gaussian path $p_t(\vecb{x} \mid \vecb{z}) = \Normal(\vecb{x};\, \vecb{\mu}_t(\vecb{z}), \sigma_t^2(\vecb{z})\eye)$ induced by $\Psi_{0 \to t}(\vecb{x}) = \vecb{\mu}_t + \sigma_t \frac{\vecb{x}-\vecb{\mu}_0}{\sigma_0}$, differentiating along trajectories gives the unique velocity \bookcite{theprinciple_diffusion_models}{Prop.~5.3.1, p.~150}:
+\begin{equation}\label{eq:sde:gaussian_bridge_v}
+  \vecb{v}_t(\vecb{x} \mid \vecb{z}) = \frac{\sigma_t'(\vecb{z})}{\sigma_t(\vecb{z})}\bigl(\vecb{x} - \vecb{\mu}_t(\vecb{z})\bigr) + \vecb{\mu}_t'(\vecb{z}).
+\end{equation}
+Setting $\vecb{z} = (\vecb{x}_0, \vecb{x}_1) \sim p_{\mathrm{src}} \times p_{\mathrm{tgt}}$ with the canonical linear interpolant $\vecb{x}_t = (1-t)\vecb{x}_0 + t\vecb{x}_1$ ($\sigma_t \to 0$) reduces \eqref{eq:sde:cfm_loss} to the \textbf{Rectified Flow} objective \bookcite{theprinciple_diffusion_models}{Sec.~5.4, p.~159}:
+\begin{equation}\label{eq:sde:rf_loss}
+  \mathcal{L}_{\mathrm{RF}}(\phi) = \E_{t \sim \mathcal{U}[0,1],\, (\vecb{x}_0, \vecb{x}_1) \sim \pi}\!\left[ \bigl\|\vecb{v}_\phi(\vecb{x}_t, t) - (\vecb{x}_1 - \vecb{x}_0)\bigr\|_2^2 \right].
+\end{equation}
+\end{coremath}
+
+Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \otimes p_{\mathrm{tgt}}$ with the deterministic flow coupling $\pi^{(k+1)}(\vecb{x}_0, \vecb{x}_1) = p_{\mathrm{src}}(\vecb{x}_0)\delta(\vecb{x}_1 - \Phi_{0 \to 1}^{(k)}(\vecb{x}_0))$ (\textbf{Reflow}) preserves marginals, never increases convex transport cost $\E[c(\hat{\vecb{z}}_1 - \vecb{z}_0)] \le \E[c(\vecb{x}_1 - \vecb{x}_0)]$, and drives path curvature toward zero: $\min_{k \le K}\mathcal{S}(\vecb{Z}^{(k)}) \le \frac{1}{K}\E[\|\vecb{x}_1 - \vecb{x}_0\|_2^2]$ \bookcite{theprinciple_diffusion_models}{Sec.~5.4.2--5.4.3, pp.~161--163}.
+
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:sde:algorithms}
+
+\begin{algorithm}[htbp]
+\caption{Simulation-Free CFM Training \& Euler-Maruyama / PF-ODE Sampling}
+\label{alg:sde:cfm_and_reverse_sde}
+\KwIn{Dataset $p_{\mathrm{data}}$ (or coupling $\pi$), prior $p_{\mathrm{prior}} = \Normal(\zeros, \eye)$, steps $N$, mode $\in \{\text{Reverse-SDE}, \text{PF-ODE}, \text{CFM}\}$.}
+\KwOut{Trained network ($\vecb{s}_\phi$ or $\vecb{v}_\phi$) and generated sample $\vecb{x}_{\mathrm{gen}}$.}
+\tcp{1. Simulation-Free Training (Score Matching or CFM)}
+\While{not converged}{
+  Sample $t \sim \mathcal{U}[0, 1]$, $\vecb{x}_0 \sim p_{\mathrm{src}}$, $\vecb{x}_1 \sim p_{\mathrm{tgt}}$\;
+  \eIf{mode is CFM}{
+    $\vecb{x}_t \leftarrow (1-t)\vecb{x}_0 + t\vecb{x}_1$\;
+    Update $\phi$ with $\grad_\phi \|\vecb{v}_\phi(\vecb{x}_t, t) - (\vecb{x}_1 - \vecb{x}_0)\|_2^2$\;
+  }{
+    Sample $\vecb{\epsilon} \sim \Normal(\zeros, \eye)$;\quad $\vecb{x}_t \leftarrow \alpha_t \vecb{x}_0 + \sigma_t \vecb{\epsilon}$\;
+    Update $\phi$ with $\grad_\phi \lambda(t)\|\vecb{s}_\phi(\vecb{x}_t, t) + \vecb{\epsilon}/\sigma_t\|_2^2$\;
+  }
+}
+\tcp{2. Generation ($N$ Euler / Euler-Maruyama Steps)}
+Draw $\vecb{x} \sim p_{\mathrm{prior}}$;\quad $\Delta t \leftarrow 1/N$\;
+\For{$k = N, N-1, \dots, 1$}{
+  $t \leftarrow k \Delta t$\;
+  \lIf{mode is CFM}{$\vecb{x} \leftarrow \vecb{x} + \vecb{v}_\phi(\vecb{x}, 1 - t)\,\Delta t$}
+  \lElseIf{mode is PF-ODE}{$\vecb{x} \leftarrow \vecb{x} - \bigl[\vecb{f}(\vecb{x}, t) - \frac{1}{2}g^2(t)\vecb{s}_\phi(\vecb{x}, t)\bigr]\Delta t$}
+  \Else{
+    Sample $\vecb{z} \sim \Normal(\zeros, \eye)$\;
+    $\vecb{x} \leftarrow \vecb{x} - \bigl[\vecb{f}(\vecb{x}, t) - g^2(t)\vecb{s}_\phi(\vecb{x}, t)\bigr]\Delta t + g(t)\sqrt{\Delta t}\,\vecb{z}$\;
+  }
+}
+\Return{$\vecb{x}_{\mathrm{gen}} \leftarrow \vecb{x}$}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative synthesis of continuous-time generative differential equation paradigms.}
+\label{tab:sde:comparison}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Paradigm} & \textbf{Dynamics} & \textbf{Perturbation Kernel} & \textbf{Training Target} & \textbf{Sampling / Likelihood} \\
+\midrule
+\textbf{VE-SDE} (SMLD) & $\mathrm{d}\vecb{x}_t = \sqrt{\frac{\mathrm{d}\sigma^2}{\mathrm{d}t}}\,\mathrm{d}\vecb{w}_t$ & $\Normal(\vecb{x}_0, (\sigma_t^2 - \sigma_0^2)\eye)$ & $\vecb{s}_\phi \approx -\vecb{\epsilon}/\sqrt{\sigma_t^2-\sigma_0^2}$ & Stochastic SDE / Predictor-Corrector; ELBO via Girsanov. \\
+\textbf{VP-SDE} (DDPM) & $\mathrm{d}\vecb{x}_t = -\frac{1}{2}\beta_t\vecb{x}_t\,\mathrm{d}t + \sqrt{\beta_t}\,\mathrm{d}\vecb{w}_t$ & $\Normal(e^{-\frac{1}{2}B_t}\vecb{x}_0, (1-e^{-B_t})\eye)$ & $\vecb{s}_\phi \approx -\vecb{\epsilon}/\sqrt{1-e^{-B_t}}$ & Stochastic SDE or semi-linear ODE; ELBO via Girsanov. \\
+\textbf{PF-ODE} & $\mathrm{d}\vecb{x}_t = [\vecb{f} - \frac{1}{2}g^2 \vecb{s}_\phi]\,\mathrm{d}t$ & Shares $p_t(\vecb{x}_t)$ with forward SDE & Trained via DSM ($\vecb{s}_\phi$) & Deterministic RK4/Heun; exact $\log p_0$ via trace. \\
+\textbf{CFM / Rectified Flow} & $\mathrm{d}\vecb{x}_t = \vecb{v}_\phi(\vecb{x}_t, t)\,\mathrm{d}t$ & $\vecb{x}_t = (1-t)\vecb{x}_0 + t\vecb{x}_1$ (arbitrary $p_{\mathrm{src}}, p_{\mathrm{tgt}}$) & $\vecb{v}_\phi \approx \vecb{x}_1 - \vecb{x}_0$ & Straightened ODE (few Euler steps); exact $\log p_1$ via trace. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: SDEs, Semi-Linear ODEs, and Flow Matching]
+\bookcite{diffusionmodels_stanleychan}{Sec.~4.5, pp.~47--48} emphasizes that the VP-SDE Probability Flow ODE is \emph{semi-linear} ($\dot{\vecb{x}}_t = a(t)\vecb{x}_t + \vecb{b}(t)$), allowing the linear drift $a(t)\vecb{x}_t$ to be integrated analytically via the Variation of Constants formula (the foundation of exponential integrators like DPM-Solver) while reserving numerical quadrature solely for the nonlinear score term. \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.4--25.4.5, pp.~880--881} highlights two complementary operational trade-offs: deterministic PF-ODEs yield \emph{identifiable} latent codes that support semantic interpolation, whereas alternating deterministic ODE steps with small stochastic Langevin noise injections (\emph{churn}) corrects integration drift. Finally, \bookcite{theprinciple_diffusion_models}{Sec.~5.3, pp.~148--150} contrasts the \emph{Eulerian} (density-first) view of Score SDEs—where $p_t$ is fixed and infinitely many zero-flux vector fields $\vecb{v}_t + \vecb{w}_t$ ($\nabla\cdot(p_t\vecb{w}_t)=0$) generate the same marginals—with the \emph{Lagrangian} (flow-first) view of Flow Matching, which directly prescribes straight particle trajectories $\Psi_{0 \to t}$ to minimize numerical discretization error.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:sde:visuals}
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p912_fig1.png}{Continuous-time forward diffusion SDE: green stochastic sample paths evolve from the multimodal data distribution $q(\vecb{x}_0)$ toward the Gaussian prior $q(\vecb{x}_T)$, while the background heatmap depicts the marginal density $p_t(\vecb{x})$ governed by the Fokker-Planck equation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.1, Fig.~25.6, p.~878}.}{fig:sde:murphy_forward_sde}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p913_fig1.png}{Comparison of reverse-time generative dynamics sharing the same marginal densities $q(\vecb{x}_t)$: (a) Anderson's reverse-time SDE injects Brownian noise balanced by $-g^2\grad\log p_t$; (b) the deterministic Probability Flow ODE follows smooth, non-intersecting characteristic streamlines with $-\frac{1}{2}g^2\grad\log p_t$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.4.3--25.4.4, Fig.~25.7, p.~879}.}{fig:sde:murphy_reverse_sde_ode}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.3cm and 1.6cm, scale=0.92, transform shape]
+  \node[monoBox, text width=3.4cm] (disc) {\textbf{Discrete Models}\\DDPM / NCSN (SMLD)\\$\Delta t = 1/N$};
+  \node[monoTealBox, right=of disc, text width=3.8cm] (fsde) {\textbf{Forward It\^o SDE}\\$\mathrm{d}\vecb{x}_t = \vecb{f}\mathrm{d}t + g\mathrm{d}\vecb{w}_t$\\Fokker-Planck $\partial_t p_t$};
+  \node[monoIndigoBox, below=1.4cm of fsde, text width=4.0cm] (rsde) {\textbf{Reverse-Time SDE}\\$\mathrm{d}\bar{\vecb{x}}_t = [\vecb{f} - g^2\vecb{s}_\phi]\mathrm{d}t + g\mathrm{d}\bar{\vecb{w}}_t$\\Girsanov Path KL};
+  \node[monoTealBox, right=of fsde, text width=3.8cm] (pfode) {\textbf{Probability Flow ODE}\\$\mathrm{d}\tilde{\vecb{x}}_t = [\vecb{f} - \tfrac{1}{2}g^2\vecb{s}_\phi]\mathrm{d}t$\\Exact $\log p_0$ via $\nabla\cdot\tilde{\vecb{v}}_t$};
+  \node[monoWarnBox, below=1.4cm of pfode, text width=4.0cm] (cfm) {\textbf{CFM / Rectified Flow}\\$\mathrm{d}\vecb{x}_t = \vecb{v}_\phi(\vecb{x}_t, t)\,\mathrm{d}t$\\Straightened OT Paths};
+
+  \draw[monoArrow] (disc) -- node[above, font=\scriptsize] {$\Delta t \to 0$} (fsde);
+  \draw[monoArrow] (fsde) -- node[right, font=\scriptsize, align=left] {Time\\Reversal} (rsde);
+  \draw[monoArrow] (fsde) -- node[above, font=\scriptsize] {Zero-Noise} (pfode);
+  \draw[monoArrow, <->] (rsde) -- node[above left, font=\scriptsize, pos=0.55] {Same $p_t$} (pfode);
+  \draw[monoArrow] (pfode) -- node[right, font=\scriptsize, align=left] {Simulation-Free\\$\vecb{x}_t=(1-t)\vecb{x}_0+t\vecb{x}_1$} (cfm);
+\end{tikzpicture}
+\caption{Unified mathematical bridge connecting discrete diffusion, Forward It\^o SDEs, Anderson's Reverse SDE, the Fokker-Planck Probability Flow ODE, and Conditional Flow Matching / Rectified Flow.}
+\label{fig:sde:sde_ode_fm_bridge}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.86\textwidth,
+  height=5.8cm,
+  xlabel={Normalized Transport Time $t \in [0, 1]$ ($p_{\mathrm{prior}} \to p_{\mathrm{data}}$)},
+  ylabel={State Coordinate $x_t$},
+  xmin=0, xmax=1,
+  ymin=-2.4, ymax=2.4,
+  grid=major,
+  grid style={dashed, gray!25},
+  legend pos=north west,
+  legend style={font=\scriptsize, fill=white, fill opacity=0.88, draw=gray!40},
+  tick label style={font=\footnotesize},
+  label style={font=\small}
+]
+  % Curved VP-SDE / PF-ODE trajectories
+  \addplot[monographCrimson, thick, domain=0:1, samples=50] {1.5*sin(deg(1.5708*x)) + 0.55*sin(deg(3.14159*x))};
+  \addlegendentry{Curved VP PF-ODE ($+1.5$ mode)}
+  \addplot[monographCrimson, thick, dashed, domain=0:1, samples=50, forget plot] {-1.5*sin(deg(1.5708*x)) - 0.55*sin(deg(3.14159*x))};
+  \addplot[monographNavy, thick, domain=0:1, samples=50] {0.6*x + 0.45*sin(deg(3.14159*x))};
+  \addlegendentry{VP PF-ODE (low-curvature)}
+
+  % Straight Rectified Flow / OT trajectories
+  \addplot[monographTeal, very thick, domain=0:1, samples=2] {1.5*x};
+  \addlegendentry{Rectified Flow: $x_t = (1-t)x_0 + t x_1$}
+  \addplot[monographTeal, very thick, domain=0:1, samples=2, forget plot] {-1.5*x};
+  \addplot[monographIndigo, thick, dotted, domain=0:1, samples=2] {0.6*x};
+  \addlegendentry{1-Step Euler Exact on Straight Path}
+
+  \node[font=\scriptsize, monographCrimson] at (axis cs:0.73, 1.98) {High curvature $\Rightarrow$ Euler drift};
+  \node[font=\scriptsize, monographTeal] at (axis cs:0.65, -0.55) {Zero curvature ($S=0$)};
+\end{axis}
+\end{tikzpicture}
+\caption{Geometric contrast between curved VP-SDE Probability Flow ODE trajectories (requiring many small solver steps) and straightened Rectified Flow / Optimal Transport interpolations $\vecb{x}_t = (1-t)\vecb{x}_0 + t\vecb{x}_1$ (allowing large or single Euler steps).}
+\label{fig:sde:trajectories_vp_vs_fm}
+\end{figure}
+
+\monographfig[0.82\textwidth]{theprinciple_diffusion_models_p168_fig1.png}{Iterative Reflow straightening on a 2D six-mode transport task: (a) 1-rectified flow exhibits crossing/curved paths from independent pairings; (b)--(c) 2- and 3-rectified flows progressively straighten trajectories without increasing transport cost \bookcite{theprinciple_diffusion_models}{Sec.~5.4.2, Fig.~5.7, p.~163}.}{fig:sde:reflow_straightening}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:sde:pitfalls}
+
+\begin{pitfall}[Omitting the It\^o Correction or Misplacing the $\frac{1}{2}$ Factor in PF-ODE]
+Applying the classical chain rule to $\varphi(\vecb{x}_t, t)$ omits the second-order quadratic variation term $\frac{1}{2}g^2(t)\Tr(\grad_{\vecb{x}}^2\varphi)\,\mathrm{d}t$ in \eqref{eq:sde:ito_lemma}, which breaks conservation of probability mass. Similarly, dropping $g(t)\,\mathrm{d}\bar{\vecb{w}}_t$ from Anderson's reverse SDE \eqref{eq:sde:reverse_sde} without halving the score coefficient from $g^2(t)$ to $\frac{1}{2}g^2(t)$ yields an ODE whose marginals do \emph{not} match $p_t(\vecb{x})$ \bookcite{theprinciple_diffusion_models}{Sec.~4.1.4, p.~95}.
+\end{pitfall}
+
+\begin{pitfall}[Score Singularity at $t \to 0$ and VE-SDE Variance Explosion]
+As $t \to 0$, $\sigma_t \to 0$ causes the target score $-\vecb{\epsilon}/\sigma_t$ to diverge when $p_{\mathrm{data}}$ lies on a lower-dimensional manifold. Practical implementations truncate integration at $t = \varepsilon \in [10^{-5}, 10^{-3}]$ and train with noise-normalized $\vecb{\epsilon}_\theta$ or $\vecb{v}_\phi$ parameterizations. For VE-SDEs, $\sigma(T) \gg \sigma(0)$ must hold so $p_T(\vecb{x}_T) \approx \Normal(\zeros, \sigma^2(T)\eye)$ is independent of $p_{\mathrm{data}}$ \bookcite{theprinciple_diffusion_models}{Sec.~4.3.1, p.~110}.
+\end{pitfall}
+
+\begin{pitfall}[Straight-Line Couplings Are Necessary but Not Sufficient for Optimal Transport]
+Although $L_2$-optimal transport induces straight-line paths $\vecb{x}_t = (1-t)\vecb{x}_0 + tT(\vecb{x}_0)$, not every straight-line coupling is optimal. For example, mapping $p_{\mathrm{src}} = \Normal(\zeros, \eye)$ to $p_{\mathrm{tgt}} = \Normal(\zeros, \eye)$ via a non-identity rotation $\vecb{x}_1 = \mat{A}\vecb{x}_0$ ($\mat{A}^\top\mat{A} = \eye$, $\det\mat{A} = 1$) produces straight trajectories $\vecb{x}_t = ((1-t)\eye + t\mat{A})\vecb{x}_0$ with strictly positive transport cost, whereas the $c$-optimal coupling is the identity $\vecb{x}_1 = \vecb{x}_0$ \bookcite{theprinciple_diffusion_models}{Sec.~5.4.3, pp.~163--164}.
+\end{pitfall}
+
+\end{document}

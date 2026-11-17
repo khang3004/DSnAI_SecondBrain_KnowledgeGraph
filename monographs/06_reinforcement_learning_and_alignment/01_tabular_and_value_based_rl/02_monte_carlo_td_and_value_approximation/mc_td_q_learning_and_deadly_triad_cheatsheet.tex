@@ -1,0 +1,218 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Bandits, MDPs \& Value-Based RL}{Monte Carlo, SARSA, Q-Learning, DQN, Eligibility Traces \& the Deadly Triad}
+  {Bridge 1-step TD bootstrapping and full MC returns via $\mathrm{TD}(\lambda)$; disarm the Deadly Triad with Replay, Target Nets \& Double Q}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MC, TD \& DQN\\ \footnotesize\mdseries $\mathrm{TD}(\lambda) \cdot \text{Q-Learn} \cdot \text{Triad}$}{%
+  \begin{tikzpicture}[scale=0.52]
+    % Left: MC deep rollout, Mid: TD 1-step, Right: Triad triangle
+    \draw[csB, very thick] (-2.2,0.8) -- (-2.2,-1.1);
+    \foreach \y in {0.8,0.15,-0.5,-1.1} \fill[csB] (-2.2,\y) circle (2.2pt);
+    \node[font=\tiny, csB] at (-2.2,-1.45) {MC};
+    \draw[csDom, very thick] (-0.8,0.8) -- (-0.8,0.15);
+    \fill[csDom] (-0.8,0.8) circle (2.2pt); \fill[csDom] (-0.8,0.15) circle (2.2pt);
+    \node[font=\tiny, csDom] at (-0.8,-0.25) {TD(0)};
+    \draw[csA, very thick] (0.6,-0.9) -- (2.2,-0.9) -- (1.4,0.6) -- cycle;
+    \node[font=\tiny, csA, align=center] at (1.4,-0.4) {Triad};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ MC vs.\ TD(0) prediction}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)}
+    \begin{csbul}
+      \item \textbf{MC:} targets full return $G_t$; zero bias, high variance, episodic only
+      \item \textbf{TD(0):} $V(S_t)\gets V(S_t)+\alpha\delta_t$; online, biased, low variance
+      \item \textbf{Batch:} MC $\to$ empirical MSE; TD(0) $\to$ certainty-equivalence MLE MDP
+      \item \textbf{Off-policy IS:} $\rho_{t:T-1} = \prod_{k=t}^{T-1}\frac{\pi(A_k\mid S_k)}{b(A_k\mid S_k)}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \node at (0,2.5) {MC}; \draw[csA, thick] (0,2.1)--(0,-0.6);
+      \foreach \y in {2.1,1.2,0.3,-0.6} \fill[csA] (0,\y) circle (2.5pt);
+      \node at (1.7,2.5) {TD}; \draw[csDom, thick] (1.7,2.1)--(1.7,1.2);
+      \fill[csDom] (1.7,2.1) circle (2.5pt); \fill[csDom] (1.7,1.2) circle (2.5pt);
+      \node at (3.5,2.5) {DP}; \draw[csE, thick] (3.5,2.1)--(2.9,1.2) (3.5,2.1)--(4.1,1.2);
+      \fill[csE] (3.5,2.1) circle (2.5pt); \fill[csE] (2.9,1.2) circle (2.5pt); \fill[csE] (4.1,1.2) circle (2.5pt);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; CONTROL $-$ SARSA, Q-Learning \& Double Q}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{3.65cm}>{\raggedright\arraybackslash}p{1.35cm}@{}}
+    \textbf{\textcolor{csB}{Algorithm}} & \textbf{\textcolor{csB}{Bootstrap Target $Y_t$}} & \textbf{\textcolor{csB}{Type}}\\ \hline
+    SARSA & $R_{t+1} + \gamma Q(S_{t+1}, A_{t+1})$ & On-policy\\
+    Expected Sarsa & $R_{t+1} + \gamma \sum_{a'}\pi(a'\mid S_{t+1})Q(S_{t+1},a')$ & On / Off\\
+    Q-Learning & $R_{t+1} + \gamma \max_{a'} Q(S_{t+1}, a')$ & Off-policy\\
+    Double Q & $R_{t+1} + \gamma Q_2(S_{t+1},\argmax_{a'}Q_1)$ & Unbiased\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Maximization bias:} Jensen $\E[\max_a X_a] \ge \max_a \E[X_a]$ $\Rightarrow$ split selection ($Q_1$) and evaluation ($Q_2$).}
+
+\csbranch{3}{C}{3\;\; N-STEP \& TD($\lambda$) $-$ eligibility traces}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \csfm{G_t^\lambda = (1-\lambda)\sum_{n=1}^\infty \lambda^{n-1} G_{t:t+n}}
+    \begin{csbul}
+      \item $n$-step: $G_{t:t+n} = \sum_{k=1}^n \gamma^{k-1}R_{t+k} + \gamma^n V(S_{t+n})$
+      \item \textbf{Trace:} $\vecb{z}_t = \gamma\lambda\vecb{z}_{t-1} + \nabla_{\vecb{w}}\hat{v}(S_t,\vecb{w}_t)$
+      \item \textbf{Update:} $\vecb{w}_{t+1} = \vecb{w}_t + \alpha\delta_t\vecb{z}_t$
+      \item $\lambda=0 \implies \mathrm{TD}(0)$; $\lambda=1 \implies \mathrm{MC}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0) -- (4.0,0) node[right] {$t$};
+      \draw[->, gray] (0,0) -- (0,2.6) node[above] {$\vecb{z}_t$};
+      \draw[csC, very thick] (0,0)--(0.5,0)--(0.5,1.8) plot[domain=0.5:2.2, samples=15] (\x, {1.8*exp(-1.1*(\x-0.5))}) -- (2.2,2.3) plot[domain=2.2:3.8, samples=15] (\x, {2.3*exp(-1.1*(\x-2.2))});
+      \node at (2.0,-0.55) {decay $\times\gamma\lambda$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; DEADLY TRIAD \& Gradient-TD}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \begin{csbul}
+      \item \textbf{Semi-grad TD:} $\vecb{w}_{t+1} = \vecb{w}_t + \alpha\delta_t\nabla\hat{v}(S_t,\vecb{w}_t)$
+      \item Linear on-policy converges to $\mathrm{PBE}(\vecb{w}) = \norm{\Pi\overline{\delta}_{\vecb{w}}}_\mu^2 = 0$
+      \item \textbf{Baird's 7-state MDP:} off-policy ($\mu\ne d^\pi$) + bootstrapping + FA $\implies \Pi\Bellman_\pi$ non-contractive, $\norm{\vecb{w}_t}\to\infty$
+      \item \textbf{TDC / GTD2:} two-timescale $(\vecb{w}_t,\vecb{v}_t)$ true SGD on $\mathrm{PBE}$ in $O(d)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \node[draw=csA, fill=csA!12, rounded corners=1.5pt, inner sep=2pt] (fa) at (1.9,2.4) {Func.\ Approx.};
+      \node[draw=csA, fill=csA!12, rounded corners=1.5pt, inner sep=2pt] (bt) at (0,0) {Bootstrap};
+      \node[draw=csA, fill=csA!12, rounded corners=1.5pt, inner sep=2pt] (op) at (3.8,0) {Off-Policy};
+      \draw[<->, csA, thick] (fa)--(bt); \draw[<->, csA, thick] (fa)--(op); \draw[<->, csA, thick] (bt)--(op);
+      \node[csA, font=\tiny\bfseries, fill=white, inner sep=1pt] at (1.9,0.9) {Diverges!};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; COST \& CONVERGENCE $-$ method matrix}{%
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.35cm}>{\raggedright\arraybackslash}p{2.15cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Time}} & \textbf{\textcolor{csE}{Memory}} & \textbf{\textcolor{csE}{Linear Stability}}\\ \hline
+    First-Visit MC & $O(1)$/step & $O(T)$ & Unbiased, high var.\\
+    TD(0) / SARSA & $O(d)$ & $O(d)$ & Converges (on-pol.)\\
+    TD($\lambda$) & $O(d)$ & $O(d)$ ($\vecb{z}_t$) & Converges (on-pol.)\\
+    Q-Learning (FA) & $O(|\Actions|d)$ & $O(d)$ & Can diverge (Triad)\\
+    GTD2 / TDC & $O(d)$ & $O(2d)$ & Converges ($\mathrm{PBE}=0$)\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize\textbf{Weighted IS:} $O(1/N)$ bias, finite var.\ vs.\ $\infty$ var.\ for Ordinary IS.}
+
+\csbranch{6}{F}{6\;\; DEEP Q-NETWORKS $-$ Rainbow stabilizers}{%
+  \begin{csbul}
+    \item \textbf{1.\ Experience Replay ($\mathcal{D}$ / PER):} priority $p_i=(\abs{\delta_i}+\epsilon)^\alpha$, IS weight $w_i=(NP(i))^{-\beta}$
+    \item \textbf{2.\ Target Net ($\vecb{\theta}^-$):} frozen $C$ steps or Polyak $\vecb{\theta}^-\gets\tau\vecb{\theta}+(1-\tau)\vecb{\theta}^-$
+    \item \textbf{3.\ Double DQN:} $y_i = r_i + \gamma Q_{\vecb{\theta}^-}\bigl(s'_i, \argmax_{a'} Q_{\vecb{\theta}}(s'_i,a')\bigr)$
+    \item \textbf{4.\ Dueling ($V+A$):} $Q_{\vecb{\theta}}(s,a) = V_{\vecb{\theta}}(s) + A_{\vecb{\theta}}(s,a) - \frac{1}{|\Actions|}\sum_{a'}A_{\vecb{\theta}}(s,a')$
+    \item \textbf{5.\ Rainbow / BBF:} $n=3$ step returns + C51 distributional + soft resets (high UTD)
+    \item \textbf{6.\ HER:} relabel sparse-reward goals $g'\gets s_T$ inside replay buffer $\mathcal{D}$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{TD Bootstraps One Step; Traces Bridge to MC; Replay + $\vecb{\theta}^-$ Tame the Triad} \\[2pt]
+  \footnotesize\mdseries \textbf{Never use the same noisy network to pick $\argmax$ and evaluate it.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item Ordinary IS $\rho_{t:T-1}$ has $\infty$ variance $\to$ use Weighted IS
+    \item Residual-gradient SGD has double-sampling bias $\to$ use PBE (TDC)
+    \item Q-learning overestimates noisy actions $\to$ use Double Q / DDQN
+    \item High UTD in DQN causes plasticity loss $\to$ layer norm + resets
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Monte Carlo, SARSA, Q-Learning, DQN, Eligibility Traces \& the Deadly Triad}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item TD(0) / SARSA / Q-Learning:\csfm{Q(S_t,A_t)\gets Q(S_t,A_t)+\alpha\bigl[Y_t - Q(S_t,A_t)\bigr]}
+    \item Backward-view $\mathrm{TD}(\lambda)$:\csfm{\vecb{z}_t = \gamma\lambda\vecb{z}_{t-1} + \nabla_{\vecb{w}}\hat{v}(S_t,\vecb{w}_t),\quad \vecb{w}_{t+1} = \vecb{w}_t + \alpha\delta_t\vecb{z}_t}
+    \item TDC (Gradient-TD off-policy):\csfm{\vecb{w}_{t+1} = \vecb{w}_t + \alpha\rho_t\bigl(\delta_t\vecb{x}_t - \gamma\vecb{x}_{t+1}(\vecb{x}_t\T\vecb{v}_t)\bigr)}
+    \item Double DQN target:\csfm{y_i^{\mathrm{DDQN}} = r_i + \gamma(1-\mathrm{done}_i)\,Q_{\vecb{\theta}^-}\!\bigl(s'_i,\argmax_{a'}Q_{\vecb{\theta}}(s'_i,a')\bigr)}
+    \item Dueling Q-head (identifiable):\csfm{Q_{\vecb{\theta}}(s,a) = V_{\vecb{\theta}}(s) + \Bigl(A_{\vecb{\theta}}(s,a) - \frac{1}{|\Actions|}\sum_{a'}A_{\vecb{\theta}}(s,a')\Bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{DOUBLE DQN + PER TRAINING LOOP}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Act $\epsilon$-greedily in $Q_{\vecb{\theta}}(s_t,\cdot)$; push $(s_t,a_t,r_{t+1},s_{t+1},\mathrm{done}_t)$ to $\mathcal{D}$ with $\max_j p_j$.
+    \item Sample minibatch $i\sim P(i)=p_i^\alpha/\sum_j p_j^\alpha$; set $w_i=(NP(i))^{-\beta}/\max_j w_j$.
+    \item Compute $y_i^{\mathrm{DDQN}}$ using $\vecb{\theta}$ to select $a^*$ and $\vecb{\theta}^-$ to evaluate; $\delta_i = y_i - Q_{\vecb{\theta}}(s_i,a_i)$.
+    \item Update $p_i\gets (\abs{\delta_i}+\epsilon)^\alpha$, step $\vecb{\theta}$ on $\frac{1}{2B}\sum_i w_i\delta_i^2$, sync $\vecb{\theta}^-\gets\vecb{\theta}$ every $C$ steps.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    non-Markov / episodic eval & Monte Carlo (unbiased $G_t$)\\
+    safe online exploration (cliff) & SARSA or Expected Sarsa\\
+    noisy action rewards & Double Q-Learning / Double DQN\\
+    delayed credit / sparse trace & $\mathrm{TD}(\lambda)$ or $n$-step ($n\in[3,5]$, $\lambda\approx 0.8$)\\
+    linear off-policy prediction & Gradient-TD (TDC / GTD2)\\
+    high-dim discrete control & Rainbow DQN / BBF (PER + Dueling + $\vecb{\theta}^-$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{BIAS--VARIANCE \& ERROR CHEAT-LINE}
+  \begin{csbul}
+    \item TD fixed point (linear on-policy): $\norm{\hat{v}(\cdot,\vecb{w}_{\mathrm{TD}}) - v_\pi}_\mu \le \frac{1}{\sqrt{1-\gamma^2}}\min_{\vecb{w}}\norm{\hat{v}(\cdot,\vecb{w})-v_\pi}_\mu$
+    \item Forward--backward equivalence: $\sum_{t=0}^{T-1}\delta_t\vecb{z}_t = \sum_{t=0}^{T-1}(G_t^\lambda - \vecb{w}\T\vecb{x}_t)\vecb{x}_t$ (offline)
+    \item PER annealing: anneal IS exponent $\beta: \beta_0 \to 1.0$ by end of training
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{TD($\lambda$) BIAS--VARIANCE SWEET SPOT (RMS Error vs.\ $\alpha$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=0, xmax=1.0, ymin=0.22, ymax=0.56,
+      xlabel={Step size $\alpha$}, ylabel={RMS Value Error}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north east, legend style={font=\tiny, fill=white, fill opacity=0.85, draw=none}]
+      \addplot[csF, very thick, mark=o, mark size=1.3pt] coordinates {(0.05,0.50)(0.1,0.44)(0.2,0.37)(0.3,0.34)(0.4,0.33)(0.5,0.34)(0.6,0.36)(0.8,0.43)(1.0,0.53)};
+      \addlegendentry{$\lambda=0$ (TD(0))}
+      \addplot[csDom, very thick, mark=square*, mark size=1.3pt] coordinates {(0.05,0.47)(0.1,0.38)(0.2,0.29)(0.3,0.25)(0.4,0.24)(0.5,0.25)(0.6,0.27)(0.8,0.34)(1.0,0.48)};
+      \addlegendentry{$\lambda=0.8$ (sweet spot)}
+      \addplot[csA, very thick, dotted, mark=diamond*, mark size=1.5pt] coordinates {(0.05,0.48)(0.1,0.43)(0.2,0.40)(0.3,0.42)(0.4,0.47)(0.5,0.54)};
+      \addlegendentry{$\lambda=1$ (MC)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Deadly Triad divergence:} never combine off-policy data ($\mu\ne d^\pi$), bootstrapping, and semi-gradient updates without target nets + replay or TDC
+    \item \textbf{Forgetting $(1-\mathrm{done}_i)$ mask:} bootstrapping from terminal states $s'_i$ injects phantom future value and corrupts Q-estimates
+    \item \textbf{Unidentifiable Dueling heads:} $Q=V+A$ is unidentifiable up to a constant shift unless you subtract $\frac{1}{|\Actions|}\sum_{a'}A(s,a')$
+    \item \textbf{Double-sampling bias in Bellman Error:} $\nabla\norm{\overline{\delta}_{\vecb{w}}}_\mu^2$ requires two independent samples of $S_{t+1}$ from $S_t$; single-sample SGD converges to the wrong point
+    \item \textbf{Uncorrected PER bias:} non-uniform sampling skews the expectation unless weighted by $w_i=(NP(i))^{-\beta}$ with $\beta\to 1$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{MC} waits for episode end (unbiased, noisy); \textbf{TD(0)} bootstraps in 1 step (fast, low variance); \textbf{$\mathrm{TD}(\lambda)$} blends all horizons via eligibility traces $\vecb{z}_t$.
+  When scaling off-policy Q-learning to deep nets, break the \textbf{Deadly Triad} with \textbf{Replay ($\mathcal{D}$)}, \textbf{Target Nets ($\vecb{\theta}^-$)}, \textbf{Double Q}, and \textbf{Dueling ($V+A$)} heads.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

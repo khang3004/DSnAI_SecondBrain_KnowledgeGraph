@@ -1,0 +1,221 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Numerical \& Convex Optimization}{Heavy-Ball, Nesterov, AdaGrad, RMSProp, Adam/AdamW \& Second-Order}
+  {Momentum accelerates $\kappa\to\sqrt\kappa$; adaptive \& Fisher preconditioners $\mat P_t\inv$ turn eccentric ravines into isotropic spheres}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Optimizers\\ \footnotesize\mdseries $\mat P_t\inv\vecb d_t$ $\cdot$ NAG $\cdot$ NGD}{%
+  \begin{tikzpicture}[scale=0.50, >=Stealth]
+    % Ravine ellipse with zig-zag GD vs smooth Momentum/Adam trajectory
+    \draw[csDom!45, thick] (0,0) ellipse (1.85 and 0.55);
+    \draw[csDom!25, thin] (0,0) ellipse (1.10 and 0.32);
+    \draw[->, csA, thick] (-1.65,0.35)--(-1.15,-0.42)--(-0.65,0.36)--(-0.25,-0.28);
+    \draw[->, csD, very thick] (-1.65,0.35)..controls(-0.9,-0.08)and(-0.4,0.02)..(0,0);
+    \fill[csDom] (0,0) circle (2.4pt);
+    \node[font=\tiny, csA] at (-1.1,0.72) {GD zig-zag};
+    \node[font=\tiny, csD] at (0.6,-0.72) {$\mat P_t\inv\vecb d_t$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; UNIFIED TEMPLATE \& POLYAK HEAVY-BALL}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\vecb\theta_t=(1-\eta_t\lambda)\vecb\theta_{t-1}-\eta_t\mat P_t\inv\vecb d_t}
+    \begin{csbul}
+      \item \textbf{3 forms:} velocity $\vecb m_t=\beta\vecb m_{t-1}+\vecb g_t$, HB $\vecb\theta_t=\vecb\theta_{t-1}-\alpha\vecb g_t+\beta\Delta\vecb\theta_{t-1}$, and IMA
+      \item \textbf{Quadratic accel.\ ($\kappa=L/\mu$):} $\alpha^*=\frac{4}{(\sqrt L+\sqrt\mu)^2}$, $\beta^*=\bigl(\frac{\sqrt\kappa-1}{\sqrt\kappa+1}\bigr)^2 \implies \rho_{\mathrm{HB}}^*=\frac{\sqrt\kappa-1}{\sqrt\kappa+1}$ ($O(\sqrt\kappa\log\frac{1}{\varepsilon})$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[gray, thin] (0,0) circle (1.05);
+      \draw[csA, thick, dashed] (0,0) circle (0.72);
+      \draw[->, gray] (-1.2,0)--(1.2,0);
+      \draw[->, gray] (0,-1.2)--(0,1.2);
+      \fill[csA] (0.45,0.56) circle (2.2pt);
+      \fill[csA] (0.45,-0.56) circle (2.2pt);
+      \node[csA, anchor=north] at (0,-1.18) {$\abs{r_{1,2}}=\sqrt{\beta^*}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; NESTEROV ACCELERATED GRADIENT (NAG)}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\vecb y_t=\vecb x_t+\beta_t(\vecb x_t-\vecb x_{t-1}),\;\; \vecb x_{t+1}=\vecb y_t-\eta_t\grad f(\vecb y_t)}
+    \begin{csbul}
+      \item \textbf{Lookahead:} $\grad f(\vecb y_t)\approx\grad f(\vecb x_t)+\beta_t\mat H\Delta\vecb x_t$ damps steep oscillations before overshoot
+      \item \textbf{Convex ($\eta=1/L$):} $\lambda_{t+1}=\tfrac{1+\sqrt{1+4\lambda_t^2}}{2}$, $\beta_t=\tfrac{\lambda_t-1}{\lambda_{t+1}} \implies f(\vecb x_T)-f^*\le\frac{2L D_0^2}{(T+1)^2}$
+      \item \textbf{$\mu$-SC rate:} $\beta=\frac{\sqrt\kappa-1}{\sqrt\kappa+1}$ gives global $(1-1/\sqrt\kappa)^T$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \fill[csDom] (0,0) circle (2pt) node[below left] {$\vecb\theta_{t-1}$};
+      \draw[->, csB, thick, dashed] (0,0)--(1.4,0.9) node[above] {$\beta\vecb v_{t-1}$};
+      \fill[csB] (1.4,0.9) circle (2pt) node[right] {$\tilde{\vecb\theta}_t$};
+      \draw[->, csA, thick] (1.4,0.9)--(1.1,-0.25) node[right] {$-\eta\grad f(\tilde{\vecb\theta}_t)$};
+      \draw[->, csDom, very thick] (0,0)--(1.1,-0.25) node[below] {$\vecb\theta_t$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; ADAPTIVE MOMENTS: AdaGrad $\to$ RMSProp $\to$ AdamW}{%
+  \csfm{\hat{\vecb m}_t=\frac{\vecb m_t}{1-\beta_1^t},\quad \hat{\vecb v}_t=\frac{\vecb v_t}{1-\beta_2^t},\quad \vecb\theta_t=(1-\eta_t\lambda)\vecb\theta_{t-1}-\eta_t\frac{\hat{\vecb m}_t}{\sqrt{\hat{\vecb v}_t}+\epsilon}}
+  \begin{csbul}
+    \item \textbf{AdaGrad ($\vecb v_t=\sum\vecb g_i^{\odot 2}$):} great for sparse convex features; freezes in deep nets
+    \item \textbf{RMSProp ($\vecb v_t=\beta_2\vecb v_{t-1}+(1-\beta_2)\vecb g_t^{\odot 2}$):} forgets ancient curvature; no $\vecb m_t$ or bias fix
+    \item \textbf{Adam bias fix:} without $1-\beta^t$, step $1$ inflates by $\frac{1-\beta_1}{\sqrt{1-\beta_2}}\approx 3.16\times$; with fix, $\abs{\Delta\theta_{1,j}}\le\eta_1$
+    \item \textbf{AdamW decoupling:} coupled $L_2$ divides $\lambda\vecb\theta$ by $\sqrt{\hat{\vecb v}_t}$ (weakening decay on high-grad weights); AdamW applies uniform $(1-\eta_t\lambda)\vecb\theta_{t-1}$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; SCHEDULES $-$ Warmup, Cosine \& Global Clipping}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Linear warmup ($t<T_w$):} $\eta_t=\eta_{\mathrm{init}}+\frac{t}{T_w}(\eta_{\max}-\eta_{\mathrm{init}})$ prevents early $\hat{\vecb v}_t$ variance spikes while $t\ll(1-\beta_2)\inv$
+      \item \textbf{Cosine decay ($t\ge T_w$):} $\eta_{\min}+\frac{1}{2}(\eta_{\max}-\eta_{\min})[1+\cos(\pi\frac{t-T_w}{T-T_w})]$
+      \item \textbf{Global $L_2$ norm clip:} $\vecb g_t\gets\min\bigl(1,\frac{\tau_{\mathrm{clip}}}{\norm{\vecb g_t}_2}\bigr)\vecb g_t$ preserves exact descent direction across cliff walls
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(2.6,0) node[right] {$t$};
+      \draw[->, gray] (0,0)--(0,1.6) node[above] {$\eta_t$};
+      \draw[csD!85!black, very thick] (0,0.15)--(0.55,1.35) plot[domain=0.55:2.4, samples=25] (\x,{0.2 + 0.575*(1+cos(180*(\x-0.55)/1.85))});
+      \draw[csA, dotted, thick] (0.55,0)--(0.55,1.35);
+      \node[anchor=north] at (0.55,0) {$T_w$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; NEWTON, LEVENBERG--MARQUARDT \& L-BFGS}{%
+  \csfm{\mat C_{t+1}=\mat V_t\T\mat C_t\mat V_t+\rho_t\vecb s_t\vecb s_t\T,\qquad \mat V_t=\eye_P-\rho_t\vecb y_t\vecb s_t\T,\quad \rho_t=(\vecb y_t\T\vecb s_t)\inv}
+  \begin{csbul}
+    \item \textbf{Newton + LM damping:} $\vecb\delta_t=-(\mat H_t+\lambda_{\mathrm{LM}}\eye_P)\inv\vecb g_t$ (quadratic local rate, $O(P^3)$ cost; $\lambda_{\mathrm{LM}}$ prevents indefinite saddle attraction)
+    \item \textbf{BFGS secant:} $\mat C_{t+1}\vecb y_t=\vecb s_t$; preserves $\mat C_{t+1}\succ\zeros$ iff Wolfe curvature $\vecb y_t\T\vecb s_t>0$ holds
+    \item \textbf{Two-Loop L-BFGS:} stores $M\approx 10$ pairs $\{(\vecb s_i,\vecb y_i)\}$, Seed $\gamma_t=\frac{\vecb s_{t-1}\T\vecb y_{t-1}}{\vecb y_{t-1}\T\vecb y_{t-1}}\eye_P$; $O(MP)$ FLOPs/mem
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; NATURAL GRADIENT (NGD), GGN \& K-FAC}{%
+  \csfm{\mat F(\vecb\theta)=\E_{p(\vecb x)p_{\vecb\theta}(y\mid\vecb x)}\bigl[\grad\log p\,\grad\log p\T\bigr]\succeq\zeros,\qquad \tilde\grad\mathcal L=\mat F(\vecb\theta)\inv\grad\mathcal L}
+  \begin{csbul}
+    \item \textbf{KL trust region:} $\E[\KL{p_{\vecb\theta}}{p_{\vecb\theta+\vecb\delta}}]\approx\frac{1}{2}\vecb\delta\T\mat F\vecb\delta \implies$ NGD is \textbf{reparameterization invariant}
+    \item \textbf{GGN equivalence:} $\mat G=\E[\mat J_{\vecb\theta}\T\mat\Lambda\mat J_{\vecb\theta}]=\mat F\succeq\zeros$ (drops indefinite $\sum_c r_c\hess f_c$, safe at saddles!)
+    \item \textbf{K-FAC ($\mat F_\ell\approx\mat A_{\ell-1}\otimes\mat G_\ell$):} $\mat F_\ell\inv\mathrm{vec}(\grad_{\mat W_\ell}\mathcal L)\approx\mathrm{vec}(\mat G_\ell\inv(\grad_{\mat W_\ell}\mathcal L)\mat A_{\ell-1}\inv)$ in $O(d_{\mathrm{in}}^3+d_{\mathrm{out}}^3)$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Momentum smooths gradients across time ($\vecb d_t$); preconditioning whitens curvature across space ($\mat P_t\inv$).} \\[1pt]
+  \footnotesize\mdseries \textbf{Decouple weight decay in AdamW, guard L-BFGS with $\vecb y_t\T\vecb s_t>0$, and use PSD Fisher/GGN instead of raw $\mat H_t$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Coupled $L_2$ in Adam:} loss $+\frac{\lambda}{2}\norm{\vecb\theta}^2$ scales decay by $1/\sqrt{\hat{\vecb v}_t}$; use AdamW
+    \item \textbf{FP16 \& norms:} keep $(\vecb m_t,\vecb v_t)$ in FP32 ($12P$ B); never decay 1D LayerNorm scales
+    \item \textbf{Undamped Newton / Emp.\ Fisher:} $\mat H_t\inv$ jumps uphill at saddles; $\hat{\mat F}$ collapses as $\vecb g_t\to\zeros$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Momentum, Nesterov, Adam/AdamW, LR Schedules \& Second-Order / Natural Gradient}\;---\;Domain 01 $\cdot$ Numerical \& Convex Optimization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Heavy-Ball optimal quadratic parameters ($\kappa=L/\mu$):
+      \csfm{\alpha^*=\frac{4}{(\sqrt L+\sqrt\mu)^2},\quad \beta^*=\left(\frac{\sqrt\kappa-1}{\sqrt\kappa+1}\right)^2,\quad \rho_{\mathrm{HB}}^*=\frac{\sqrt\kappa-1}{\sqrt\kappa+1}}
+    \item Nesterov $O(1/T^2)$ sequence ($\eta=1/L$):
+      \csfm{\lambda_{t+1}=\frac{1+\sqrt{1+4\lambda_t^2}}{2},\quad \beta_t=\frac{\lambda_t-1}{\lambda_{t+1}},\quad f(\vecb x_T)-f^*\le\frac{2L D_0^2}{(T+1)^2}}
+    \item AdamW update ($\vecb m_t,\vecb v_t$ from pure loss gradient $\vecb g_t$):
+      \csfm{\vecb\theta_t=(1-\eta_t\lambda)\vecb\theta_{t-1}-\eta_t\frac{\vecb m_t/(1-\beta_1^t)}{\sqrt{\vecb v_t/(1-\beta_2^t)}+\epsilon}}
+    \item Natural Gradient \& Kronecker-Factored K-FAC:
+      \csfm{\Delta\vecb\theta=-\eta_t\mat F(\vecb\theta)\inv\grad\mathcal L,\quad (\mat A_{\ell-1}\otimes\mat G_\ell)\inv\mathrm{vec}(\mat G_{\mat W})=\mathrm{vec}(\mat G_\ell\inv\mat G_{\mat W}\mat A_{\ell-1}\inv)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ ADAMW PIPELINE \& TWO-LOOP L-BFGS}
+  \footnotesize
+  \textbf{LLM / Transformer AdamW Training Step ($t=1,\dots,T$):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item Schedule $\eta_t$: linear warmup ($t\le T_w$) then cosine decay to $\eta_{\min}$.
+    \item If $t>T_w$ and $\norm{\vecb g_t}_2>\tau_{\mathrm{clip}}$, clip $\vecb g_t\gets(\tau_{\mathrm{clip}}/\norm{\vecb g_t}_2)\vecb g_t$.
+    \item Update FP32 $\vecb m_t,\vecb v_t$, compute bias-corrected $\hat{\vecb m}_t,\hat{\vecb v}_t$, apply decoupled decay $(1-\eta_t\lambda)\vecb\theta_{t-1}$ (with $\lambda=0$ on 1D norms/biases).
+  \end{enumerate}
+  \vspace{1pt}
+  \textbf{Two-Loop L-BFGS ($\vecb d_t=-\mat C_t\vecb g_t$, history $M$):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item Backward $i=t{-}1\dots t{-}M$: $\alpha_i=\rho_i\vecb s_i\T\vecb q$, $\vecb q\gets\vecb q-\alpha_i\vecb y_i$.
+    \item Scale $\vecb r=\frac{\vecb s_{t-1}\T\vecb y_{t-1}}{\vecb y_{t-1}\T\vecb y_{t-1}}\vecb q$; forward $i=t{-}M\dots t{-}1$: $\vecb r\gets\vecb r+(\alpha_i-\rho_i\vecb y_i\T\vecb r)\vecb s_i$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.14}\footnotesize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    Transformers / LLMs & AdamW + warmup + cosine + global clip\\
+    vision CNNs / flat-minima & SGD + Momentum ($\beta=0.9$) + cosine LR\\
+    smooth deterministic convex & Nesterov NAG ($O(1/T^2)$) or L-BFGS\\
+    full-batch scientific / PINNs & Two-Loop L-BFGS + Wolfe line search\\
+    sparse convex embeddings & AdaGrad ($\vecb v_t=\sum\vecb g_i^{\odot 2}$)\\
+    badly scaled probabilistic net & Natural Gradient / K-FAC / GGN\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{MEMORY \& SCALING CHEAT-LINE ($P$ parameters)}
+  \footnotesize
+  \begin{csbul}
+    \item \textbf{State memory:} SGD $0P$ \textbar\; Momentum/NAG/RMSProp $1P$ \textbar\; AdamW $2P$ \textbar\; L-BFGS $2MP$
+    \item \textbf{Mixed-precision LLM RAM:} BF16 weights ($2P$) + BF16 grads ($2P$) + FP32 master/$\vecb m_t$/$\vecb v_t$ ($12P$) $=16P$ bytes ($\approx 112\text{ GB}$ at $P=7\text{B}$)
+    \item \textbf{Momentum LR rescaling:} unnormalized $\vecb m_t=\beta\vecb m_{t-1}+\vecb g_t$ is $1/(1-\beta)$ larger than EMA $\beta\vecb m_{t-1}+(1-\beta)\vecb g_t\implies\eta_{\mathrm{raw}}=(1-\beta)\eta_{\mathrm{ema}}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{ACCELERATION ($\kappa=100$) \& ADAM BIAS DYNAMICS}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, ymode=log, xmin=0, xmax=50, ymin=5e-6, ymax=5e5,
+      xlabel={Iteration $t$ (on $\kappa=100$ quadratic)}, ylabel={Normalized error $f(\vecb\theta_t)/f(\vecb\theta_0)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={1e-4,1e-2,1,1e2,1e4}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.98,0.92)}, anchor=north east, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csA, thick, dashed] coordinates {(0,1)(5,0.818)(10,0.670)(20,0.449)(30,0.301)(40,0.202)(50,0.135)};
+      \addlegendentry{Optimal GD ($\rho=(\kappa-1)/(\kappa+1)=99/101$)}
+      \addplot[csB, very thick] coordinates {(0,1)(2,9.55)(4,13.61)(6,12.64)(10,6.58)(16,1.46)(22,0.244)(31,0.0129)(40,0.000574)(50,0.0000161)};
+      \addlegendentry{Heavy-Ball ($\alpha^*,\beta^*$): non-normal hump then $(9/11)^{2t}$}
+      \addplot[csD, very thick] coordinates {(0,1)(1,0.0097)(5,0.0078)(10,0.0048)(20,0.00132)(31,0.000242)(40,0.0000541)(50,0.0000095)};
+      \addlegendentry{Nesterov NAG: immediate lookahead damping}
+      \addplot[csF, dotted, thick, domain=0:26, samples=27] {(9/11)^(2*x)};
+      \addlegendentry{Asymptotic $\bigl((\sqrt\kappa-1)/(\sqrt\kappa+1)\bigr)^{2t}=(9/11)^{2t}$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing Adam bias correction:} at $t=100$ with $\beta_2=0.999$, $1-\beta_2^t=0.095\ll 1$; omitting $\hat{\vecb v}_t=\vecb v_t/(1-\beta_2^t)$ corrupts early step scales
+    \item \textbf{Adam non-convergence (Reddi et al.):} exponential forgetting in $\vecb v_t$ can diverge on rare large gradients; fix via AMSGrad $\hat v_{t,\max}=\max(\hat v_{t-1,\max},\hat v_t)$
+    \item \textbf{Heavy-Ball transient hump:} companion matrix $\mat T(\lambda_i)$ is non-normal, causing early overshoot (Fig.\ left) and divergence on general non-quadratics without lookahead
+    \item \textbf{L-BFGS on noisy mini-batches:} stochastic differences $\vecb y_t=\vecb g_{t+1}-\vecb g_t$ violate $\vecb y_t\T\vecb s_t>0$ and corrupt $\mat C_t$; skip updates whenever $\vecb y_t\T\vecb s_t\le\varepsilon_{\mathrm{curv}}\norm{\vecb s_t}\norm{\vecb y_t}$
+    \item \textbf{Empirical Fisher $\neq$ True Fisher:} $\hat{\mat F}=\frac{1}{B}\sum\vecb g_n\vecb g_n\T$ uses data labels $y_n$ instead of $y\sim p_{\vecb\theta}(y\mid\vecb x)$ and becomes singular near minima
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  All modern optimizers instantiate $\vecb\theta_t=(1-\eta_t\lambda)\vecb\theta_{t-1}-\eta_t\mat P_t\inv\vecb d_t$.
+  \textbf{Heavy-Ball \& NAG} use velocity/lookahead in $\vecb d_t$ to turn $\kappa$ into $\sqrt\kappa$ ($O(1/T^2)$ convex).
+  \textbf{AdamW} normalizes each coordinate by $\sqrt{\hat{\vecb v}_t}+\epsilon$ with \emph{decoupled} weight decay, while \textbf{L-BFGS, GGN \& K-FAC} rotate and whiten coupled off-diagonal coordinates via secant or Fisher geometry.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

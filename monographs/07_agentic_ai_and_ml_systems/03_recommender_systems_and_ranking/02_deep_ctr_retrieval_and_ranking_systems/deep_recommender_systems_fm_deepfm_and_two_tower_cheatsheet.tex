@@ -1,0 +1,135 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Recommender Systems \& Ranking}{Factorization Machines, DeepFM, NeuMF, Two-Tower Retrieval \& Multi-Stage Ranking}
+  {Compute $O(kd)$ pairwise crosses with FM/DeepFM, retrieve $10^7\to 10^3$ via Two-Tower ANN, and rank with calibrated CTR}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Deep RS, FM\\ \& Two-Tower\\ \footnotesize\mdseries DeepFM $\cdot$ ANN $\cdot$ NDCG}{%
+  \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+    \node[draw=csB, fill=csB!12, rounded corners=2pt, inner sep=2pt] (u) at (-1.55,0.55) {User $u(\vecb x_u)$};
+    \node[draw=csD, fill=csD!12, rounded corners=2pt, inner sep=2pt] (i) at (1.55,0.55) {Item $v(\vecb x_i)$};
+    \draw[-{Stealth}, thick, csDom] (u)--(0,-0.45);
+    \draw[-{Stealth}, thick, csDom] (i)--(0,-0.45);
+    \node[draw=csDom, fill=csDom!10, rounded corners=2pt, inner sep=2pt] at (0,-0.75) {$\inner{u}{v}\to$ ANN};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; FACTORIZATION MACHINES ($O(kd)$)}{%
+  \csfm{\hat y_{\mathrm{FM}}=w_0+\sum_i w_i x_i + \frac{1}{2}\sum_{f=1}^k\Big[\big(\sum_i v_{i,f}x_i\big)^2-\sum_i v_{i,f}^2 x_i^2\Big]}
+  \begin{csbul}
+    \item \textbf{Linear-time trick:} computes all $\binom{d}{2}$ feature crosses in $O(k\cdot\mathrm{nnz}(\vecb x))$
+    \item \textbf{Sparse generalization:} estimates unseen $(i,j)$ crosses via shared latent $\vecb v_i, \vecb v_j$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; DEEPFM \& NEUMF $-$ Low + High-Order}{%
+  \csfm{\hat y_{\mathrm{DeepFM}} = \sigma\bigl(y_{\mathrm{FM}}(\vecb x) + y_{\mathrm{DNN}}(\vecb e)\bigr)}
+  \begin{csbul}
+    \item \textbf{Shared embeddings:} FM (degree-2) + MLP (high-order) share $\mat V$ without manual crosses
+    \item \textbf{NeuMF:} fuses GMF ($\vecb p_u^{\mathrm{G}}\odot\vecb q_i^{\mathrm{G}}$) with MLP branch on $[\vecb p_u^{\mathrm{M}};\vecb q_i^{\mathrm{M}}]$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; TWO-TOWER RETRIEVAL \& LOG-Q CORRECTION}{%
+  \csfm{s(u,i)=\frac{\inner{u(\vecb x_u)}{v(\vecb x_i)}}{\tau},\quad s_{\mathrm{corr}}(u,j)=s(u,j)-\log Q(j)}
+  \begin{csbul}
+    \item \textbf{Decoupled towers:} item embeddings indexed offline in HNSW / IVF-PQ ($O(\log N)$)
+    \item \textbf{Log-Q fix:} corrects in-batch softmax so popular items are not over-penalized
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; MULTI-STAGE PRODUCTION FUNNEL}{%
+  \begin{csbul}
+    \item \textbf{1. Retrieval ($10^7\to 10^3$):} Two-Tower ANN + item-item CF + trending fallback
+    \item \textbf{2. Ranking ($10^3\to 10^2$):} DeepFM / DCN multi-task $P(\text{click}), P(\text{buy}), \E[\text{dwell}]$
+    \item \textbf{3. Re-ranking ($10^2\to 10^1$):} MMR/DPP diversity, freshness, business rules
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; SEQUENTIAL RS \& COLD-START}{%
+  \begin{csbul}
+    \item \textbf{SASRec / Transformers:} causal self-attention over user interaction sequence $(i_1,\dots,i_t)$
+    \item \textbf{Cold-start:} content metadata / text/vision embeddings in Two-Tower bypass missing IDs
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; RANKING METRICS $-$ NDCG@K \& CALIBRATION}{%
+  \csfm{\mathrm{DCG}@K=\sum_{r=1}^K \frac{2^{\mathrm{rel}_r}-1}{\log_2(r+1)},\qquad \mathrm{NDCG}@K=\frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K}}
+  \begin{csbul}
+    \item \textbf{Calibration (ECE / RIG):} ad auctions need true probabilities $\hat p$, not just rank order
+  \end{csbul}}
+
+\end{tikzpicture}
+
+% =============================================================================
+%                                 PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item \textbf{FM Trick:} $\sum_{i<j}\inner{\vecb v_i}{\vecb v_j}x_i x_j = \frac{1}{2}\sum_{f=1}^k[(\sum_i v_{i,f}x_i)^2-\sum_i v_{i,f}^2 x_i^2]$
+    \item \textbf{Log-Q In-Batch Loss:} $-\log\frac{e^{s(u,i^+)-\log Q(i^+)}}{e^{s(u,i^+)-\log Q(i^+)}+\sum_{j\in\mathcal B^-}e^{s(u,j)-\log Q(j)}}$
+    \item \textbf{DCG@K:} $\sum_{r=1}^K \frac{2^{\mathrm{rel}_r}-1}{\log_2(r+1)}$ (logarithmic rank discount)
+    \item \textbf{IPS Debiasing:} $\hat R_{\mathrm{IPS}}=\frac{1}{N}\sum_{t}\frac{\mathbb{I}(\text{click}_t)\,\ell_t}{p(\text{expose at pos}_t)}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{PRODUCTION RANKING PIPELINE RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Retrieve:} embed user/context online, query HNSW/ScaNN for top-$10^3$ items.
+    \item \textbf{Cross-score:} hydrate dense+sparse features from Feature Store and score with DeepFM/DCN.
+    \item \textbf{Multi-objective combine:} $S = w_1\hat p_{\mathrm{click}} + w_2\hat p_{\mathrm{buy}} + w_3\hat t_{\mathrm{dwell}}$.
+    \item \textbf{Diversify \& Debias:} apply DPP/MMR re-ranking and log random exploration propensities.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    $10^7$-item fast retrieval & Two-Tower + log-Q + HNSW ANN\\
+    rich sparse CTR scoring & DeepFM or DCN-v2 (on top-$10^3$)\\
+    session-ordered next item & SASRec / Transformer sequence encoder\\
+    cold-start new items & Content/CLIP/LLM features in item tower\\
+    calibrated ad bidding & DeepFM + temperature/isotonic calibration\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csF}{DCG RANK POSITION DISCOUNT $1/\log_2(r+1)$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=1, xmax=20, ymin=0, ymax=1.40,
+      xlabel={Rank Position $r$}, ylabel={Discount Weight $1/\log_2(r+1)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={0,0.2,0.4,0.6,0.8,1.0},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.97,0.91)}, anchor=north east, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csDom, very thick, mark=*, mark size=1.4pt, domain=1:20, samples=20] {1/(ln(x+1)/ln(2))};
+      \addlegendentry{DCG weight $1/\log_2(r+1)$}
+      \addplot[csA, dashed, very thick, domain=1:20, samples=20] {1/x};
+      \addlegendentry{MRR weight $1/r$ (steeper)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing log-Q correction:} in-batch negatives sample popular items too often, suppressing their scores.
+    \item \textbf{Position bias loop:} top slots get more clicks; include position feature at train time and zero/marginalize at inference.
+    \item \textbf{Ranker selection bias:} training only on past ranker winners fails on retrieval tail; log randomized exploration slices.
+    \item \textbf{Two-Tower late-interaction ceiling:} pure dot product misses fine $(u,i)$ feature crosses—always follow with DeepFM/DCN.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csE}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Production recommenders scale via a funnel: Two-Tower ANN retrieves top-$10^3$ candidates in $O(\log N)$ with log-Q debiasing; DeepFM/DCN scores $O(kd)$ pairwise + high-order crosses; re-ranking balances diversity, calibration, and position debiasing.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+\end{document}

@@ -1,0 +1,213 @@
+---
+type: source
+book_slug: "probabilisticml_kevinmurphy_introduction"
+category: "Machine Learning & Deep Learning Books"
+pages: 860
+cited_by_monographs: 
+  - "[[Autoencoders, Variational Autoencoders (VAEs), Reparameterization & VQ-VAE]]"
+  - "[[Change-of-Variables, Coupling - Autoregressive Normalizing Flows & Neural ODEs]]"
+  - "[[Classical State-Space Models, Structured SSMs & Selective Scan (Mamba)]]"
+  - "[[Classifier - Classifier-Free Guidance, DDIM - DPM-Solver ODEs & Consistency Models]]"
+  - "[[Collaborative Filtering, Matrix Factorization (ALS - SGD), AutoRec & Bayesian Personalized Ranking (BPR)]]"
+  - "[[Concentration Inequalities, Limit Theorems & Statistical Estimation (MLE - MAP)]]"
+  - "[[Convex Sets, Fenchel - Lagrange Duality & KKT Conditions]]"
+  - "[[Convolutional Neural Networks, Translation Equivariance & Vision Backbones]]"
+  - "[[Decision Trees, Bagging, Random Forests & Gradient Boosting]]"
+  - "[[Denoising Diffusion Probabilistic Models (DDPM) & Noise-Conditional Score Networks]]"
+  - "[[Dyna, MCTS, World Models, Offline RL & Multi-Agent Reinforcement Learning]]"
+  - "[[Energy-Based Models, Partition Functions, Contrastive Divergence & Score Matching]]"
+  - "[[Factorization Machines, DeepFM, NeuMF, Two-Tower Retrieval & Multi-Stage Ranking]]"
+  - "[[Feedforward Networks, Universal Approximation & Kolmogorov-Arnold Networks (KAN)]]"
+  - "[[GAN Game Dynamics, Mode Collapse, f-GANs & Wasserstein - OT-GANs]]"
+  - "[[Gradient Descent Dynamics - Strong Convexity, Smoothness, PL Condition & Saddle Escape]]"
+  - "[[Graph Neural Networks, Message Passing & Graph Convolutional Architectures]]"
+  - "[[Linear Regression, Ridge - Lasso Regularization, Logistic Regression & GLMs]]"
+  - "[[MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI]]"
+  - "[[Matrix Calculus, Computational Graphs & Automatic Differentiation]]"
+  - "[[Momentum, Nesterov, Adam - AdamW, LR Schedules & Second-Order - Natural Gradient]]"
+  - "[[Monge-Kantorovich Optimal Transport, Wasserstein Metrics & Sinkhorn Scaling]]"
+  - "[[Monte Carlo Integration, Metropolis-Hastings, Gibbs, HMC & Langevin Sampling]]"
+  - "[[Monte Carlo, SARSA, Q-Learning, DQN, Eligibility Traces & the Deadly Triad]]"
+  - "[[Multi-Armed & Contextual Bandits, UCB, Thompson Sampling & Regret Bounds]]"
+  - "[[Object Detection (R-CNN, SSD, DETR), Semantic Segmentation (FCN, U-Net, SAM) & Vision-Language Models]]"
+  - "[[PCA, Gaussian Mixture Models & the Expectation-Maximization Algorithm]]"
+  - "[[Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO - PPO & RL-as-Inference]]"
+  - "[[Probabilistic Graphical Models, Message Passing & Gaussian Processes]]"
+  - "[[Probability Spaces, Multivariate Gaussians & Exponential Families]]"
+  - "[[Recurrent Neural Networks, BPTT, LSTMs - GRUs & Long-Range Gradient Flow]]"
+  - "[[Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention & GPT - BERT Blocks]]"
+  - "[[Score SDEs, Itô - Girsanov - Fokker-Planck Equations & Flow Matching]]"
+  - "[[Shannon Entropy, KL Divergence, f-Divergences & Information Bottleneck]]"
+  - "[[Spectral Theory, Singular Value Decomposition & Low-Rank Approximations]]"
+  - "[[Stochastic & Minibatch SGD, Expected Smoothness, Subgradients & Proximal Methods]]"
+  - "[[Support Vector Machines, Margin Duality & Mercer Kernel Methods]]"
+  - "[[Variational Inference, Evidence Lower Bound (ELBO) & Expectation Propagation]]"
+  - "[[Vector Spaces, Norms, Orthogonality & Least-Squares Projections]]"
+  - "[[Words, Byte-Pair Encoding (BPE), Distributional Embeddings & Positional Encodings]]"
+cited_by_concepts: 
+  - "[[AdamW]]"
+  - "[[AutoRec]]"
+  - "[[Autoencoders]]"
+  - "[[Automatic Differentiation (AD)]]"
+  - "[[BPE & Subword Tokenization]]"
+  - "[[Bayesian Personalized Ranking (BPR)]]"
+  - "[[Bellman Equations]]"
+  - "[[Bregman & Legendre Duality]]"
+  - "[[CART Decision Trees]]"
+  - "[[CLIP & Vision-Language Alignment]]"
+  - "[[CNN & Equivariance]]"
+  - "[[Cauchy-Schwarz Inequality]]"
+  - "[[Classifier-Free Guidance (CFG)]]"
+  - "[[Collaborative Filtering (User-Item)]]"
+  - "[[Concentration Inequalities]]"
+  - "[[Condition Number]]"
+  - "[[Consistency Models]]"
+  - "[[Convexity & Subgradients]]"
+  - "[[DDPM]]"
+  - "[[Deadly Triad]]"
+  - "[[EM Algorithm]]"
+  - "[[Eigendecomposition & Spectral Theorem]]"
+  - "[[Energy-Based Models (EBM)]]"
+  - "[[Exponential Families]]"
+  - "[[Factorization Machines & DeepFM]]"
+  - "[[FlashAttention]]"
+  - "[[Flow Matching & Rectified Flow]]"
+  - "[[Fokker-Planck Equation]]"
+  - "[[GAN & Mode Collapse]]"
+  - "[[GQA & MQA]]"
+  - "[[GRPO]]"
+  - "[[Gaussian Mixture Models (GMM)]]"
+  - "[[Gaussian Processes]]"
+  - "[[Generalized Advantage Estimation (GAE)]]"
+  - "[[Generalized Linear Models (GLM)]]"
+  - "[[Gradient Boosted Decision Trees (GBDT)]]"
+  - "[[Gradient Descent]]"
+  - "[[Graph Neural Networks (MPNN)]]"
+  - "[[Graphical Models (BN & MRF)]]"
+  - "[[Information Bottleneck]]"
+  - "[[Inner Product & Norms]]"
+  - "[[IoU, Anchor Boxes & NMS]]"
+  - "[[KL Divergence]]"
+  - "[[Kalman Filter]]"
+  - "[[Kantorovich Duality]]"
+  - "[[Kolmogorov-Arnold Networks (KAN)]]"
+  - "[[Lagrange Duality & KKT]]"
+  - "[[Law of Large Numbers & CLT]]"
+  - "[[Linear & Ridge Regression]]"
+  - "[[Logistic Regression]]"
+  - "[[Low-Rank Approximation (Eckart-Young)]]"
+  - "[[MC & TD Learning]]"
+  - "[[MCMC & HMC Sampling]]"
+  - "[[MCTS & MuZero]]"
+  - "[[MLP & Universal Approximation]]"
+  - "[[Mahalanobis Distance]]"
+  - "[[Markov Decision Process (MDP)]]"
+  - "[[Matrix Calculus & Jacobians]]"
+  - "[[Matrix Factorization (ALS & SGD)]]"
+  - "[[Maximum Likelihood & Fisher Info]]"
+  - "[[Mercer Kernels & RKHS]]"
+  - "[[Model-Based RL (Dyna & MBPO)]]"
+  - "[[Momentum & Nesterov NAG]]"
+  - "[[Moore-Penrose Pseudoinverse]]"
+  - "[[Multi-Armed Bandits & UCB]]"
+  - "[[Multivariate Gaussian & Schur Complement]]"
+  - "[[Mutual Information & DPI]]"
+  - "[[NDCG, MAP & Calibration]]"
+  - "[[Natural Gradient & K-FAC]]"
+  - "[[Normalizing Flows]]"
+  - "[[Object Detection (R-CNN, SSD & DETR)]]"
+  - "[[Offline RL (CQL)]]"
+  - "[[Orthogonal Projection]]"
+  - "[[PPO (Proximal Policy Optimization)]]"
+  - "[[Policy Gradient Theorem]]"
+  - "[[Polyak-Lojasiewicz (PL) Condition]]"
+  - "[[Principal Component Analysis (PCA)]]"
+  - "[[Probability Flow ODE]]"
+  - "[[Proximal & Subgradient Methods]]"
+  - "[[Q-Learning & DQN]]"
+  - "[[QR Factorization]]"
+  - "[[RNN, LSTM & GRU]]"
+  - "[[Random Forests & Bagging]]"
+  - "[[Reparameterization Trick]]"
+  - "[[RoPE & Positional Embeddings]]"
+  - "[[SVRG & Variance Reduction]]"
+  - "[[Score Matching (DSM & SSM)]]"
+  - "[[Score-Based SDE]]"
+  - "[[Self-Attention & Multi-Head Attention]]"
+  - "[[Semantic & Instance Segmentation (FCN, U-Net & SAM)]]"
+  - "[[Shannon Entropy]]"
+  - "[[Singular Value Decomposition (SVD)]]"
+  - "[[Sinkhorn Algorithm]]"
+  - "[[State Space Models (S4 & Mamba)]]"
+  - "[[Stochastic Gradient Descent (SGD)]]"
+  - "[[Support Vector Machines (SVM)]]"
+  - "[[TRPO]]"
+  - "[[Thompson Sampling]]"
+  - "[[Transformer Architecture]]"
+  - "[[Two-Tower Retrieval & Multi-Stage Ranking]]"
+  - "[[Value & Policy Iteration]]"
+  - "[[Variational Autoencoder (VAE)]]"
+  - "[[Variational Inference & ELBO]]"
+  - "[[Vector Space & Subspaces]]"
+  - "[[Vision Transformer (ViT)]]"
+  - "[[Wasserstein Distance]]"
+  - "[[Wasserstein GAN (WGAN)]]"
+  - "[[f-Divergence]]"
+tags:
+  - source
+  - textbook
+---
+
+# Source - Probabilistic Machine Learning
+
+- **Slug:** `probabilisticml_kevinmurphy_introduction`
+- **Category:** `Machine Learning & Deep Learning Books`
+- **Pages:** 860
+- **Top Keywords:** learning introduction, kevin murphy, probabilistic machine, machine learning, april, introduction, learning, version, data, model, probabilistic, murphy
+
+## Synthesized in Monographs
+
+- [[Autoencoders, Variational Autoencoders (VAEs), Reparameterization & VQ-VAE]]
+- [[Change-of-Variables, Coupling - Autoregressive Normalizing Flows & Neural ODEs]]
+- [[Classical State-Space Models, Structured SSMs & Selective Scan (Mamba)]]
+- [[Classifier - Classifier-Free Guidance, DDIM - DPM-Solver ODEs & Consistency Models]]
+- [[Collaborative Filtering, Matrix Factorization (ALS - SGD), AutoRec & Bayesian Personalized Ranking (BPR)]]
+- [[Concentration Inequalities, Limit Theorems & Statistical Estimation (MLE - MAP)]]
+- [[Convex Sets, Fenchel - Lagrange Duality & KKT Conditions]]
+- [[Convolutional Neural Networks, Translation Equivariance & Vision Backbones]]
+- [[Decision Trees, Bagging, Random Forests & Gradient Boosting]]
+- [[Denoising Diffusion Probabilistic Models (DDPM) & Noise-Conditional Score Networks]]
+- [[Dyna, MCTS, World Models, Offline RL & Multi-Agent Reinforcement Learning]]
+- [[Energy-Based Models, Partition Functions, Contrastive Divergence & Score Matching]]
+- [[Factorization Machines, DeepFM, NeuMF, Two-Tower Retrieval & Multi-Stage Ranking]]
+- [[Feedforward Networks, Universal Approximation & Kolmogorov-Arnold Networks (KAN)]]
+- [[GAN Game Dynamics, Mode Collapse, f-GANs & Wasserstein - OT-GANs]]
+- [[Gradient Descent Dynamics - Strong Convexity, Smoothness, PL Condition & Saddle Escape]]
+- [[Graph Neural Networks, Message Passing & Graph Convolutional Architectures]]
+- [[Linear Regression, Ridge - Lasso Regularization, Logistic Regression & GLMs]]
+- [[MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI]]
+- [[Matrix Calculus, Computational Graphs & Automatic Differentiation]]
+- [[Momentum, Nesterov, Adam - AdamW, LR Schedules & Second-Order - Natural Gradient]]
+- [[Monge-Kantorovich Optimal Transport, Wasserstein Metrics & Sinkhorn Scaling]]
+- [[Monte Carlo Integration, Metropolis-Hastings, Gibbs, HMC & Langevin Sampling]]
+- [[Monte Carlo, SARSA, Q-Learning, DQN, Eligibility Traces & the Deadly Triad]]
+- [[Multi-Armed & Contextual Bandits, UCB, Thompson Sampling & Regret Bounds]]
+- [[Object Detection (R-CNN, SSD, DETR), Semantic Segmentation (FCN, U-Net, SAM) & Vision-Language Models]]
+- [[PCA, Gaussian Mixture Models & the Expectation-Maximization Algorithm]]
+- [[Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO - PPO & RL-as-Inference]]
+- [[Probabilistic Graphical Models, Message Passing & Gaussian Processes]]
+- [[Probability Spaces, Multivariate Gaussians & Exponential Families]]
+- [[Recurrent Neural Networks, BPTT, LSTMs - GRUs & Long-Range Gradient Flow]]
+- [[Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention & GPT - BERT Blocks]]
+- [[Score SDEs, Itô - Girsanov - Fokker-Planck Equations & Flow Matching]]
+- [[Shannon Entropy, KL Divergence, f-Divergences & Information Bottleneck]]
+- [[Spectral Theory, Singular Value Decomposition & Low-Rank Approximations]]
+- [[Stochastic & Minibatch SGD, Expected Smoothness, Subgradients & Proximal Methods]]
+- [[Support Vector Machines, Margin Duality & Mercer Kernel Methods]]
+- [[Variational Inference, Evidence Lower Bound (ELBO) & Expectation Propagation]]
+- [[Vector Spaces, Norms, Orthogonality & Least-Squares Projections]]
+- [[Words, Byte-Pair Encoding (BPE), Distributional Embeddings & Positional Encodings]]
+
+## Key Atomic Concepts
+
+[[AdamW]], [[AutoRec]], [[Autoencoders]], [[Automatic Differentiation (AD)]], [[BPE & Subword Tokenization]], [[Bayesian Personalized Ranking (BPR)]], [[Bellman Equations]], [[Bregman & Legendre Duality]], [[CART Decision Trees]], [[CLIP & Vision-Language Alignment]], [[CNN & Equivariance]], [[Cauchy-Schwarz Inequality]], [[Classifier-Free Guidance (CFG)]], [[Collaborative Filtering (User-Item)]], [[Concentration Inequalities]], [[Condition Number]], [[Consistency Models]], [[Convexity & Subgradients]], [[DDPM]], [[Deadly Triad]], [[EM Algorithm]], [[Eigendecomposition & Spectral Theorem]], [[Energy-Based Models (EBM)]], [[Exponential Families]], [[Factorization Machines & DeepFM]], [[FlashAttention]], [[Flow Matching & Rectified Flow]], [[Fokker-Planck Equation]], [[GAN & Mode Collapse]], [[GQA & MQA]], [[GRPO]], [[Gaussian Mixture Models (GMM)]], [[Gaussian Processes]], [[Generalized Advantage Estimation (GAE)]], [[Generalized Linear Models (GLM)]], [[Gradient Boosted Decision Trees (GBDT)]], [[Gradient Descent]], [[Graph Neural Networks (MPNN)]], [[Graphical Models (BN & MRF)]], [[Information Bottleneck]], [[Inner Product & Norms]], [[IoU, Anchor Boxes & NMS]], [[KL Divergence]], [[Kalman Filter]], [[Kantorovich Duality]], [[Kolmogorov-Arnold Networks (KAN)]], [[Lagrange Duality & KKT]], [[Law of Large Numbers & CLT]], [[Linear & Ridge Regression]], [[Logistic Regression]], [[Low-Rank Approximation (Eckart-Young)]], [[MC & TD Learning]], [[MCMC & HMC Sampling]], [[MCTS & MuZero]], [[MLP & Universal Approximation]], [[Mahalanobis Distance]], [[Markov Decision Process (MDP)]], [[Matrix Calculus & Jacobians]], [[Matrix Factorization (ALS & SGD)]], [[Maximum Likelihood & Fisher Info]], [[Mercer Kernels & RKHS]], [[Model-Based RL (Dyna & MBPO)]], [[Momentum & Nesterov NAG]], [[Moore-Penrose Pseudoinverse]], [[Multi-Armed Bandits & UCB]], [[Multivariate Gaussian & Schur Complement]], [[Mutual Information & DPI]], [[NDCG, MAP & Calibration]], [[Natural Gradient & K-FAC]], [[Normalizing Flows]], [[Object Detection (R-CNN, SSD & DETR)]], [[Offline RL (CQL)]], [[Orthogonal Projection]], [[PPO (Proximal Policy Optimization)]], [[Policy Gradient Theorem]], [[Polyak-Lojasiewicz (PL) Condition]], [[Principal Component Analysis (PCA)]], [[Probability Flow ODE]], [[Proximal & Subgradient Methods]], [[Q-Learning & DQN]], [[QR Factorization]], [[RNN, LSTM & GRU]], [[Random Forests & Bagging]], [[Reparameterization Trick]], [[RoPE & Positional Embeddings]], [[SVRG & Variance Reduction]], [[Score Matching (DSM & SSM)]], [[Score-Based SDE]], [[Self-Attention & Multi-Head Attention]], [[Semantic & Instance Segmentation (FCN, U-Net & SAM)]], [[Shannon Entropy]], [[Singular Value Decomposition (SVD)]], [[Sinkhorn Algorithm]], [[State Space Models (S4 & Mamba)]], [[Stochastic Gradient Descent (SGD)]], [[Support Vector Machines (SVM)]], [[TRPO]], [[Thompson Sampling]], [[Transformer Architecture]], [[Two-Tower Retrieval & Multi-Stage Ranking]], [[Value & Policy Iteration]], [[Variational Autoencoder (VAE)]], [[Variational Inference & ELBO]], [[Vector Space & Subspaces]], [[Vision Transformer (ViT)]], [[Wasserstein Distance]], [[Wasserstein GAN (WGAN)]], [[f-Divergence]]

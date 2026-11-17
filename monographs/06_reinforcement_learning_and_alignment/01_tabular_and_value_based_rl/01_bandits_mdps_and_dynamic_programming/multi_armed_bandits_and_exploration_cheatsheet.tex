@@ -1,0 +1,214 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Bandits, MDPs \& Value-Based RL}{Multi-Armed \& Contextual Bandits, UCB, Thompson Sampling \& Regret Bounds}
+  {Earn while you learn: trade off immediate reward $\hat{\mu}_t(a)$ against uncertainty bonus $\delta_t(a)$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Bandits\\ \footnotesize\mdseries OFU $\cdot$ TS $\cdot$ LinUCB}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[thick, gray!60, ->] (-0.3,0) -- (3.8,0) node[right, font=\tiny, black] {$a$};
+    \foreach \x/\m/\u/\c in {0.5/0.8/0.65/csA, 1.8/1.45/0.35/csDom, 3.1/1.1/0.85/csB}{
+      \fill[\c!25] (\x-0.28,0) rectangle (\x+0.28,\m);
+      \draw[\c, very thick] (\x-0.28,0) rectangle (\x+0.28,\m);
+      \draw[\c!90!black, very thick] (\x,\m-\u*0.5) -- (\x,\m+\u);
+      \draw[\c!90!black, very thick] (\x-0.18,\m+\u) -- (\x+0.18,\m+\u);
+      \fill[\c] (\x,\m) circle (2pt);
+    }
+    \node[font=\tiny, csB, above] at (3.1,1.95) {$\argmax\tilde{R}_t$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ evaluative feedback \& regret}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{L_T = \sum_{t=1}^T \ell_t = \sum_{a=1}^K \E[N_{T+1}(a)]\,\Delta_a}
+    \begin{csbul}
+      \item Arm $a \in \{1,\dots,K\}$, mean $\mu_a = R(a)$
+      \item Gap $\Delta_a = R^* - R(a)$, pulls $N_t(a)$
+      \item Incremental: $Q_{n+1} = Q_n + \alpha_n(r_n - Q_n)$
+      \item Sublinear $L_T = o(T) \iff \Delta_a$ pulls $\ll T$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0) -- (4.2,0) node[right] {$t$};
+      \draw[->, gray] (0,0) -- (0,3.2) node[above] {$L_t$};
+      \draw[csA, very thick] (0,0) -- (3.8,2.9) node[left, pos=0.85] {$\Omega(T)$};
+      \draw[csDom, very thick, domain=0.1:3.8, samples=30] plot (\x, {0.72*ln(4*\x+1)}) node[right] {$O(\ln T)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ four exploration mechanisms}{%
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{3.05cm}>{\raggedright\arraybackslash}p{2.05cm}@{}}
+    \textbf{\textcolor{csB}{Policy}} & \textbf{\textcolor{csB}{Action Rule $a_t$}} & \textbf{\textcolor{csB}{Mechanism}}\\ \hline
+    $\epsilon$-Greedy & $\argmax_a \hat{\mu}_t(a)$ w.p.\ $1{-}\epsilon$ & blind uniform noise\\
+    UCB1 (OFU) & $\argmax_a \bigl[\hat{\mu}_t(a)+c\sqrt{\frac{\ln t}{N_t(a)}}\bigr]$ & Hoeffding bonus\\
+    Thompson (TS) & $\tilde{\vecb{\theta}}_t \sim p(\vecb{\theta}\mid h_t),\;\argmax_a R(a;\tilde{\vecb{\theta}}_t)$ & posterior matching\\
+    Grad.\ Bandit & $\pi_t(a) \propto e^{H_t(a)}$, SGA w/ $\bar{r}_t$ & softmax preference\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Optimistic Init:} $Q_1(a)\gg R^*$ forces early sweeps.}
+
+\csbranch{3}{C}{3\;\; KEY BOUNDS $-$ Lai--Robbins \& minimax}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\liminf_{T\to\infty}\frac{L_T}{\ln T} \ge \sum_{\Delta_a>0}\frac{\Delta_a}{\KL{p_R(a)}{p_R(a^*)}}}
+    \begin{csbul}
+      \item \textbf{UCB1 gap-dep.:} $L_T \le \sum_{\Delta_a>0}\frac{8\ln T}{\Delta_a} + O(K)$
+      \item \textbf{Minimax (gap-free):} $L_T \le O(\sqrt{KT\ln T})$
+      \item \textbf{LinUCB ($d$-dim):} $L_T \le \tilde{O}(d\sqrt{T})$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csC, thick, domain=-1.6:1.6, samples=40, fill=csC!15] plot (\x, {2.2*exp(-1.3*\x*\x)});
+      \draw[csA, thick, domain=-0.6:2.6, samples=40, fill=csA!15] plot (\x, {1.7*exp(-0.9*(\x-1.0)*(\x-1.0))});
+      \draw[<->, very thick, csDom] (0,2.35) -- (1.0,2.35) node[midway, above] {$\Delta_a$};
+      \node at (0.5,-0.5) {$p(\theta_a \mid h_t)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Contexts, BAMDP \& OPE}{%
+  \begin{csbul}
+    \item \textbf{Contextual LinUCB:} $u_{t,a} = \hat{\vecb{\theta}}_a\T\vecb{x}_{t,a} + \alpha\sqrt{\vecb{x}_{t,a}\T\mat{A}_a\inv\vecb{x}_{t,a}}$
+    \item \textbf{Ridge stats:} $\mat{A}_a = \lambda\eye_d + \sum \vecb{x}_{\tau,a}\vecb{x}_{\tau,a}\T$, $\hat{\vecb{\theta}}_a = \mat{A}_a\inv\vecb{b}_a$
+    \item \textbf{Bayes-Adaptive MDP:} belief $b_t = p(\vecb{\theta}\mid h_t)$ $\Rightarrow$ Gittins index
+    \item \textbf{Off-Policy IPW:} $\hat{V}_{\mathrm{IPW}}(\pi) = \frac{1}{n}\sum_{i=1}^n \frac{\mathbb{I}(\pi(\vecb{s}_i)=a_i)}{\pi_0(a_i\mid\vecb{s}_i)}r_i$
+    \item \textbf{Doubly Robust (DR):} adds $\hat{R}(\vecb{s}_i,\pi(\vecb{s}_i))$; unbiased if $\hat{R}$ \emph{or} $\pi_0$ right
+    \item \textbf{Pure Exploration:} best-arm ID minimizes simple regret $\ell_T$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ time, memory \& scaling}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{2.0cm}@{}}
+    \textbf{\textcolor{csE}{Algorithm}} & \textbf{\textcolor{csE}{Time/step}} & \textbf{\textcolor{csE}{Memory}} & \textbf{\textcolor{csE}{Regret $L_T$}}\\ \hline
+    $\epsilon$-Greedy (const.) & $O(K)$ & $O(K)$ & $\Omega(\epsilon T)$\\
+    UCB1 / Beta-TS & $O(K)$ & $O(K)$ & $O(\sum \ln T/\Delta_a)$\\
+    Gradient Bandit & $O(K)$ & $O(K)$ & asymptotic opt.\\
+    Disjoint LinUCB & $O(Kd^2)$ & $O(Kd^2)$ & $\tilde{O}(d\sqrt{T})$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Sherman--Morrison:} rank-1 update of $\mat{A}_a\inv$ cuts $O(Kd^3)\to O(Kd^2)$.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ where bandits shine}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{A/B/n testing} \& clinical trials (TS)
+      \item \textbf{Personalized news / ads} (LinUCB)
+      \item \textbf{MCTS tree search} (UCT = UCB in trees)
+      \item \textbf{RLHF / LLM routing} \& counterfactual OPE
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[csF, very thick, rotate=25, fill=csF!15] (0,0) ellipse (1.7 and 0.75);
+      \fill[csF] (0,0) circle (2.5pt) node[below=2pt] {$\hat{\vecb{\theta}}_a$};
+      \draw[-{Stealth}, thick, csA] (0,0) -- (1.35,0.62) node[above right=-1pt] {$\mat{A}_a^{-1/2}\vecb{x}$};
+      \node at (0,-1.55) {LinUCB ellipsoid};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Score $=$ Mean Estimate $+$ Uncertainty Bonus} \\[2pt]
+  \footnotesize\mdseries \textbf{UCB adds a deterministic radius; Thompson Sampling draws a random posterior world.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item Nonstationary arms break $\alpha_n=1/n$ \& UCB1 $\to$ use const.\ $\alpha$
+    \item Deterministic $\pi_0\in\{0,1\}$ breaks IPW $\to$ enforce $\pi_0 \ge \epsilon_{\min} > 0$
+    \item Omitting $\bar{r}_t$ in grad.\ bandits explodes variance on shifted rewards
+    \item Unregularized LinUCB $\mat{A}_a$ is singular ($N_t(a)<d$) $\to$ init $\lambda\eye_d$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Multi-Armed \& Contextual Bandits, UCB, Thompson Sampling \& Regret Bounds}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Recency average ($Q_{n+1} = Q_n + \alpha_n(r_n-Q_n)$):\csfm{Q_{n+1} = (1-\alpha)^n Q_1 + \sum_{i=1}^n \alpha(1-\alpha)^{n-i}r_i}
+    \item Hoeffding UCB1:\csfm{a_t = \argmax_{a\in\Actions}\left[\hat{\mu}_t(a) + c\sqrt{\frac{\ln t}{N_t(a)}}\right]}
+    \item Contextual LinUCB ($\hat{\vecb{\theta}}_a = \mat{A}_a\inv\vecb{b}_a$):\csfm{a_t = \argmax_{a\in\Actions}\left[\hat{\vecb{\theta}}_a\T\vecb{x}_{t,a} + \alpha\sqrt{\vecb{x}_{t,a}\T\mat{A}_a\inv\vecb{x}_{t,a}}\right]}
+    \item Gradient Bandit (REINFORCE + baseline):\csfm{H_{t+1}(a) = H_t(a) + \alpha(r_t - \bar{r}_t)\bigl(\mathbb{I}_{a=a_t} - \pi_t(a)\bigr)}
+    \item Doubly Robust OPE ($\hat{\Delta}_i = r_i - \hat{R}(\vecb{s}_i,a_i)$):\csfm{\hat{V}_{\mathrm{DR}}(\pi) = \frac{1}{n}\sum_{i=1}^n\left[\hat{R}(\vecb{s}_i,\pi(\vecb{s}_i)) + \frac{\mathbb{I}(\pi(\vecb{s}_i)=a_i)}{\pi_0(a_i\mid\vecb{s}_i)}\hat{\Delta}_i\right]}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{ONLINE BANDIT LOOP (UCB1 / TS / LinUCB)}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Init:} $N(a)\gets 0$, $(\alpha_a,\beta_a)\gets(\alpha_0,\beta_0)$, $\mat{A}_a\gets\lambda\eye_d$, $\vecb{b}_a\gets\zeros$.
+    \item \textbf{Select $a_t$:} pull $N(a)=0$ first (UCB1), sample $\tilde{\theta}_{t,a}\sim\mathrm{Beta}(\alpha_a,\beta_a)$ (TS), or maximize $\hat{\vecb{\theta}}_a\T\vecb{x}_{t,a}+\alpha\norm{\vecb{x}_{t,a}}_{\mat{A}_a\inv}$ (LinUCB).
+    \item \textbf{Observe $r_t$:} update $N(a_t)$, $\hat{\mu}(a_t)$, $(\alpha_{a_t},\beta_{a_t})$, or $(\mat{A}_{a_t},\vecb{b}_{a_t})$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    stationary bounded rewards & UCB1 or Beta/Gaussian TS\\
+    batched / delayed feedback & Thompson Sampling (randomizes ties)\\
+    $d$-dim user/item features & Disjoint or Shared LinUCB / LinTS\\
+    drifting / nonstationary arms & constant $\alpha$ + unbiased $\beta_n$\\
+    logged data $(\vecb{s}_i,a_i,r_i,\pi_0)$ & Doubly Robust (DR) estimator\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{REGRET \& COMPLEXITY CHEAT-LINE}
+  \begin{csbul}
+    \item Suboptimal pulls (UCB1): $\E[N_T(a)] \le \frac{8\ln T}{\Delta_a^2} + 1 + \frac{\pi^2}{3}$
+    \item Gap-dep.\ vs.\ Minimax: $O(\sum_a \ln T/\Delta_a)$ vs.\ $O(\sqrt{KT\ln T})$
+    \item Contextual linear regret: $\tilde{O}(d\sqrt{T})$; Gittins belief MDP: $O(h^{2K})$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CUMULATIVE REGRET SCALING $L_T$ vs.\ HORIZON $T$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=10, xmax=5000, ymin=0, ymax=280,
+      xlabel={Horizon $T$}, ylabel={Cumulative Regret $L_T$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north west, legend style={font=\tiny, fill=white, fill opacity=0.85, draw=none}]
+      \addplot[csA, very thick, domain=10:5000, samples=80] {0.055 * x};
+      \addlegendentry{Const.\ $\epsilon$-greedy $\Omega(\epsilon T)$}
+      \addplot[csF, very thick, dashed, domain=10:5000, samples=80] {0.81 * sqrt(x * ln(x))};
+      \addlegendentry{Minimax $O(\sqrt{KT\ln T})$}
+      \addplot[csDom, very thick, domain=10:5000, samples=80] {14.0 * ln(x)};
+      \addlegendentry{UCB1 / TS $O(\ln T)$}
+      \addplot[csE, thick, dotted, domain=10:5000, samples=80] {9.5 * ln(x)};
+      \addlegendentry{Lai--Robbins $\sum\frac{\Delta_a}{\mathrm{KL}}\ln T$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Negative feedback loops:} premature greedy exploitation starves unvisited arms and biases logged data forever
+    \item \textbf{Propensity blow-up:} $\pi_0(a_i\mid\vecb{s}_i)\ll 1$ gives huge variance in IPW $\to$ clip weights or use Doubly Robust (DR)
+    \item \textbf{Optimistic init exhaustion:} high $Q_1(a)$ only explores at $t\approx 1$; useless when rewards shift later
+    \item \textbf{UCB1 under delayed feedback:} deterministic UCB pulls the exact same arm across an entire parallel batch; TS naturally diversifies
+    \item \textbf{Missing baseline $B_t=\bar{r}_t$:} adding $+100$ to all rewards ruins softmax gradient bandits without $\bar{r}_t$
+    \item \textbf{Matrix inversion in LinUCB:} never call $\mat{A}_a\inv$ from scratch ($O(d^3)$); maintain $\mat{A}_a\inv$ via Sherman--Morrison or Cholesky factors
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Evaluative feedback} only reveals the reward of the arm you pull.
+  Never explore blindly ($\epsilon$-greedy $\Rightarrow \Omega(T)$ regret): direct exploration toward \textbf{high uncertainty} via Hoeffding upper bounds (\textbf{UCB1}), posterior sampling (\textbf{TS}), or ridge ellipsoids (\textbf{LinUCB}) to hit the \textbf{Lai--Robbins $O(\ln T)$} floor.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

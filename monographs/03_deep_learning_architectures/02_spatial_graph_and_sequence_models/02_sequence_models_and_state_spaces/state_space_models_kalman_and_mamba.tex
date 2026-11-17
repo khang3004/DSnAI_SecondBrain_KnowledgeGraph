@@ -1,0 +1,305 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 03: Deep Learning Architectures}{Spatial, Graph \& Sequence Models}{Sequence Models \& State Spaces}{Classical State-Space Models, Structured SSMs \& Selective Scan (Mamba)}{\bookcite{mamba}{pp.~1--15}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~8 \& 29, pp.~359--372, 1006--1041}, \bookcite{foundations_large_language_models}{Sec.~2.3, pp.~68--93}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}\label{sec:ssm:formulation}
+% =============================================================================
+
+Sequence modeling across control theory, Bayesian time-series analysis, and modern foundation models centers on a common structural abstraction: a latent dynamical state summarizes past history so that future predictions or emissions depend only on the current state and instantaneous input. In probabilistic machine learning, a discrete-time \emph{Linear-Gaussian State-Space Model (LG-SSM)}---also termed a \emph{Linear Dynamical System (LDS)}---defines a Markovian chain over latent states $\vecb{z}_t \in \R^{N_z}$ generating noisy observations $\vecb{y}_t \in \R^{N_y}$ given optional control inputs $\vecb{u}_t \in \R^{N_u}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~8, Eq.~(8.1), p.~359; Ch.~29, Eqs.~(29.73)--(29.74), p.~1006}:
+\begin{align}
+  \vecb{z}_t &= \mat{F}_t \vecb{z}_{t-1} + \mat{B}_t \vecb{u}_t + \vecb{b}_t + \vecb{q}_t, & \vecb{q}_t &\sim \Normal(\zeros, \mat{Q}_t), \label{eq:ssm:lds_trans} \\
+  \vecb{y}_t &= \mat{H}_t \vecb{z}_t + \mat{D}_t \vecb{u}_t + \vecb{d}_t + \vecb{r}_t, & \vecb{r}_t &\sim \Normal(\zeros, \mat{R}_t), \label{eq:ssm:lds_obs}
+\end{align}
+with Gaussian prior $p(\vecb{z}_1 \mid \vecb{u}_1) = \Normal(\vecb{z}_1 \mid \vecb{m}_1, \mat{V}_1)$ (or $\vecb{z}_0 \sim \Normal(\vecb{\mu}_{0|0}, \mat{\Sigma}_{0|0})$). Given parameters $\theta_t = (\mat{F}_t, \mat{H}_t, \mat{B}_t, \mat{D}_t, \mat{Q}_t, \mat{R}_t)$, exact Bayesian \emph{filtering} computes $p(\vecb{z}_t \mid \vecb{y}_{1:t}, \vecb{u}_{1:t})$ online, whereas \emph{smoothing} computes $p(\vecb{z}_t \mid \vecb{y}_{1:T}, \vecb{u}_{1:T})$ offline \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.1.1, p.~359}.
+
+In contrast, deep neural \emph{State-Space Models (SSMs)} such as S4 and Mamba begin from a deterministic, continuous-time linear time-invariant (LTI) ODE mapping a 1D input signal $x(t) \in \R$ (applied independently per channel $d \in \{1,\dots,D\}$) through a latent state $\vecb{h}(t) \in \R^N$ to an output $y(t) \in \R$ \bookcite{mamba}{Eqs.~(1a)--(1b), PDF p.~5}:
+\begin{align}
+  \dot{\vecb{h}}(t) &= \mat{A}\vecb{h}(t) + \mat{B}x(t), \label{eq:ssm:ct_state} \\
+  y(t) &= \mat{C}\vecb{h}(t) + Dx(t), \label{eq:ssm:ct_out}
+\end{align}
+where $\mat{A} \in \R^{N \times N}$ is the state transition matrix, $\mat{B} \in \R^{N \times 1}$ is the input projection, $\mat{C} \in \R^{1 \times N}$ is the output projection, and $D \in \R$ acts as a residual skip connection. Discretizing~\eqref{eq:ssm:ct_state}--\eqref{eq:ssm:ct_out} at step size (timescale) $\Delta > 0$ yields a deterministic recurrence $\vecb{h}_t = \bar{\mat{A}}\vecb{h}_{t-1} + \bar{\mat{B}}x_t$, $y_t = \mat{C}\vecb{h}_t + Dx_t$ \bookcite{mamba}{Eqs.~(4a)--(4b), PDF p.~6}. Meanwhile, large language model architectures frame this same recurrence as a \emph{fixed-size recurrent memory} alternative to the $O(L)$-growing key-value (KV) cache of standard softmax self-attention \bookcite{foundations_large_language_models}{Sec.~2.3.2--2.3.3, pp.~68--79}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:ssm:notation}
+Because control theory, probabilistic graphical models, and deep sequence modeling use conflicting symbols for inputs, outputs, and states, Table~\ref{tab:ssm:notation_map} establishes a unified dictionary across all three sources.
+\vspace{0.4em}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}l l l l X@{}}
+\toprule
+\textbf{Concept} & \textbf{Murphy Adv. (LDS)} & \textbf{Mamba / S4} & \textbf{LLM Found.} & \textbf{Unified Role} \\
+\midrule
+Latent state & $\vecb{z}_t \in \R^{N_z}$ & $\vecb{h}_t \in \R^{N}$ & $\vecb{h}_i \in \R^d$ & Markovian summary of history \\
+Input / control & $\vecb{u}_t \in \R^{N_u}$ & $x_t \in \R^D$ & $\vecb{x}_i \in \R^d$ & Driving signal at step $t$ \\
+Observed output & $\vecb{y}_t \in \R^{N_y}$ & $y_t \in \R^D$ & $\vecb{y}_i$ / $\mathrm{Att}_i$ & Emitted or transformed token \\
+State transition & $\mat{F}_t \in \R^{N_z \times N_z}$ & $\mat{A}$ (cont.), $\bar{\mat{A}}$ (disc.) & Recurrent cell $f$ & Governs memory decay/rotation \\
+Input matrix & $\mat{B}_t \in \R^{N_z \times N_u}$ & $\mat{B}$ (cont.), $\bar{\mat{B}}$ (disc.) & $\mat{W}_K, \mat{W}_V$ & Writes input into latent state \\
+Output matrix & $\mat{H}_t \in \R^{N_y \times N_z}$ & $\mat{C} \in \R^{1 \times N}$ & $\vecb{q}_i$ (query) & Reads latent state into output \\
+Sequence length & $T$ & $L$ (or $n$) & $m$ (or $L$) & Total number of time steps \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\captionof{table}{Cross-book symbol reconciliation: \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~8 \& 29}, \bookcite{mamba}{pp.~5--11}, and \bookcite{foundations_large_language_models}{Sec.~2.3}.}\label{tab:ssm:notation_map}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}\label{sec:ssm:derivations}
+% =============================================================================
+
+\subsection{Exact Bayesian Filtering \& RTS Smoothing in Linear-Gaussian SSMs}
+
+For an LG-SSM~\eqref{eq:ssm:lds_trans}--\eqref{eq:ssm:lds_obs}, the joint distribution $p(\vecb{y}_{1:T}, \vecb{z}_{1:T} \mid \vecb{u}_{1:T})$ is a single multivariate Gaussian of dimension $(N_y + N_z)T$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.2, p.~364}. Exploiting the chain-structured Markov property reduces exact posterior inference from $O(T^3 N_z^3)$ naive Gaussian conditioning to $O(T N_z^3)$ recursive message passing.
+
+\begin{coremath}[Kalman Filter Predict--Update \& RTS Smoother Recursions]
+Assume the filtered belief at step $t-1$ is Gaussian: $p(\vecb{z}_{t-1} \mid \vecb{y}_{1:t-1}, \vecb{u}_{1:t-1}) = \Normal(\vecb{z}_{t-1} \mid \vecb{\mu}_{t-1|t-1}, \mat{\Sigma}_{t-1|t-1})$.
+
+\textbf{1. Prediction Step (Chapman--Kolmogorov):} Marginalizing the joint predictive distribution $p(\vecb{z}_{t-1}, \vecb{z}_t \mid \vecb{y}_{1:t-1})$ over $\vecb{z}_{t-1}$ via linear-Gaussian identities yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(8.33)--(8.41), pp.~366--367}:
+\begin{align}
+  \vecb{\mu}_{t|t-1} &= \mat{F}_t \vecb{\mu}_{t-1|t-1} + \mat{B}_t \vecb{u}_t + \vecb{b}_t, \label{eq:ssm:kf_pred_mean} \\
+  \mat{\Sigma}_{t|t-1} &= \mat{F}_t \mat{\Sigma}_{t-1|t-1} \mat{F}_t\T + \mat{Q}_t. \label{eq:ssm:kf_pred_cov}
+\end{align}
+
+\textbf{2. Measurement Update (Bayes' Rule):} Forming the joint Gaussian over $(\vecb{z}_t, \vecb{y}_t)$ conditioned on $\vecb{y}_{1:t-1}$ gives expected observation $\hat{\vecb{y}}_t = \mat{H}_t\vecb{\mu}_{t|t-1} + \mat{D}_t\vecb{u}_t + \vecb{d}_t$, innovation covariance $\mat{S}_t$, and cross-covariance $\mat{C}_t = \mat{\Sigma}_{t|t-1}\mat{H}_t\T$. Conditioning on $\vecb{y}_t$ yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(8.25)--(8.31), (8.46)--(8.52), pp.~366--368}:
+\begin{align}
+  \mat{S}_t &= \mat{H}_t \mat{\Sigma}_{t|t-1} \mat{H}_t\T + \mat{R}_t, \qquad \mat{K}_t = \mat{\Sigma}_{t|t-1}\mat{H}_t\T \mat{S}_t\inv, \label{eq:ssm:kf_gain} \\
+  \vecb{\mu}_{t|t} &= \vecb{\mu}_{t|t-1} + \mat{K}_t (\vecb{y}_t - \hat{\vecb{y}}_t), \label{eq:ssm:kf_upd_mean} \\
+  \mat{\Sigma}_{t|t} &= \mat{\Sigma}_{t|t-1} - \mat{K}_t \mat{H}_t \mat{\Sigma}_{t|t-1} = \mat{\Sigma}_{t|t-1} - \mat{K}_t \mat{S}_t \mat{K}_t\T. \label{eq:ssm:kf_upd_cov}
+\end{align}
+Moreover, the exact log-marginal likelihood accumulates the one-step-ahead predictive log-densities: $\log p(\vecb{y}_{1:T} \mid \vecb{u}_{1:T}) = \sum_{t=1}^T \log \Normal(\vecb{y}_t \mid \hat{\vecb{y}}_t, \mat{S}_t)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(8.36), p.~367}.
+
+\textbf{3. Rauch--Tung--Striebel (RTS) Backwards Smoother:} Using the Markov property $p(\vecb{z}_t \mid \vecb{z}_{t+1}, \vecb{y}_{1:T}) = p(\vecb{z}_t \mid \vecb{z}_{t+1}, \vecb{y}_{1:t})$ and conditioning the two-slice filtered joint $p(\vecb{z}_t, \vecb{z}_{t+1} \mid \vecb{y}_{1:t})$ on $\vecb{z}_{t+1}$, then marginalizing over $p(\vecb{z}_{t+1} \mid \vecb{y}_{1:T}) = \Normal(\vecb{\mu}_{t+1|T}, \mat{\Sigma}_{t+1|T})$, yields the backwards recursion for $t = T-1,\dots,1$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(8.67)--(8.84), pp.~370--371}:
+\begin{align}
+  \mat{J}_t &= \mat{\Sigma}_{t|t} \mat{F}_t\T \mat{\Sigma}_{t+1|t}\inv, \label{eq:ssm:rts_gain} \\
+  \vecb{\mu}_{t|T} &= \vecb{\mu}_{t|t} + \mat{J}_t (\vecb{\mu}_{t+1|T} - \vecb{\mu}_{t+1|t}), \label{eq:ssm:rts_mean} \\
+  \mat{\Sigma}_{t|T} &= \mat{\Sigma}_{t|t} + \mat{J}_t (\mat{\Sigma}_{t+1|T} - \mat{\Sigma}_{t+1|t})\mat{J}_t\T. \label{eq:ssm:rts_cov}
+\end{align}
+\end{coremath}
+
+\begin{intuition}[Kalman Gain as Inverse Signal-to-Noise Ratio]
+In the scalar observation limit ($\mat{H}_t = 1$), the Kalman gain reduces to $k_t = \Sigma_{t|t-1} / (\Sigma_{t|t-1} + R_t)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.2.2.2, p.~366}. When sensor noise $R_t$ is large relative to prior state uncertainty $\Sigma_{t|t-1}$, $k_t \to 0$ and the filter trusts its dynamical prediction $\vecb{\mu}_{t|t-1}$; when $R_t \to 0$, $k_t \to 1$ and the state snaps to the measurement. Crucially, the Kalman gain $\mat{K}_t$ is an \emph{uncertainty-weighted} input gate---a classical probabilistic precursor to the input-dependent discretization step $\Delta_t$ in Mamba.
+\end{intuition}
+
+\subsection{Continuous-to-Discrete ZOH Discretization \& Convolutional Duality}
+
+Deep neural SSMs parameterize dynamics in continuous time~\eqref{eq:ssm:ct_state}--\eqref{eq:ssm:ct_out} so that learned parameters $(\mat{A}, \mat{B}, \mat{C})$ are invariant to sampling resolution, and then map them to discrete recurrences via a learnable step size $\Delta > 0$ \bookcite{mamba}{PDF pp.~5--6}.
+
+\begin{coremath}[Zero-Order Hold (ZOH) Discretization \& Global Convolution Dual]
+Suppose $x(t)$ is held piecewise-constant over $[t_k, t_k + \Delta]$ with value $x_k$. Multiplying~\eqref{eq:ssm:ct_state} by the integrating factor $e^{-\mat{A}t}$ and integrating from $t_k$ to $t_k + \Delta$ gives:
+\begin{align}
+  \vecb{h}(t_k + \Delta) &= e^{\mat{A}\Delta}\vecb{h}(t_k) + \left(\int_0^{\Delta} e^{\mat{A}\tau}\,\mathrm{d}\tau\right)\mat{B} x_k.
+\end{align}
+Evaluating the matrix integral when $\mat{A}$ is invertible yields the exact \emph{Zero-Order Hold (ZOH)} parameterization \bookcite{mamba}{PDF p.~6}:
+\begin{equation}\label{eq:ssm:zoh}
+  \bar{\mat{A}} = \exp(\Delta\mat{A}), \qquad \bar{\mat{B}} = (\Delta\mat{A})\inv\bigl(\exp(\Delta\mat{A}) - \mat{I}\bigr)\Delta\mat{B}.
+\end{equation}
+For comparison, first-order Euler discretization gives $\bar{\mat{A}} = \mat{I} + \Delta\mat{A}$, $\bar{\mat{B}} = \Delta\mat{B}$, whereas the trapezoidal \emph{Bilinear} (Tustin) method yields $\bar{\mat{A}} = (\mat{I} - \frac{\Delta}{2}\mat{A})\inv(\mat{I} + \frac{\Delta}{2}\mat{A})$ and $\bar{\mat{B}} = (\mat{I} - \frac{\Delta}{2}\mat{A})\inv\Delta\mat{B}$ \bookcite{mamba}{PDF pp.~5--6}.
+
+\textbf{Recurrent--Convolutional Duality (LTI):} Setting $\vecb{h}_{-1} = \zeros$ and omitting the skip term $Dx_t$, unrolling the discrete recurrence $\vecb{h}_t = \bar{\mat{A}}\vecb{h}_{t-1} + \bar{\mat{B}}x_t$, $y_t = \mat{C}\vecb{h}_t$ gives \bookcite{mamba}{Eqs.~(5)--(7), PDF p.~6}:
+\begin{equation}\label{eq:ssm:conv_dual}
+  y_k = \sum_{j=0}^{k} \mat{C}\bar{\mat{A}}^{k-j}\bar{\mat{B}} x_j \quad \Longleftrightarrow \quad \vecb{y} = \bar{\mat{K}} * \vecb{x}, \quad \bar{\mat{K}} = \bigl(\mat{C}\bar{\mat{B}},\, \mat{C}\bar{\mat{A}}\bar{\mat{B}},\, \dots,\, \mat{C}\bar{\mat{A}}^{L-1}\bar{\mat{B}}\bigr).
+\end{equation}
+Because $\bar{\mat{K}} \in \R^L$ is independent of the input sequence $\vecb{x}$, training can evaluate~\eqref{eq:ssm:conv_dual} in parallel across all $L$ positions in $O(L \log L)$ time via Fast Fourier Transforms (FFT), while autoregressive inference executes the recurrence step-by-step in $O(1)$ time and $O(N)$ state memory per channel \bookcite{mamba}{PDF pp.~6--7}.
+\end{coremath}
+
+\subsection{HiPPO Initialization, Structured S4, and Selective Scan ($S6$)}
+
+Randomly initialized LTI state matrices $\mat{A}$ suffer from vanishing or exploding gradients over long horizons, mirroring classical RNNs \bookcite{mamba}{PDF p.~7}. The \emph{HiPPO} (High-Order Polynomial Projection Operators) framework resolves this by choosing $\mat{A} \in \R^{N \times N}$ so that $\vecb{h}(t)$ optimally projects the cumulative input history onto orthogonal Legendre polynomials \bookcite{mamba}{PDF p.~7}:
+\begin{equation}\label{eq:ssm:hippo}
+  A_{nk} = - \begin{cases}
+    (2n + 1)^{1/2}(2k + 1)^{1/2}, & n > k, \\
+    n + 1, & n = k, \\
+    0, & n < k.
+  \end{cases}
+\end{equation}
+HiPPO initialization alone boosts sequential MNIST accuracy from $60\%$ to $98\%$, and \emph{S4 (Structured State Spaces)} decomposes $\mat{A}$ into Normal Plus Low-Rank (NPLR) form, applying diagonalization, the Woodbury identity, and Cauchy kernel evaluation to reduce kernel computation from $O(N^2 L)$ to $O(N + L)$ \bookcite{mamba}{PDF pp.~7--9}.
+
+However, any LTI model---whether S4 or a global convolution---applies the \emph{exact same} parameters $(\bar{\mat{A}}, \bar{\mat{B}}, \mat{C})$ to every token $x_t$. It cannot perform content-based filtering (e.g., ignoring filler words or selectively gating induction heads) \bookcite{mamba}{PDF pp.~9--10}. Mamba ($S6$) resolves this by making the SSM parameters functions of the input $x_t \in \R^D$:
+\begin{equation}\label{eq:ssm:selective_params}
+\begin{aligned}
+  \mat{B}_t &= s_B(x_t) = \mathrm{Linear}_N(x_t), \qquad
+  \mat{C}_t = s_C(x_t) = \mathrm{Linear}_N(x_t), \\
+  \Delta_t &= \softplus\bigl(\text{param} + \mathrm{Broadcast}_D(\mathrm{Linear}_1(x_t))\bigr),
+\end{aligned}
+\end{equation}
+followed by ZOH discretization $\bar{\mat{A}}_t = \exp(\Delta_t \mat{A})$, $\bar{\mat{B}}_t = (\Delta_t \mat{A})\inv(\exp(\Delta_t \mat{A}) - \mat{I})\Delta_t \mat{B}_t$ (with diagonal $\mat{A} \in \R^{D \times N}$) \bookcite{mamba}{PDF pp.~10--11}.
+
+\begin{coremath}[Associative Parallel Scan for Time-Varying Recurrences]
+Because $(\bar{\mat{A}}_t, \bar{\mat{B}}_t, \mat{C}_t)$ depend on $t$, the convolutional dual~\eqref{eq:ssm:conv_dual} no longer holds. Nevertheless, the time-varying linear recurrence $\vecb{h}_t = \bar{\mat{A}}_t \vecb{h}_{t-1} + \bar{\mat{B}}_t x_t$ remains solvable in parallel via an \emph{associative parallel prefix scan} \bookcite{mamba}{PDF p.~13}. Define elements $c_t = (\bar{\mat{A}}_t, \vecb{b}_t)$ with $\vecb{b}_t = \bar{\mat{B}}_t x_t$, and the binary operator $\bullet$:
+\begin{equation}\label{eq:ssm:assoc_op}
+  (\mat{M}_2, \vecb{v}_2) \bullet (\mat{M}_1, \vecb{v}_1) \triangleq (\mat{M}_2 \mat{M}_1,\, \mat{M}_2 \vecb{v}_1 + \vecb{v}_2).
+\end{equation}
+Since matrix multiplication is associative and distributes over vector addition, $\bullet$ is associative: $(c_3 \bullet c_2) \bullet c_1 = c_3 \bullet (c_2 \bullet c_1)$. Consequently, all prefix states $\vecb{h}_t$ (the second component of $c_t \bullet \dots \bullet c_1$) can be computed in $O(\log L)$ parallel depth ($O(L/T)$ on $T$ processors) \bookcite{mamba}{PDF p.~13}. Strikingly, the exact same associative scan framework reduces classical Kalman filtering and RTS smoothing from $O(T)$ sequential steps to $O(\log T)$ parallel span on GPUs \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.2.3.4, p.~372}.
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:ssm:algorithms}
+% =============================================================================
+
+Algorithms~\ref{alg:ssm:kalman} and~\ref{alg:ssm:mamba_s6} present the complete classical Kalman Filter + RTS Smoother and Mamba's hardware-aware Selective Scan ($S6$).
+
+\begin{algorithm}[htbp]
+\caption{Kalman Filter (Forward) and RTS Smoother (Backward) for LG-SSMs \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Alg.~8.1--8.2, Sec.~8.2.3, pp.~369--371}}
+\label{alg:ssm:kalman}
+\KwIn{Dynamics $(\mat{F}_{1:T}, \mat{B}_{1:T}, \vecb{b}_{1:T}, \mat{Q}_{1:T})$, emissions $(\mat{H}_{1:T}, \mat{D}_{1:T}, \vecb{d}_{1:T}, \mat{R}_{1:T})$, inputs $\vecb{u}_{1:T}$, observations $\vecb{y}_{1:T}$, prior $(\vecb{\mu}_{0|0}, \mat{\Sigma}_{0|0})$.}
+\KwOut{Smoothed posteriors $\{(\vecb{\mu}_{t|T}, \mat{\Sigma}_{t|T})\}_{t=1}^T$ and marginal log-likelihood $\ell_{1:T}$.}
+$\ell_{1:T} \gets 0$\;
+\For{$t = 1, \dots, T$}{
+  \tcp{Forward Prediction Step}
+  $\vecb{\mu}_{t|t-1} \gets \mat{F}_t \vecb{\mu}_{t-1|t-1} + \mat{B}_t \vecb{u}_t + \vecb{b}_t$\;
+  $\mat{\Sigma}_{t|t-1} \gets \mat{F}_t \mat{\Sigma}_{t-1|t-1} \mat{F}_t\T + \mat{Q}_t$\;
+  \tcp{Forward Measurement Update Step}
+  $\hat{\vecb{y}}_t \gets \mat{H}_t \vecb{\mu}_{t|t-1} + \mat{D}_t \vecb{u}_t + \vecb{d}_t$; \quad $\mat{S}_t \gets \mat{H}_t \mat{\Sigma}_{t|t-1} \mat{H}_t\T + \mat{R}_t$\;
+  Solve $\mat{S}_t\T \mat{K}_t\T = \mat{H}_t \mat{\Sigma}_{t|t-1}$ for $\mat{K}_t$\;
+  $\vecb{\mu}_{t|t} \gets \vecb{\mu}_{t|t-1} + \mat{K}_t(\vecb{y}_t - \hat{\vecb{y}}_t)$; \quad $\mat{\Sigma}_{t|t} \gets \mat{\Sigma}_{t|t-1} - \mat{K}_t \mat{S}_t \mat{K}_t\T$\;
+  $\ell_{1:T} \gets \ell_{1:T} + \log \Normal(\vecb{y}_t \mid \hat{\vecb{y}}_t, \mat{S}_t)$\;
+}
+\tcp{Backward RTS Smoothing Pass}
+\For{$t = T-1, \dots, 1$}{
+  Solve $\mat{\Sigma}_{t+1|t}\T \mat{J}_t\T = \mat{F}_t \mat{\Sigma}_{t|t}$ for $\mat{J}_t$\;
+  $\vecb{\mu}_{t|T} \gets \vecb{\mu}_{t|t} + \mat{J}_t(\vecb{\mu}_{t+1|T} - \vecb{\mu}_{t+1|t})$\;
+  $\mat{\Sigma}_{t|T} \gets \mat{\Sigma}_{t|t} + \mat{J}_t(\mat{\Sigma}_{t+1|T} - \mat{\Sigma}_{t+1|t})\mat{J}_t\T$\;
+}
+\Return{$\{(\vecb{\mu}_{t|T}, \mat{\Sigma}_{t|T})\}_{t=1}^T, \ell_{1:T}$}\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Hardware-Aware Selective Scan ($S6$) with SRAM Kernel Fusion \bookcite{mamba}{Sec.~2.1--2.2, PDF pp.~10--13}}
+\label{alg:ssm:mamba_s6}
+\KwIn{Input tensor $\mat{X} \in \R^{B \times L \times D}$ in HBM; diagonal $\mat{A} \in \R^{D \times N}$, $\vecb{b}_\Delta \in \R^D$ in HBM.}
+\KwOut{Output tensor $\mat{Y} \in \R^{B \times L \times D}$ in HBM.}
+Compute projections $\mat{B} = \mathrm{Linear}_N(\mat{X}) \in \R^{B \times L \times N}$, $\mat{C} = \mathrm{Linear}_N(\mat{X}) \in \R^{B \times L \times N}$, and $\mat{\Delta} = \softplus(\vecb{b}_\Delta + \mathrm{Broadcast}_D(\mathrm{Linear}_1(\mat{X}))) \in \R^{B \times L \times D}$\;
+\tcp{Fused CUDA Kernel: Load $(\mat{A}, \mat{\Delta}, \mat{B}, \mat{C}, \mat{X})$ tiles from HBM to SRAM}
+Discretize in SRAM: $\bar{\mat{A}}_{b,l,d,n} \gets \exp(\Delta_{b,l,d} A_{d,n})$ and $\bar{\mat{B}}_{b,l,d,n} \gets \Delta_{b,l,d} B_{b,l,n}$ (ZOH/Euler)\;
+Execute associative parallel scan~\eqref{eq:ssm:assoc_op} in SRAM over sequence length $L$: $\vecb{h}_{b,l,d} = \bar{\mat{A}}_{b,l,d} \odot \vecb{h}_{b,l-1,d} + \bar{\mat{B}}_{b,l,d} x_{b,l,d}$\;
+Project output in SRAM: $y_{b,l,d} \gets \sum_{n=1}^N C_{b,l,n} h_{b,l,d,n}$\;
+Write only $\mat{Y} \in \R^{B \times L \times D}$ back to HBM (discard intermediate $\bar{\mat{A}}, \bar{\mat{B}}, \vecb{h}$)\;
+\tcp{Backward Pass: Recompute $(\bar{\mat{A}}, \bar{\mat{B}}, \vecb{h})$ in SRAM from saved $(\mat{X}, \mat{\Delta}, \mat{B}, \mat{C})$ to avoid HBM I/O}
+\Return{$\mat{Y}$}\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}l c c c >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Architecture} & \textbf{Parallel} & \textbf{Train} & \textbf{Infer/Tok} & \textbf{State / Cache} & \textbf{Content Selection} \\
+\midrule
+Transformer & Yes & $O(L^2 D)$ & $O(L D)$ & $O(L D)$ (KV) & Yes (Softmax $QK\T$) \\
+Linear Attention & Yes & $O(L D N)$ & $O(D N)$ & $O(D N)$ & Partial (kernel $\phi$) \\
+LTI S4 & Yes (FFT) & $O(L \log L \cdot D)$ & $O(D N)$ & $O(D N)$ & No (LTI $\bar{\mat{A}},\bar{\mat{B}},\mat{C}$) \\
+Mamba ($S6$) & Yes (Scan) & $O(L D N)$ & $O(D N)$ & $O(D N)$ & Yes ($\Delta_t, \mat{B}_t, \mat{C}_t$) \\
+Kalman / RTS & Yes (Scan) & $O(T N_z^3)$ / $O(\log T)$ & $O(N_z^3)$ & $O(N_z^2)$ & Gain $\mat{K}_t$ (SNR) \\
+\bottomrule
+\end{tabularx}
+\caption{Asymptotic complexity and expressivity comparison across sequence length $L$ (or $T$), channel width $D$, and state dimension $N$ (or $N_z$), synthesized from \bookcite{mamba}{Table~1, PDF p.~3; pp.~8--13}, \bookcite{foundations_large_language_models}{Sec.~2.3.2--2.3.3, pp.~68--79}, and \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.2.3.4, p.~372}.}\label{tab:ssm:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Fixed-Size Recurrent Memory vs.\ Unbounded KV Cache]
+In \bookcite{foundations_large_language_models}{Sec.~2.3.2--2.3.3, pp.~70--79}, sequence models are categorized by how they compress context: standard Transformers maintain an exact, non-compressive KV cache of size $O(L)$, whereas linear attention ($\vecb{\mu}_i = \vecb{\mu}_{i-1} + \vecb{k}_i^{\prime\top} \vecb{v}_i$) and recurrent models compress arbitrarily long histories into a fixed-size state. Similarly, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~29.13, pp.~1038--1041} distinguishes purely stochastic Deep Markov Models from \emph{Recurrent State-Space Models (RSSMs)} that pair a deterministic recurrent backbone $\vecb{h}_t$ with stochastic latents $\vecb{z}_t$ for multi-step forecasting. Mamba bridges these two lineages: like linear attention and RSSMs, it maintains a fixed $O(DN)$ recurrent state during decoding, yet via input-dependent $(\Delta_t, \mat{B}_t, \mat{C}_t)$ it learns \emph{what to write into and erase from} that finite state, achieving $100\%$ accuracy on Induction Heads up to $1\text{M}$ tokens where LTI S4 collapses past $1\text{K}$ tokens \bookcite{mamba}{Sec.~4, PDF pp.~14--15}; \bookcite{foundations_large_language_models}{Sec.~2.3.6.3, p.~93}.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:ssm:visuals}
+% =============================================================================
+
+Figure~\ref{fig:ssm:kalman_vs_rts} illustrates the foundational distinction between online causal filtering and offline bidirectional smoothing in a 2D tracking LG-SSM: incorporating future observations via the RTS backwards pass shrinks the $95\%$ posterior covariance ellipses and cuts trajectory MSE from $3.13$ to $1.71$.
+
+\monographfig[0.86\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p394_fig2.png}{Kalman filtering vs.\ RTS smoothing on a 2D linear-Gaussian tracking task: (a) true trajectory (blue squares) and noisy observations (green circles); (b) online Kalman filter posterior means (red) and $95\%$ confidence ellipses ($\text{MSE} = 3.13$); (c) offline RTS smoother ($\text{MSE} = 1.71$) with visibly tighter uncertainty ellipses \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~8, Fig.~8.2, p.~360}.}{fig:ssm:kalman_vs_rts}
+
+Figure~\ref{fig:ssm:three_views} depicts the three equivalent mathematical realizations of an LTI state-space model---continuous-time ODE, discrete-time recurrence, and global causal convolution---while Figure~\ref{fig:ssm:zoh_parallel_scan} formalizes how ZOH discretization and the associative parallel scan unify training parallelism with $O(1)$ per-token inference.
+
+\monographfig[0.86\textwidth]{mamba_p7_fig1.png}{Three representations of an LTI State-Space Model: continuous-time differential system $(\mat{A},\mat{B},\mat{C},\mat{D})$ for irregular sampling, discretized recurrent form $(\bar{\mat{A}},\bar{\mat{B}},\bar{\mat{C}},\bar{\mat{D}})$ for $O(1)$ per-token inference, and convolutional kernel $\bar{\mat{K}} = (\bar{\mat{C}}\bar{\mat{A}}^k\bar{\mat{B}})$ for parallel training \bookcite{mamba}{PDF p.~7}.}{fig:ssm:three_views}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.85cm and 0.95cm]
+  \node[monoBox, minimum width=2.8cm] (ct) {\textbf{Continuous SSM}\\$\dot{\vecb{h}}(t)=\mat{A}\vecb{h}(t)+\mat{B}x(t)$\\$y(t)=\mat{C}\vecb{h}(t)$};
+  \node[monoTealBox, right=of ct, minimum width=3.1cm] (zoh) {\textbf{ZOH Discretization}\\$\bar{\mat{A}}_t=\exp(\Delta_t\mat{A})$\\$\bar{\mat{B}}_t=(\Delta_t\mat{A})\inv(e^{\Delta_t\mat{A}}-\mat{I})\Delta_t\mat{B}_t$};
+  \node[monoIndigoBox, above right=0.35cm and 1.1cm of zoh, minimum width=3.6cm] (scan) {\textbf{Training: Parallel Scan}\\Associative op~\eqref{eq:ssm:assoc_op} in SRAM\\Depth $O(\log L)$, Work $O(LDN)$};
+  \node[monoBox, below right=0.35cm and 1.1cm of zoh, minimum width=3.6cm] (rec) {\textbf{Inference: Recurrent Step}\\$\vecb{h}_t=\bar{\mat{A}}_t\vecb{h}_{t-1}+\bar{\mat{B}}_t x_t$\\$O(1)$ step, $O(DN)$ state};
+
+  \draw[monoArrow] (ct) -- node[above, font=\scriptsize] {$\Delta_t(x_t)$} (zoh);
+  \draw[monoArrow] (zoh.east) -- ++(0.45,0) |- (scan.west);
+  \draw[monoArrow] (zoh.east) -- ++(0.45,0) |- (rec.west);
+  \draw[monoArrow, dashed, <->] (scan.south) -- node[right, font=\scriptsize, align=left] {Exact\\algebraic\\duality} (rec.north);
+\end{tikzpicture}
+\caption{End-to-end execution pipeline of Selective State-Space Models ($S6$): continuous parameters $(\mat{A},\mat{B},\mat{C})$ are discretized via input-dependent $\Delta_t$ into $(\bar{\mat{A}}_t,\bar{\mat{B}}_t,\mat{C}_t)$, enabling hardware-fused parallel scan during training and $O(1)$ stateful decoding at inference.}\label{fig:ssm:zoh_parallel_scan}
+\end{figure}
+
+At the macro-architectural level, Mamba interleaves the $S6$ selective scan with a local 1D depthwise convolution and SiLU ($\sigma$) multiplicative gating, merging the H3 and Gated MLP designs (Figure~\ref{fig:ssm:mamba_block}). Figure~\ref{fig:ssm:scaling_plot} contrasts the asymptotic per-layer compute and memory scaling of Transformers, LTI S4, and Mamba across context lengths up to $128\text{K}$ tokens.
+
+\monographfig[0.84\textwidth]{mamba_p14_fig1.png}{The Mamba block architecture synthesized by combining H3 (Conv + SSM) with Gated MLP multiplicative SiLU ($\sigma$) projections \bookcite{mamba}{Fig.~4, PDF p.~14}.}{fig:ssm:mamba_block}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=2.1cm},
+  width=0.42\textwidth,
+  height=5.2cm,
+  xmode=log,
+  ymode=log,
+  log basis x=2,
+  log basis y=10,
+  xmin=256, xmax=131072,
+  xtick={256, 1024, 4096, 16384, 65536},
+  xticklabels={$2^8$, $2^{10}$, $2^{12}$, $2^{14}$, $2^{16}$},
+  grid=major,
+  grid style={monographRule!60, dashed},
+  tick label style={font=\scriptsize},
+  label style={font=\small},
+  title style={font=\small\bfseries, color=monographNavy},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9}
+]
+\nextgroupplot[
+  title={Training FLOPs ($D=1024, N=16$)},
+  xlabel={Sequence Length $L$},
+  ylabel={Relative Operations},
+  legend pos=north west
+]
+\addplot[color=monographCrimson, thick, domain=256:131072, samples=40] {x^2 * 0.001};
+\addlegendentry{Transformer $O(L^2)$}
+\addplot[color=monographIndigo, thick, dashed, domain=256:131072, samples=40] {x * ln(x)/ln(2) * 1.5};
+\addlegendentry{LTI S4 (FFT) $O(L\log L)$}
+\addplot[color=monographTeal, very thick, domain=256:131072, samples=40] {x * 16};
+\addlegendentry{Mamba ($S6$) $O(L N)$}
+
+\nextgroupplot[
+  title={Inference Memory / Layer},
+  xlabel={Sequence Length $L$},
+  ylabel={Relative State / Cache},
+  legend pos=north west
+]
+\addplot[color=monographCrimson, thick, domain=256:131072, samples=40] {x};
+\addlegendentry{Transformer KV $O(L D)$}
+\addplot[color=monographTeal, very thick, domain=256:131072, samples=40] {16 * 1024 / 64};
+\addlegendentry{S4 / Mamba State $O(D N)$}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Asymptotic scaling of sequence architectures across context length $L$: Mamba eliminates both the quadratic $O(L^2)$ training bottleneck and the linear $O(L)$ inference KV-cache growth of standard Transformers \bookcite{mamba}{PDF pp.~3, 8--13}; \bookcite{foundations_large_language_models}{Sec.~2.3.2, pp.~68--70}.}\label{fig:ssm:scaling_plot}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:ssm:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Loss of Covariance Symmetry \& Positive Definiteness in Kalman Updates]
+Computing the filtered covariance via $\mat{\Sigma}_{t|t} = \mat{\Sigma}_{t|t-1} - \mat{K}_t \mat{H}_t \mat{\Sigma}_{t|t-1}$ (Eq.~\eqref{eq:ssm:kf_upd_cov}) in finite-precision arithmetic can destroy symmetry and produce negative eigenvalues when $\mat{R}_t$ is small or $\mat{H}_t$ is ill-conditioned, causing subsequent Cholesky factorizations to fail \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~8.2.3.1, p.~370}. Similarly, the two-filter smoother suffers numerical singularities at $t=T$ where $\mat{\Sigma}_{b,T} = \infty \mat{I}$. \textbf{Remedy:} Use the symmetric Joseph-form update $\mat{\Sigma}_{t|t} = (\mat{I} - \mat{K}_t\mat{H}_t)\mat{\Sigma}_{t|t-1}(\mat{I} - \mat{K}_t\mat{H}_t)\T + \mat{K}_t \mat{R}_t \mat{K}_t\T$ or a square-root/QR Kalman filter, prefer the RTS smoother over two-filter smoothing, and solve $\mat{S}_t\T \mat{K}_t\T = \mat{H}_t \mat{\Sigma}_{t|t-1}$ via linear solvers rather than explicit matrix inversion $\mat{S}_t\inv$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fn.~6, p.~366; Sec.~8.2.3.3, p.~372}.
+\end{pitfall}
+
+\begin{pitfall}[Unstable Eigenvalues \& Exploding Matrix Powers in $\bar{\mat{A}}^k$]
+If any eigenvalue of the continuous transition matrix $\mat{A}$ has positive real part ($\mathrm{Re}(\lambda_i(\mat{A})) > 0$), then $|\lambda_i(\bar{\mat{A}})| = |e^{\Delta\lambda_i}| > 1$, causing the state $\vecb{h}_t$ and convolution kernel $\mat{C}\bar{\mat{A}}^k\bar{\mat{B}}$ to diverge exponentially with sequence length $L$. \textbf{Remedy:} Parameterize diagonal $\mat{A}$ in log-space as $\mat{A} = -\exp(\mat{A}_{\log})$ so $\mat{A} < 0$ strictly, initialize with HiPPO-LegS (Eq.~\eqref{eq:ssm:hippo}) or its diagonalized S4D spectrum, and enforce $\Delta_t > 0$ via $\softplus$ \bookcite{mamba}{PDF pp.~7, 11}.
+\end{pitfall}
+
+\begin{pitfall}[HBM Memory-Bandwidth Bottleneck in Naive Selective Scans]
+A naive PyTorch implementation of $S6$ materializes the expanded discrete tensors $\bar{\mat{A}}, \bar{\mat{B}} \in \R^{B \times L \times D \times N}$ and hidden states $\vecb{h} \in \R^{B \times L \times D \times N}$ in GPU HBM ($\sim 1.5\text{ TB/s}$ bandwidth, $40\text{ GB}$), incurring an $O(BLDN)$ HBM I/O bottleneck that nullifies the $O(L)$ FLOP advantage. \textbf{Remedy:} Fuse discretization, associative scan, and output projection inside GPU SRAM ($\sim 19\text{ TB/s}$ bandwidth, $20\text{ MB}$) and recompute intermediate states during the backward pass rather than storing them in HBM \bookcite{mamba}{Sec.~2.2.1--2.2.3, PDF pp.~11--12}.
+\end{pitfall}
+
+\begin{pitfall}[Finite-State Compression Bottleneck on Exact Associative Recall]
+Because an SSM compresses the entire prefix $x_{1:t}$ into a fixed $O(DN)$-dimensional state $\vecb{h}_t$, its memory capacity is fundamentally bounded compared to an $O(LD)$ Transformer KV cache \bookcite{foundations_large_language_models}{Sec.~2.3.3.3, p.~79}. On exact verbatim recall benchmarks (e.g., needle-in-a-haystack or multi-query associative recall) where the number of distinct key-value facts exceeds the effective state capacity $DN$, pure SSMs degrade unless state dimension $N$ is scaled or hybrid attention layers are interleaved \bookcite{foundations_large_language_models}{Sec.~2.3.6.3, p.~93}.
+\end{pitfall}
+
+\end{document}

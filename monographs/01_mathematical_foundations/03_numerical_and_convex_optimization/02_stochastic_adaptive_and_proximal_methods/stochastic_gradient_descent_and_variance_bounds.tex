@@ -1,0 +1,703 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf
+  {Mathematical Foundations for Machine Intelligence}
+  {Convex, Smooth \& Stochastic Optimization}
+  {Stochastic, Adaptive, Proximal \& Second-Order Optimizers}
+  {Stochastic \& Minibatch SGD, Expected Smoothness, Subgradients \& Proximal Methods}
+  {\bookcite{stochastic_gradient_decent_algorithm_explain}{Chs.\ 4--6, 8--11},
+   \bookcite{probabilisticml_kevinmurphy_introduction}{Secs.\ 8.4, 8.6, 11.4},
+   \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Secs.\ 5.9, 8.1, 8.3, 12.1},
+   \bookcite{understandingdl_simonprince}{Secs.\ 6.2, 9.2}}
+
+Modern empirical risk minimization (ERM) routinely couples massive finite-sum objectives over millions of data points with nonsmooth sparsity-inducing penalties or hard parameter constraints. Deterministic full-batch gradient descent incurs $\mathcal{O}(n)$ gradient evaluations per update and cannot evaluate derivatives at kinks or domain boundaries, while naive stochastic approximation suffers persistent gradient variance that prevents convergence under constant step sizes. This monograph develops a unified non-asymptotic and geometric theory bridging expected smoothness and variance transfer for smooth finite sums, Robbins--Monro decay schedules and constant-step noise balls, minibatch scaling laws, control-variate variance reduction (SVRG/SAGA), subdifferential calculus for nonsmooth convex losses, and forward--backward proximal operator splitting (PGD, SPGD, and ISTA).
+
+% ==============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:sgd:formulation}
+% ==============================================================================
+
+We study both unconstrained smooth finite-sum optimization and composite nonsmooth minimization over $\R^d$. In the smooth finite-sum setting \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 4, p.\ 18} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.1, p.\ 293}, we seek
+\begin{equation}
+\label{eq:sgd:erm}
+\minimize_{\vecb{\theta} \in \R^d}\; f(\vecb{\theta}) \triangleq \frac{1}{n}\sum_{i=1}^n f_i(\vecb{\theta}),
+\end{equation}
+where $f_i : \R^d \to \R$ is the $i$-th sample loss and $\argmin_{\vecb{\theta}} f \ne \emptyset$. In population risk minimization \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.1, pp.\ 275--276}, one replaces \eqref{eq:sgd:erm} with the expectation $f(\vecb{\theta}) = \E_{\xi \sim \mathcal{D}}[f_\xi(\vecb{\theta})]$; see \bookcite{stochastic_gradient_decent_algorithm_explain}{Remark 5.11, pp.\ 30--31}, which recovers \eqref{eq:sgd:erm} under the empirical measure $\mathcal{D} = \hat{p}_{\mathcal{D}}$.
+
+For composite objectives \bookcite{stochastic_gradient_decent_algorithm_explain}{Chs.\ 10--11, pp.\ 52, 56}, we also include a proper, lower semi-continuous (l.s.c.), convex, possibly nonsmooth regularizer $g : \R^d \to \R \cup \set{+\infty}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.6, p.\ 308}:
+\begin{equation}
+\label{eq:sgd:composite}
+\minimize_{\vecb{\theta} \in \R^d}\; F(\vecb{\theta}) \triangleq f(\vecb{\theta}) + g(\vecb{\theta}) = \frac{1}{n}\sum_{i=1}^n f_i(\vecb{\theta}) + g(\vecb{\theta}).
+\end{equation}
+
+At iteration $t$, stochastic first-order methods query a randomized gradient oracle $\vecb{g}_t$ constructed by sampling an index $i_t \sim \mathrm{Unif}\set{1,\dots,n}$ or a minibatch $B_t \subset \set{1,\dots,n}$ uniformly among all $\binom{n}{b}$ subsets of cardinality $\abs{B_t} = b$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 6, pp.\ 31--32}:
+\begin{equation}
+\label{eq:sgd:minibatch-oracle}
+\grad f_{B_t}(\vecb{\theta}_t) \triangleq \frac{1}{b}\sum_{i \in B_t} \grad f_i(\vecb{\theta}_t), \qquad
+\vecb{\theta}_{t+1} = \vecb{\theta}_t - \eta_t \grad f_{B_t}(\vecb{\theta}_t).
+\end{equation}
+Conditioned on the current iterate $\vecb{\theta}_t$, uniform sampling guarantees an \emph{unbiased} gradient estimator $\E[\grad f_{B_t}(\vecb{\theta}_t) \mid \vecb{\theta}_t] = \grad f(\vecb{\theta}_t)$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Remark 5.2, p.\ 24; Remark 6.2, p.\ 32}, whose second moment decomposes cleanly into the squared full gradient plus the oracle variance \bookcite{stochastic_gradient_decent_algorithm_explain}{Def.\ 4.5 \& Lemma 4.6, p.\ 19}:
+\begin{align}
+\Var\bigl[\grad f_{B_t}(\vecb{\theta})\bigr]
+&\triangleq \E\Bigl[\norm{\grad f_{B_t}(\vecb{\theta}) - \grad f(\vecb{\theta})}^2\Bigr]
+= \E\Bigl[\norm{\grad f_{B_t}(\vecb{\theta})}^2\Bigr] - \norm{\grad f(\vecb{\theta})}^2 \nonumber \\
+&\le \E\Bigl[\norm{\grad f_{B_t}(\vecb{\theta}) - \vecb{y}}^2\Bigr] \qquad \forall\, \vecb{y} \in \R^d. \label{eq:sgd:variance-decomp}
+\end{align}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The four synthesized texts diverge substantially in symbol choices and analytical emphasis: Garrigos \& Gower develop tight non-asymptotic operator bounds, Murphy emphasizes practical schedules and composite regularization, Goodfellow et al.\ focus on empirical versus generalization risk, and Prince frames SGD geometrically via fluctuating batch landscapes. Table~\ref{tab:sgd:notation} reconciles all symbols into the unified notation used throughout this monograph.
+
+\begin{center}
+\begingroup
+\captionsetup{hypcap=false}
+\captionof{table}{Unified notation mapping across the four source texts.}
+\label{tab:sgd:notation}
+\footnotesize
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.05cm} >{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{2.95cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Garrigos \& Gower} & \textbf{Murphy (PML1)} & \textbf{Goodfellow et al.} & \textbf{Prince (UDL)} & \textbf{Unified Symbol} \\
+\midrule
+Parameter vector &
+$\vecb{x} \in \R^d$ &
+$\vecb{\theta}, \vecb{w} \in \R^D$ &
+$\vecb{\theta} \in \R^n$ &
+$\vecb{\phi} \in \R^P$ &
+$\vecb{\theta} \in \R^d$ \\
+Finite-sum loss &
+$f(\vecb{x}) = \frac{1}{n}\sum f_i(\vecb{x})$ &
+$L(\vecb{\theta}) = \frac{1}{N}\sum L_n(\vecb{\theta})$ &
+$J(\vecb{\theta}) = \frac{1}{m}\sum L(\vecb{x}^{(i)}, y^{(i)}, \vecb{\theta})$ &
+$L[\vecb{\phi}] = \sum_i \ell_i[\vecb{\phi}]$ &
+$f(\vecb{\theta}) = \frac{1}{n}\sum_{i=1}^n f_i(\vecb{\theta})$ \\
+Step size (LR) &
+$\gamma_t > 0$ &
+$\eta_t > 0$ &
+$\epsilon_k > 0$ &
+$\alpha > 0$ &
+$\eta_t > 0$ \\
+Minibatch size &
+$b \in \set{1,\dots,n}$ &
+$\abs{B_t} \ll N$ &
+$m' \ll m$ &
+$\abs{B}$ &
+$b = \abs{B_t} \in \set{1,\dots,n}$ \\
+Composite split &
+$F = f + g$ ($g$ l.s.c.) &
+$L = L_s + L_r$ &
+$J + \lambda\Omega(\vecb{\theta})$ &
+$L[\vecb{\phi}] + \lambda g[\vecb{\phi}]$ &
+$F(\vecb{\theta}) = f(\vecb{\theta}) + g(\vecb{\theta})$ \\
+Gradient noise &
+$\sigma_f^*$, $\sigma_b^*$, $\Delta_f^*$ &
+Implicit in $\eta_t$ &
+Std.\ err.\ $\sigma/\sqrt{m'}$ &
+Var.\ $\Var[\grad L_b]$ &
+$\sigma_f^*, \sigma_b^*$ (grad.), $\Delta_f^*$ (func.) \\
+\bottomrule
+\end{tabularx}
+\endgroup
+\end{center}
+\end{crossbook}
+
+% ==============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:sgd:derivations}
+% ==============================================================================
+
+\subsection{Expected Smoothness, Interpolation \& Variance Transfer}
+\label{sec:sgd:expected-smoothness}
+
+Classical stochastic approximation often assumes uniformly bounded second moments $\E[\norm{\grad f_i(\vecb{\theta})}^2] \le G^2$ across all $\vecb{\theta} \in \R^d$. For unconstrained $\mu$-strongly convex functions, however, $\norm{\grad f(\vecb{\theta})} \ge \mu\norm{\vecb{\theta} - \vecb{\theta}^*}$ grows unboundedly as $\norm{\vecb{\theta}} \to \infty$, ruling out any finite global $G$.
+
+Instead, expected smoothness \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 4, p.\ 20} avoids this artificial hypothesis by lifting componentwise smoothness and convexity directly into expectation.
+
+\begin{coremath}[Expected Smoothness \& Interpolation]
+Following \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 4, pp.\ 19--23}, assume each component $f_i : \R^d \to \R$ is convex and $L_i$-smooth ($\norm{\grad f_i(\vecb{x}) - \grad f_i(\vecb{y})} \le L_i\norm{\vecb{x} - \vecb{y}}$), with $L_{\max} \triangleq \max_{1\le i\le n} L_i$ and $L_{\mathrm{avg}} \triangleq \frac{1}{n}\sum_{i=1}^n L_i$. By the triangle inequality, $f$ is $L_f$-smooth with $L_f \le L_{\mathrm{avg}} \le L_{\max}$.
+\begin{enumerate}
+  \item \textbf{Expected Smoothness (Cocoercivity in Expectation).} By convex $L_i$-smoothness, each $f_i$ satisfies $\frac{1}{2L_{\max}}\norm{\grad f_i(\vecb{y}) - \grad f_i(\vecb{x})}^2 \le \frac{1}{2L_i}\norm{\grad f_i(\vecb{y}) - \grad f_i(\vecb{x})}^2 \le f_i(\vecb{y}) - f_i(\vecb{x}) - \inner{\grad f_i(\vecb{x})}{\vecb{y} - \vecb{x}}$. Averaging uniformly over $i \in \set{1,\dots,n}$ yields
+  \begin{equation}
+  \label{eq:sgd:expected-smoothness}
+  \frac{1}{2L_{\max}}\E\Bigl[\norm{\grad f_i(\vecb{y}) - \grad f_i(\vecb{x})}^2\Bigr]
+  \le f(\vecb{y}) - f(\vecb{x}) - \inner{\grad f(\vecb{x})}{\vecb{y} - \vecb{x}} \triangleq D_f(\vecb{y}; \vecb{x}).
+  \end{equation}
+  Setting $\vecb{x} = \vecb{\theta}^* \in \argmin f$ (where $\grad f(\vecb{\theta}^*) = \vecb{0}$) and $\vecb{y} = \vecb{\theta}$ gives
+  \begin{equation}
+  \label{eq:sgd:exp-smooth-opt}
+  \E\Bigl[\norm{\grad f_i(\vecb{\theta}) - \grad f_i(\vecb{\theta}^*)}^2\Bigr] \le 2L_{\max}\bigl(f(\vecb{\theta}) - \inf f\bigr).
+  \end{equation}
+
+  \item \textbf{Interpolation Constants.} Define the \emph{function noise} $\Delta_f^*$ and \emph{gradient noise at optimum} $\sigma_f^*$ by
+  \begin{align}
+  \Delta_f^* &\triangleq \inf f - \frac{1}{n}\sum_{i=1}^n \inf f_i \ge 0, \nonumber \\
+  \sigma_f^* &\triangleq \inf_{\vecb{\theta}^* \in \argmin f} \Var\bigl[\grad f_i(\vecb{\theta}^*)\bigr]
+  = \inf_{\vecb{\theta}^* \in \argmin f} \E\Bigl[\norm{\grad f_i(\vecb{\theta}^*)}^2\Bigr] \ge 0. \label{eq:sgd:interp-consts}
+  \end{align}
+  Under convexity and $L_i$-smoothness, $\Var[\grad f_i(\vecb{\theta}^*)]$ is invariant across all minimizers $\vecb{\theta}^* \in \argmin f$ by \eqref{eq:sgd:exp-smooth-opt}. Moreover, \emph{interpolation} ($\exists\,\vecb{\theta}^*$ with $f_i(\vecb{\theta}^*) = \inf f_i\;\forall i$, typical of overparameterized models with $d \gg n$) holds if and only if $\Delta_f^* = 0$, which under convexity is equivalent to $\sigma_f^* = 0$. In general, $L_{\max}$-smoothness gives $\sigma_f^* \le 2L_{\max}\Delta_f^*$, and $\mu$-strong convexity of each $f_i$ gives $2\mu\Delta_f^* \le \sigma_f^*$.
+\end{enumerate}
+\end{coremath}
+
+Combining expected smoothness with the interpolation constants bounds the stochastic gradient second moment strictly in terms of suboptimality and noise at the solution.
+
+\begin{coremath}[Variance Transfer Lemmas]
+Assume each component $f_i$ is $L_i$-smooth with $L_{\max} = \max_i L_i$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemmas 4.19--4.20, p.\ 24}.
+\begin{enumerate}
+  \item \textbf{Smooth (Possibly Nonconvex) Variance Transfer:} Since $f_i$ is $L_{\max}$-smooth and bounded below, $\norm{\grad f_i(\vecb{\theta})}^2 \le 2L_{\max}(f_i(\vecb{\theta}) - \inf f_i) = 2L_{\max}(f_i(\vecb{\theta}) - f_i(\vecb{\theta}^*)) + 2L_{\max}(f_i(\vecb{\theta}^*) - \inf f_i)$. Taking expectations over $i$ yields
+  \begin{equation}
+  \label{eq:sgd:vt-func}
+  \E\Bigl[\norm{\grad f_i(\vecb{\theta})}^2\Bigr] \le 2L_{\max}\bigl(f(\vecb{\theta}) - \inf f\bigr) + 2L_{\max}\Delta_f^*.
+  \end{equation}
+  \item \textbf{Smooth Convex Variance Transfer:} If each $f_i$ is also convex, using $\norm{\vecb{a}+\vecb{b}}^2 \le 2\norm{\vecb{a}}^2 + 2\norm{\vecb{b}}^2$ together with \eqref{eq:sgd:exp-smooth-opt} gives
+  \begin{align}
+  \E\Bigl[\norm{\grad f_i(\vecb{\theta})}^2\Bigr]
+  &\le 2\E\Bigl[\norm{\grad f_i(\vecb{\theta}) - \grad f_i(\vecb{\theta}^*)}^2\Bigr] + 2\E\Bigl[\norm{\grad f_i(\vecb{\theta}^*)}^2\Bigr] \nonumber \\
+  &\le 4L_{\max}\bigl(f(\vecb{\theta}) - \inf f\bigr) + 2\sigma_f^*. \label{eq:sgd:vt-grad}
+  \end{align}
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why Expected Smoothness Replaces Bounded Gradients]
+Variance transfer \eqref{eq:sgd:vt-grad} decomposes stochastic gradient energy into two geometrically distinct pieces: a \emph{state-dependent curvature term} $4L_{\max}(f(\vecb{\theta}) - \inf f)$ that vanishes automatically as $\vecb{\theta} \to \vecb{\theta}^*$, and an \emph{irreducible conflict term} $2\sigma_f^*$ measuring disagreement among per-sample gradients at $\vecb{\theta}^*$. Far from the optimum, SGD behaves almost like deterministic GD; only within an $O(\eta\sigma_f^*)$ neighborhood of $\vecb{\theta}^*$ does gradient conflict stall progress. When a deep neural network or overparameterized linear system ($d > n$) interpolates the training set ($\sigma_f^* = 0$), the noise ball collapses completely to zero \bookcite{stochastic_gradient_decent_algorithm_explain}{Ex.\ 4.11--4.12, p.\ 21}.
+\end{intuition}
+
+\subsection{Robbins--Monro Conditions, Noise Ball \& Convergence Rates}
+\label{sec:sgd:robbins-monro}
+
+Because $\sigma_f^* > 0$ in general non-interpolated problems, taking a constant step size $\eta$ causes SGD iterates to oscillate around $\vecb{\theta}^*$ inside a stationary noise ball. As established in stochastic approximation \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.3, p.\ 295} and optimization theory \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.3.1, pp.\ 294--295}, eliminating this floor requires decaying step sizes according to the \textbf{Robbins--Monro conditions}:
+\begin{equation}
+\label{eq:sgd:robbins-monro}
+\sum_{t=0}^{\infty} \eta_t = \infty \qquad \text{and} \qquad \sum_{t=0}^{\infty} \eta_t^2 < \infty \quad (\text{implying } \eta_t \to 0).
+\end{equation}
+Intuitively, $\sum \eta_t = \infty$ guarantees sufficient cumulative step length to reach $\vecb{\theta}^*$ from any finite initialization $\vecb{\theta}_0$, while $\sum \eta_t^2 < \infty$ ensures finite accumulated variance so fluctuations decay to zero.
+
+\begin{coremath}[Convex \& Smooth SGD: Constant vs.\ Decaying Step Sizes]
+Suppose each $f_i$ is convex and $L_i$-smooth with $L_{\max} = \max_i L_i$, and let SGD run with step sizes $0 < \eta_t < \frac{1}{2L_{\max}}$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.\ 5.3 \& 5.5, pp.\ 25--27}. Expanding the squared distance to $\vecb{\theta}^* \in \argmin f$ and taking conditional expectation $\E_t[\cdot] \triangleq \E[\cdot \mid \vecb{\theta}_t]$ yields
+\begin{align}
+\E_t\bigl[\norm{\vecb{\theta}_{t+1} - \vecb{\theta}^*}^2\bigr]
+&= \norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 - 2\eta_t\inner{\grad f(\vecb{\theta}_t)}{\vecb{\theta}_t - \vecb{\theta}^*} + \eta_t^2 \E_t\bigl[\norm{\grad f_{i_t}(\vecb{\theta}_t)}^2\bigr] \nonumber \\
+&\le \norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 - 2\eta_t\bigl(f(\vecb{\theta}_t) - f(\vecb{\theta}^*)\bigr) + \eta_t^2\Bigl(4L_{\max}\bigl(f(\vecb{\theta}_t) - f(\vecb{\theta}^*)\bigr) + 2\sigma_f^*\Bigr) \nonumber \\
+&= \norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 - 2\eta_t(1 - 2\eta_t L_{\max})\bigl(f(\vecb{\theta}_t) - f(\vecb{\theta}^*)\bigr) + 2\eta_t^2 \sigma_f^*, \label{eq:sgd:convex-step}
+\end{align}
+where the inequality uses convexity of $f$ and variance transfer \eqref{eq:sgd:vt-grad}. Taking full expectations, summing over $t = 0,\dots,T-1$ with telescopic cancellation, dropping $\E\norm{\vecb{\theta}_T - \vecb{\theta}^*}^2 \ge 0$, and applying Jensen's inequality to the weighted average $\bar{\vecb{\theta}}_T \triangleq \sum_{t=0}^{T-1} p_{T,t}\vecb{\theta}_t$ with $p_{T,t} = \frac{\eta_t(1 - 2\eta_t L_{\max})}{\sum_{k=0}^{T-1}\eta_k(1 - 2\eta_k L_{\max})}$ yields
+\begin{equation}
+\label{eq:sgd:convex-master}
+\E\bigl[f(\bar{\vecb{\theta}}_T) - f(\vecb{\theta}^*)\bigr]
+\le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{2\sum_{t=0}^{T-1}\eta_t(1 - 2\eta_t L_{\max})} + \frac{\sum_{t=0}^{T-1}\eta_t^2}{\sum_{t=0}^{T-1}\eta_t(1 - 2\eta_t L_{\max})}\,\sigma_f^*.
+\end{equation}
+Specializing \eqref{eq:sgd:convex-master} yields two canonical regimes:
+\begin{enumerate}
+  \item \textbf{Constant step size} ($\eta_t \equiv \eta < \frac{1}{2L_{\max}}$, uniform average $\bar{\vecb{\theta}}_T = \frac{1}{T}\sum_{t=0}^{T-1}\vecb{\theta}_t$):
+  \begin{equation}
+  \label{eq:sgd:convex-const}
+  \E\bigl[f(\bar{\vecb{\theta}}_T) - f(\vecb{\theta}^*)\bigr]
+  \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{2\eta(1 - 2\eta L_{\max})T} + \frac{\eta}{1 - 2\eta L_{\max}}\sigma_f^*.
+  \end{equation}
+  If interpolation holds ($\sigma_f^* = 0$), constant-step SGD matches deterministic GD's $\mathcal{O}(1/T)$ rate. Otherwise, a fixed horizon choice $\eta = \frac{1}{2L_{\max}\sqrt{T}}$ (for $T \ge 4$) recovers $\mathcal{O}(1/\sqrt{T})$ rate and $\mathcal{O}(1/\varepsilon^2)$ complexity \bookcite{stochastic_gradient_decent_algorithm_explain}{Cor.\ 5.6, p.\ 27}.
+  \item \textbf{Anytime decaying schedule} ($\eta_t = \frac{\eta_0}{\sqrt{t+1}}$ with $\eta_0 \le \frac{1}{2L_{\max}}$): using integral bounds $\sum_{t=0}^{T-1} (t+1)^{-1} \le \log T$ and $\sum_{t=0}^{T-1}(t+1)^{-1/2} \ge 2(\sqrt{T} - \sqrt{2})$ (so $\sum_{t=0}^{T-1}\eta_t(1-2\eta_t L_{\max}) \ge \eta_0\sqrt{T}$ for $T \ge 49$) yields
+  \begin{equation}
+  \label{eq:sgd:convex-decay}
+  \E\bigl[f(\bar{\vecb{\theta}}_T) - f(\vecb{\theta}^*)\bigr]
+  \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{2\eta_0\sqrt{T}} + \frac{\eta_0 \log T}{\sqrt{T}}\sigma_f^*
+  = \mathcal{O}\!\left(\frac{\log T}{\sqrt{T}}\right).
+  \end{equation}
+\end{enumerate}
+\end{coremath}
+
+Note that the optimal polynomial exponent in $\eta_t = \eta_0 (t+1)^{-\alpha}$ for minimizing the variance ratio $\frac{\sum \eta_t^2}{\sum \eta_t}$ over convex objectives is $\alpha = 1/2$, which balances $\mathcal{O}(T^{-(1-\alpha)})$ bias decay against $\mathcal{O}(T^{-\alpha})$ variance decay \bookcite{stochastic_gradient_decent_algorithm_explain}{Remark 5.4, p.\ 26} \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.\ (8.64), p.\ 295}. When $f$ possesses quadratic curvature---either $\mu$-strong convexity or the nonconvex $\mu$-Polyak--\L{}ojasiewicz ($\mu$-PL) inequality $\frac{1}{2}\norm{\grad f(\vecb{\theta})}^2 \ge \mu(f(\vecb{\theta}) - \inf f)$---constant-step SGD converges \emph{linearly} up to an explicit $\mathcal{O}(\eta \sigma_f^*/\mu)$ noise ball.
+
+\begin{coremath}[Strongly Convex \& PL Noise-Ball Bounds]
+Following \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.\ 5.7 \& 5.9, pp.\ 28--30}, let each component $f_i$ be $L_i$-smooth with $L_{\max} = \max_i L_i$.
+\begin{enumerate}
+  \item \textbf{$\mu$-Strongly Convex Case:} Suppose each $f_i$ is convex and $f$ is $\mu$-strongly convex, so $\inner{\grad f(\vecb{\theta})}{\vecb{\theta} - \vecb{\theta}^*} \ge f(\vecb{\theta}) - f(\vecb{\theta}^*) + \frac{\mu}{2}\norm{\vecb{\theta} - \vecb{\theta}^*}^2$. Repeating \eqref{eq:sgd:convex-step} with constant step size $0 < \eta \le \frac{1}{2L_{\max}}$ gives
+  \begin{align}
+  \E\bigl[\norm{\vecb{\theta}_{t+1} - \vecb{\theta}^*}^2\bigr]
+  &\le (1 - \eta\mu)\E\bigl[\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2\bigr] + 2\eta(2\eta L_{\max} - 1)\E\bigl[f(\vecb{\theta}_t) - f(\vecb{\theta}^*)\bigr] + 2\eta^2\sigma_f^* \nonumber \\
+  &\le (1 - \eta\mu)\E\bigl[\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2\bigr] + 2\eta^2\sigma_f^*. \label{eq:sgd:sc-recurrence}
+  \end{align}
+  Unrolling \eqref{eq:sgd:sc-recurrence} and summing the geometric series $\sum_{k=0}^{t-1}(1-\eta\mu)^k \le \frac{1}{\eta\mu}$ yields
+  \begin{equation}
+  \label{eq:sgd:sc-noiseball}
+  \E\bigl[\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2\bigr]
+  \le (1 - \eta\mu)^t \norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + \frac{2\eta \sigma_f^*}{\mu}.
+  \end{equation}
+  Setting $\eta = \min\bigl\{\frac{\varepsilon\mu}{4\sigma_f^*},\, \frac{1}{2L_{\max}}\bigr\}$ guarantees $\E\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 \le \varepsilon$ after $t \ge \max\bigl\{\frac{4\sigma_f^*}{\varepsilon\mu^2},\, \frac{2L_{\max}}{\mu}\bigr\}\log\frac{2\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{\varepsilon} = \tilde{\mathcal{O}}(1/\varepsilon)$ iterations \bookcite{stochastic_gradient_decent_algorithm_explain}{Cor.\ 5.8, p.\ 29}. Under Robbins--Monro decay $\eta_t = \frac{2}{\mu(t + t_0)}$ with $t_0 \ge \frac{4L_{\max}}{\mu}$, \eqref{eq:sgd:sc-recurrence} yields $\E\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 = \mathcal{O}\bigl(\frac{\sigma_f^*}{\mu^2 t}\bigr)$ without tuning $\eta$ to $\varepsilon$.
+
+  \item \textbf{Nonconvex $\mu$-PL Case:} Even without convexity, if $f$ is $\mu$-PL and $0 < \eta \le \frac{\mu}{L_f L_{\max}}$, applying $L_f$-smoothness $f(\vecb{\theta}_{t+1}) \le f(\vecb{\theta}_t) - \eta\inner{\grad f(\vecb{\theta}_t)}{\grad f_{i_t}(\vecb{\theta}_t)} + \frac{L_f \eta^2}{2}\norm{\grad f_{i_t}(\vecb{\theta}_t)}^2$ together with \eqref{eq:sgd:vt-func} and the $\mu$-PL inequality gives
+  \begin{equation}
+  \label{eq:sgd:pl-noiseball}
+  \E\bigl[f(\vecb{\theta}_t) - \inf f\bigr]
+  \le (1 - \eta\mu)^t \bigl(f(\vecb{\theta}_0) - \inf f\bigr) + \frac{\eta L_f L_{\max}}{\mu}\,\Delta_f^*.
+  \end{equation}
+\end{enumerate}
+\end{coremath}
+
+\subsection{Minibatch Expected Smoothness \& Linear-to-Saturation Scaling}
+\label{sec:sgd:minibatch}
+
+Evaluating gradients on a minibatch $B_t \subset \set{1,\dots,n}$ of size $b$ without replacement within each step simultaneously utilizes SIMD/GPU parallelism and shrinks both the effective smoothness constant $L_b$ and the gradient noise $\sigma_b^*$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 6, pp.\ 31--35} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.3, pp.\ 278--279}.
+
+\begin{coremath}[Exact Minibatch Expected Smoothness \& Noise Scaling]
+Assume each $f_i$ is convex and $L_i$-smooth, and let $B \subset \set{1,\dots,n}$ be sampled uniformly over subsets of size $b \in \set{1,\dots,n}$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemma 6.5 \& Thm.\ 6.11, pp.\ 32--35}. Define $\sigma_b^* \triangleq \inf_{\vecb{\theta}^*\in\argmin f} \Var_B[\grad f_B(\vecb{\theta}^*)]$. Then $f$ is $L_b$-smooth in expectation:
+\begin{equation}
+\label{eq:sgd:minibatch-Lb}
+\E_B\Bigl[\norm{\grad f_B(\vecb{y}) - \grad f_B(\vecb{x})}^2\Bigr] \le 2L_b\, D_f(\vecb{y}; \vecb{x}),
+\qquad
+L_b = \frac{n(b-1)}{b(n-1)} L_f + \frac{n-b}{b(n-1)} L_{\max},
+\end{equation}
+and the minibatch gradient noise at $\vecb{\theta}^*$ obeys the finite-population correction law
+\begin{equation}
+\label{eq:sgd:minibatch-noise}
+\sigma_b^* = \frac{n-b}{b(n-1)}\sigma_f^*.
+\end{equation}
+Consequently, all single-sample SGD guarantees hold verbatim upon substituting $(L_{\max}, \sigma_f^*) \mapsto (L_b, \sigma_b^*)$: for $\mu$-strongly convex $f$ and $0 < \eta \le \frac{1}{2L_b}$,
+\begin{equation}
+\label{eq:sgd:minibatch-sc}
+\E\bigl[\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2\bigr]
+\le (1 - \eta\mu)^t\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + \frac{2\eta\,\sigma_b^*}{\mu},
+\qquad
+T_\varepsilon(b) = \max\!\left\{\frac{2L_b}{\mu},\, \frac{4\sigma_b^*}{\varepsilon\mu^2}\right\}\log\frac{2\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{\varepsilon}.
+\end{equation}
+\end{coremath}
+
+Equation~\eqref{eq:sgd:minibatch-Lb}--\eqref{eq:sgd:minibatch-sc} unifies the entire spectrum between single-sample SGD ($b=1 \implies L_1 = L_{\max},\; \sigma_1^* = \sigma_f^*$) and deterministic full-batch GD ($b=n \implies L_n = L_f,\; \sigma_n^* = 0$), and rigorously explains the empirical \textbf{linear-to-saturation batch scaling law}:
+\begin{itemize}
+  \item \textbf{Linear scaling regime ($b \ll b_{\mathrm{crit}}$):} When the noise term dominates ($\frac{4\sigma_b^*}{\varepsilon\mu^2} > \frac{2L_b}{\mu}$), we may scale the step size $\eta(b) = \frac{\varepsilon\mu}{4\sigma_b^*} \propto b$ linearly with $b$ without inflating the noise ball $\frac{2\eta(b)\sigma_b^*}{\mu} = \frac{\varepsilon}{2}$; iteration count drops linearly as $T_\varepsilon(b) \propto 1/b$ while total gradient evaluations $b\cdot T_\varepsilon(b)$ remain nearly invariant.
+  \item \textbf{Curvature saturation regime ($b \ge b_{\mathrm{crit}}$):} Solving $\frac{2L_b}{\mu} = \frac{4\sigma_b^*}{\varepsilon\mu^2}$ defines the \emph{critical batch size}
+  \begin{equation}
+  \label{eq:sgd:bcrit}
+  b_{\mathrm{crit}} = \frac{n\bigl(2\sigma_f^*/(\varepsilon\mu) - L_{\max} + L_f\bigr)}{(n-1)L_f + 2\sigma_f^*/(\varepsilon\mu) - L_{\max} + L_f}
+  \approx \frac{2\sigma_f^*}{\varepsilon \mu L_f} \quad (\text{for } n \gg b_{\mathrm{crit}}).
+  \end{equation}
+  Beyond $b_{\mathrm{crit}}$, the maximum stable step size saturates at $\eta \le \frac{1}{2L_b} \to \frac{1}{2L_f}$ and total sample complexity $b \cdot T_\varepsilon(b) \approx \frac{2 b L_f}{\mu}\log(2\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2/\varepsilon)$ grows linearly in $b$.
+\end{itemize}
+
+\subsection{Variance Reduction: SVRG \& SAGA Control Variates}
+\label{sec:sgd:variance-reduction}
+
+Standard SGD must shrink $\eta_t \to 0$ because $\Var[\grad f_{i_t}(\vecb{\theta}_t)] \to \sigma_f^* > 0$ even at $\vecb{\theta}^*$. Variance-reduced finite-sum methods eliminate this floor by constructing an unbiased \emph{control-variate} estimator whose variance vanishes as the iterates approach $\vecb{\theta}^*$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.5, pp.\ 297--298}.
+
+\begin{coremath}[Control-Variate Variance Vanishing in SVRG \& SAGA]
+Given a snapshot parameter $\tilde{\vecb{\theta}}$ with exact precomputed full gradient $\grad f(\tilde{\vecb{\theta}}) = \frac{1}{n}\sum_{i=1}^n \grad f_i(\tilde{\vecb{\theta}})$, \textbf{Stochastic Variance-Reduced Gradient (SVRG)} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.\ (8.66)--(8.67), pp.\ 297--298} updates at step $t$ via $i_t \sim \mathrm{Unif}\set{1,\dots,n}$:
+\begin{equation}
+\label{eq:sgd:svrg}
+\vecb{g}_t^{\mathrm{SVRG}} \triangleq \grad f_{i_t}(\vecb{\theta}_t) - \grad f_{i_t}(\tilde{\vecb{\theta}}) + \grad f(\tilde{\vecb{\theta}}), \qquad \vecb{\theta}_{t+1} = \vecb{\theta}_t - \eta \vecb{g}_t^{\mathrm{SVRG}}.
+\end{equation}
+Because $\E[\grad f_{i_t}(\tilde{\vecb{\theta}})] = \grad f(\tilde{\vecb{\theta}})$, the estimator is strictly unbiased: $\E[\vecb{g}_t^{\mathrm{SVRG}} \mid \vecb{\theta}_t] = \grad f(\vecb{\theta}_t)$. Furthermore, applying variance bound~\eqref{eq:sgd:variance-decomp} (centering around $\vecb{y} = \grad f(\tilde{\vecb{\theta}}) - \grad f(\vecb{\theta}_t)$) and expected smoothness \eqref{eq:sgd:exp-smooth-opt} gives
+\begin{align}
+\Var\bigl[\vecb{g}_t^{\mathrm{SVRG}} \mid \vecb{\theta}_t\bigr]
+&\le \E\Bigl[\norm{\grad f_{i_t}(\vecb{\theta}_t) - \grad f_{i_t}(\tilde{\vecb{\theta}})}^2\Bigr] \nonumber \\
+&\le 2\E\Bigl[\norm{\grad f_{i_t}(\vecb{\theta}_t) - \grad f_{i_t}(\vecb{\theta}^*)}^2\Bigr] + 2\E\Bigl[\norm{\grad f_{i_t}(\tilde{\vecb{\theta}}) - \grad f_{i_t}(\vecb{\theta}^*)}^2\Bigr] \nonumber \\
+&\le 4L_{\max}\bigl(f(\vecb{\theta}_t) - \inf f\bigr) + 4L_{\max}\bigl(f(\tilde{\vecb{\theta}}) - \inf f\bigr). \label{eq:sgd:svrg-var}
+\end{align}
+Because the right-hand side of \eqref{eq:sgd:svrg-var} has zero $\sigma_f^*$ floor and shrinks to $0$ as $\vecb{\theta}_t, \tilde{\vecb{\theta}} \to \vecb{\theta}^*$, SVRG converges \emph{linearly} with a constant step size $\eta = \Theta(1/L_{\max})$, requiring only $\mathcal{O}\bigl((n + L_{\max}/\mu)\log(1/\varepsilon)\bigr)$ gradient evaluations for $\mu$-strongly convex finite sums while storing only $\mathcal{O}(d)$ parameters. By contrast, \textbf{SAGA} replaces the periodic full-batch snapshot $\tilde{\vecb{\theta}}$ with a table of $n$ cached per-example gradients $\set{\vecb{g}_i^{\mathrm{loc}}}_{i=1}^n$ and running average $\bar{\vecb{g}} = \frac{1}{n}\sum_{i=1}^n \vecb{g}_i^{\mathrm{loc}}$, updating $\vecb{g}_t^{\mathrm{SAGA}} = \grad f_{i_t}(\vecb{\theta}_t) - \vecb{g}_{i_t}^{\mathrm{loc}} + \bar{\vecb{g}}$ and overwriting $\vecb{g}_{i_t}^{\mathrm{loc}} \leftarrow \grad f_{i_t}(\vecb{\theta}_t)$ at $\mathcal{O}(nd)$ memory cost \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.5.2, p.\ 298}.
+\end{coremath}
+
+\subsection{Nonsmooth Convexity, Subgradients \& Stochastic Subgradient Descent}
+\label{sec:sgd:subgradients}
+
+When losses contain kinks (e.g., hinge loss, ReLU networks, or $\ell_1$ penalties $\norm{\vecb{\theta}}_1$) or take $+\infty$ outside a constraint set $\mathcal{C}$, classical gradients fail to exist \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 8, p.\ 39} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.1.4.1, p.\ 282}. For proper l.s.c.\ convex functions $f : \R^d \to \R \cup \set{+\infty}$, the \textbf{subdifferential} $\partial f(\vecb{\theta})$ generalizes the derivative as the set of supporting affine lower bounds:
+\begin{equation}
+\label{eq:sgd:subdiff-def}
+\partial f(\vecb{\theta}) \triangleq \set*{\vecb{\eta} \in \R^d \;\middle|\; f(\vecb{y}) \ge f(\vecb{\theta}) + \inner{\vecb{\eta}}{\vecb{y} - \vecb{\theta}} \;\;\forall\, \vecb{y} \in \R^d}.
+\end{equation}
+Whenever $f$ is convex and continuous on $\R^d$, $\partial f(\vecb{\theta}) \ne \emptyset$; at differentiable points $\partial f(\vecb{\theta}) = \set{\grad f(\vecb{\theta})}$; and Fermat's optimality condition becomes $\vecb{0} \in \partial f(\vecb{\theta}^*)$. Moreover, when $f$ is differentiable convex and $g$ is proper l.s.c.\ convex, the sum rule $\partial(f + g)(\vecb{\theta}) = \set{\grad f(\vecb{\theta})} + \partial g(\vecb{\theta})$ holds \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemmas 8.5--8.9, pp.\ 41--42}. For the scalar absolute value $f(\theta) = \abs{\theta}$, $\partial\abs{\theta} = \set{-1}$ for $\theta < 0$, $[-1, 1]$ for $\theta = 0$, and $\set{+1}$ for $\theta > 0$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.\ (8.14), p.\ 282}.
+
+\begin{coremath}[Stochastic Subgradient Descent (SSD) Complexity]
+Following \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 9, pp.\ 46--52}, consider $f(\vecb{\theta}) = \E_{\xi\sim\mathcal{D}}[f_\xi(\vecb{\theta})]$ where each $f_\xi$ is convex and possesses a measurable subgradient selection $\vecb{g}(\vecb{\theta}, \xi) \in \partial f_\xi(\vecb{\theta})$ with bounded second moment $\E_\xi[\norm{\vecb{g}(\vecb{\theta}, \xi)}^2] \le G^2$. Then $\E_\xi[\vecb{g}(\vecb{\theta}, \xi)] \in \partial f(\vecb{\theta})$ (Lemma 9.4), and iterating $\vecb{\theta}_{t+1} = \vecb{\theta}_t - \eta_t \vecb{g}(\vecb{\theta}_t, \xi_t)$ gives
+\begin{equation}
+\label{eq:sgd:ssd-step}
+\E_t\bigl[\norm{\vecb{\theta}_{t+1} - \vecb{\theta}^*}^2\bigr]
+\le \norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 - 2\eta_t\bigl(f(\vecb{\theta}_t) - \inf f\bigr) + \eta_t^2 G^2.
+\end{equation}
+Summing from $t=0$ to $T-1$ and applying Jensen's inequality to the step-weighted average $\bar{\vecb{\theta}}_T = \frac{\sum_{t=0}^{T-1}\eta_t\vecb{\theta}_t}{\sum_{t=0}^{T-1}\eta_t}$ yields
+\begin{equation}
+\label{eq:sgd:ssd-master}
+\E\bigl[f(\bar{\vecb{\theta}}_T) - \inf f\bigr]
+\le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + G^2\sum_{t=0}^{T-1}\eta_t^2}{2\sum_{t=0}^{T-1}\eta_t}.
+\end{equation}
+\begin{itemize}
+  \item \textbf{Fixed-horizon optimal constant step:} Setting $\eta_t \equiv \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}}{G\sqrt{T}}$ minimizes \eqref{eq:sgd:ssd-master}, giving $\E[f(\bar{\vecb{\theta}}_T) - \inf f] \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*} G}{\sqrt{T}}$, i.e., $T \ge \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 G^2}{\varepsilon^2} = \mathcal{O}(1/\varepsilon^2)$ complexity \bookcite{stochastic_gradient_decent_algorithm_explain}{Cor.\ 9.7, p.\ 49}.
+  \item \textbf{Anytime decaying schedule:} Taking $\eta_t = \frac{\eta}{\sqrt{t+1}}$ yields $\mathcal{O}\bigl(\frac{\log T}{\sqrt{T}}\bigr)$ convergence, while adding projection onto a ball $B(\vecb{0}, R)$ containing $\vecb{\theta}^*$ (Projected SSD) eliminates the $\log T$ factor to achieve $\frac{1}{\sqrt{T}}\bigl(\frac{3R^2}{\eta} + \eta G^2\bigr)$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.\ 9.6 \& 9.11, pp.\ 48, 51}.
+  \item \textbf{Strongly convex nonsmooth case:} If $f$ is $\mu$-strongly convex and $\eta \in (0, 1/\mu)$, constant-step SSD satisfies $\E\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 \le (1-\eta\mu)^t\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + \frac{\eta G^2}{\mu}$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.\ 9.8, p.\ 49}.
+\end{itemize}
+\end{coremath}
+
+\subsection{Composite Operator Splitting, Proximal Gradient \& ISTA}
+\label{sec:sgd:proximal}
+
+Subgradient descent slows to $\mathcal{O}(1/\sqrt{T})$ even when $F = f + g$ combines a smooth $L$-Lipschitz-gradient loss $f$ with a simple nonsmooth penalty $g$ (such as $\lambda\norm{\vecb{\theta}}_1$ or an indicator $\delta_{\mathcal{C}}$). \textbf{Proximal gradient descent (PGD)} preserves smooth convergence rates by decoupling $f$ (forward explicit gradient step) from $g$ (backward implicit proximal step) \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 8.4 \& 10, pp.\ 42--44, 52--56} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.6, pp.\ 308--311}.
+
+\begin{coremath}[Proximal Operator, Soft-Thresholding (ISTA) \& Composite Convergence]
+For proper l.s.c.\ convex $g : \R^d \to \R \cup \set{+\infty}$ and $\eta > 0$, the \textbf{proximal operator} is uniquely defined (by $1/\eta$-strong convexity of the objective) as
+\begin{equation}
+\label{eq:sgd:prox-def}
+\operatorname{prox}_{\eta g}(\vecb{v}) \triangleq \argmin_{\vecb{z} \in \R^d} \left\{ g(\vecb{z}) + \frac{1}{2\eta}\norm{\vecb{z} - \vecb{v}}^2 \right\}.
+\end{equation}
+\textbf{Fundamental Algebraic Properties} \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemmas 8.15--8.17, pp.\ 43--44}:
+\begin{enumerate}
+  \item \emph{Subdifferential characterization:} $\vecb{p} = \operatorname{prox}_{\eta g}(\vecb{v}) \iff \frac{\vecb{v} - \vecb{p}}{\eta} \in \partial g(\vecb{p})$.
+  \item \emph{Non-expansiveness ($1$-Lipschitz):} $\norm{\operatorname{prox}_{\eta g}(\vecb{x}) - \operatorname{prox}_{\eta g}(\vecb{y})} \le \norm{\vecb{x} - \vecb{y}}$ for all $\vecb{x}, \vecb{y} \in \R^d$.
+  \item \emph{Fixed-point optimality:} $\vecb{\theta}^* \in \argmin(f + g) \iff \vecb{\theta}^* = \operatorname{prox}_{\eta g}(\vecb{\theta}^* - \eta \grad f(\vecb{\theta}^*))$ for any $\eta > 0$.
+\end{enumerate}
+
+\textbf{Canonical Closed-Form Operators} \bookcite{probabilisticml_kevinmurphy_introduction}{Secs.\ 8.6.1--8.6.3, 11.4.9.3, pp.\ 308--311, 398}:
+\begin{itemize}
+  \item \emph{Indicator $\delta_{\mathcal{C}}$ (Projected GD):} $\operatorname{prox}_{\eta\delta_{\mathcal{C}}}(\vecb{v}) = \Pi_{\mathcal{C}}(\vecb{v}) = \argmin_{\vecb{z}\in\mathcal{C}}\norm{\vecb{z} - \vecb{v}}^2$; for box constraints $[\vecb{l}, \vecb{u}]$, $[\Pi_{[\vecb{l},\vecb{u}]}(\vecb{v})]_j = \min(\max(v_j, l_j), u_j)$.
+  \item \emph{$\ell_1$ norm $g(\vecb{\theta}) = \lambda\norm{\vecb{\theta}}_1$ (ISTA Soft-Thresholding):} Setting $0 \in \eta\lambda\partial\abs{z_j} + z_j - v_j$ coordinatewise gives
+  \begin{equation}
+  \label{eq:sgd:ista}
+  \bigl[\operatorname{prox}_{\eta\lambda\norm{\cdot}_1}(\vecb{v})\bigr]_j
+  = \operatorname{SoftThreshold}(v_j, \eta\lambda)
+  \triangleq \operatorname{sign}(v_j)\,\max\bigl(\abs{v_j} - \eta\lambda,\, 0\bigr),
+  \end{equation}
+  yielding the Iterative Soft-Thresholding Algorithm $\vecb{\theta}_{t+1} = \operatorname{SoftThreshold}(\vecb{\theta}_t - \eta\grad f(\vecb{\theta}_t),\, \eta\lambda)$.
+\end{itemize}
+
+\textbf{Convergence Guarantees for Forward--Backward Splitting} ($\vecb{\theta}_{t+1} = \operatorname{prox}_{\eta_t g}(\vecb{\theta}_t - \eta_t \vecb{g}_t)$):
+\begin{enumerate}
+  \item \emph{Deterministic PGD} ($\vecb{g}_t = \grad f(\vecb{\theta}_t)$, $f$ convex \& $L$-smooth, $\eta \in (0, 1/L]$) \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.\ 10.3 \& 10.5, pp.\ 53--56}: Using the decreasing Lyapunov energy $E_t = \frac{1}{2\eta}\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 + t(F(\vecb{\theta}_t) - \inf F)$ establishes $F(\vecb{\theta}_t) - \inf F \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2}{2\eta t} = \mathcal{O}(1/t)$ (avoiding the $\mathcal{O}(1/\sqrt{t})$ subgradient bottleneck). If $f$ is $\mu$-strongly convex, non-expansiveness + Lemma 8.17 gives linear contraction $\norm{\vecb{\theta}_{t+1} - \vecb{\theta}^*}^2 \le (1 - \eta\mu)\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2$.
+  \item \emph{Stochastic PGD (SPGD)} ($\vecb{g}_t = \grad f_{i_t}(\vecb{\theta}_t)$, composite noise $\sigma_F^* \triangleq \inf_{\vecb{\theta}^*\in\argmin F}\Var[\grad f_i(\vecb{\theta}^*)]$) \bookcite{stochastic_gradient_decent_algorithm_explain}{Def.\ 8.21, Thms.\ 11.5 \& 11.9, pp.\ 45, 57--62}: Notice that $\sigma_F^* \ne \sigma_f^*$ in general because $\grad f(\vecb{\theta}^*) \in -\partial g(\vecb{\theta}^*)$ need not vanish at the composite minimizer; rather, $\sigma_F^* \le 4L_{\max}(f(\vecb{\theta}^*) - \inf f) + 2\sigma_f^*$. For convex $f_i$ and nonincreasing $\eta_t$ with $\eta_0 < \frac{1}{4L_{\max}}$,
+  \begin{equation}
+  \label{eq:sgd:spgd-convex}
+  \E\bigl[F(\bar{\vecb{\theta}}_t) - \inf F\bigr]
+  \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + 2\eta_0(F(\vecb{\theta}_0) - \inf F)}{2(1 - 4\eta_0 L_{\max})\sum_{s=0}^{t-1}\eta_s} + \frac{2\sigma_F^* \sum_{s=0}^{t-1}\eta_s^2}{(1 - 4\eta_0 L_{\max})\sum_{s=0}^{t-1}\eta_s},
+  \end{equation}
+  giving $\mathcal{O}\bigl((\log t)/\sqrt{t}\bigr)$ under $\eta_t = \eta_0/\sqrt{t+1}$; if $f$ is $\mu$-strongly convex and $\eta \in (0, \frac{1}{2L_{\max}}]$, SPGD contracts to a composite noise ball:
+  \begin{equation}
+  \label{eq:sgd:spgd-sc}
+  \E\bigl[\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2\bigr] \le (1 - \eta\mu)^t \norm{\vecb{\theta}_0 - \vecb{\theta}^*}^2 + \frac{2\eta \sigma_F^*}{\mu}.
+  \end{equation}
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why Exact Sparsity Requires Proximal Splitting, Not Subgradients]
+Subgradient updates on $F(\vecb{\theta}) = f(\vecb{\theta}) + \lambda\norm{\vecb{\theta}}_1$ evaluate $\grad f(\vecb{\theta}_t) + \lambda\operatorname{sign}(\vecb{\theta}_t)$, so iterates almost surely overshoot zero rather than hitting $0$ exactly. By contrast, the proximal step $\operatorname{prox}_{\eta g}$ solves a regularized local quadratic model and maps the entire deadzone $[-\eta\lambda, +\eta\lambda]$ identically onto $0$, producing exact structural sparsity at every step while preserving $\mathcal{O}(1/t)$ (convex) and linear (strongly convex) smooth convergence speeds \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.6.2 \& 11.4.3, pp.\ 310, 388}.
+\end{intuition}
+
+% ==============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:sgd:algorithms}
+% ==============================================================================
+
+Algorithms~\ref{alg:sgd:mini-spgd} and~\ref{alg:sgd:svrg} synthesize minibatch stochastic proximal gradient descent (covering vanilla SGD for $g \equiv 0$, projected SGD for $g = \delta_{\mathcal{C}}$, and stochastic ISTA for $g = \lambda\norm{\cdot}_1$) alongside an epoch-based SVRG variance-reduction wrapper.
+
+\begin{algorithm}[htbp]
+\caption{Minibatch Stochastic Proximal Gradient Descent (Mini-SPGD / Stochastic ISTA)}
+\label{alg:sgd:mini-spgd}
+\KwIn{Initial parameters $\vecb{\theta}_0 \in \R^d$; component functions $\set{f_i}_{i=1}^n$; convex regularizer $g$; minibatch size $b \in \set{1,\dots,n}$; step-size schedule $\set{\eta_t}_{t=0}^{T-1}$ satisfying $\eta_t \le 1/(2L_b)$ (or $< 1/(4L_{\max})$ for convex SPGD)}
+\KwOut{Final iterate $\vecb{\theta}_T$ or Polyak--Ruppert / step-weighted average $\bar{\vecb{\theta}}_T$}
+Initialize $\bar{\vecb{\theta}}_0 \leftarrow \vecb{\theta}_0$ and $w_0 \leftarrow 0$\;
+\For{$t = 0, 1, \dots, T-1$}{
+  Sample minibatch $B_t \subset \set{1,\dots,n}$ of cardinality $b$ (uniform subset or shuffled epoch partition)\;
+  Compute unbiased minibatch gradient $\vecb{g}_t \leftarrow \frac{1}{b}\sum_{i \in B_t} \grad f_i(\vecb{\theta}_t)$\;
+  Forward smooth step: $\vecb{v}_t \leftarrow \vecb{\theta}_t - \eta_t \vecb{g}_t$\;
+  Backward proximal step: $\vecb{\theta}_{t+1} \leftarrow \operatorname{prox}_{\eta_t g}(\vecb{v}_t)$
+    \Comment*[r]{e.g., $\operatorname{SoftThreshold}(\vecb{v}_t, \eta_t\lambda)$ or $\Pi_{\mathcal{C}}(\vecb{v}_t)$}
+  Update running average $\bar{\vecb{\theta}}_{t+1} \leftarrow \frac{w_t \bar{\vecb{\theta}}_t + \eta_t \vecb{\theta}_{t+1}}{w_t + \eta_t}$, $w_{t+1} \leftarrow w_t + \eta_t$\;
+}
+\Return $\vecb{\theta}_T$ (strongly convex / PL) or $\bar{\vecb{\theta}}_T$ (general convex)\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Stochastic Variance-Reduced Gradient (SVRG) with Optional Proximal Splitting}
+\label{alg:sgd:svrg}
+\KwIn{Initial snapshot $\tilde{\vecb{\theta}}_0 \in \R^d$; outer epochs $S$; inner loop length $m$ (typically $m \approx 2n$); constant step size $\eta \le \frac{1}{10 L_{\max}}$}
+\KwOut{Final snapshot $\tilde{\vecb{\theta}}_S$}
+\For{$s = 0, 1, \dots, S-1$}{
+  Compute exact full-batch snapshot gradient $\tilde{\vecb{\mu}}_s \leftarrow \frac{1}{n}\sum_{i=1}^n \grad f_i(\tilde{\vecb{\theta}}_s)$ \Comment*[r]{$\mathcal{O}(n)$ oracle calls}
+  Initialize inner state $\vecb{\theta}_0^{(s)} \leftarrow \tilde{\vecb{\theta}}_s$\;
+  \For{$k = 0, 1, \dots, m-1$}{
+    Sample index $i_k \sim \mathrm{Unif}\set{1,\dots,n}$\;
+    Form control-variate estimator $\vecb{v}_k \leftarrow \grad f_{i_k}(\vecb{\theta}_k^{(s)}) - \grad f_{i_k}(\tilde{\vecb{\theta}}_s) + \tilde{\vecb{\mu}}_s$\;
+    Update $\vecb{\theta}_{k+1}^{(s)} \leftarrow \operatorname{prox}_{\eta g}\bigl(\vecb{\theta}_k^{(s)} - \eta \vecb{v}_k\bigr)$ \Comment*[r]{Reduces to $\vecb{\theta}_k^{(s)} - \eta\vecb{v}_k$ if $g \equiv 0$}
+  }
+  Set $\tilde{\vecb{\theta}}_{s+1} \leftarrow \frac{1}{m}\sum_{k=0}^{m-1} \vecb{\theta}_k^{(s)}$ (or uniform random iterate $\vecb{\theta}_k^{(s)}$)\;
+}
+\Return $\tilde{\vecb{\theta}}_S$\;
+\end{algorithm}
+
+Table~\ref{tab:sgd:complexity} compiles the exact iteration and gradient-oracle complexities across smooth, nonsmooth, minibatch, variance-reduced, and composite proximal methods.
+
+\begin{table}[htbp]
+\centering
+\caption{Non-asymptotic iteration complexities to achieve expected error $\le \varepsilon$ ($\E[F(\vecb{\theta}_t) - \inf F] \le \varepsilon$ in convex/PL regimes; $\E\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2 \le \varepsilon$ in strongly convex regimes). Let $D_0 = \norm{\vecb{\theta}_0 - \vecb{\theta}^*}$ and $\delta_0 = f(\vecb{\theta}_0) - \inf f$. Adapted from \bookcite{stochastic_gradient_decent_algorithm_explain}{Table 1b, p.\ 4} and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.5, pp.\ 297--298}.}
+\label{tab:sgd:complexity}
+\footnotesize
+\renewcommand{\arraystretch}{1.28}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{1.85cm} >{\raggedright\arraybackslash}p{3.15cm} >{\raggedright\arraybackslash}p{3.30cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Oracle Cost/Step} & \textbf{Convex ($L$-Smooth / $G$-Lip.)} & \textbf{$\mu$-Strongly Convex} & \textbf{$\mu$-PL ($L$-Smooth)} \\
+\midrule
+Full-Batch GD &
+$n$ &
+$\mathcal{O}\!\left(\frac{L_f D_0^2}{\varepsilon}\right)$ &
+$\mathcal{O}\!\left(\frac{L_f}{\mu}\log\frac{1}{\varepsilon}\right)$ &
+$\mathcal{O}\!\left(\frac{L_f}{\mu}\log\frac{1}{\varepsilon}\right)$ \\
+Single SGD ($b=1$) &
+$1$ &
+$\mathcal{O}\!\left(\frac{L_{\max}D_0^2}{\varepsilon} + \frac{\sigma_f^* D_0^2}{\varepsilon^2}\right)$ &
+$\tilde{\mathcal{O}}\!\left(\max\!\left\{\frac{L_{\max}}{\mu},\, \frac{\sigma_f^*}{\varepsilon\mu^2}\right\}\right)$ &
+$\tilde{\mathcal{O}}\!\left(\frac{L_f L_{\max}}{\mu}\max\!\left\{1, \frac{\Delta_f^*}{\varepsilon\mu}\right\}\right)$ \\
+Minibatch SGD ($b$) &
+$b$ &
+$\mathcal{O}\!\left(\frac{L_b D_0^2}{\varepsilon} + \frac{\sigma_b^* D_0^2}{\varepsilon^2}\right)$ &
+$\tilde{\mathcal{O}}\!\left(\max\!\left\{\frac{L_b}{\mu},\, \frac{\sigma_b^*}{\varepsilon\mu^2}\right\}\right)$ &
+$\tilde{\mathcal{O}}\!\left(\frac{L_f L_b}{\mu}\max\!\left\{1, \frac{\Delta_b^*}{\varepsilon\mu}\right\}\right)$ \\
+Stoch.\ Subgrad.\ (SSD) &
+$1$ &
+$\mathcal{O}\!\left(\frac{G^2 D_0^2}{\varepsilon^2}\right)$ ($G$-Lipschitz) &
+$\tilde{\mathcal{O}}\!\left(\frac{G^2}{\varepsilon\mu^2}\right)$ ($G$-Lipschitz) &
+N/A (requires smoothness) \\
+Proximal GD (ISTA) &
+$n$ &
+$\mathcal{O}\!\left(\frac{L_f D_0^2}{\varepsilon}\right)$ &
+$\mathcal{O}\!\left(\frac{L_f}{\mu}\log\frac{1}{\varepsilon}\right)$ &
+Linear under proximal-PL \\
+Stoch.\ Prox.\ (SPGD) &
+$1$ &
+$\mathcal{O}\!\left(\frac{L_{\max}D_0^2 + \delta_F}{\varepsilon} + \frac{\sigma_F^*}{\varepsilon^2}\right)$ &
+$\tilde{\mathcal{O}}\!\left(\max\!\left\{\frac{L_{\max}}{\mu},\, \frac{\sigma_F^*}{\varepsilon\mu^2}\right\}\right)$ &
+Linear to $\mathcal{O}(\eta \sigma_F^*/\mu)$ ball \\
+SVRG / SAGA &
+$2$ (+$n$/epoch) / $1$ &
+$\mathcal{O}\!\left(n + \frac{L_{\max}D_0^2}{\varepsilon}\right)$ &
+$\mathcal{O}\!\left(\left(n + \frac{L_{\max}}{\mu}\right)\log\frac{1}{\varepsilon}\right)$ &
+$\mathcal{O}\!\left(\left(n + \frac{L_{\max}}{\mu}\right)\log\frac{1}{\varepsilon}\right)$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Pure Optimization vs.\ Generalization-Driven SGD]
+Comparing the four texts reveals a fundamental tension between minimizing finite-sum empirical risk $f(\vecb{\theta})$ and minimizing true population risk $F_{\mathrm{pop}}(\vecb{\theta})$:
+\begin{enumerate}
+  \item \textbf{Cram\'er--Rao Generalization Ceiling vs.\ Linear Convergence:} Garrigos \& Gower \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 5--6, pp.\ 24--35} and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.5, pp.\ 297--298} emphasize that variance reduction (SVRG/SAGA) recovers linear $\mathcal{O}(\log(1/\varepsilon))$ optimization on fixed empirical sums. Conversely, Goodfellow et al.\ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.3 \& 8.3.1, pp.\ 280--282, 295--296} note that in the first pass over data, SGD follows an unbiased gradient of the \emph{true generalization risk}, and because the Cram\'er--Rao statistical estimation limit caps excess test error decay at $\Omega(1/k)$ after $k$ samples, driving empirical error below statistical noise with faster-than-$\mathcal{O}(1/k)$ solvers yields diminishing returns and risks overfitting.
+  \item \textbf{Implicit Gradient-Variance Regularization \& Valley Escape:} Prince \bookcite{understandingdl_simonprince}{Sec.\ 6.2, pp.\ 83--86; Sec.\ 9.2.2, p.\ 144} demonstrates both visually and via modified-loss backward error analysis that SGD with finite step size $\eta$ and batch size $b$ minimizes an effective surrogate objective $\tilde{L}_{\mathrm{SGD}}(\vecb{\theta}) = L(\vecb{\theta}) + \frac{\eta}{4}\norm{\grad L(\vecb{\theta})}^2 + \frac{\eta}{4K}\sum_{k=1}^K \norm{\grad L_{B_k}(\vecb{\theta}) - \grad L(\vecb{\theta})}^2$, actively biasing iterates toward flat basins where per-batch gradients agree---a bias lost when $b \to n$ or when variance is artificially stripped.
+  \item \textbf{Practical Schedules \& Averaging:} To reconcile fast early traversal with low asymptotic variance, Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.3--8.4.4, pp.\ 294--297} recommends linear warmup followed by cosine or polynomial $\eta_t \propto t^{-1/2}$ decay, paired with \textbf{Polyak--Ruppert iterate averaging} $\bar{\vecb{\theta}}_t = \frac{1}{t}\sum_{k=1}^t \vecb{\theta}_k$ (or Stochastic Weight Averaging, SWA) to match the asymptotic efficiency of second-order Hessian methods without inverting a $d\times d$ matrix.
+\end{enumerate}
+\end{crossbook}
+
+% ==============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:sgd:visuals}
+% ==============================================================================
+
+We examine the geometry of stochastic trajectories, composite operator splitting, and convergence trade-offs through three extracted textbook visualizations, a custom TikZ forward--backward splitting architecture, and a quantitative PGFPlots synthesis.
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_introduction_p324_fig1.png}{Illustration of single-sample SGD ($b=1$, the LMS / Widrow--Hoff rule) on linear least squares \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.\ 8.16, Sec.\ 8.4.2, p.\ 294}. (a)~Iterates meander stochastically toward the global OLS solution (red cross) rather than following orthogonal contour normals. (b)~Because individual steps follow noisy sample gradients $-\grad f_{i_t}(\vecb{\theta}_t)$ rather than $-\grad f(\vecb{\theta}_t)$, the full empirical objective decreases \emph{non-monotonically} before settling into the constant-step noise floor.}{fig:sgd:lms-traj}
+
+Figure~\ref{fig:sgd:lms-traj} exhibits the classic non-monotonic behavior of SGD under a fixed step size: individual stochastic updates can temporarily increase the full empirical risk $f(\vecb{\theta}_t)$ whenever $-\grad f_{i_t}(\vecb{\theta}_t)$ has a positive inner product with $\grad f(\vecb{\theta}_t)$. In nonconvex neural landscapes, Prince shows in Figure~\ref{fig:sgd:prince-escape} that this exact stochasticity acts as a beneficial mechanism for escaping spurious basins and saddle plateaus.
+
+\monographfig[0.84\textwidth]{understandingdl_simonprince_p97_fig1.png}{Deterministic gradient descent vs.\ stochastic gradient descent on the nonconvex Gabor regression landscape \bookcite{understandingdl_simonprince}{Fig.\ 6.5, Sec.\ 6.2, p.\ 83}. (a)~Exact line-search GD starting at point~2 remains trapped inside its initial local valley. (b)~Minibatch SGD introduces gradient variance $\Var[\grad f_B(\vecb{\theta})]$ that permits temporary uphill excursions with respect to $f$, enabling trajectory~2 to cross the barrier and settle near the global minimum.}{fig:sgd:prince-escape}
+
+When objectives include nonsmooth structure $F = f + g$, proximal gradient descent alternates a forward smooth step with a backward proximal operator. Figure~\ref{fig:sgd:pgd-proj} illustrates the special case $g = \delta_{\mathcal{C}}$, where the proximal operator reduces to Euclidean projection onto a convex polytope $\mathcal{C}$, while Figure~\ref{fig:sgd:prox-tikz} diagrams the full forward--backward architecture bridging smooth gradient oracles (Mini-SGD, SVRG, SSD) with proximal geometry.
+
+\monographfig[0.64\textwidth]{probabilisticml_kevinmurphy_introduction_p339_fig1.png}{Geometric interpretation of projected gradient descent as proximal splitting with indicator $g = \delta_{\mathcal{C}}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.\ 8.22, Sec.\ 8.6.1, p.\ 309}. Starting from $\vecb{w} \in \mathcal{C}$, an unconstrained forward step $\vecb{w}' = \vecb{w} - \eta \grad L_s(\vecb{w})$ exits the feasible set $\mathcal{C}$; the backward operator $\operatorname{prox}_{\eta \delta_{\mathcal{C}}}(\vecb{w}') = \Pi_{\mathcal{C}}(\vecb{w}')$ maps it to the closest feasible point in Euclidean distance, preserving non-expansiveness \eqref{eq:sgd:prox-def}.}{fig:sgd:pgd-proj}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, node distance=0.82cm and 0.50cm]
+  % Top row: Gradient Oracles (oracle_svrg centered, left/right symmetric)
+  \node[monoIndigoBox, text width=4.65cm, minimum height=1.80cm, align=flush left] (oracle_svrg) {
+    \textbf{SVRG Control Variate}\\
+    \footnotesize $\vecb{g}_t = \grad f_{i_t}(\vecb{\theta}_t) - \grad f_{i_t}(\tilde{\vecb{\theta}}) + \grad f(\tilde{\vecb{\theta}})$\\
+    {\scriptsize\color{monographIndigo} Unbiased; $\Var[\vecb{g}_t] \to 0$ as $\vecb{\theta}_t, \tilde{\vecb{\theta}} \to \vecb{\theta}^*$}
+  };
+
+  \node[monoBox, text width=3.90cm, minimum height=1.80cm, align=flush left, left=of oracle_svrg] (oracle_sgd) {
+    \textbf{Minibatch SGD}\\
+    \footnotesize $\vecb{g}_t = \frac{1}{b}\sum_{i\in B_t} \grad f_i(\vecb{\theta}_t)$\\
+    {\scriptsize\color{monographSlate} Noise $\sigma_b^* = \frac{n-b}{b(n-1)}\sigma_f^*$, smooth $L_b$}
+  };
+
+  \node[monoWarnBox, text width=3.75cm, minimum height=1.80cm, align=flush left, right=of oracle_svrg] (oracle_ssd) {
+    \textbf{Subgradient Oracle}\\
+    \footnotesize $\vecb{g}_t \in \partial f_{\xi_t}(\vecb{\theta}_t)$ ($g \equiv 0$)\\
+    {\scriptsize\color{monographCrimson} Nonsmooth; non-descent; $\mathcal{O}(1/\sqrt{T})$}
+  };
+
+  % Middle Forward Step
+  \node[monoBox, text width=10.6cm, minimum height=1.18cm, align=flush center, below=0.95cm of oracle_svrg] (forward) {
+    \textbf{Forward Explicit Step (Smooth $f$):} \quad
+    $\vecb{v}_t = \vecb{\theta}_t - \eta_t \vecb{g}_t$
+    \quad $\bigl(\eta_t \le \tfrac{1}{2L_b} \text{ or } < \tfrac{1}{4L_{\max}}\bigr)$
+  };
+
+  % Backward Proximal Operator
+  \node[monoTealBox, text width=10.6cm, minimum height=1.35cm, align=flush center, below=0.95cm of forward] (backward) {
+    \textbf{Backward Implicit Step (Proximal $g$):} \quad
+    $\vecb{\theta}_{t+1} = \operatorname{prox}_{\eta_t g}(\vecb{v}_t)
+    = \argmin_{\vecb{z}\in\R^d}\!\left\{g(\vecb{z}) + \frac{1}{2\eta_t}\norm{\vecb{z} - \vecb{v}_t}^2\right\}$
+  };
+
+  % Bottom Row: Three Canonical Proximal Realizations (aligned column-by-column)
+  \node[monoTealBox, text width=4.65cm, minimum height=1.70cm, align=flush left, below=1.00cm of backward] (prox_proj) {
+    \textbf{Constraint Set ($g = \delta_{\mathcal{C}}$)}\\
+    \footnotesize $\operatorname{prox}_{\eta\delta_{\mathcal{C}}}(\vecb{v}_t) = \Pi_{\mathcal{C}}(\vecb{v}_t)$\\
+    {\scriptsize\color{monographTeal} Euclidean projection; $1$-Lipschitz}
+  };
+
+  \node[monoBox, text width=3.90cm, minimum height=1.70cm, align=flush left, left=of prox_proj] (prox_id) {
+    \textbf{Unconstrained ($g \equiv 0$)}\\
+    \footnotesize $\operatorname{prox}_{\eta g}(\vecb{v}_t) = \vecb{v}_t$\\
+    {\scriptsize\color{monographSlate} Recovers standard SGD / SVRG}
+  };
+
+  \node[monoIndigoBox, text width=3.75cm, minimum height=1.70cm, align=flush left, right=of prox_proj] (prox_l1) {
+    \textbf{$\ell_1$ / ISTA ($g = \lambda\norm{\cdot}_1$)}\\
+    \footnotesize $\operatorname{sign}(\vecb{v}_t)\odot(\abs{\vecb{v}_t}-\eta_t\lambda)_+$\\
+    {\scriptsize\color{monographIndigo} Deadzone $[-\eta_t\lambda, \eta_t\lambda] \mapsto 0$}
+  };
+
+  % Clean non-crossing arrows
+  \draw[monoArrow] (oracle_sgd.south) -- ([xshift=-3.1cm]forward.north);
+  \draw[monoArrow] (oracle_svrg.south) -- (forward.north);
+  \draw[monoArrow] (oracle_ssd.south) -- ([xshift=3.1cm]forward.north);
+
+  \draw[monoArrow] (forward.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {intermediate $\vecb{v}_t$} (backward.north);
+
+  \draw[monoArrow] ([xshift=-3.1cm]backward.south) -- (prox_id.north);
+  \draw[monoArrow] (backward.south) -- (prox_proj.north);
+  \draw[monoArrow] ([xshift=3.1cm]backward.south) -- (prox_l1.north);
+
+  % Outer feedback arrow along left margin with clean tip clearance
+  \draw[monoArrow, dashed, color=monographTeal, shorten >=2.5pt]
+    (prox_id.west) -- ++(-0.42,0) |- node[pos=0.25, left=2pt, font=\scriptsize, color=monographTeal, align=center] {next\\iter.\\$\vecb{\theta}_{t+1}$} (oracle_sgd.west);
+\end{tikzpicture}
+\caption{Unified Forward--Backward Operator Splitting architecture for composite stochastic optimization $\min_{\vecb{\theta}} f(\vecb{\theta}) + g(\vecb{\theta})$. An explicit stochastic forward step on the smooth sum $f$ (via Minibatch SGD, SVRG, or a subgradient oracle) produces $\vecb{v}_t$, which is stabilized by the non-expansive backward operator $\operatorname{prox}_{\eta_t g}$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Chs.\ 6, 10--11}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.6}.}
+\label{fig:sgd:prox-tikz}
+\end{figure}
+
+To make the step-size and batch-size trade-offs quantitatively explicit, Figure~\ref{fig:sgd:rates-pgf} plots exact analytical upper bounds derived in~\eqref{eq:sgd:sc-noiseball} and~\eqref{eq:sgd:minibatch-sc} on a benchmark $\mu$-strongly convex, $L_{\max}$-smooth finite sum.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=2.15cm
+  },
+  width=0.435\textwidth,
+  height=6.1cm,
+  grid=both,
+  minor grid style={gray!15},
+  major grid style={gray!30},
+  tick label style={font=\scriptsize},
+  label style={font=\footnotesize},
+  legend style={
+    font=\scriptsize,
+    fill=white,
+    fill opacity=0.95,
+    draw=monographRule,
+    cells={anchor=west},
+    inner sep=2pt
+  }
+]
+
+% Left Panel: Log-Log Convergence Trajectories (Noise ball vs Robbins-Monro vs SVRG)
+% Parameters: mu=0.4, Lmax=2.0 (eta_max=0.25), sigma*=1.0, e0=2.0
+\nextgroupplot[
+  xmode=log,
+  ymode=log,
+  xlabel={Iteration $t$},
+  ylabel={Upper bound on $\E\norm{\vecb{\theta}_t - \vecb{\theta}^*}^2$},
+  xmin=1, xmax=1000,
+  ymin=1e-4, ymax=8.0,
+  legend pos=south west,
+  title={\small\bfseries\color{monographNavy} (a) Step-Size Regimes \& Noise Ball}
+]
+  % Constant large eta = 0.20: 0.92^t * 2 + 1.0 * (1 - 0.92^t)
+  \addplot[color=monographCrimson, very thick, domain=1:1000, samples=180]
+    {(0.92^x)*2.0 + 1.0*(1.0 - 0.92^x)};
+  \addlegendentry{Const.\ $\eta=0.20$ ($\text{floor } 1.0$)}
+
+  % Constant small eta = 0.04: 0.984^t * 2 + 0.20 * (1 - 0.984^t)
+  \addplot[color=monographNavy, very thick, domain=1:1000, samples=180]
+    {(0.984^x)*2.0 + 0.20*(1.0 - 0.984^x)};
+  \addlegendentry{Const.\ $\eta=0.04$ ($\text{floor } 0.20$)}
+
+  % Robbins-Monro eta_t = 2 / (mu*(t+25)): exact bound 50 / (t + 25)
+  \addplot[color=monographTeal, very thick, densely dashed, domain=1:1000, samples=180]
+    {50.0/(x + 25.0)};
+  \addlegendentry{Robbins--Monro $\eta_t \propto 1/t$}
+
+  % SVRG / Interpolation (sigma*=0, eta=0.20): 2 * 0.92^t
+  \addplot[color=monographIndigo, very thick, dash pattern=on 5pt off 2pt on 1.5pt off 2pt, domain=1:160, samples=120]
+    {max(1e-4, 2.0*(0.92^x))};
+  \addlegendentry{SVRG ($\sigma_f^*=0$): $(1-\eta\mu)^t$}
+
+  \node[anchor=south east, font=\scriptsize, color=monographCrimson, fill=white, inner sep=1.5pt]
+    at (axis cs:850, 1.25) {Noise ball $\mathcal{O}(\eta\sigma_f^*/\mu)$};
+
+% Right Panel: Minibatch Scaling Law from L_b and sigma_b^* (Cor. 6.12)
+\nextgroupplot[
+  xmode=log,
+  ymode=log,
+  xlabel={Minibatch size $b$ ($n = 10^4$)},
+  ylabel={Relative complexity (norm.\ to $b=1$)},
+  xmin=1, xmax=10000,
+  ymin=1e-3, ymax=150,
+  legend pos=south west,
+  title={\small\bfseries\color{monographNavy} (b) Minibatch Scaling via $L_b, \sigma_b^*$}
+]
+  % Shaded linear scaling regime 1 <= b <= 165
+  \addplot[draw=none, fill=monographTealBg, forget plot]
+    coordinates {(1,1e-3) (165,1e-3) (165,150) (1,150)} \closedcycle;
+
+  % Normalized iterations T_eps(b)/T_eps(1):
+  \addplot[color=monographTeal, very thick, domain=1:9990, samples=220]
+    {max(10.0*(10000.0*(x-1.0)/(x*9999.0) + (10000.0-x)/(x*9999.0)*10.0), 2000.0*(10000.0-x)/(x*9999.0)) / 2000.0};
+  \addlegendentry{Iterations $T_\varepsilon(b)/T_\varepsilon(1)$}
+
+  % Normalized total gradient calls b * T_eps(b) / T_eps(1):
+  \addplot[color=monographIndigo, very thick, domain=1:9990, samples=220]
+    {x * max(10.0*(10000.0*(x-1.0)/(x*9999.0) + (10000.0-x)/(x*9999.0)*10.0), 2000.0*(10000.0-x)/(x*9999.0)) / 2000.0};
+  \addlegendentry{Gradient work $b\cdot T_\varepsilon(b)/T_\varepsilon(1)$}
+
+  % Vertical dashed critical batch size b_crit ~ 165
+  \draw[monographCrimson, dashed, thick] (axis cs:165, 1e-3) -- (axis cs:165, 150);
+  \node[anchor=north west, font=\scriptsize, color=monographCrimson, fill=white, inner sep=1.5pt]
+    at (axis cs:195, 80) {$b_{\mathrm{crit}} \approx \frac{2\sigma_f^*}{\varepsilon\mu L_f}$};
+  \node[anchor=south, font=\scriptsize, color=monographTeal, fill=monographTealBg, inner sep=1.5pt]
+    at (axis cs:13, 1.45) {Linear scaling};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Quantitative convergence and batch-scaling behavior for $\mu$-strongly convex finite-sum minimization \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.\ 5.7 \& 6.11, pp.\ 28, 35}. (a)~For $\mu=0.4, L_{\max}=2.0, \sigma_f^*=1.0$, constant step sizes contract linearly into an irreducible $\frac{2\eta\sigma_f^*}{\mu}$ noise ball; Robbins--Monro decay ($\eta_t \propto 1/t$) pierces the floor at $\mathcal{O}(1/t)$, whereas SVRG (or interpolation $\sigma_f^*=0$) preserves global linear convergence. (b)~Exact scaling from \eqref{eq:sgd:minibatch-Lb}--\eqref{eq:sgd:minibatch-sc} ($n=10^4, L_f=1, L_{\max}=10, \mu=0.1, \sigma_f^*=2, \varepsilon=0.1$): for $b < b_{\mathrm{crit}}$, iterations drop as $1/b$ at constant total gradient cost; past $b_{\mathrm{crit}}$, curvature $L_f/\mu$ caps the step size and extra samples inflate compute linearly.}
+\label{fig:sgd:rates-pgf}
+\end{figure}
+
+\clearpage
+% ==============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:sgd:pitfalls}
+% ==============================================================================
+
+Applying stochastic or nonsmooth first-order methods outside their theoretical operating hypotheses induces systematic divergence, premature stalling, or degraded generalization.
+
+\begin{pitfall}[Batch Size vs.\ Learning Rate Linear Scaling Breakdown]
+\textbf{Failure Mode.} Practitioners frequently invoke the ``linear scaling rule'' ($\eta \propto b$) when scaling data-parallel training to large batch sizes. As proved in \eqref{eq:sgd:minibatch-Lb}--\eqref{eq:sgd:bcrit}, linear step-size scaling remains valid \emph{only} while variance dominates curvature ($b < b_{\mathrm{crit}}$) \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemma 6.5 \& Cor.\ 6.12, pp.\ 32, 35}. Once $b > b_{\mathrm{crit}}$, $L_b \to L_f$ saturates and pushing $\eta > \frac{1}{2L_f}$ violates stability, causing explosive divergence; conversely, holding $\eta$ fixed wastes parallel compute with sublinear speedups \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.3, p.\ 278; Sec.\ 12.1.3, p.\ 447}. Furthermore, oversized batches strip the implicit gradient-variance penalty $\frac{\eta}{4K}\sum_{k}\norm{\grad L_{B_k} - \grad L}^2$, degrading test generalization \bookcite{understandingdl_simonprince}{Sec.\ 9.2.2, pp.\ 144--145}.
+
+\textbf{Remedy.} Estimate $b_{\mathrm{crit}}$ via the gradient noise scale \eqref{eq:sgd:bcrit}; cap $\eta(b) \le \min\bigl\{b\,\eta(1),\, \frac{1}{2L_f}\bigr\}$ using short linear warmup in early ill-conditioned regions \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.3, p.\ 296}, and avoid training far beyond $b_{\mathrm{crit}}$ without explicit regularization or second-order preconditioning.
+\end{pitfall}
+
+\begin{pitfall}[Constant Step-Size Noise Floor Oscillation \& Premature Decay]
+\textbf{Failure Mode.} Running constant-step SGD with $\sigma_f^* > 0$ traps iterates in a persistent oscillation ball of radius $\mathcal{O}(\eta \sigma_f^* / \mu)$ regardless of runtime \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.\ 5.7, p.\ 28} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.3.1, p.\ 294}. Conversely, aggressive exponential schedules $\eta_t = \eta_0 e^{-\lambda t}$ violate the Robbins--Monro divergence requirement $\sum_{t=0}^{\infty}\eta_t = \infty$ in \eqref{eq:sgd:robbins-monro} and freeze parameters prematurely far from $\vecb{\theta}^*$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.\ 8.18b, p.\ 295}.
+
+\textbf{Remedy.} Verify $\sum \eta_t = \infty$ and $\sum \eta_t^2 < \infty$ (e.g., polynomial $\eta_t = \eta_0 (1 + \beta t)^{-\alpha}$ with $\alpha \in (1/2, 1]$ for strongly convex problems or $\alpha = 1/2$ for general convex problems), pair cosine/step decay with Polyak--Ruppert iterate averaging \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.4, p.\ 297}, or switch to SVRG/SAGA on fixed convex finite sums.
+\end{pitfall}
+
+\begin{pitfall}[Subgradient Non-Descent Property \& Monotonicity Breakdown]
+\textbf{Failure Mode.} Unlike negative gradients $-\grad f(\vecb{\theta})$ of smooth functions, a negative subgradient $-\vecb{g} \in -\partial f(\vecb{\theta})$ at a nonsmooth ridge or kink is \emph{not guaranteed to be a descent direction}: moving along $-\vecb{g}$ can increase $f(\vecb{\theta})$ for every positive step size $\eta > 0$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.\ 9, pp.\ 46--48} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.1.4.1, p.\ 282}. Similarly, single-sample SGD steps are not descent directions for $f$ even when each $f_i$ is smooth (Figure~\ref{fig:sgd:lms-traj}b). Consequently, Armijo backtracking line search fails or stalls at zero step length \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.3, p.\ 296}.
+
+\textbf{Remedy.} Never require monotonic loss decrease per step in SSD or non-interpolated SGD, and never terminate based solely on single-step loss increases. Instead, track either the step-weighted iterate average $\bar{\vecb{\theta}}_T$ (guaranteed by \eqref{eq:sgd:ssd-master}) or the best-loss checkpoint, and replace subgradients with proximal splitting \eqref{eq:sgd:prox-def} whenever the objective has composite structure $f + g$.
+\end{pitfall}
+
+\begin{pitfall}[Non-i.i.d.\ Ordering, Without-Replacement Shuffling \& SVRG State Drift]
+\textbf{Failure Mode.} Drawing consecutive minibatches from unshuffled data sorted by class, patient, or time induces severe gradient bias ($\E[\grad f_{B_t}] \ne \grad f$) and stalls learning \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.3, p.\ 280}. Even with epoch-level random reshuffling without replacement \bookcite{probabilisticml_kevinmurphy_introduction}{p.\ 293, fn.\ 2} \bookcite{understandingdl_simonprince}{Sec.\ 6.2.1, p.\ 85}, consecutive minibatches within an epoch are negatively correlated rather than strictly i.i.d.; additionally, reusing a fixed training set across multiple epochs violates unbiasedness with respect to the true population risk $J^*(\vecb{\theta})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.\ 8.1.3, pp.\ 280--281}. Finally, applying SVRG or SAGA to deep networks trained with dropout, BatchNorm, or stochastic data augmentation breaks control-variate correlation because each $f_i$ acquires independent per-step randomness \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.\ 8.4.5.3, p.\ 298}.
+
+\textbf{Remedy.} Always randomly permute dataset indices before every epoch (random reshuffling) or maintain a streaming shuffle buffer; monitor held-out validation risk for early stopping after multiple passes; and restrict SVRG/SAGA to deterministic convex/ERM pipelines while using minibatch SGD with momentum or adaptive preconditioning for stochastic deep-learning layers.
+\end{pitfall}
+
+\end{document}

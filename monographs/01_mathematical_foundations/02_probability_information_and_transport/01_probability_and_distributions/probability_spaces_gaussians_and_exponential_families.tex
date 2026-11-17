@@ -1,0 +1,455 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Probability Theory, Information Theory \& Optimal Transport}{Probability Spaces, Gaussians \& Statistical Estimation}{Probability Spaces, Multivariate Gaussians \& Exponential Families}{\bookcite{introduction_probability_data_science}{Ch.\ 2, 5--6}, \bookcite{deep_learning_foundations_concepts}{Ch.\ 2--3}, \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 2--4, 7}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2--3}}
+
+% ==============================================================================
+\section{Problem Formulation \& Unified Notation}\label{sec:probdist:formulation}
+% ==============================================================================
+
+Machine learning models reason under uncertainty by placing probability measures over structured state and parameter spaces. Across probability theory, Bayesian inference, and deep generative modeling, three tightly coupled pillars govern tractable probabilistic computation: Kolmogorov probability spaces $(\Omega, \mathcal{F}, P)$ and Bayes' rule, the multivariate Gaussian (MVN) with its dual moment--precision geometry, and the canonical exponential family whose convex log-partition function generates moments, Fisher curvature, and closed-form conjugate updates.
+
+Let $(\Omega, \mathcal{F}, P)$ denote a probability space comprising a sample space $\Omega$, an event $\sigma$-algebra $\mathcal{F} \subseteq 2^{\Omega}$ closed under complements and countable unions (specifically the Borel $\sigma$-field $\mathcal{B}(\R^D)$ on $\Omega = \R^D$), and a measure $P : \mathcal{F} \to [0,1]$ satisfying Kolmogorov's probability axioms \bookcite{introduction_probability_data_science}{Ch.\ 2.2, pp.\ 58--76}:
+\begin{equation}\label{eq:probdist:axioms}
+  P(A) \ge 0 \;\;\forall A \in \mathcal{F}, \qquad
+  P(\Omega) = 1, \qquad
+  P\!\left(\bigsqcup_{i=1}^{\infty} A_i\right) = \sum_{i=1}^{\infty} P(A_i) \quad \text{for pairwise disjoint } A_i \in \mathcal{F},
+\end{equation}
+as formalized measure-theoretically in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.1, pp.\ 1--7}. A random vector $\vecb{X} : \Omega \to \mathcal{X} \subseteq \R^D$ is an $(\mathcal{F}, \mathcal{B}(\mathcal{X}))$-measurable map inducing a pushforward law $P_{\vecb{X}}(B) = P(\vecb{X}\inv(B))$. When $P_{\vecb{X}}$ is absolutely continuous with respect to a reference measure $\nu$ (Lebesgue measure $\mathrm{d}\vecb{x}$ on $\R^D$ or counting measure on discrete domains), the Radon--Nikodym derivative $p(\vecb{x}) = \dd{P_{\vecb{X}}}{\nu}(\vecb{x})$ defines the probability density function (PDF) or probability mass function (PMF). Given joint observations over $(\vecb{X}_a, \vecb{X}_b)$, probabilistic inference rests on three identities \bookcite{deep_learning_foundations_concepts}{Ch.\ 2.1, pp.\ 25--31} \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.2, pp.\ 177--180}:
+\begin{align}
+  \text{Sum Rule (Marginalization):} && p(\vecb{x}_a) &= \int_{\mathcal{X}_b} p(\vecb{x}_a, \vecb{x}_b)\,\mathrm{d}\nu(\vecb{x}_b), \label{eq:probdist:sum_rule}\\
+  \text{Product Rule (Chain Factor):} && p(\vecb{x}_a, \vecb{x}_b) &= p(\vecb{x}_a \mid \vecb{x}_b)\,p(\vecb{x}_b), \label{eq:probdist:prod_rule}\\
+  \text{Bayes' Rule (Posterior):} && p(\vecb{x}_b \mid \vecb{x}_a) &= \frac{p(\vecb{x}_a \mid \vecb{x}_b)\,p(\vecb{x}_b)}{\int_{\mathcal{X}_b} p(\vecb{x}_a \mid \vecb{x}_b')\,p(\vecb{x}_b')\,\mathrm{d}\nu(\vecb{x}_b')}. \label{eq:probdist:bayes_rule}
+\end{align}
+Here we also invoke the Law of Total Probability for any countable measurable partition $\set{A_i}_{i\ge 1}$ of $\Omega$: $P(B) = \sum_{i} P(B \mid A_i) P(A_i)$ whenever $P(A_i) > 0$ \bookcite{introduction_probability_data_science}{Ch.\ 2.4.3, pp.\ 89--91}. For finite-variance scalar random variables, the centered second moment $\Cov[X,Y] = \E[(X-\mu_X)(Y-\mu_Y)]$ defines an inner product on the Hilbert space of zero-mean square-integrable random variables, inducing correlation $\Corr[X,Y] = \Cov[X,Y]/\sqrt{\Var[X]\Var[Y]} \in [-1,1]$ by Cauchy--Schwarz \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.4.1, pp.\ 188--189} \bookcite{introduction_probability_data_science}{Ch.\ 5.3, pp.\ 260--266}.
+
+Because the five primary references adopt distinct conventions for $\sigma$-algebras, densities, precision forms, exponential-family symbols, and Jacobian transforms, Table~\ref{tab:probdist:notation} establishes a unified notation used throughout this monograph.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  \textbf{Concept} & \textbf{Unified Symbol} & \textbf{Source-Book Conventions Reconciled} \\
+  \midrule
+  Probability space \& CDF
+    & $(\Omega,\mathcal{F},P)$, $p(\vecb{x})$, $F_{\vecb{X}}(\vecb{x})$
+    & Chan \bookcite{introduction_probability_data_science}{pp.\ 58--76, 180} uses $(\Omega,\mathcal{F},P)$, $f_X(x)$, and $F_X(x)$; MML \bookcite{mathematics_machine_learning_orienly}{pp.\ 172--175} writes $(\Omega,\mathcal{A},\mathcal{P})$; Murphy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{pp.\ 2--7} writes $(\Omega,\mathcal{F},P)$ with uppercase $P_X(x)$ for CDF; Bishop \bookcite{deep_learning_foundations_concepts}{pp.\ 25--41} omits $(\Omega,\mathcal{F},P)$ and denotes PDF/CDF by $p(x)/P(x)$. \\
+  \addlinespace[3pt]
+  MVN moment vs.\ precision form
+    & $\Normal(\vecb{\mu},\mat{\Sigma})$, $\mat{\Lambda}=\mat{\Sigma}\inv$,\newline$(\vecb{h},\mat{K})$
+    & Bishop \bookcite{deep_learning_foundations_concepts}{pp.\ 71--83} uses block $(\vecb{x}_a,\vecb{x}_b)$ and precision $\mat{\Lambda}=\mat{\Sigma}\inv$; MML \bookcite{mathematics_machine_learning_orienly}{pp.\ 197--204} partitions $(\vecb{x},\vecb{y})$; Chan \bookcite{introduction_probability_data_science}{pp.\ 290--294} writes $\mathrm{Gaussian}(\vecb{\mu},\mat{\Sigma})$; Murphy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{pp.\ 22--32} partitions $(\vecb{x}_1,\vecb{x}_2)$ and introduces the canonical potential $(g,\vecb{h},\mat{K})$ with $\mat{K}=\mat{\Sigma}\inv$ and $\vecb{h}=\mat{\Sigma}\inv\vecb{\mu}$. \\
+  \addlinespace[3pt]
+  Canonical exponential family
+    & $h(\vecb{x})\exp\bigl(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})}$\newline$\qquad - A(\vecb{\eta})\bigr)$
+    & Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{pp.\ 93--97} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{pp.\ 34--41} uses $(\vecb{\eta}, \vecb{T}(\vecb{x}), A(\vecb{\eta}))$ with mean parameters $\vecb{m}=\grad A(\vecb{\eta})$; MML \bookcite{mathematics_machine_learning_orienly}{pp.\ 210--213} uses $(\vecb{\theta},\vecb{\phi}(\vecb{x}),A(\vecb{\theta}))$ and prior hyperparameters $\vecb{\gamma}$; Bishop \bookcite{deep_learning_foundations_concepts}{pp.\ 94--97} writes $h(\vecb{x})g(\vecb{\eta})\exp(\vecb{\eta}\T\vecb{u}(\vecb{x}))$ with $g(\vecb{\eta}) = \exp(-A(\vecb{\eta}))$. \\
+  \addlinespace[3pt]
+  Change-of-variables Jacobian
+    & $\abs{\det \jac_{\vecb{f}\inv}(\vecb{y})}$
+    & For $\vecb{y}=\vecb{f}(\vecb{x})$, MML \bookcite{mathematics_machine_learning_orienly}{p.\ 219} and Murphy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.\ 44} apply the inverse Jacobian $\jac_{\vecb{f}\inv}(\vecb{y})$; Bishop \bookcite{deep_learning_foundations_concepts}{pp.\ 42--45} parameterizes directly via $\vecb{x}=\vecb{g}(\vecb{y})$ so $\jac_{\vecb{g}}(\vecb{y}) = \jac_{\vecb{f}\inv}(\vecb{y})$. \\
+  \addlinespace[3pt]
+  Characteristic function sign
+    & $\varphi_X(\omega) = \E[e^{i\omega X}]$
+    & Standard probability convention uses $+i\omega X$; Chan \bookcite{introduction_probability_data_science}{p.\ 330} adopts the signal-processing Fourier convention $\Phi_X(j\omega) = \E[e^{-j\omega X}]$. \\
+  \bottomrule
+\end{tabularx}
+\captionof{table}{Unified notation and cross-book convention mapping across the five mapped sources.}
+\label{tab:probdist:notation}
+\end{crossbook}
+
+% ==============================================================================
+\section{Core Mathematical Derivations \& Theorems}\label{sec:probdist:derivations}
+% ==============================================================================
+
+\subsection{Transformations of Random Variables \& Generating Functions}
+
+\begin{coremath}[Theorem: Change of Variables, Jacobian Scaling \& Probability Integral Transform]
+Let $U, V \subseteq \R^D$ be open sets and $\vecb{f} : U \to V$ be a $C^1$-diffeomorphism with $\vecb{y} = \vecb{f}(\vecb{x})$ and smooth inverse $\vecb{x} = \vecb{f}\inv(\vecb{y})$. Conservation of probability mass requires that for every measurable region $B \subseteq U$,
+\begin{equation}\label{eq:probdist:cov_integral}
+  \int_{B} p_{\vecb{x}}(\vecb{x})\,\mathrm{d}\vecb{x}
+  = P(\vecb{X} \in B)
+  = P(\vecb{Y} \in \vecb{f}(B))
+  = \int_{\vecb{f}(B)} p_{\vecb{y}}(\vecb{y})\,\mathrm{d}\vecb{y}.
+\end{equation}
+Applying the multivariable change-of-variables formula $\mathrm{d}\vecb{x} = \abs{\det \jac_{\vecb{f}\inv}(\vecb{y})}\,\mathrm{d}\vecb{y}$, where $(\jac_{\vecb{f}\inv}(\vecb{y}))_{ij} = \pd{x_i}{y_j}$, and shrinking $B$ to a neighborhood around $\vecb{x}$ yields the pushforward density \bookcite{deep_learning_foundations_concepts}{Ch.\ 2.4, pp.\ 42--45} \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.7, pp.\ 214--220} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.6, pp.\ 43--45}:
+\begin{equation}\label{eq:probdist:cov_density}
+  p_{\vecb{y}}(\vecb{y})
+  = p_{\vecb{x}}\!\left(\vecb{f}\inv(\vecb{y})\right) \abs{\det \jac_{\vecb{f}\inv}(\vecb{y})}
+  = p_{\vecb{x}}(\vecb{x}) \abs{\det \jac_{\vecb{f}}(\vecb{x})}\inv.
+\end{equation}
+In one dimension ($D=1$), if $X$ has strictly increasing continuous CDF $F_X$, choosing $y = F_X(x)$ gives $\dd{x}{y} = \bigl(F_X'(x)\bigr)\inv = p_X(x)\inv$, hence $p_Y(y) = p_X(x)\cdot p_X(x)\inv = 1$ on $[0,1]$: the \emph{probability integral transform (PIT)} $F_X(X) \sim \Uniform(0,1)$, and conversely $F_X\inv(U) \sim p_X$ for $U \sim \Uniform(0,1)$.
+\end{coremath}
+
+\begin{intuition}[Local Volume Distortion and Non-Invariance of Modes]
+The factor $\abs{\det \jac_{\vecb{f}\inv}(\vecb{y})}$ measures the ratio of infinitesimal hypervolumes $\mathrm{d}\vecb{x} / \mathrm{d}\vecb{y}$. Where $\vecb{f}$ compresses coordinates ($\abs{\det \jac_{\vecb{f}}} < 1$), probability mass concentrates and the output density spikes upward so total integral mass remains unity. Because $\grad_{\vecb{y}} \log p_{\vecb{y}}(\vecb{y}) = \jac_{\vecb{f}\inv}(\vecb{y})\T \grad_{\vecb{x}}\log p_{\vecb{x}}(\vecb{x}) + \grad_{\vecb{y}}\log\abs{\det \jac_{\vecb{f}\inv}(\vecb{y})}$, the mode of $p_{\vecb{y}}$ differs from $\vecb{f}(\argmax p_{\vecb{x}})$ whenever $\vecb{f}$ is nonlinear \bookcite{deep_learning_foundations_concepts}{Fig.\ 2.12, p.\ 44}.
+\end{intuition}
+
+\begin{coremath}[Derivation: Moment \& Cumulant Generating Functions and Convolution]
+For a random variable $X$ on $\R$ (or vector $\vecb{X}$ on $\R^D$), the \emph{moment generating function (MGF)} and \emph{cumulant generating function (CGF)} are defined wherever the expectation is finite in an open neighborhood $\mathcal{U}$ of the origin \bookcite{introduction_probability_data_science}{Ch.\ 6.1, pp.\ 324--329}:
+\begin{equation}\label{eq:probdist:mgf_cgf}
+  M_{\vecb{X}}(\vecb{s}) = \E\!\left[e^{\inner{\vecb{s}}{\vecb{X}}}\right], \qquad
+  K_{\vecb{X}}(\vecb{s}) = \log M_{\vecb{X}}(\vecb{s}), \qquad \vecb{s} \in \mathcal{U}.
+\end{equation}
+Differentiating under the integral sign (justified by dominated convergence on $\mathcal{U}^{\circ}$) yields raw moments from $M_X$ and cumulants $\kappa_k$ from $K_X$:
+\begin{align}\label{eq:probdist:moments_cumulants}
+  \left.\dd{^k}{s^k} M_X(s)\right|_{s=0} &= \E[X^k], &
+  \kappa_1 &= K_X'(0) = \E[X], \\
+  \kappa_2 &= K_X''(0) = \Var[X], &
+  \kappa_4 &= K_X^{(4)}(0) = \E[(X-\mu)^4] - 3\sigma^4. \nonumber
+\end{align}
+If $X_1, \dots, X_N$ are independent and $Z = \sum_{n=1}^N X_n$, factorization of $\E[e^{s\sum_n X_n}]$ converts convolution of densities into algebraic multiplication of MGFs and \emph{addition} of CGFs \bookcite{introduction_probability_data_science}{Thm.\ 6.2--6.6, pp.\ 327--329}:
+\begin{equation}\label{eq:probdist:cgf_sum}
+  M_Z(s) = \prod_{n=1}^N M_{X_n}(s) \implies K_Z(s) = \sum_{n=1}^N K_{X_n}(s).
+\end{equation}
+For $\vecb{X} \sim \Normal(\vecb{\mu}, \mat{\Sigma})$, completing the square in $\E[e^{\inner{\vecb{s}}{\vecb{X}}}]$ gives $M_{\vecb{X}}(\vecb{s}) = \exp\!\bigl(\inner{\vecb{s}}{\vecb{\mu}} + \tfrac{1}{2}\vecb{s}\T\mat{\Sigma}\vecb{s}\bigr)$ and $K_{\vecb{X}}(\vecb{s}) = \inner{\vecb{s}}{\vecb{\mu}} + \tfrac{1}{2}\vecb{s}\T\mat{\Sigma}\vecb{s}$; every cumulant of order $k \ge 3$ vanishes identically, proving closure of Gaussians under independent summation and affine maps.
+\end{coremath}
+
+\subsection{Multivariate Gaussian Geometry, Whitening \& Schur Conditioning}
+
+A random vector $\vecb{x} \in \R^D$ follows a non-degenerate multivariate Gaussian distribution $\Normal(\vecb{x} \mid \vecb{\mu}, \mat{\Sigma})$ with mean vector $\vecb{\mu} \in \R^D$ and symmetric positive definite (SPD) covariance matrix $\mat{\Sigma} \in \mathbb{S}_{++}^D$ (precision $\mat{\Lambda} = \mat{\Sigma}\inv \in \mathbb{S}_{++}^D$) when its density takes the quadratic exponential form \bookcite{deep_learning_foundations_concepts}{Ch.\ 3.2, pp.\ 70--75}:
+\begin{equation}\label{eq:probdist:mvn_pdf}
+  p(\vecb{x} \mid \vecb{\mu}, \mat{\Sigma})
+  = \frac{1}{(2\pi)^{D/2}\abs{\mat{\Sigma}}^{1/2}}
+    \exp\!\left(-\frac{1}{2}\Delta^2(\vecb{x}; \vecb{\mu}, \mat{\Sigma})\right), \qquad
+  \Delta^2(\vecb{x}; \vecb{\mu}, \mat{\Sigma})
+  = (\vecb{x}-\vecb{\mu})\T \mat{\Sigma}\inv (\vecb{x}-\vecb{\mu}),
+\end{equation}
+as also analyzed via Mahalanobis geometry in \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.2, pp.\ 81--83}. Level sets of constant density are $D$-dimensional hyperellipsoids $\set{\vecb{x} : \Delta^2(\vecb{x}) = c^2}$ whose principal axes align with the orthonormal eigenvectors $\set{\vecb{u}_i}_{i=1}^D$ of $\mat{\Sigma} = \mat{U}\mat{\Gamma}\mat{U}\T$ ($\mat{\Gamma} = \diag(\gamma_1,\dots,\gamma_D)$, $\gamma_i > 0$) with semi-axis lengths $c\sqrt{\gamma_i}$. Applying the affine whitening transformation $\vecb{z} = \mat{\Gamma}^{-1/2}\mat{U}\T(\vecb{x}-\vecb{\mu})$ (PCA whitening) or $\vecb{z}_{\mathrm{ZCA}} = \mat{U}\mat{\Gamma}^{-1/2}\mat{U}\T(\vecb{x}-\vecb{\mu}) = \mat{\Sigma}^{-1/2}(\vecb{x}-\vecb{\mu})$ (ZCA whitening) yields $\abs{\det \jac_{\vecb{x}}(\vecb{z})} = \prod_{i=1}^D \gamma_i^{1/2} = \abs{\mat{\Sigma}}^{1/2}$ by \eqref{eq:probdist:cov_density}, proving $\vecb{z} \sim \Normal(\zeros, \eye_D)$ and confirming normalization $\int_{\R^D} p(\vecb{x}\mid\vecb{\mu},\mat{\Sigma})\,\mathrm{d}\vecb{x} = 1$ \bookcite{deep_learning_foundations_concepts}{pp.\ 73--75} \bookcite{introduction_probability_data_science}{Ch.\ 5.6.5, pp.\ 296--302}.
+
+\begin{coremath}[Derivation: Schur Complement Conditioning, Marginalization \& Gaussian Bayes]
+Partition $\vecb{x} \in \R^{D_a + D_b}$ into subvectors $\vecb{x} = \begin{bmatrix}\vecb{x}_a \\ \vecb{x}_b\end{bmatrix}$ with matching mean, covariance, and precision blocks \bookcite{deep_learning_foundations_concepts}{Ch.\ 3.2.1--3.2.5, pp.\ 76--83} \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.5.1--6.5.2, pp.\ 199--201} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.2.3, 7.3, pp.\ 83--85, 249--252}:
+\begin{equation}\label{eq:probdist:block_sig_lam}
+  \vecb{\mu} = \begin{bmatrix}\vecb{\mu}_a \\ \vecb{\mu}_b\end{bmatrix}, \qquad
+  \mat{\Sigma} = \begin{bmatrix}\mat{\Sigma}_{aa} & \mat{\Sigma}_{ab} \\ \mat{\Sigma}_{ba} & \mat{\Sigma}_{bb}\end{bmatrix}, \qquad
+  \mat{\Lambda} = \mat{\Sigma}\inv = \begin{bmatrix}\mat{\Lambda}_{aa} & \mat{\Lambda}_{ab} \\ \mat{\Lambda}_{ba} & \mat{\Lambda}_{bb}\end{bmatrix}.
+\end{equation}
+Block-LDU factorization of $\mat{\Sigma}$ isolates the Schur complement $\mat{\Sigma}/\mat{\Sigma}_{bb} \coloneqq \mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba} \succ \zeros$:
+\begin{equation}\label{eq:probdist:schur_ldu}
+  \mat{\Sigma}
+  = \begin{bmatrix}\eye & \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv \\ \zeros & \eye\end{bmatrix}
+    \begin{bmatrix}\mat{\Sigma}/\mat{\Sigma}_{bb} & \zeros \\ \zeros & \mat{\Sigma}_{bb}\end{bmatrix}
+    \begin{bmatrix}\eye & \zeros \\ \mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba} & \eye\end{bmatrix}.
+\end{equation}
+Taking inverses and determinants immediately establishes $\abs{\mat{\Sigma}} = \abs{\mat{\Sigma}_{bb}}\abs{\mat{\Sigma}/\mat{\Sigma}_{bb}}$ and the block-precision identities:
+\begin{align}\label{eq:probdist:precision_blocks}
+  \mat{\Lambda}
+  &= \begin{bmatrix}\eye & \zeros \\ -\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba} & \eye\end{bmatrix}
+     \begin{bmatrix}(\mat{\Sigma}/\mat{\Sigma}_{bb})\inv & \zeros \\ \zeros & \mat{\Sigma}_{bb}\inv\end{bmatrix}
+     \begin{bmatrix}\eye & -\mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv \\ \zeros & \eye\end{bmatrix}, \\
+  \mat{\Lambda}_{aa}
+  &= (\mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba})\inv, \qquad
+  \mat{\Lambda}_{ab} = -\mat{\Lambda}_{aa}\mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv. \nonumber
+\end{align}
+Substituting \eqref{eq:probdist:precision_blocks} into the Mahalanobis quadratic form decomposes the joint exponent cleanly into a conditional quadratic term in $\vecb{x}_a$ and a marginal quadratic term in $\vecb{x}_b$:
+\begin{align}
+  (\vecb{x}-\vecb{\mu})\T\mat{\Lambda}(\vecb{x}-\vecb{\mu})
+  &= \bigl(\vecb{x}_a - \vecb{\mu}_{a\mid b}\bigr)\T \mat{\Lambda}_{aa} \bigl(\vecb{x}_a - \vecb{\mu}_{a\mid b}\bigr)
+   + (\vecb{x}_b - \vecb{\mu}_b)\T \mat{\Sigma}_{bb}\inv (\vecb{x}_b - \vecb{\mu}_b), \label{eq:probdist:quad_decomp}\\
+  \vecb{\mu}_{a\mid b}
+  &= \vecb{\mu}_a + \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv(\vecb{x}_b - \vecb{\mu}_b)
+   = \vecb{\mu}_a - \mat{\Lambda}_{aa}\inv\mat{\Lambda}_{ab}(\vecb{x}_b - \vecb{\mu}_b), \\
+  \mat{\Sigma}_{a\mid b}
+  &= \mat{\Lambda}_{aa}\inv
+   = \mat{\Sigma}_{aa} - \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv\mat{\Sigma}_{ba}. \label{eq:probdist:schur_cond}
+\end{align}
+Consequently, $p(\vecb{x}_a \mid \vecb{x}_b) = \Normal(\vecb{x}_a \mid \vecb{\mu}_{a\mid b}, \mat{\Sigma}_{a\mid b})$ (with precision $\mat{\Lambda}_{a\mid b} = \mat{\Lambda}_{aa}$) and integrating out $\vecb{x}_a$ yields the marginal $p(\vecb{x}_b) = \Normal(\vecb{x}_b \mid \vecb{\mu}_b, \mat{\Sigma}_{bb})$ (by symmetry, $p(\vecb{x}_a) = \Normal(\vecb{x}_a \mid \vecb{\mu}_a, \mat{\Sigma}_{aa})$). Furthermore, for a linear-Gaussian system $p(\vecb{z}) = \Normal(\vecb{\mu}_z, \mat{\Sigma}_z)$ and $p(\vecb{y}\mid\vecb{z}) = \Normal(\mat{W}\vecb{z}+\vecb{b}, \mat{\Sigma}_y)$, completing the square in $\vecb{z}$ (equivalently applying \eqref{eq:probdist:schur_cond} to the joint vector $[\vecb{z}\T, \vecb{y}\T]\T$) yields the exact Gaussian Bayes posterior $p(\vecb{z}\mid\vecb{y}) = \Normal(\vecb{\mu}_{z\mid y}, \mat{\Sigma}_{z\mid y})$:
+\begin{equation}\label{eq:probdist:linear_gaussian_bayes}
+  \mat{\Sigma}_{z\mid y}\inv = \mat{\Sigma}_z\inv + \mat{W}\T \mat{\Sigma}_y\inv \mat{W}, \qquad
+  \vecb{\mu}_{z\mid y} = \mat{\Sigma}_{z\mid y}\bigl(\mat{W}\T \mat{\Sigma}_y\inv(\vecb{y}-\vecb{b}) + \mat{\Sigma}_z\inv \vecb{\mu}_z\bigr).
+\end{equation}
+\end{coremath}
+
+\monographfig[0.80\textwidth]{deep_learning_foundations_concepts_p101_fig1.png}{Geometric comparison of MVN marginalization and Schur-complement conditioning \bookcite{deep_learning_foundations_concepts}{Ch.\ 3.2, Fig.\ 3.5, p.\ 82}. (a)~Joint density contours $p(x_a, x_b)$ sliced along $x_b = 0.7$. (b)~Conditional density $p(x_a \mid x_b = 0.7)$ has a shifted mean $\mu_{a\mid b}$ and strictly smaller variance $\Sigma_{a\mid b} = \Sigma_{aa} - \Sigma_{ab}^2/\Sigma_{bb} \le \Sigma_{aa}$ than the marginal $p(x_a)$.}{fig:probdist:bishop_mvn_slice}
+
+\begin{intuition}[Dual Computational Economy: Covariance vs.\ Precision]
+As highlighted in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.3.1.4, p.\ 25}, equation~\eqref{eq:probdist:schur_cond} reveals a striking coordinate asymmetry: marginalization is trivial in moment form ($\mat{\Sigma} \mapsto \mat{\Sigma}_{aa}$) while conditioning requires a Schur complement, whereas conditioning is trivial in precision form ($\mat{\Lambda} \mapsto \mat{\Lambda}_{aa}$) while marginalization requires $\mat{\Lambda}_{aa} - \mat{\Lambda}_{ab}\mat{\Lambda}_{bb}\inv\mat{\Lambda}_{ba}$. Equivalently, in Murphy's canonical potential $\exp(g + \vecb{h}\T\vecb{x} - \tfrac{1}{2}\vecb{x}\T\mat{K}\vecb{x})$ where $\mat{K}=\mat{\Lambda}$ and $\vecb{h}=\mat{\Lambda}\vecb{\mu}$, multiplying Gaussian factors sums $(\vecb{h}, \mat{K})$ directly, and $\Lambda_{ij} = 0 \iff X_i \indep X_j \mid \vecb{X}_{-\set{i,j}}$ characterizes conditional independence graphs \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.3.3, pp.\ 30--33}.
+\end{intuition}
+
+\subsection{Canonical Exponential Families, Log-Partition Derivatives \& Conjugacy}
+
+A parametric family $\set{p(\vecb{x} \mid \vecb{\eta})}$ belongs to the canonical \emph{exponential family} if its density against reference measure $\nu$ takes the unified log-linear form (\bookcite{deep_learning_foundations_concepts}{Ch.\ 3.4, pp.\ 94--97}):
+\begin{equation}\label{eq:probdist:exp_family}
+  p(\vecb{x} \mid \vecb{\eta})
+  = h(\vecb{x}) \exp\!\bigl(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})} - A(\vecb{\eta})\bigr), \qquad
+  A(\vecb{\eta}) = \log \int_{\mathcal{X}} h(\vecb{x}) \exp\!\bigl(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})}\bigr)\,\mathrm{d}\nu(\vecb{x}),
+\end{equation}
+as developed in \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.6.3, pp.\ 210--213} and unified through convex duality in Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.4, pp.\ 93--97}. Here $h(\vecb{x}) \ge 0$ is the base measure, $\vecb{T}(\vecb{x}) \in \R^K$ are the sufficient statistics, $\vecb{\eta} \in \Omega_\eta = \set{\vecb{\eta} \in \R^K : A(\vecb{\eta}) < \infty}$ are the natural (canonical) parameters, and $A(\vecb{\eta}) = \log Z(\vecb{\eta})$ is the log-partition (cumulant) function. The family is \emph{minimal} when no nonzero $\vecb{a} \in \R^K$ satisfies $\inner{\vecb{a}}{\vecb{T}(\vecb{x})} = \text{const}$ $\nu$-a.e., and \emph{curved} when $\vecb{\eta}(\vecb{\theta})$ maps from a lower-dimensional manifold into $\R^K$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.4, pp.\ 34--41}.
+
+\begin{coremath}[Theorem: Convexity, Log-Partition Moment/Variance Identities \& Legendre Duality]
+On the interior $\Omega_\eta^\circ$, $A(\vecb{\eta})$ is $C^\infty$ and convex (by H\"older's inequality applied to $\int h(\vecb{x})\exp(\inner{\lambda\vecb{\eta}_1 + (1-\lambda)\vecb{\eta}_2}{\vecb{T}(\vecb{x})})\,\mathrm{d}\nu(\vecb{x})$). Differentiating the normalization identity $\int h(\vecb{x})\exp(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})} - A(\vecb{\eta}))\,\mathrm{d}\nu(\vecb{x}) = 1$ twice with respect to $\vecb{\eta}$ inside the integral yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.4.2.2, pp.\ 35--36}:
+\begin{align}
+  \grad_{\vecb{\eta}} A(\vecb{\eta})
+  &= \frac{\int h(\vecb{x})\,\vecb{T}(\vecb{x})\exp(\inner{\vecb{\eta}}{\vecb{T}(\vecb{x})})\,\mathrm{d}\nu(\vecb{x})}{Z(\vecb{\eta})}
+   = \E_{p(\cdot\mid\vecb{\eta})}[\vecb{T}(\vecb{x})] \eqqcolon \vecb{m}, \label{eq:probdist:grad_A}\\
+  \hess_{\vecb{\eta}} A(\vecb{\eta})
+  &= \E_{p(\cdot\mid\vecb{\eta})}\!\left[\vecb{T}(\vecb{x})\vecb{T}(\vecb{x})\T\right] - \E[\vecb{T}(\vecb{x})]\E[\vecb{T}(\vecb{x})]\T
+   = \Cov_{p(\cdot\mid\vecb{\eta})}[\vecb{T}(\vecb{x})]
+   = \mat{I}_F(\vecb{\eta}) \succeq \zeros, \label{eq:probdist:hess_A}
+\end{align}
+where $\mat{I}_F(\vecb{\eta}) = \E[-\hess_{\vecb{\eta}}\log p(\vecb{x}\mid\vecb{\eta})]$ is the Fisher information matrix (strictly positive definite $\hess A \succ \zeros$ whenever the representation is minimal). Moreover, the CGF of $\vecb{T}(\vecb{x})$ is simply $K_{\vecb{T}}(\vecb{s}) = \log \E[\exp(\inner{\vecb{s}}{\vecb{T}(\vecb{x})})] = A(\vecb{\eta}+\vecb{s}) - A(\vecb{\eta})$. Thus $\vecb{m} = \grad A(\vecb{\eta})$ maps $\Omega_\eta^\circ$ bijectively onto the interior $\mathcal{M}^\circ$ of the realizable mean-parameter set, with inverse $\vecb{\eta} = \grad A^*(\vecb{m})$ given by the Fenchel--Legendre conjugate $A^*(\vecb{m}) = \sup_{\vecb{\eta}\in\Omega_\eta}\bigl(\inner{\vecb{\eta}}{\vecb{m}} - A(\vecb{\eta})\bigr) = -\Entropy(p_{\vecb{\eta}(\vecb{m})}) + \E[\log h(\vecb{x})]$.
+\end{coremath}
+
+To cast the multivariate Gaussian \eqref{eq:probdist:mvn_pdf} into canonical form \eqref{eq:probdist:exp_family}, expand the log-density in $\vecb{x}$ and $\vecb{x}\vecb{x}\T$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.4.2.5, pp.\ 38--39}:
+\begin{equation}\label{eq:probdist:mvn_expfam}
+  \log p(\vecb{x}\mid\vecb{\mu},\mat{\Sigma})
+  = \log(2\pi)^{-D/2}
+  + \inner{\mat{\Lambda}\vecb{\mu}}{\vecb{x}}
+  + \Tr\!\left(\!\left(-\frac{1}{2}\mat{\Lambda}\right)\!\vecb{x}\vecb{x}\T\!\right)
+  - \left(\frac{1}{2}\vecb{\mu}\T\mat{\Lambda}\vecb{\mu} - \frac{1}{2}\log\abs{\mat{\Lambda}}\right).
+\end{equation}
+Matching terms identifies $h(\vecb{x}) = (2\pi)^{-D/2}$, sufficient statistics $\vecb{T}(\vecb{x}) = (\vecb{x}, \vecb{x}\vecb{x}\T)$, natural parameters $\vecb{\eta}_1 = \mat{\Lambda}\vecb{\mu}$ and $\mat{\eta}_2 = -\tfrac{1}{2}\mat{\Lambda} \in -\mathbb{S}_{++}^D$, and log-partition
+\begin{equation}\label{eq:probdist:mvn_logpart}
+  A(\vecb{\eta}_1, \mat{\eta}_2)
+  = -\frac{1}{4}\vecb{\eta}_1\T \mat{\eta}_2\inv \vecb{\eta}_1 - \frac{1}{2}\log\abs{-2\mat{\eta}_2}.
+\end{equation}
+Applying \eqref{eq:probdist:grad_A} via matrix calculus ($\pd{\log\abs{\mat{M}}}{\mat{M}} = \mat{M}^{-\top}$ and $\pd{\vecb{v}\T\mat{M}\inv\vecb{v}}{\mat{M}} = -\mat{M}^{-\top}\vecb{v}\vecb{v}\T\mat{M}^{-\top}$) immediately recovers $\grad_{\vecb{\eta}_1} A = -\tfrac{1}{2}\mat{\eta}_2\inv\vecb{\eta}_1 = \vecb{\mu} = \E[\vecb{x}]$ and $\grad_{\mat{\eta}_2} A = \mat{\mu}\mat{\mu}\T + \mat{\Sigma} = \E[\vecb{x}\vecb{x}\T]$.
+
+\begin{coremath}[Theorem: Maximum Likelihood Moment Matching, MaxEnt \& Conjugate Priors]
+Given i.i.d.\ observations $\mathcal{D} = \set{\vecb{x}_n}_{n=1}^N$, the exponential-family log-likelihood $\ell(\vecb{\eta};\mathcal{D}) = \sum_{n=1}^N \log h(\vecb{x}_n) + \inner{\vecb{\eta}}{\sum_{n=1}^N \vecb{T}(\vecb{x}_n)} - N A(\vecb{\eta})$ is concave in $\vecb{\eta}$ (since $-\hess_\eta \ell = N\hess A \succeq \zeros$). Setting $\grad_{\vecb{\eta}}\ell = \zeros$ yields the global MLE \emph{moment-matching} equation \bookcite{deep_learning_foundations_concepts}{Ch.\ 3.4, pp.\ 96--97} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.4.4--2.4.5, pp.\ 40--41}:
+\begin{equation}\label{eq:probdist:mle_moment_match}
+  \grad_{\vecb{\eta}} A(\hat{\vecb{\eta}}_{\mathrm{MLE}})
+  = \E_{p(\cdot\mid\hat{\vecb{\eta}}_{\mathrm{MLE}})}[\vecb{T}(\vecb{x})]
+  = \frac{1}{N}\sum_{n=1}^N \vecb{T}(\vecb{x}_n) \eqqcolon \bar{\vecb{t}}_{\mathcal{D}}.
+\end{equation}
+Under fixed-support regularity, the Pitman--Koopman--Darmois theorem states that only exponential families admit a fixed-dimension sufficient statistic $\sum_{n=1}^N \vecb{T}(\vecb{x}_n)$ independent of $N$ \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.6.2, pp.\ 209--210}; dually, maximizing differential entropy $-\int p\log p\,\mathrm{d}\nu$ subject to $\E_p[\vecb{T}(\vecb{x})] = \bar{\vecb{t}}$ uniquely yields \eqref{eq:probdist:exp_family} (with $h(\vecb{x})=1$) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.4.4, p.\ 97}. Finally, for any exponential-family likelihood \eqref{eq:probdist:exp_family}, the canonical \emph{conjugate prior} parameterized by $(\vecb{\tau}_0, \nu_0)$ is \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3.2.5, pp.\ 96--98} \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6.6.1, pp.\ 205--208}:
+\begin{equation}\label{eq:probdist:conjugate_prior}
+  p(\vecb{\eta} \mid \vecb{\tau}_0, \nu_0)
+  = \exp\!\bigl(\inner{\vecb{\eta}}{\vecb{\tau}_0} - \nu_0 A(\vecb{\eta}) - \psi(\vecb{\tau}_0, \nu_0)\bigr),
+\end{equation}
+where $\exp(\psi(\vecb{\tau}_0, \nu_0)) = \int_{\Omega_\eta} \exp(\inner{\vecb{\eta}}{\vecb{\tau}_0} - \nu_0 A(\vecb{\eta}))\,\mathrm{d}\vecb{\eta}$. Multiplying by $p(\mathcal{D}\mid\vecb{\eta}) = \bigl(\prod_{n=1}^N h(\vecb{x}_n)\bigr)\exp(\inner{\vecb{\eta}}{N\bar{\vecb{t}}_{\mathcal{D}}} - N A(\vecb{\eta}))$ yields a posterior in the exact same family and a closed-form log marginal likelihood:
+\begin{align}\label{eq:probdist:conjugate_update}
+  p(\vecb{\eta}\mid\mathcal{D}) &= p(\vecb{\eta}\mid \vecb{\tau}_N, \nu_N), &
+  \vecb{\tau}_N &= \vecb{\tau}_0 + \sum_{n=1}^N \vecb{T}(\vecb{x}_n), &
+  \nu_N &= \nu_0 + N, \\
+  \log p(\mathcal{D}) &= \sum_{n=1}^N \log h(\vecb{x}_n) + \psi(\vecb{\tau}_N, \nu_N) - \psi(\vecb{\tau}_0, \nu_0). \nonumber
+\end{align}
+Canonical instances include Beta--Bernoulli ($T(x)=x$), Dirichlet--Categorical ($T(\vecb{x})=\vecb{x}$ one-hot), Gamma--Poisson/Exponential, and Normal--Inverse-Wishart (NIW)--MVN.
+\end{coremath}
+
+% ==============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:probdist:algorithms}
+% ==============================================================================
+
+In practice, computing Schur-complement Gaussian conditionals or conjugate exponential-family posteriors requires avoiding explicit matrix inversions and underflowing product densities. Algorithm~\ref{alg:probdist:unified_inference} combines Cholesky-stabilized Schur conditioning with recursive exponential-family conjugate updating in log space.
+
+\begin{algorithm}[htbp]
+  \DontPrintSemicolon
+  \caption{Cholesky-Stabilized Gaussian Schur Conditioning \& Exponential-Family Conjugate Update}
+  \label{alg:probdist:unified_inference}
+  \KwIn{Observed partition $\vecb{x}_b \in \R^{D_b}$, MVN moment parameters $(\vecb{\mu}_a,\vecb{\mu}_b,\mat{\Sigma}_{aa},\mat{\Sigma}_{ab},\mat{\Sigma}_{bb})$, jitter $\epsilon > 0$; OR i.i.d.\ batch $\mathcal{D}=\set{\vecb{x}_n}_{n=1}^N$ with prior hyperparameters $(\vecb{\tau}_0, \nu_0)$, sufficient statistic map $\vecb{T}$, and conjugate log-normalizer $\psi$.}
+  \KwOut{Conditional Gaussian $(\vecb{\mu}_{a\mid b}, \mat{L}_{a\mid b})$ with $\mat{\Sigma}_{a\mid b} = \mat{L}_{a\mid b}\mat{L}_{a\mid b}\T$, OR posterior hyperparameters $(\vecb{\tau}_N, \nu_N)$ and marginal log-evidence $\log p(\mathcal{D})$.}
+  \tcp{Branch 1: Numerically stable Schur-complement MVN conditioning}
+  $\mat{L}_{bb} \gets \mathrm{Cholesky}\!\left(\mat{\Sigma}_{bb} + \epsilon \eye_{D_b}\right)$ \tcp*{Lower triangular factor, $\mathcal{O}(D_b^3)$}
+  Solve $\mat{L}_{bb}\vecb{\alpha} = \vecb{x}_b - \vecb{\mu}_b$ by forward substitution\;
+  Solve $\mat{L}_{bb}\mat{K}\T = \mat{\Sigma}_{ba}$ by forward substitution \tcp*{$\mat{K}\T = \mat{L}_{bb}\inv\mat{\Sigma}_{ba} \in \R^{D_b \times D_a}$}
+  $\vecb{\mu}_{a\mid b} \gets \vecb{\mu}_a + \mat{K}\vecb{\alpha}$ \tcp*{Avoids explicit $\mat{\Sigma}_{bb}\inv$: $\mat{K}\vecb{\alpha} = \mat{\Sigma}_{ab}\mat{\Sigma}_{bb}\inv(\vecb{x}_b-\vecb{\mu}_b)$}
+  $\mat{\Sigma}_{a\mid b} \gets \tfrac{1}{2}\!\left((\mat{\Sigma}_{aa} - \mat{K}\mat{K}\T) + (\mat{\Sigma}_{aa} - \mat{K}\mat{K}\T)\T\right)$ \tcp*{Symmetrized Schur complement}
+  $\mat{L}_{a\mid b} \gets \mathrm{Cholesky}\!\left(\mat{\Sigma}_{a\mid b} + \epsilon \eye_{D_a}\right)$\;
+  \tcp{Branch 2: Recursive exponential-family conjugate Bayesian update}
+  $\vecb{S}_{\mathcal{D}} \gets \zeros$;\quad $\ell_h \gets 0$\;
+  \For{$n \gets 1$ \KwTo $N$}{
+    $\vecb{S}_{\mathcal{D}} \gets \vecb{S}_{\mathcal{D}} + \vecb{T}(\vecb{x}_n)$;\quad
+    $\ell_h \gets \ell_h + \log h(\vecb{x}_n)$\;
+  }
+  $\vecb{\tau}_N \gets \vecb{\tau}_0 + \vecb{S}_{\mathcal{D}}$;\quad $\nu_N \gets \nu_0 + N$\;
+  $\log p(\mathcal{D}) \gets \ell_h + \psi(\vecb{\tau}_N, \nu_N) - \psi(\vecb{\tau}_0, \nu_0)$\;
+  \Return $(\vecb{\mu}_{a\mid b}, \mat{L}_{a\mid b})$ or $(\vecb{\tau}_N, \nu_N, \log p(\mathcal{D}))$\;
+\end{algorithm}
+
+Table~\ref{tab:probdist:complexity} contrasts the memory, inference, and statistical trade-offs across covariance structures and canonical exponential-family parameterizations \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.2--3.4, pp.\ 81--98} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.3--2.4, pp.\ 22--41}.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.15cm}ccc>{\raggedright\arraybackslash}X@{}}
+  \toprule
+  \textbf{Parameterization} & \textbf{Parameters} & \textbf{Conditioning} & \textbf{Marginal} & \textbf{Primary Strength / Bottleneck} \\
+  \midrule
+  Full Moment MVN $(\vecb{\mu}, \mat{\Sigma})$
+    & $D + \frac{D(D+1)}{2}$
+    & $\mathcal{O}(D_b^3 + D_a D_b^2)$
+    & $\mathcal{O}(1)$ slice
+    & Expressive correlation; covariance MLE singular when $N \le D$. \\
+  Information MVN $(\vecb{h}, \mat{K})$
+    & $D + \frac{D(D+1)}{2}$
+    & $\mathcal{O}(1)$ slice
+    & $\mathcal{O}(D_b^3 + D_a D_b^2)$
+    & Additive Bayesian fusion \& sparse Markov structure ($K_{ij}=0$). \\
+  Diagonal MVN $(\vecb{\mu}, \diag(\vecb{\sigma}^2))$
+    & $2D$
+    & $\mathcal{O}(1)$
+    & $\mathcal{O}(1)$
+    & Linear scaling in $D$, but assumes conditional \& marginal independence. \\
+  Spherical MVN $(\vecb{\mu}, \sigma^2 \eye_D)$
+    & $D + 1$
+    & $\mathcal{O}(1)$
+    & $\mathcal{O}(1)$
+    & Minimal sample complexity; isotropic quadratic Euclidean distance. \\
+  Canonical Conjugate $(\vecb{\tau}_0, \nu_0)$
+    & $K + 1$
+    & $\grad A^*(\vecb{m})$
+    & $\mathcal{O}(NK)$ update
+    & Exact finite-dim.\ sufficiency; requires tractable $\psi(\vecb{\tau},\nu)$. \\
+  \bottomrule
+\end{tabularx}
+\caption{Asymptotic storage and operational complexity across MVN coordinate representations and conjugate exponential families ($D = D_a + D_b$, sufficient-statistic dimension $K$).}
+\label{tab:probdist:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Axiomatic Mechanics to Convex Exponential Duality]
+Each textbook contributes a complementary layer to this unified framework. Chan \bookcite{introduction_probability_data_science}{Ch.\ 2, 5--6} anchors sample spaces $(\Omega,\mathcal{F},P)$, transformation densities, and MGF/characteristic-function convolution calculus cleanly from engineering first principles. Bishop \& Bishop \bookcite{deep_learning_foundations_concepts}{Ch.\ 2--3} develop the Gaussian workhorse algebraically via completing the square for conditional/marginal laws and linear-Gaussian Bayesian estimation, highlighting Pitman--Koopman--Darmois sufficiency. Deisenroth, Faisal, and Ong \bookcite{mathematics_machine_learning_orienly}{Ch.\ 6} supply geometric Hilbert-space inner products for covariance alongside explicit block-inverse and exponential-family proofs. Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 2--4, 7} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2--3} elevates the hierarchy to Legendre duality ($\grad A \leftrightarrow \grad A^*$), canonical potential calculus $(g,\vecb{h},\mat{K})$ for Gaussian graphical models, Fisher geometry $\hess A(\vecb{\eta})$, and finite-sample covariance regularization in high dimensions.
+\end{crossbook}
+
+% ==============================================================================
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:probdist:visuals}
+% ==============================================================================
+
+Figure~\ref{fig:probdist:duality_tikz} synthesizes the algebraic and convex-analytic relationships connecting moment coordinates $(\vecb{\mu}, \mat{\Sigma})$, precision/natural coordinates $\vecb{\eta} = (\mat{\Lambda}\vecb{\mu}, -\tfrac{1}{2}\mat{\Lambda})$, and conjugate exponential-family hyperparameters $(\vecb{\tau}, \nu)$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.6cm and 3.1cm,
+  every node/.style={font=\small}
+]
+  \node[monoBox, text width=5.4cm, minimum height=4.4cm, align=flush left] (moment) {
+    \textbf{Moment / Mean Manifold $\mathcal{M}^\circ$}\\[3pt]
+    MVN: $\vecb{m} = (\vecb{\mu}, \E[\vecb{x}\vecb{x}\T]) \leftrightarrow (\vecb{\mu}, \mat{\Sigma})$\\
+    Exp.\ fam.: $\vecb{m} = \E_{p(\cdot\mid\vecb{\eta})}[\vecb{T}(\vecb{x})]$\\[3pt]
+    \textbullet\ Marginal: $\mathcal{O}(1)$ block $\mat{\Sigma}_{aa}$\\
+    \textbullet\ Sampling: $\vecb{x} = \vecb{\mu} + \mat{L}\vecb{z}$, $\vecb{z}\sim\Normal(\zeros,\eye)$\\
+    \textbullet\ MLE target: empirical average $\bar{\vecb{t}}_{\mathcal{D}}$
+  };
+
+  \node[monoTealBox, text width=5.4cm, minimum height=4.4cm, align=flush left, right=of moment] (natural) {
+    \textbf{Natural / Precision Manifold $\Omega_\eta^\circ$}\\[3pt]
+    MVN: $\vecb{\eta}_1 = \mat{\Lambda}\vecb{\mu} = \vecb{h}$, $\mat{\eta}_2 = -\tfrac{1}{2}\mat{\Lambda}$\\
+    Potential: $\exp(g + \vecb{h}\T\vecb{x} - \tfrac{1}{2}\vecb{x}\T\mat{K}\vecb{x})$\\[3pt]
+    \textbullet\ Conditioning: $\mathcal{O}(1)$ block $\mat{\Lambda}_{aa} = \mat{\Sigma}_{a\mid b}\inv$\\
+    \textbullet\ Markov graph: $\Lambda_{ij}=0 \iff X_i \indep X_j \mid \vecb{X}_{-ij}$\\
+    \textbullet\ Factor product: sums $(\vecb{h},\mat{K})$
+  };
+
+  \node[monoIndigoBox, text width=13.5cm, align=flush center, below=1.55cm of $(moment.south)!0.5!(natural.south)$] (conjugate) {
+    \textbf{Convex Conjugate Geometry \& Exact Bayesian Updating}\\[3pt]
+    Log-partition $A(\vecb{\eta})$ ($\hess A = \Cov[\vecb{T}(\vecb{x})] = \mat{I}_F(\vecb{\eta})$)
+    $\;\longleftrightarrow\;$
+    Dual $A^*(\vecb{m}) = \sup_{\vecb{\eta}}(\inner{\vecb{\eta}}{\vecb{m}} - A(\vecb{\eta}))$\\[3pt]
+    Conjugate update: $(\vecb{\tau}_0, \nu_0) \mapsto \bigl(\vecb{\tau}_0 + \sum_{n=1}^N \vecb{T}(\vecb{x}_n),\; \nu_0 + N\bigr)$
+    $\;\implies\;$
+    Posterior moment: $\E[\vecb{m}\mid\mathcal{D}] = \frac{\vecb{\tau}_N}{\nu_N}$
+  };
+
+  \draw[monoArrow] ([yshift=8pt]natural.west) -- node[above, font=\scriptsize, align=center] {$\vecb{m} = \grad_{\vecb{\eta}} A(\vecb{\eta})$\\[-1pt]($\mat{\Sigma} = \mat{\Lambda}\inv$)} ([yshift=8pt]moment.east);
+  \draw[monoArrow, monographTeal] ([yshift=-8pt]moment.east) -- node[below, font=\scriptsize, align=center] {$\vecb{\eta} = \grad_{\vecb{m}} A^*(\vecb{m})$\\[-1pt](MaxEnt / MLE)} ([yshift=-8pt]natural.west);
+
+  \draw[monoArrow, monographIndigo] (moment.south) -- node[left, font=\scriptsize, xshift=-4pt] {Schur / $\bar{\vecb{t}}_{\mathcal{D}}$} ([xshift=-4.3cm]conjugate.north);
+  \draw[monoArrow, monographIndigo] (natural.south) -- node[right, font=\scriptsize, xshift=4pt] {Bayes factor / $\psi(\vecb{\tau}_N,\nu_N)$} ([xshift=4.3cm]conjugate.north);
+\end{tikzpicture}
+\caption{Duality linking MVN moment parameters $(\vecb{\mu}, \mat{\Sigma})$, precision/natural coordinates $\vecb{\eta}$, and conjugate exponential-family inference via the Legendre pair $(A, A^*)$.}
+\label{fig:probdist:duality_tikz}
+\end{figure}
+
+Figure~\ref{fig:probdist:ellipses_pgfplots} visualizes two geometric hallmarks: (a) how covariance structure shapes bivariate Gaussian iso-density contours and regression lines $\mu_{2\mid 1}(x_1)$, and (b) how quadratic log-density decay in exponential families contrasts with polynomial heavy tails where the MGF diverges.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=2.0cm},
+  scale only axis=true,
+  width=5.6cm,
+  height=5.6cm,
+  grid=both,
+  grid style={monographRule!55, dashed},
+  tick label style={font=\scriptsize},
+  label style={font=\small},
+  title style={font=\small\bfseries, color=monographNavy}
+]
+  \nextgroupplot[
+    title={(a) 2D MVN Ellipses ($c=1.5$)},
+    xlabel={$x_1$},
+    ylabel={$x_2$},
+    xmin=-3.2, xmax=3.2,
+    ymin=-2.4, ymax=4.0,
+    legend columns=2,
+    legend style={font=\scriptsize, at={(0.5,0.97)}, anchor=north, draw=monographRule, fill=white, fill opacity=0.92, column sep=4pt}
+  ]
+    % Spherical: Sigma = I => x = 1.5 cos t, y = 1.5 sin t
+    \addplot[monographTeal, thick, dashed, domain=0:360, samples=121]
+      ({1.5*cos(x)}, {1.5*sin(x)});
+    \addlegendentry{Spherical ($\eye_2$)}
+
+    % Diagonal: Sigma = diag(2.25, 0.49) => x = 2.25 cos t, y = 1.05 sin t
+    \addplot[monographIndigo, thick, dashdotted, domain=0:360, samples=121]
+      ({2.25*cos(x)}, {1.05*sin(x)});
+    \addlegendentry{Diagonal}
+
+    % Full: Sigma = [[1.3,0.9],[0.9,1.3]], eigenvalues 2.2 and 0.4 along +-45 deg
+    \addplot[monographNavy, very thick, domain=0:360, samples=141]
+      ({1.5*(1.0488088*cos(x) - 0.4472136*sin(x))}, {1.5*(1.0488088*cos(x) + 0.4472136*sin(x))});
+    \addlegendentry{Full ($\Sigma_{12}=0.9$)}
+
+    % Conditional mean line mu_{2|1}(x1) = (0.9/1.3) x1
+    \addplot[monographCrimson, thick, domain=-2.8:2.8, samples=2] {0.6923077*x};
+    \addlegendentry{$\mu_{2\mid 1}=\frac{9}{13}x_1$}
+
+    % Principal eigenvector axes for Full covariance
+    \draw[->, monographNavy, thick] (axis cs:0,0) -- (axis cs:1.5732,1.5732) node[pos=0.72, above left, font=\scriptsize] {$\vecb{u}_1$};
+    \draw[->, monographNavy, thick] (axis cs:0,0) -- (axis cs:-0.6708,0.6708) node[pos=0.88, left, font=\scriptsize] {$\vecb{u}_2$};
+
+  \nextgroupplot[
+    title={(b) Log-Density Tail Decay},
+    xlabel={$\abs{x}$},
+    ylabel={$\log p(x) - \log p(0)$},
+    xmin=0, xmax=4.5,
+    ymin=-9.5, ymax=0.5,
+    legend style={font=\scriptsize, at={(0.03,0.04)}, anchor=south west, draw=monographRule, fill=white, fill opacity=0.92}
+  ]
+    % Gaussian N(0,1): -0.5 x^2
+    \addplot[monographNavy, very thick, domain=0:4.3, samples=100] {-0.5*x^2};
+    \addlegendentry{Gaussian ($\Normal(0,1)$, exp.\ fam.)}
+
+    % Laplace(0,1): -x
+    \addplot[monographTeal, thick, dashed, domain=0:4.5, samples=50] {-x};
+    \addlegendentry{Laplace ($b=1$, sub-quadratic)}
+
+    % Student-t nu=3: -2 * ln(1 + x^2/3)
+    \addplot[monographIndigo, thick, dashdotted, domain=0:4.5, samples=100] {-2*ln(1 + x^2/3)};
+    \addlegendentry{Student-$t$ ($\nu=3$, $M_X$ diverges)}
+
+    % Cauchy (nu=1): -ln(1 + x^2)
+    \addplot[monographCrimson, very thick, domain=0:4.5, samples=100] {-ln(1 + x^2)};
+    \addlegendentry{Cauchy ($\nu=1$, no finite mean)}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Geometric structure and tail behavior. (a)~Iso-density contours at Mahalanobis radius $c=1.5$ comparing spherical, diagonal, and full covariances; the conditional mean line $\mu_{2\mid 1}(x_1)$ tilts below the major principal eigenvector $\vecb{u}_1$ due to regression toward the mean. (b)~Gaussian quadratic log-decay guarantees finite $M_X(s)$ everywhere, whereas polynomial tails in Student-$t$ and Cauchy distributions cause $M_X(s)=\infty$ for all $s \neq 0$.}
+\label{fig:probdist:ellipses_pgfplots}
+\end{figure}
+
+% ==============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:probdist:pitfalls}
+% ==============================================================================
+
+\begin{pitfall}[Correlation vs.\ Independence, Confounding \& Simpson's Paradox]
+Zero linear correlation ($\Cov[X,Y] = 0$) guarantees statistical independence ($X \indep Y$) \emph{only} when $(X,Y)$ are jointly Gaussian; two marginally Gaussian variables can be uncorrelated yet strictly dependent---for example, take $X \sim \Normal(0,1)$ and $Y = WX$ with $W \sim \Uniform\set{-1,1}$ independent of $X$, giving $Y \sim \Normal(0,1)$ and $\Cov[X,Y]=0$ while $X^2 = Y^2$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.1.3--3.1.5, Ex.\ 3.5, pp.\ 78--81, 102}. Similarly, observing correlation cannot separate direct causality from common confounders $Z \to X, Z \to Y$, and pooling marginal subgroups can invert correlation signs entirely (\emph{Simpson's paradox}, Figure~\ref{fig:probdist:simpson}) \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.\ 3.3, p.\ 80}. Always condition on (or intervene on) causal confounders before fitting linear or Gaussian summaries.
+\end{pitfall}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_introduction_p110_fig1.png}{Simpson's paradox on the Iris dataset \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 3.1.5, Fig.\ 3.3, p.\ 80}. Marginal regression pooling all species yields a negative correlation ($R = -0.12$, left), whereas conditioning on each species reveals positive within-group correlations ($R \in \set{0.74, 0.53, 0.46}$, right).}{fig:probdist:simpson}
+
+\begin{pitfall}[High-Dimensional Covariance Singularity ($N \le D$) \& Gaussian Typical Sets]
+Given $N$ samples $\vecb{x}_1, \dots, \vecb{x}_N \in \R^D$, the sample scatter matrix $\mat{S} = \sum_{n=1}^N (\vecb{x}_n - \bar{\vecb{x}})(\vecb{x}_n - \bar{\vecb{x}})\T$ has rank at most $\min(D, N-1)$ \bookcite{deep_learning_foundations_concepts}{Ch.\ 3.2, pp.\ 72--76}. Whenever $D \ge N$, the MLE covariance $\hat{\mat{\Sigma}}_{\mathrm{MLE}} = \frac{1}{N}\mat{S}$ is singular ($\det\hat{\mat{\Sigma}}_{\mathrm{MLE}} = 0$), its precision $\hat{\mat{\Lambda}}$ does not exist, and even for $N \approx D$ its condition number explodes ($\kappa \gg 10^{15}$) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4.5.2, Fig.\ 4.4, pp.\ 122--123}. \textbf{Remedy:} apply conjugate Inverse-Wishart / Ledoit--Wolf shrinkage $\hat{\mat{\Sigma}}_{\mathrm{MAP}} = \lambda \diag(\hat{\mat{\Sigma}}_{\mathrm{MLE}}) + (1-\lambda)\hat{\mat{\Sigma}}_{\mathrm{MLE}}$ or diagonal/low-rank factor covariance plus Cholesky jitter $\epsilon\eye_D$. Simultaneously, in high dimension $D \gg 1$, random draws from $\Normal(\vecb{\mu}, \sigma^2 \eye_D)$ almost never lie near the density mode $\vecb{\mu}$; because spherical volume elements scale as $r^{D-1}\,\mathrm{d}r$, probability mass concentrates in a thin ``soap-bubble'' annulus of radius $\sigma\sqrt{D}$ and thickness $\mathcal{O}(\sigma D^{1/4})$ (Figure~\ref{fig:probdist:shell}) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.3.1.2, Fig.\ 2.9, pp.\ 23--24}.
+\end{pitfall}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p58_fig1.png}{High-dimensional Gaussian concentration of measure \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.3.1.2, Fig.\ 2.9, p.\ 24}. (a)~Exponentially decaying density balanced against $r^{D-1}$ shell volume creates a narrow typical set away from the mode. (b)~Samples from $\Normal(\vecb{\mu}, \sigma^2 \eye_D)$ concentrate at radius $\sigma\sqrt{D}$ within an annulus of width $\mathcal{O}(\sigma D^{1/4})$.}{fig:probdist:shell}
+
+\begin{pitfall}[Canonical Parameter Traps, Zero-Count Boundaries \& Numerical Underflow]
+Three recurring implementation errors arise in exponential-family and MVN pipelines:
+\begin{enumerate}
+  \item \textbf{Overcomplete non-identifiability \& domain violations:} If components of $\vecb{T}(\vecb{x})$ are linearly dependent (e.g., unconstrained categorical probabilities with $\sum_k T_k(\vecb{x})=1$), $\hess A(\vecb{\eta})$ is singular and $\vecb{\eta}$ is non-unique; similarly, MVN natural matrix $\mat{\eta}_2 = -\tfrac{1}{2}\mat{\Sigma}\inv$ must remain strictly negative definite during gradient optimization (parameterize via Cholesky factors $\mat{L}$ with $\exp(L_{ii})$ on the diagonal) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 2.4.1--2.4.2, pp.\ 34--39}.
+  \item \textbf{Boundary singularities at $\bar{\vecb{t}}_{\mathcal{D}} \in \partial\mathcal{M}$:} When discrete counts contain zeros ($\hat{\mu}_k = 0$), canonical parameters diverge ($\eta_k = \log(\mu_k/\mu_K) \to -\infty$), assigning zero probability to unseen events (the black-swan trap). Conjugate smoothing $\vecb{\tau}_N = \vecb{\tau}_0 + N\bar{\vecb{t}}_{\mathcal{D}}$ with $\vecb{\tau}_0 > \zeros$ strictly forces $\bar{\vecb{t}}_{\mathrm{post}} \in \mathcal{M}^\circ$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4.5.1, pp.\ 121--122}.
+  \item \textbf{MGF divergence \& log-space precision:} Heavy-tailed laws such as Student-$t$ and Cauchy possess $M_X(s) = \infty$ for $s \neq 0$ (Figure~\ref{fig:probdist:ellipses_pgfplots}b); always substitute the universally bounded characteristic function $\varphi_X(\omega) = \E[e^{i\omega X}]$ ($\abs{e^{i\omega X}} = 1$) \bookcite{introduction_probability_data_science}{Thm.\ 6.7, pp.\ 331--332}. Likewise, never evaluate \eqref{eq:probdist:mvn_pdf} directly via $\det(\mat{\Sigma})$ in high $D$ (risking overflow/underflow in IEEE-754 float64); evaluate $\log p(\vecb{x}) = -\frac{D}{2}\log(2\pi) - \sum_{i=1}^D \log L_{ii} - \frac{1}{2}\norm{\mat{L}\inv(\vecb{x}-\vecb{\mu})}_2^2$ via Cholesky forward substitution.
+\end{enumerate}
+\end{pitfall}
+
+\end{document}

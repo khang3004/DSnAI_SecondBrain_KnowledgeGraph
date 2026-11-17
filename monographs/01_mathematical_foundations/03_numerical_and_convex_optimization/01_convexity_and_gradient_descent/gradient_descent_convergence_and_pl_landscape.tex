@@ -1,0 +1,625 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Convex, Smooth \& Stochastic Optimization}{Convex Duality \& Deterministic Gradient Descent Theory}{Gradient Descent Dynamics: Strong Convexity, Smoothness, PL Condition \& Saddle Escape}{%
+  \bookcite{gradient_descent_unconstrained}{Slides~1--93 (PDF pp.~1--93)},
+  \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.~2--3 \& App.~A, pp.~5--18, 66--68 (PDF pp.~5--18, 66--68)},
+  \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1--8.3, pp.~275--291 (PDF pp.~305--321)},
+  \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1, pp.~226--233 (PDF pp.~232--239)},
+  \bookcite{deep_learning_foundations_concepts}{Ch.~7, pp.~209--229 (PDF pp.~226--246)}%
+}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:gdconv:formulation}
+% =============================================================================
+
+We consider unconstrained continuous optimization of a continuously differentiable objective $f : \R^d \to \R$ bounded below by $f^* \triangleq \inf_{\vecb{x} \in \R^d} f(\vecb{x}) > -\infty$:
+\begin{equation}
+\label{eq:gdconv:problem}
+  \minimize_{\vecb{x} \in \R^d} \; f(\vecb{x}),
+\end{equation}
+assuming a nonempty minimizer set $\mathcal{X}^* \triangleq \argmin_{\vecb{x} \in \R^d} f(\vecb{x})$. Throughout, we follow the standard unconstrained setup (\bookcite{stochastic_gradient_decent_algorithm_explain}{Prob.~3.1, p.~13}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1, p.~275}). Closed-form roots of $\grad f(\vecb{x}) = \zeros$ rarely exist beyond linear least squares (\bookcite{mathematics_machine_learning_orienly}{Sec.~7.1, p.~227}; \bookcite{gradient_descent_unconstrained}{Slide~5}). Moreover, zeroth-order methods require $O(d^2)$ queries on quadratics versus $O(d)$ for gradients (\bookcite{deep_learning_foundations_concepts}{Sec.~7.2.1, p.~214}), so first-order methods iterate via
+\begin{equation}
+\label{eq:gdconv:gd_update}
+  \vecb{x}_{t+1} = \vecb{x}_t - \eta_t \grad f(\vecb{x}_t), \qquad t = 0, 1, 2, \dots,
+\end{equation}
+starting from $\vecb{x}_0 \in \R^d$ with step size (learning rate) $\eta_t > 0$. By Cauchy--Schwarz, the unit-ball steepest-descent direction satisfies $\argmin_{\norm{\vecb{d}}_2 \le 1} \inner{\grad f(\vecb{x}_t)}{\vecb{d}} = -\grad f(\vecb{x}_t)/\norm{\grad f(\vecb{x}_t)}_2$ whenever $\grad f(\vecb{x}_t) \neq \zeros$ \bookcite{gradient_descent_unconstrained}{Slide~11}, moving orthogonally to the level-set contours $\{\vecb{x} : f(\vecb{x}) = c\}$ \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1, p.~228}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The five primary texts adopt incompatible symbol assignments---most critically overloading $\mu$ to denote strong convexity, the linear convergence factor, and momentum simultaneously, and using opposite vector shapes for $\grad f$. Table~\ref{tab:gdconv:notation} enforces a single unambiguous convention throughout this monograph: $\vecb{x}_t \in \R^d$ is the iterate, $\grad f(\vecb{x}) \in \R^{d \times 1}$ is a column gradient, $\eta_t > 0$ is the step size, $\mu > 0$ is the strong-convexity or Polyak--\L{}ojasiewicz (PL) constant, $L > 0$ is the gradient Lipschitz constant, and $\kappa \triangleq L/\mu$ is the condition number.
+\end{crossbook}
+
+\begin{table}[H]
+\centering
+\caption{Unified Notation and Cross-Book Convention Reconciliation.}
+\label{tab:gdconv:notation}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Symbol} & \textbf{Source Textbook Conventions \& Reconciliation} \\
+\midrule
+Parameter vector & $\vecb{x}_t \in \R^d$, $\vecb{x}^*$ & $\vecb{x}_t \in \R^d$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Sec.~3} and \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1}; $\vecb{\theta}_t \in \R^d$ in \bookcite{gradient_descent_unconstrained}{Slide~10} and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1}; $\vecb{w}^{(\tau)} \in \R^W$ in \bookcite{deep_learning_foundations_concepts}{Sec.~7.2}. \\
+Objective function & $f(\vecb{x})$, $f^* = \inf f$ & $f(\vecb{x})$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Sec.~2} and \bookcite{mathematics_machine_learning_orienly}{Eq.~(7.4)}; $f(\vecb{\theta})$ or $\mathcal{L}_n(\vecb{\theta})$ in \bookcite{gradient_descent_unconstrained}{Slides~5, 9}; $\mathcal{L}(\vecb{\theta})$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.1)}; $E(\vecb{w})$ in \bookcite{deep_learning_foundations_concepts}{Sec.~7.1}. \\
+Gradient vector & $\grad f(\vecb{x}) \in \R^{d \times 1}$ (column) & Column vector in \bookcite{stochastic_gradient_decent_algorithm_explain}{Rem.~2.2}, \bookcite{gradient_descent_unconstrained}{Slide~10}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1.1.1}, and \bookcite{deep_learning_foundations_concepts}{Eq.~(7.1)}; row vector $(\grad f)(\vecb{x}) \in \R^{1\times d}$ requiring explicit transpose in \bookcite{mathematics_machine_learning_orienly}{Eq.~(7.5)}. \\
+Step size / LR & $\eta_t > 0$ (fixed $\eta$) & $\eta_t, \eta$ in \bookcite{gradient_descent_unconstrained}{Slide~10}, \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.15)}, and \bookcite{deep_learning_foundations_concepts}{Eq.~(7.16)}; $\gamma$ or $\gamma_i$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Alg.~3.2} and \bookcite{mathematics_machine_learning_orienly}{Eq.~(7.6)}. \\
+Strong convexity & $\mu > 0$ & $\mu$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Def.~2.11} and \bookcite{gradient_descent_unconstrained}{Slide~12}; $m > 0$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.9)}. (Murphy reserves $\mu$ for linear rate factor; Bishop reserves $\mu$ for momentum.) \\
+Smoothness constant & $L > 0$ & $L$ ($\norm{\grad f(\vecb{x}) - \grad f(\vecb{y})}_2 \le L\norm{\vecb{x}-\vecb{y}}_2$) in \bookcite{stochastic_gradient_decent_algorithm_explain}{Def.~2.24}, \bookcite{gradient_descent_unconstrained}{Slide~14}, and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.2.1}; $\lambda_{\max}(\hess E)$ in \bookcite{deep_learning_foundations_concepts}{Sec.~7.3}. \\
+Condition number & $\kappa = L/\mu$ ($\lambda_{\max}/\lambda_{\min}$) & Hessian condition number $\kappa = \lambda_{\max}/\lambda_{\min}$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.3} and \bookcite{deep_learning_foundations_concepts}{p.~220}; linear-system $\kappa(\mat{A}) = \sigma_{\max}(\mat{A})/\sigma_{\min}(\mat{A})$ in \bookcite{mathematics_machine_learning_orienly}{p.~230} yields $\kappa(\mat{A}\T\mat{A}) = \kappa(\mat{A})^2$. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:gdconv:theory}
+% =============================================================================
+
+\subsection{\texorpdfstring{$L$}{L}-Smoothness, Descent Lemma, Co-Coercivity \& Non-Convex Stationarity}
+\label{subsec:gdconv:smoothness}
+
+A differentiable function $f : \R^d \to \R$ is \emph{$L$-smooth} ($L > 0$) if its gradient is $L$-Lipschitz continuous in Euclidean norm:
+\begin{equation}
+\label{eq:gdconv:lsmooth}
+  \norm{\grad f(\vecb{y}) - \grad f(\vecb{x})}_2 \le L \norm{\vecb{y} - \vecb{x}}_2, \qquad \forall \vecb{x}, \vecb{y} \in \R^d.
+\end{equation}
+When $f \in C^2(\R^d)$, the Mean-Value Inequality applied to $\grad f$ implies that~\eqref{eq:gdconv:lsmooth} is equivalent to a uniform spectral-norm bound $\norm{\hess f(\vecb{x})}_2 \le L$, i.e., every eigenvalue $\lambda$ of the symmetric Hessian $\hess f(\vecb{x})$ satisfies $\abs{\lambda} \le L$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.6 \& Lem.~2.26, pp.~5, 11} \bookcite{gradient_descent_unconstrained}{Slide~14}. Smoothness furnishes a global quadratic majorant whose minimization at each iterate yields guaranteed descent.
+
+\begin{coremath}[Lemma: $L$-Smoothness Descent Lemma \& Monotonic Progress]
+\label{thm:gdconv:descent}
+Let $f : \R^d \to \R$ be $L$-smooth. Then for all $\vecb{x}, \vecb{y} \in \R^d$:
+\begin{equation}
+\label{eq:gdconv:quad_upper}
+  f(\vecb{y}) \le f(\vecb{x}) + \inner{\grad f(\vecb{x})}{\vecb{y} - \vecb{x}} + \frac{L}{2}\norm{\vecb{y} - \vecb{x}}_2^2.
+\end{equation}
+Consequently, a gradient step $\vecb{x}_{t+1} = \vecb{x}_t - \eta \grad f(\vecb{x}_t)$ with $\eta > 0$ satisfies
+\begin{equation}
+\label{eq:gdconv:sufficient_decrease}
+  f(\vecb{x}_{t+1}) - f(\vecb{x}_t) \le -\eta\left(1 - \frac{\eta L}{2}\right)\norm{\grad f(\vecb{x}_t)}_2^2.
+\end{equation}
+In particular, for $0 < \eta < \frac{2}{L}$, the objective decreases strictly whenever $\grad f(\vecb{x}_t) \neq \zeros$; minimizing the coefficient $-\eta(1 - \eta L/2)$ gives the optimal greedy step $\eta = \frac{1}{L}$, yielding $f(\vecb{x}_{t+1}) - f(\vecb{x}_t) \le -\frac{1}{2L}\norm{\grad f(\vecb{x}_t)}_2^2$ and the global gradient bound
+\begin{equation}
+\label{eq:gdconv:grad_upper}
+  \frac{1}{2L}\norm{\grad f(\vecb{x})}_2^2 \le f(\vecb{x}) - f^*, \qquad \forall \vecb{x} \in \R^d.
+\end{equation}
+\end{coremath}
+
+\textbf{Proof.}
+Fix $\vecb{x}, \vecb{y} \in \R^d$ and define $\phi(s) \triangleq f(\vecb{x} + s(\vecb{y}-\vecb{x}))$ for $s \in [0, 1]$. By the Fundamental Theorem of Calculus and Cauchy--Schwarz \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.25, p.~11},
+\begin{align*}
+  f(\vecb{y}) - f(\vecb{x}) - \inner{\grad f(\vecb{x})}{\vecb{y}-\vecb{x}}
+  &= \int_0^1 \inner{\grad f(\vecb{x} + s(\vecb{y}-\vecb{x})) - \grad f(\vecb{x})}{\vecb{y}-\vecb{x}} \,\mathrm{d}s \\
+  &\le \int_0^1 \norm{\grad f(\vecb{x} + s(\vecb{y}-\vecb{x})) - \grad f(\vecb{x})}_2 \norm{\vecb{y}-\vecb{x}}_2 \,\mathrm{d}s \\
+  &\le \int_0^1 L s \norm{\vecb{y}-\vecb{x}}_2^2 \,\mathrm{d}s = \frac{L}{2}\norm{\vecb{y}-\vecb{x}}_2^2,
+\end{align*}
+proving~\eqref{eq:gdconv:quad_upper}. Setting $\vecb{y} = \vecb{x}_{t+1} = \vecb{x}_t - \eta\grad f(\vecb{x}_t)$ directly yields
+\[
+  f(\vecb{x}_{t+1}) - f(\vecb{x}_t) \le -\eta\norm{\grad f(\vecb{x}_t)}_2^2 + \frac{L\eta^2}{2}\norm{\grad f(\vecb{x}_t)}_2^2 = -\eta\left(1 - \frac{\eta L}{2}\right)\norm{\grad f(\vecb{x}_t)}_2^2.
+\]
+Finally, evaluating~\eqref{eq:gdconv:sufficient_decrease} at any $\vecb{x}_t = \vecb{x} \in \R^d$ with $\eta = 1/L$ and invoking $f^* \le f(\vecb{x} - \frac{1}{L}\grad f(\vecb{x}))$ yields~\eqref{eq:gdconv:grad_upper} (\bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.28, p.~12}). \qed
+
+General non-convex minimization is NP-hard (\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1.1, p.~275}), so for $L$-smooth objectives first-order guarantees target $\epsilon$-first-order stationary points ($\epsilon$-FOSP) satisfying $\norm{\grad f(\vecb{x})}_2 \le \epsilon$. Telescoping~\eqref{eq:gdconv:sufficient_decrease} for $0 < \eta \le 1/L$ (or generally $0 < \eta < 2/L$ with constant $c(\eta) = \eta(1 - \eta L/2) > 0$) gives
+\[
+  \sum_{t=0}^{T-1} \norm{\grad f(\vecb{x}_t)}_2^2 \le \frac{f(\vecb{x}_0) - f(\vecb{x}_T)}{\eta(1 - \eta L/2)} \le \frac{f(\vecb{x}_0) - f^*}{\eta(1 - \eta L/2)}.
+\]
+Thus, at $\eta = 1/L$, $\min_{0 \le t < T} \norm{\grad f(\vecb{x}_t)}_2 \le \sqrt{\frac{2L(f(\vecb{x}_0) - f^*)}{T}}$, guaranteeing an $\epsilon$-FOSP within $T \ge \frac{2L(f(\vecb{x}_0)-f^*)}{\epsilon^2} = O(\epsilon^{-2})$ iterations \bookcite{gradient_descent_unconstrained}{Thm.~6, Slides~82--84}.
+
+When $f$ is simultaneously convex and $L$-smooth, smoothness combines with the first-order convexity inequality $f(\vecb{y}) \ge f(\vecb{x}) + \inner{\grad f(\vecb{x})}{\vecb{y}-\vecb{x}}$ to produce \emph{co-coercivity} (the Baillon--Haddad theorem), a condition strictly stronger than monotonicity and $L$-Lipschitzness taken separately \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.29, pp.~12--13}.
+
+\begin{coremath}[Lemma: Co-Coercivity (Baillon--Haddad) for Convex $L$-Smooth Functions]
+\label{thm:gdconv:cocoercive}
+If $f : \R^d \to \R$ is convex and $L$-smooth, then for all $\vecb{x}, \vecb{y} \in \R^d$:
+\begin{align}
+  \frac{1}{2L}\norm{\grad f(\vecb{y}) - \grad f(\vecb{x})}_2^2 &\le f(\vecb{y}) - f(\vecb{x}) - \inner{\grad f(\vecb{x})}{\vecb{y}-\vecb{x}}, \label{eq:gdconv:bregman_lb} \\
+  \frac{1}{L}\norm{\grad f(\vecb{y}) - \grad f(\vecb{x})}_2^2 &\le \inner{\grad f(\vecb{y}) - \grad f(\vecb{x})}{\vecb{y}-\vecb{x}}. \label{eq:gdconv:cocoercive}
+\end{align}
+\end{coremath}
+
+\textbf{Proof.}
+Fix $\vecb{x}, \vecb{y} \in \R^d$. For any auxiliary point $\vecb{z} \in \R^d$, combine convexity between $(\vecb{x}, \vecb{z})$ with~\eqref{eq:gdconv:quad_upper} between $(\vecb{y}, \vecb{z})$:
+\[
+  f(\vecb{x}) - f(\vecb{y}) = \big(f(\vecb{x}) - f(\vecb{z})\big) + \big(f(\vecb{z}) - f(\vecb{y})\big)
+  \le \inner{\grad f(\vecb{x})}{\vecb{x}-\vecb{z}} + \inner{\grad f(\vecb{y})}{\vecb{z}-\vecb{y}} + \frac{L}{2}\norm{\vecb{z}-\vecb{y}}_2^2.
+\]
+Minimizing the right-hand side over $\vecb{z}$ yields $\vecb{z} = \vecb{y} - \frac{1}{L}(\grad f(\vecb{y}) - \grad f(\vecb{x}))$. Substituting this optimal $\vecb{z}$ gives $f(\vecb{x}) - f(\vecb{y}) \le \inner{\grad f(\vecb{x})}{\vecb{x}-\vecb{y}} - \frac{1}{2L}\norm{\grad f(\vecb{y})-\grad f(\vecb{x})}_2^2$, which rearranges to~\eqref{eq:gdconv:bregman_lb}. Swapping $\vecb{x}$ and $\vecb{y}$ in~\eqref{eq:gdconv:bregman_lb} and adding the two inequalities eliminates the function-value terms and yields~\eqref{eq:gdconv:cocoercive}. \qed
+
+\subsection{General Convex \texorpdfstring{$L$}{L}-Smooth Convergence (\texorpdfstring{$O(1/T)$}{O(1/T)}) \& Sublinear Tightness}
+\label{subsec:gdconv:convex}
+
+Without positive curvature lower bounds, convex $L$-smooth objectives can contain arbitrarily flat basins (e.g., $f(\vecb{x}) = \norm{\vecb{x}}_2^4$ where $\hess f(\zeros) = \mat{0}$; \bookcite{gradient_descent_unconstrained}{Slide~60}). Nevertheless, gradient descent remains Fej\'er-monotone with respect to every minimizer $\vecb{x}^* \in \mathcal{X}^*$ and achieves a tight worst-case $O(1/T)$ sublinear rate in objective gap and $O(1/T)$ gradient-norm convergence.
+
+\begin{coremath}[Theorem: $O(1/T)$ Objective \& $O(1/T)$ Gradient-Norm Convergence for Convex $L$-Smooth GD]
+\label{thm:gdconv:convex}
+Let $f : \R^d \to \R$ be convex and $L$-smooth with nonempty minimizer set $\mathcal{X}^*$. For any $\vecb{x}^* \in \mathcal{X}^*$ and constant step size $0 < \eta \le \frac{1}{L}$, gradient descent~\eqref{eq:gdconv:gd_update} satisfies for all $T \ge 1$:
+\begin{enumerate}
+  \item \textbf{Fej\'er Monotonicity:} $\norm{\vecb{x}_{t+1} - \vecb{x}^*}_2 \le \norm{\vecb{x}_t - \vecb{x}^*}_2 \le \norm{\vecb{x}_0 - \vecb{x}^*}_2$ for all $t \ge 0$.
+  \item \textbf{Objective Suboptimality ($O(1/T)$):}
+  \begin{equation}
+  \label{eq:gdconv:convex_rate}
+    f(\vecb{x}_T) - f^* \le \frac{\norm{\vecb{x}_0 - \vecb{x}^*}_2^2}{2\eta T}.
+  \end{equation}
+  \item \textbf{Improved Stationarity ($O(1/\epsilon)$):} For $\eta = \frac{1}{L}$, $\min_{0 \le t < T}\norm{\grad f(\vecb{x}_t)}_2 \le \frac{2L\norm{\vecb{x}_0 - \vecb{x}^*}_2}{T}$ (so $T = O(L\norm{\vecb{x}_0-\vecb{x}^*}_2/\epsilon)$ suffices for $\norm{\grad f(\vecb{x}_t)}_2 \le \epsilon$).
+\end{enumerate}
+\end{coremath}
+
+\textbf{Proof.}
+Following \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.4, pp.~13--15}, apply co-coercivity~\eqref{eq:gdconv:cocoercive} at $(\vecb{x}_t, \vecb{x}^*)$ with $\grad f(\vecb{x}^*) = \zeros$ to obtain
+\[
+  \norm{\vecb{x}_{t+1} - \vecb{x}^*}_2^2 = \norm{\vecb{x}_t - \vecb{x}^*}_2^2 - 2\eta\inner{\grad f(\vecb{x}_t)}{\vecb{x}_t-\vecb{x}^*} + \eta^2\norm{\grad f(\vecb{x}_t)}_2^2 \le \norm{\vecb{x}_t - \vecb{x}^*}_2^2 - \eta\left(\frac{2}{L} - \eta\right)\norm{\grad f(\vecb{x}_t)}_2^2,
+\]
+proving Fej\'er monotonicity for $0 < \eta \le \frac{2}{L}$ \bookcite{gradient_descent_unconstrained}{Lem.~2, Slides~63--64}. Next, writing $-\grad f(\vecb{x}_t) = \frac{1}{\eta}(\vecb{x}_{t+1}-\vecb{x}_t)$ and expanding $\norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 - \norm{\vecb{x}_t-\vecb{x}^*}_2^2$:
+\begin{align*}
+  \frac{1}{2\eta}\left(\norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 - \norm{\vecb{x}_t-\vecb{x}^*}_2^2\right)
+  &= -\frac{1}{2\eta}\norm{\vecb{x}_{t+1}-\vecb{x}_t}_2^2 - \inner{\grad f(\vecb{x}_t)}{\vecb{x}_{t+1}-\vecb{x}_t} + \inner{\grad f(\vecb{x}_t)}{\vecb{x}^*-\vecb{x}_t} \\
+  &\le \left(\frac{L}{2} - \frac{1}{2\eta}\right)\norm{\vecb{x}_{t+1}-\vecb{x}_t}_2^2 + \big(f(\vecb{x}_t) - f(\vecb{x}_{t+1})\big) + \big(f^* - f(\vecb{x}_t)\big) \\
+  &\le -\big(f(\vecb{x}_{t+1}) - f^*\big),
+\end{align*}
+where the first inequality combines~\eqref{eq:gdconv:quad_upper} at $(\vecb{x}_t, \vecb{x}_{t+1})$ with convexity $f^* - f(\vecb{x}_t) \ge \inner{\grad f(\vecb{x}_t)}{\vecb{x}^*-\vecb{x}_t}$, and the second uses $\eta \le 1/L$. Now define the discrete Lyapunov energy $E_t \triangleq \frac{1}{2\eta}\norm{\vecb{x}_t-\vecb{x}^*}_2^2 + t(f(\vecb{x}_t)-f^*)$. Using monotonicity $f(\vecb{x}_{t+1}) \le f(\vecb{x}_t)$ from~\eqref{eq:gdconv:sufficient_decrease},
+\[
+  E_{t+1} - E_t = \big(f(\vecb{x}_{t+1}) - f^*\big) + t\big(f(\vecb{x}_{t+1}) - f(\vecb{x}_t)\big) + \frac{1}{2\eta}\left(\norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 - \norm{\vecb{x}_t-\vecb{x}^*}_2^2\right) \le 0.
+\]
+Hence $T(f(\vecb{x}_T)-f^*) \le E_T \le E_0 = \frac{1}{2\eta}\norm{\vecb{x}_0-\vecb{x}^*}_2^2$, giving~\eqref{eq:gdconv:convex_rate}. For claim~(3) with $\eta = 1/L$ and even $T=2m$ (analogous for odd $T$), telescoping~\eqref{eq:gdconv:sufficient_decrease} over the second half $t \in \{m, \dots, 2m-1\}$ and applying~\eqref{eq:gdconv:convex_rate} at $t=m$ yields
+\[
+  \frac{m}{2L}\min_{m \le t < 2m}\norm{\grad f(\vecb{x}_t)}_2^2 \le \frac{1}{2L}\sum_{t=m}^{2m-1}\norm{\grad f(\vecb{x}_t)}_2^2 \le f(\vecb{x}_m) - f^* \le \frac{L\norm{\vecb{x}_0-\vecb{x}^*}_2^2}{2m},
+\]
+so $\min_{0 \le t < T}\norm{\grad f(\vecb{x}_t)}_2 \le \frac{L\norm{\vecb{x}_0-\vecb{x}^*}_2}{m} = \frac{2L\norm{\vecb{x}_0-\vecb{x}^*}_2}{T}$ \bookcite{gradient_descent_unconstrained}{Thm.~7, Slides~85--87}. \qed
+
+Because Fej\'er monotonicity traps the entire trajectory inside the ball $\mathbb{B}(\vecb{x}^*, \norm{\vecb{x}_0-\vecb{x}^*}_2)$, Theorem~\ref{thm:gdconv:convex} immediately localizes: if $f$ is only convex and $L$-smooth on $\mathbb{B}(\vecb{x}^*, r)$ with initialization $\norm{\vecb{x}_0-\vecb{x}^*}_2 \le r$, all bounds remain valid \bookcite{gradient_descent_unconstrained}{Prop.~1, Slide~67}. However, \bookcite{gradient_descent_unconstrained}{Claim~1, Slides~68--72} emphasizes that~\eqref{eq:gdconv:convex_rate} is a worst-case minimax guarantee: on the population singular phase-retrieval quartic $\mathcal{L}(\theta) = 3\theta^4 + 1$ ($\theta^*=0$, $L=36$ on $\mathbb{B}(0,1)$), $\theta_t = \theta_{t-1}(1 - 12\eta\theta_{t-1}^2)$ decays as $\abs{\theta_t} = \Theta(t^{-1/2})$, so $\mathcal{L}(\theta_t) - \mathcal{L}(0) = \Theta(t^{-2})$ rather than $O(t^{-1})$.
+
+\subsection{\texorpdfstring{$\mu$}{mu}-Strong Convexity, Linear Contraction \& Optimal Step Size \texorpdfstring{$\eta^* = \frac{2}{\mu+L}$}{eta* = 2/(mu+L)}}
+\label{subsec:gdconv:strong_convex}
+
+A function $f : \R^d \to \R$ is \emph{$\mu$-strongly convex} ($\mu > 0$) if $g(\vecb{x}) \triangleq f(\vecb{x}) - \frac{\mu}{2}\norm{\vecb{x}}_2^2$ is convex. This definition (\bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.12, p.~7}) corresponds to the quadratic formulation of \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.10), p.~281}; for differentiable $f$, it is equivalent to a uniform quadratic lower bound at every point, and for $f \in C^2(\R^d)$ to a uniform lower spectral bound on the Hessian:
+\begin{align}
+  f(\vecb{y}) &\ge f(\vecb{x}) + \inner{\grad f(\vecb{x})}{\vecb{y}-\vecb{x}} + \frac{\mu}{2}\norm{\vecb{y}-\vecb{x}}_2^2, && \forall \vecb{x}, \vecb{y} \in \R^d, \label{eq:gdconv:sc_quad} \\
+  \hess f(\vecb{x}) &\succeq \mu \eye_d \iff \lambda_{\min}\big(\hess f(\vecb{x})\big) \ge \mu > 0, && \forall \vecb{x} \in \R^d \label{eq:gdconv:sc_hess}
+\end{align}
+These three formulations are mutually equivalent (\bookcite{gradient_descent_unconstrained}{Slide~12}; for formal proofs, see \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.14--2.15, p.~8}). As shown in \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.13, p.~8}, strong convexity guarantees a unique global minimizer $\vecb{x}^*$ and boosts convergence from sublinear $O(1/T)$ to geometric (linear) contraction. While elementary proofs often restrict $\eta \le 1/L$ to obtain contraction $(1 - \eta\mu)^T$, exploiting the residual convex smooth function $g(\vecb{x}) = f(\vecb{x}) - \frac{\mu}{2}\norm{\vecb{x}}_2^2$ extends the exact convergence certificate across the entire stable interval $0 < \eta < \frac{2}{L}$ and identifies the optimal step size $\eta^* = \frac{2}{\mu+L}$.
+
+\begin{coremath}[Theorem: Linear Contraction Under $\mu$-Strong Convexity, $L$-Smoothness \& Optimal Step Size]
+\label{thm:gdconv:sc_linear}
+Let $f : \R^d \to \R$ be $\mu$-strongly convex and $L$-smooth ($0 < \mu \le L$) with unique minimizer $\vecb{x}^*$ and condition number $\kappa \triangleq L/\mu \ge 1$. Then:
+\begin{enumerate}
+  \item \textbf{Refined Co-Coercivity (Nesterov's Inequality):} For all $\vecb{x}, \vecb{y} \in \R^d$,
+  \begin{equation}
+  \label{eq:gdconv:nesterov_ineq}
+    \inner{\grad f(\vecb{x}) - \grad f(\vecb{y})}{\vecb{x}-\vecb{y}} \ge \frac{\mu L}{\mu + L}\norm{\vecb{x}-\vecb{y}}_2^2 + \frac{1}{\mu + L}\norm{\grad f(\vecb{x}) - \grad f(\vecb{y})}_2^2.
+  \end{equation}
+  \item \textbf{Standard Regime ($0 < \eta \le \frac{1}{L}$):} $\norm{\vecb{x}_t - \vecb{x}^*}_2^2 \le (1 - \eta\mu)^t \norm{\vecb{x}_0 - \vecb{x}^*}_2^2$; at $\eta = \frac{1}{L}$, $\norm{\vecb{x}_t - \vecb{x}^*}_2^2 \le (1 - \kappa\inv)^t \norm{\vecb{x}_0 - \vecb{x}^*}_2^2$ and $f(\vecb{x}_t) - f^* \le \frac{L}{2}(1 - \kappa\inv)^t \norm{\vecb{x}_0-\vecb{x}^*}_2^2$.
+  \item \textbf{Tight Optimal Rate ($0 < \eta < \frac{2}{L}$):} For all $t \ge 0$,
+  \begin{equation}
+  \label{eq:gdconv:sc_tight}
+    \norm{\vecb{x}_t - \vecb{x}^*}_2 \le \rho(\eta)^t \norm{\vecb{x}_0 - \vecb{x}^*}_2, \qquad \rho(\eta) \triangleq \max\{\abs{1 - \eta\mu},\, \abs{1 - \eta L}\} < 1.
+  \end{equation}
+  At the optimal fixed step size $\eta^* = \frac{2}{\mu + L}$, the contraction factor is minimized to
+  \begin{equation}
+  \label{eq:gdconv:sc_optimal_eta}
+    \rho(\eta^*) = \frac{L - \mu}{L + \mu} = \frac{\kappa - 1}{\kappa + 1}, \qquad \norm{\vecb{x}_t - \vecb{x}^*}_2^2 \le \left(\frac{\kappa - 1}{\kappa + 1}\right)^{2t}\norm{\vecb{x}_0 - \vecb{x}^*}_2^2,
+  \end{equation}
+  requiring $T \ge \frac{\kappa + 1}{2}\log(1/\epsilon)$ iterations (vs.\ $\kappa \log(1/\epsilon)$ at $\eta = 1/L$) to achieve $\norm{\vecb{x}_T - \vecb{x}^*}_2 \le \epsilon\norm{\vecb{x}_0 - \vecb{x}^*}_2$.
+\end{enumerate}
+\end{coremath}
+
+\textbf{Proof.}
+\emph{Step 1 (Refined co-coercivity):} When $L = \mu$,~\eqref{eq:gdconv:sc_quad} and~\eqref{eq:gdconv:quad_upper} force $f$ to take the isotropic form $f(\vecb{x}) = f^* + (\mu/2)\norm{\vecb{x}-\vecb{x}^*}_2^2$, where~\eqref{eq:gdconv:nesterov_ineq} holds with equality. Assume $L > \mu$. By \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.12, p.~7}, $g(\vecb{x}) = f(\vecb{x}) - \frac{\mu}{2}\norm{\vecb{x}}_2^2$ is convex and $(L-\mu)$-smooth. Applying co-coercivity~\eqref{eq:gdconv:cocoercive} to $g$ with smoothness constant $L - \mu$ yields
+\[
+  \inner{\grad f(\vecb{x})-\grad f(\vecb{y}) - \mu(\vecb{x}-\vecb{y})}{\vecb{x}-\vecb{y}} \ge \frac{1}{L-\mu}\norm{\grad f(\vecb{x})-\grad f(\vecb{y}) - \mu(\vecb{x}-\vecb{y})}_2^2.
+\]
+Multiplying through by $(L - \mu)$, expanding the squared norm, and collecting the inner-product terms on the left immediately produces~\eqref{eq:gdconv:nesterov_ineq}.
+
+\emph{Step 2 (Contraction for $0 < \eta \le \frac{2}{\mu+L}$):} Setting $\vecb{y} = \vecb{x}^*$ ($\grad f(\vecb{x}^*) = \zeros$) in~\eqref{eq:gdconv:nesterov_ineq} and substituting into $\norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 = \norm{\vecb{x}_t-\vecb{x}^*}_2^2 - 2\eta\inner{\grad f(\vecb{x}_t)}{\vecb{x}_t-\vecb{x}^*} + \eta^2\norm{\grad f(\vecb{x}_t)}_2^2$ yields
+\begin{equation}
+\label{eq:gdconv:sc_proof_mid}
+  \norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 \le \left(1 - \frac{2\eta\mu L}{\mu + L}\right)\norm{\vecb{x}_t - \vecb{x}^*}_2^2 + \eta\left(\eta - \frac{2}{\mu + L}\right)\norm{\grad f(\vecb{x}_t)}_2^2.
+\end{equation}
+For $0 < \eta \le \frac{2}{\mu + L}$, the last coefficient is non-positive, and since $\norm{\grad f(\vecb{x}_t)}_2 \ge \mu\norm{\vecb{x}_t-\vecb{x}^*}_2$ (by Cauchy--Schwarz on~\eqref{eq:gdconv:sc_quad}), we obtain
+\[
+  \norm{\vecb{x}_{t+1}-\vecb{x}^*}_2^2 \le \left(1 - \frac{2\eta\mu L}{\mu+L} + \eta\mu^2\left(\eta - \frac{2}{\mu+L}\right)\right)\norm{\vecb{x}_t-\vecb{x}^*}_2^2 = (1 - \eta\mu)^2\norm{\vecb{x}_t-\vecb{x}^*}_2^2.
+\]
+For $0 < \eta \le \frac{1}{L}$, $(1-\eta\mu)^2 \le 1 - \eta\mu$ recovers the bound of \bookcite{gradient_descent_unconstrained}{Thm.~1, Slides~15--18} and \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.6, p.~16}. Applying~\eqref{eq:gdconv:quad_upper} at $\vecb{x}^*$ then converts this distance contraction into the objective gap bound
+$f(\vecb{x}_t) - f^* \le \frac{L}{2}\norm{\vecb{x}_t-\vecb{x}^*}_2^2$ \bookcite{gradient_descent_unconstrained}{Cor.~1, Slide~19}.
+
+\emph{Step 3 (Full interval $0 < \eta < \frac{2}{L}$ via Fixed-Point Operator):} Define the GD map $T(\vecb{x}) \triangleq \vecb{x} - \eta\grad f(\vecb{x})$ \bookcite{stochastic_gradient_decent_algorithm_explain}{pp.~16--17}. When $f \in C^2$, its Jacobian is $DT(\vecb{x}) = \eye_d - \eta\hess f(\vecb{x})$, whose eigenvalues lie in $[1 - \eta L,\, 1 - \eta\mu]$ by~\eqref{eq:gdconv:sc_hess} and~\eqref{eq:gdconv:lsmooth}. Hence $\norm{DT(\vecb{x})}_2 \le \max\{\abs{1 - \eta\mu}, \abs{1 - \eta L}\} = \rho(\eta)$, and by the Mean-Value Inequality around the fixed point $T(\vecb{x}^*) = \vecb{x}^*$, $\norm{\vecb{x}_{t+1}-\vecb{x}^*}_2 = \norm{T(\vecb{x}_t) - T(\vecb{x}^*)}_2 \le \rho(\eta)\norm{\vecb{x}_t - \vecb{x}^*}_2$ (which likewise holds for $C^1$ functions via~\eqref{eq:gdconv:nesterov_ineq} with $\vecb{y}=\vecb{x}^*$ and $\grad f(\vecb{x}_t)$ bounded by $L\norm{\vecb{x}_t-\vecb{x}^*}_2$). Minimizing $\rho(\eta) = \max\{1 - \eta\mu,\, \eta L - 1\}$ equates the two branches: $1 - \eta^*\mu = \eta^* L - 1 \implies \eta^* = \frac{2}{\mu + L}$, giving $\rho(\eta^*) = \frac{L - \mu}{L + \mu} = \frac{\kappa - 1}{\kappa + 1}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.29), p.~286} \bookcite{gradient_descent_unconstrained}{Slide~15}. \qed
+
+\begin{intuition}[Decoupled Eigenmodes \& Spectral Rate Bottleneck]
+Expanding a local quadratic approximation $f(\vecb{x}) \approx f^* + \frac{1}{2}(\vecb{x}-\vecb{x}^*)\T \mat{H} (\vecb{x}-\vecb{x}^*)$ in the orthonormal eigenbasis $\{\vecb{u}_i\}_{i=1}^d$ of $\mat{H} = \hess f(\vecb{x}^*)$ with $\vecb{x}_t - \vecb{x}^* = \sum_{i=1}^d \alpha_i^{(t)} \vecb{u}_i$ decouples~\eqref{eq:gdconv:gd_update} into $d$ independent scalar recursions \bookcite{deep_learning_foundations_concepts}{Sec.~7.3, Eqs.~(7.24)--(7.30), pp.~218--220}:
+\[
+  \alpha_i^{(t)} = (1 - \eta \lambda_i)^t \alpha_i^{(0)}, \qquad i = 1, \dots, d.
+\]
+Stability requires $\abs{1 - \eta\lambda_{\max}} < 1 \iff \eta < 2/\lambda_{\max}$. When $\eta \approx 2/\lambda_{\max}$, the steepest mode ($\lambda_{\max}$) oscillates with multiplier $\approx -1$ while the flattest valley mode ($\lambda_{\min}$) contracts sluggishly by $1 - 2\lambda_{\min}/\lambda_{\max} = 1 - 2/\kappa$. At $\eta^* = 2/(\lambda_{\min}+\lambda_{\max})$, the two extreme modes balance symmetrically at $\pm\frac{\kappa - 1}{\kappa + 1}$, cutting iteration complexity roughly in half relative to $\eta = 1/L$ without changing the $O(\kappa \log(1/\epsilon))$ scaling.
+\end{intuition}
+
+As in the convex setting, \bookcite{gradient_descent_unconstrained}{Thm.~2, Slides~37--40} shows that if $f$ is only \emph{locally} $\mu$-strongly convex and $L$-smooth on $\mathbb{B}(\vecb{x}^*, r)$ with $\norm{\vecb{x}_0 - \vecb{x}^*}_2 \le r$ (as occurs in logistic regression, where $\lambda_{\min}(\hess \mathcal{T}_n(\vecb{\theta})) \to 0$ as $\norm{\vecb{\theta}}_2 \to \infty$, and non-zero phase retrieval; \bookcite{gradient_descent_unconstrained}{Slides~29--36}), linear contraction keeps all iterates inside $\mathbb{B}(\vecb{x}^*, r)$ and yields the identical rate $(1-\eta\mu)^{t/2}$ in parameter distance. Moreover, decomposing total estimation error into optimization error plus statistical error, $\norm{\vecb{x}_t^n - \vecb{x}^*}_2 \le (1-\eta\mu)^{t/2}\norm{\vecb{x}_0 - \hat{\vecb{x}}_n}_2 + \norm{\hat{\vecb{x}}_n - \vecb{x}^*}_2$, reveals that only $T = O(\log n)$ GD iterations are needed to match the $O(n^{-1/2})$ statistical error floor of empirical risk minimization \bookcite{gradient_descent_unconstrained}{Slides~24--26, 78}.
+
+\subsection{Polyak--\L{}ojasiewicz (PL), Quadratic Growth \& KL Landscapes}
+\label{subsec:gdconv:pl}
+
+Local strong convexity still requires warm-start initialization inside $\mathbb{B}(\vecb{x}^*, r)$. Remarkably, global linear convergence survives even on non-convex landscapes and non-isolated solution manifolds under the \emph{Polyak--\L{}ojasiewicz (PL)} gradient-dominance inequality (\bookcite{gradient_descent_unconstrained}{Def.~1, Slide~42}). Specifically, as formalized in \bookcite{stochastic_gradient_decent_algorithm_explain}{Def.~2.17, p.~8}, a differentiable function satisfies $\mu$-PL ($\mu > 0$) if
+\begin{equation}
+\label{eq:gdconv:pl_def}
+  \frac{1}{2}\norm{\grad f(\vecb{x})}_2^2 \ge \mu \big(f(\vecb{x}) - f^*\big), \qquad \forall \vecb{x} \in \R^d,
+\end{equation}
+for some constant $\mu > 0$. The PL condition does \emph{not} imply convexity or uniqueness of minimizers, yet it forbids spurious local minima and saddle points: $\grad f(\vecb{x}) = \zeros \iff f(\vecb{x}) = f^*$, so every stationary point is globally optimal \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.22, p.~10} \bookcite{gradient_descent_unconstrained}{Slide~43}.
+
+\begin{coremath}[Theorem: Global Linear Convergence Under PL \& Landscape Implications]
+\label{thm:gdconv:pl_rate}
+Let $f : \R^d \to \R$ be $L$-smooth and satisfy the $\mu$-PL condition~\eqref{eq:gdconv:pl_def}. Then:
+\begin{enumerate}
+  \item \textbf{Hierarchy:} Every $\mu$-strongly convex function is $\mu$-PL. Conversely, every $C^1$ $\mu$-PL function satisfies the \emph{Quadratic Growth (QG)} condition $f(\vecb{x}) - f^* \ge \frac{\mu}{2}\mathrm{dist}(\vecb{x}, \mathcal{X}^*)^2$ whenever $\mathcal{X}^* \neq \emptyset$ (and when $f$ is $L$-smooth, $\mu \le L$ via~\eqref{eq:gdconv:grad_upper}).
+  \item \textbf{Global Linear Convergence:} For any step size $0 < \eta < \frac{2}{L}$ and arbitrary initialization $\vecb{x}_0 \in \R^d$, gradient descent~\eqref{eq:gdconv:gd_update} satisfies
+  \begin{equation}
+  \label{eq:gdconv:pl_contraction}
+    f(\vecb{x}_T) - f^* \le \big(1 - 2\eta\mu(1 - \tfrac{\eta L}{2})\big)^T \big(f(\vecb{x}_0) - f^*\big).
+  \end{equation}
+  In particular, for $0 < \eta \le \frac{1}{L}$, $f(\vecb{x}_T) - f^* \le (1 - \eta\mu)^T (f(\vecb{x}_0) - f^*)$; at the optimal step $\eta = \frac{1}{L}$, $f(\vecb{x}_T) - f^* \le (1 - \frac{\mu}{L})^T(f(\vecb{x}_0) - f^*)$, attaining $f(\vecb{x}_T) - f^* \le \epsilon(f(\vecb{x}_0) - f^*)$ in $T \ge \frac{L}{\mu}\log(1/\epsilon)$ iterations.
+\end{enumerate}
+\end{coremath}
+
+\textbf{Proof.}
+\emph{Strong Convexity $\implies$ PL:} Following \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~2.18, p.~9} and \bookcite{gradient_descent_unconstrained}{Lem.~1, Slide~16}, evaluate~\eqref{eq:gdconv:sc_quad} at $\vecb{y} = \vecb{x}^*$ and complete the square:
+\begin{align*}
+  f(\vecb{x}) - f^* &\le \inner{\grad f(\vecb{x})}{\vecb{x} - \vecb{x}^*} - \frac{\mu}{2}\norm{\vecb{x}-\vecb{x}^*}_2^2 \\
+  &= \frac{1}{2\mu}\norm{\grad f(\vecb{x})}_2^2 - \frac{1}{2}\left\|\sqrt{\mu}(\vecb{x}-\vecb{x}^*) - \frac{1}{\sqrt{\mu}}\grad f(\vecb{x})\right\|_2^2 \le \frac{1}{2\mu}\norm{\grad f(\vecb{x})}_2^2.
+\end{align*}
+\emph{PL $\implies$ Quadratic Growth:} Define $h(\vecb{x}) \triangleq \sqrt{f(\vecb{x}) - f^*}$. For any $\vecb{x} \notin \mathcal{X}^*$, $h$ is differentiable with $\grad h(\vecb{x}) = \frac{\grad f(\vecb{x})}{2\sqrt{f(\vecb{x})-f^*}}$, so~\eqref{eq:gdconv:pl_def} implies $\norm{\grad h(\vecb{x})}_2 \ge \sqrt{\mu/2}$. Following the normalized steepest-descent trajectory $\dot{\vecb{z}}(s) = -\grad h(\vecb{z}(s))/\norm{\grad h(\vecb{z}(s))}_2$ from $\vecb{z}(0) = \vecb{x}$ (with unit speed $\norm{\dot{\vecb{z}}(s)}_2 = 1$), $\frac{\mathrm{d}}{\mathrm{d}s} h(\vecb{z}(s)) = -\norm{\grad h(\vecb{z}(s))}_2 \le -\sqrt{\mu/2}$, so the path must enter $\mathcal{X}^*$ at some finite arc length $S \le \frac{h(\vecb{x})}{\sqrt{\mu/2}}$. By the triangle inequality, $\mathrm{dist}(\vecb{x}, \mathcal{X}^*) \le \norm{\vecb{x} - \vecb{z}(S)}_2 \le S \le \sqrt{\frac{2}{\mu}(f(\vecb{x}) - f^*)}$, giving $f(\vecb{x}) - f^* \ge \frac{\mu}{2}\mathrm{dist}(\vecb{x},\mathcal{X}^*)^2$.
+
+\emph{Global Linear Rate:} Following \bookcite{gradient_descent_unconstrained}{Thm.~3, Slides~44--46} (and \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.9, pp.~17--18} for the general step-size proof), substituting~\eqref{eq:gdconv:pl_def} into~\eqref{eq:gdconv:sufficient_decrease} yields:
+\[
+  f(\vecb{x}_{t+1}) - f^* \le f(\vecb{x}_t) - f^* - \eta\left(1 - \frac{\eta L}{2}\right)\norm{\grad f(\vecb{x}_t)}_2^2
+  \le \Big(1 - 2\eta\mu\big(1 - \tfrac{\eta L}{2}\big)\Big)\big(f(\vecb{x}_t) - f^*\big).
+\]
+Notice that for $0 < \eta \le \frac{1}{L}$, $1 - \frac{\eta L}{2} \ge \frac{1}{2}$ gives the factor $1 - \eta\mu$, and maximizing $2\eta\mu(1 - \eta L/2)$ over $\eta$ uniquely selects $\eta = \frac{1}{L}$ with factor $1 - \mu/L$. Unrolling to $T$ yields~\eqref{eq:gdconv:pl_contraction}, and applying $\log(1/\rho) \ge 1 - \rho$ for $\rho = 1 - \mu/L$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Lem.~A.1, p.~66} gives the complexity $T \ge \frac{L}{\mu}\log(1/\epsilon)$. \qed
+
+\begin{intuition}[Why Overparameterized Models Satisfy PL Without Convexity]
+Three canonical machine-learning landscapes illustrate PL without strong convexity:
+\begin{enumerate}
+  \item \textbf{Underdetermined Least Squares ($n < d$):} For $\mathcal{L}_n(\vecb{x}) = \frac{1}{n}\norm{\mat{X}\vecb{x} - \vecb{y}}_2^2$ with $\mat{X} \in \R^{n \times d}$ of rank $n < d$, the Hessian $\frac{2}{n}\mat{X}\T\mat{X}$ has $d-n$ zero eigenvalues ($\mu_{\mathrm{SC}} = 0$) and $\mathcal{L}_n^* = 0$. Yet $\norm{\grad \mathcal{L}_n(\vecb{x})}_2^2 = \frac{4}{n^2}(\mat{X}\vecb{x}-\vecb{y})\T \mat{X}\mat{X}\T (\mat{X}\vecb{x}-\vecb{y}) \ge \frac{4\lambda_{\min}(\mat{X}\mat{X}\T)}{n}(\mathcal{L}_n(\vecb{x}) - \mathcal{L}_n^*)$, establishing global PL with $\mu = \frac{4}{n}\lambda_{\min}(\mat{X}\mat{X}\T)$ and convergence to the nearest minimizer \bookcite{gradient_descent_unconstrained}{Slides~47--50} \bookcite{stochastic_gradient_decent_algorithm_explain}{Ex.~2.19, p.~9}.
+  \item \textbf{Overparameterized Nonlinear Models:} For $f(\vecb{x}) = \frac{1}{2}\norm{\Phi(\vecb{x}) - \vecb{y}}_2^2$ with smooth $\Phi : \R^d \to \R^n$ ($d \ge n$) whose Jacobian satisfies $\lambda_{\min}(D\Phi(\vecb{x})D\Phi(\vecb{x})\T) \ge \mu > 0$ (e.g., wide neural networks in the NTK regime), $\norm{\grad f(\vecb{x})}_2^2 = \norm{D\Phi(\vecb{x})\T(\Phi(\vecb{x})-\vecb{y})}_2^2 \ge 2\mu f(\vecb{x}) \ge 2\mu(f(\vecb{x})-f^*)$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Ex.~2.21, pp.~9--10}.
+  \item \textbf{Non-Convex Analytical Objectives:} $f(t) = t^2 + 3\sin^2(t)$ fails convexity ($f''(\pi/2) = -4 < 0$) yet satisfies $\frac{1}{40}$-PL \bookcite{stochastic_gradient_decent_algorithm_explain}{Ex.~2.20 \& Lem.~A.3, pp.~9, 67--68}, and $f(\vecb{x}) = \mathrm{dist}(\vecb{x}; \Omega)^2$ for closed sets $\Omega$ (Fig.~\ref{fig:gdconv:pl_surface}) can exhibit curved, non-convex minimizer manifolds.
+\end{enumerate}
+\end{intuition}
+
+\textbf{Kurdyka--\L{}ojasiewicz (KL) Generalization:} When PL fails globally or with quadratic exponent, objectives arising in practice (such as logistic losses on bounded sets or semi-algebraic functions including piecewise-linear ReLU networks; \bookcite{stochastic_gradient_decent_algorithm_explain}{Rem.~2.23, Eq.~(7), p.~10}) satisfy a local \emph{Kurdyka--\L{}ojasiewicz ($p$-\L{}ojasiewicz)} inequality around any critical point $\vecb{x}^*$:
+\begin{equation}
+\label{eq:gdconv:kl_ineq}
+  f(\vecb{x}) - f(\vecb{x}^*) \le \frac{1}{q\mu}\norm{\grad f(\vecb{x})}_2^q \quad \Big(\text{equivalently, } \norm{\grad f(\vecb{x})}_2 \ge c\big(f(\vecb{x}) - f(\vecb{x}^*)\big)^{\theta}\Big),
+\end{equation}
+on a neighborhood $\Omega \ni \vecb{x}^*$, where $\frac{1}{p} + \frac{1}{q} = 1$ ($p \ge 1$) and $\theta = \frac{1}{q} \in [0, 1)$ is the KL exponent. Setting $\theta = 1/2$ ($p=q=2$) recovers the $\mu$-PL linear rate; $\theta \in (1/2, 1)$ yields polynomial sublinear decay $f(\vecb{x}_t)-f(\vecb{x}^*) = O(t^{-\frac{1}{2\theta-1}})$ (e.g., $\theta = 3/4$ on $f(x)=x^4$ gives $O(t^{-2})$), whereas $\theta \in [0, 1/2)$ yields finite-time or superlinear convergence. Similarly, when PL degrades near boundaries, non-uniform PL bounds $\norm{\grad f(\vecb{x})}_2^2 \ge 2\mu(\vecb{x})(f(\vecb{x})-f^*)$ motivate normalized gradient updates \bookcite{gradient_descent_unconstrained}{Slide~50}.
+
+\subsection{Strict-Saddle Avoidance, Stable Manifolds \& Perturbed Gradient Descent}
+\label{subsec:gdconv:saddles}
+
+In general non-convex landscapes, $\epsilon$-FOSP convergence guarantees only $\norm{\grad f(\vecb{x})}_2 \le \epsilon$, which can trap iterates near saddle points rather than local minima (\bookcite{gradient_descent_unconstrained}{Slide~88}). For $f \in C^2(\R^d)$, stationary points $\grad f(\bar{\vecb{x}}) = \zeros$ fall into three spectral regimes of $\hess f(\bar{\vecb{x}})$, as detailed in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.1.1.1, pp.~276--277} and \bookcite{deep_learning_foundations_concepts}{Sec.~7.1.1, pp.~212--213}:
+\begin{itemize}
+  \item \textbf{Strict local minimum:} $\lambda_{\min}(\hess f(\bar{\vecb{x}})) > 0$ ($\hess f(\bar{\vecb{x}}) \succ \mat{0}$).
+  \item \textbf{Strict saddle point:} $\lambda_{\min}(\hess f(\bar{\vecb{x}})) < 0$ (at least one strictly negative curvature escape direction).
+  \item \textbf{Non-strict (degenerate) saddle / flat plateau:} $\lambda_{\min}(\hess f(\bar{\vecb{x}})) = 0$ with higher-order descent (e.g., $f(x_1, x_2) = x_1^3 - 3x_1 x_2^2$) or zero-curvature directions.
+\end{itemize}
+
+\begin{coremath}[Theorem: Almost-Sure Strict-Saddle Avoidance via the Stable Manifold Theorem]
+\label{thm:gdconv:strict_saddle}
+Let $f \in C^2(\R^d)$ be $L$-smooth, and let $\mathcal{S}_{\mathrm{strict}} \triangleq \{\bar{\vecb{x}} \in \R^d : \grad f(\bar{\vecb{x}}) = \zeros,\; \lambda_{\min}(\hess f(\bar{\vecb{x}})) < 0\}$ be the set of strict saddle points. If $0 < \eta < \frac{1}{L}$, then the gradient-descent map $T(\vecb{x}) = \vecb{x} - \eta\grad f(\vecb{x})$ is a global diffeomorphism of $\R^d$, and the set of initializations $\{\vecb{x}_0 \in \R^d : \lim_{t\to\infty} T^t(\vecb{x}_0) \in \mathcal{S}_{\mathrm{strict}}\}$ has Lebesgue measure zero. Consequently, for any initialization distribution $\mu_0$ absolutely continuous with respect to Lebesgue measure (e.g., $\Normal(\zeros, \sigma^2\eye_d)$),
+\begin{equation}
+\label{eq:gdconv:saddle_prob}
+  \Prob_{\vecb{x}_0 \sim \mu_0}\!\left(\lim_{t\to\infty} \vecb{x}_t = \bar{\vecb{x}}\right) = 0 \qquad \forall \bar{\vecb{x}} \in \mathcal{S}_{\mathrm{strict}}
+\end{equation}
+\bookcite{gradient_descent_unconstrained}{Thm.~8, Slides~90--92}.
+\end{coremath}
+
+\textbf{Proof Sketch.}
+Because $f$ is $L$-smooth and $0 < \eta < 1/L$, the Jacobian $DT(\vecb{x}) = \eye_d - \eta\hess f(\vecb{x})$ satisfies $\lambda_{\min}(DT(\vecb{x})) \ge 1 - \eta L > 0$ for every $\vecb{x} \in \R^d$, so $DT(\vecb{x})$ is everywhere invertible (and $T$ is a global diffeomorphism). At any strict saddle $\bar{\vecb{x}} \in \mathcal{S}_{\mathrm{strict}}$, $T(\bar{\vecb{x}}) = \bar{\vecb{x}}$ and $DT(\bar{\vecb{x}})$ possesses at least one eigenvalue $1 - \eta\lambda_{\min}(\hess f(\bar{\vecb{x}})) > 1$. By the Center--Stable Manifold Theorem from dynamical systems, the local stable set of trajectories converging to $\bar{\vecb{x}}$ is contained in a smooth submanifold of dimension at most $d - 1$, which has $d$-dimensional Lebesgue measure zero. Since $T\inv$ is a diffeomorphism (preserving null sets), the countable union $\bigcup_{t=0}^\infty T^{-t}(\mathcal{W}_{\mathrm{loc}}^s(\bar{\vecb{x}}))$ also has Lebesgue measure zero. Concrete illustration \bookcite{gradient_descent_unconstrained}{Slides~91--92}: on $f(x_1, x_2) = \frac{1}{2}x_1^2 + \frac{1}{4}x_2^4 - \frac{1}{2}x_2^2$, $\grad f(\vecb{x}) = (x_1, x_2^3 - x_2)\T$ vanishes at the strict saddle $\bar{\vecb{x}}=(0,0)$ ($\lambda_{\min} = -1$) and global minima $(0, \pm 1)$; only initializations on the $1$D line $\{(z,0) : z \in \R\}$ converge to $(0,0)$. \qed
+
+\textbf{From Asymptotic Avoidance to Polynomial-Time Escape (Perturbed GD):} Although Theorem~\ref{thm:gdconv:strict_saddle} guarantees asymptotic escape with probability $1$, vanilla GD initialized within $\delta$ of the stable manifold requires $\Omega(\log(1/\delta))$ steps per saddle and can suffer exponential $O(\exp(d))$ slowdown across sequences of saddles. As noted in \bookcite{gradient_descent_unconstrained}{Slide~89}, injecting controlled isotropic perturbations converts asymptotic avoidance into polynomial-time convergence to an $(\epsilon, \sqrt{\rho\epsilon})$-\emph{second-order stationary point} ($\epsilon$-SOSP), defined for $\rho$-Hessian-Lipschitz $f$ ($\norm{\hess f(\vecb{x}) - \hess f(\vecb{y})}_2 \le \rho\norm{\vecb{x}-\vecb{y}}_2$) by
+\begin{equation}
+\label{eq:gdconv:sosp}
+  \norm{\grad f(\vecb{x})}_2 \le \epsilon \qquad \text{and} \qquad \lambda_{\min}\big(\hess f(\vecb{x})\big) \ge -\sqrt{\rho\epsilon}.
+\end{equation}
+Specifically, whenever $\norm{\grad f(\vecb{x}_t)}_2 \le g_{\mathrm{thresh}}$, Perturbed Gradient Descent (Algorithm~\ref{alg:gdconv:pgd}) draws a single ball perturbation $\vecb{\xi}_t \sim \mathrm{Unif}(\mathbb{B}_0(r))$ (or Gaussian noise) and runs standard GD for $t_{\mathrm{thresh}}$ steps. Geometrically, the set of points near $\vecb{x}_t$ that remain trapped in the saddle neighborhood for $t_{\mathrm{thresh}}$ steps forms a thin ``pancake'' of thickness $O(r / \sqrt{d})$ along the negative-curvature eigenvector $\vecb{e}_{\min}$; a uniform ball kick of radius $r$ misses this thin slab with high probability, guaranteeing an objective drop of $\Omega(\sqrt{\epsilon^3/\rho})$ within $\tilde{O}(1)$ steps and locating an $\epsilon$-SOSP in $\tilde{O}(L(f(\vecb{x}_0)-f^*)/\epsilon^2)$ iterations (only polylogarithmic in $d$).
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:gdconv:algorithms}
+% =============================================================================
+
+In practice, neither the global Lipschitz constant $L$ nor the strong-convexity modulus $\mu$ is known a priori; moreover, non-convex polynomial or deep-network losses violate global smoothness ($\norm{\hess f(\vecb{x})} \to \infty$ as $\norm{\vecb{x}} \to \infty$; \bookcite{gradient_descent_unconstrained}{Slide~31}). Two adaptive deterministic mechanisms eliminate manual tuning of $L$: \textbf{Armijo--Goldstein backtracking line search} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.2.2, Eq.~(8.27), p.~286} \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1.1, pp.~229--230} and the \textbf{Barzilai--Borwein (BB) two-point spectral step size}.
+
+Using the parameter displacement $\vecb{s}_{t-1} \triangleq \vecb{x}_t - \vecb{x}_{t-1}$ and gradient difference $\vecb{y}_{t-1} \triangleq \grad f(\vecb{x}_t) - \grad f(\vecb{x}_{t-1})$ from quasi-Newton secant theory \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.45)--(8.46), p.~290}, approximating the Hessian by a scalar multiple $\alpha_t \eye_d$ in the secant equation $\alpha_t \vecb{s}_{t-1} \approx \vecb{y}_{t-1}$ in least squares ($\min_{\alpha} \norm{\alpha\vecb{s}_{t-1} - \vecb{y}_{t-1}}_2^2$ or $\min_{\alpha} \norm{\vecb{s}_{t-1} - \alpha\inv \vecb{y}_{t-1}}_2^2$) produces the long and short Barzilai--Borwein step sizes:
+\begin{equation}
+\label{eq:gdconv:bb_step}
+  \eta_t^{\mathrm{BB1}} = \frac{\norm{\vecb{s}_{t-1}}_2^2}{\inner{\vecb{s}_{t-1}}{\vecb{y}_{t-1}}}, \qquad
+  \eta_t^{\mathrm{BB2}} = \frac{\inner{\vecb{s}_{t-1}}{\vecb{y}_{t-1}}}{\norm{\vecb{y}_{t-1}}_2^2},
+\end{equation}
+whenever $\inner{\vecb{s}_{t-1}}{\vecb{y}_{t-1}} > 0$. By Cauchy--Schwarz, $0 < \eta_t^{\mathrm{BB2}} \le \eta_t^{\mathrm{BB1}}$, and on $\mu$-strongly convex $L$-smooth functions both lie inside $[1/L, 1/\mu]$ as inverse Rayleigh quotients of the path-averaged Hessian $\overline{\mat{H}}_{t-1} = \int_0^1 \hess f(\vecb{x}_{t-1} + \tau\vecb{s}_{t-1})\,\mathrm{d}\tau$. Because BB step sizes deliberately exceed $1/L$ along curved directions to break zig-zagging, pairing BB initialization with Armijo backtracking (or a non-monotone reference window $f_{\mathrm{ref}} = \max_{0 \le j < M} f(\vecb{x}_{t-j})$) preserves global convergence without sacrificing spectral acceleration.
+
+Furthermore, for any $L$-smooth function and Armijo parameter $c_1 \in (0, 1)$ (typically $c_1 = 10^{-4}$; \bookcite{probabilisticml_kevinmurphy_introduction}{p.~286}), the Descent Lemma~\eqref{eq:gdconv:sufficient_decrease} guarantees that the Armijo sufficient-decrease test
+\begin{equation}
+\label{eq:gdconv:armijo}
+  f(\vecb{x}_t - \eta\grad f(\vecb{x}_t)) \le f(\vecb{x}_t) - c_1 \eta \norm{\grad f(\vecb{x}_t)}_2^2
+\end{equation}
+holds automatically whenever $1 - \frac{\eta L}{2} \ge c_1 \iff \eta \le \frac{2(1 - c_1)}{L}$. With shrink factor $\beta \in (0, 1)$, backtracking from $\eta_{\mathrm{init}}$ terminates in at most $\ceil{\log(\frac{2(1-c_1)}{L\eta_{\mathrm{init}}}) / \log \beta}_+$ function evaluations and guarantees $\eta_t \ge \min\{\eta_{\mathrm{init}}, \frac{2\beta(1-c_1)}{L}\}$, immediately restoring $O(1/T)$ convex and $(1 - c_{\mathrm{arm}}\mu/L)^T$ strongly-convex/PL convergence without knowing $L$.
+
+\begin{algorithm}[htbp]
+\caption{Adaptive Deterministic Gradient Descent (Armijo Backtracking + Optional BB)}
+\label{alg:gdconv:armijo_bb}
+\KwIn{Differentiable $f : \R^d \to \R$; initial point $\vecb{x}_0 \in \R^d$; tolerance $\epsilon > 0$; Armijo constant $c_1 \in (0, 1/2)$ (e.g., $10^{-4}$); shrink factor $\beta \in (0, 1)$ (e.g., $0.5$); safeguarded step bounds $0 < \eta_{\min} \le \eta_0 \le \eta_{\max}$; mode $\textsc{UseBB} \in \{\text{true}, \text{false}\}$.}
+\KwOut{Approximate stationary/optimal point $\vecb{x}_T$.}
+$\vecb{g}_0 \gets \grad f(\vecb{x}_0)$\;
+\For{$t = 0, 1, 2, \dots, T_{\max}-1$}{
+  \If{$\norm{\vecb{g}_t}_2 \le \epsilon$}{
+    \Return{$\vecb{x}_t$}\;
+  }
+  \uIf{$\textsc{UseBB}$ \textbf{and} $t \ge 1$ \textbf{and} $\inner{\vecb{s}_{t-1}}{\vecb{y}_{t-1}} > 0$}{
+    $\eta \gets \mathrm{clip}\!\left(\frac{\inner{\vecb{s}_{t-1}}{\vecb{s}_{t-1}}}{\inner{\vecb{s}_{t-1}}{\vecb{y}_{t-1}}},\, \eta_{\min},\, \eta_{\max}\right)$ \tcp*{BB1 spectral trial step}
+  }
+  \Else{
+    $\eta \gets \eta_0$ \tcp*{Fixed upper trial step}
+  }
+  \While{$f(\vecb{x}_t - \eta \vecb{g}_t) > f(\vecb{x}_t) - c_1 \eta \norm{\vecb{g}_t}_2^2$}{
+    $\eta \gets \beta \eta$ \tcp*{Armijo sufficient-decrease backtracking}
+  }
+  $\vecb{x}_{t+1} \gets \vecb{x}_t - \eta \vecb{g}_t$\;
+  $\vecb{g}_{t+1} \gets \grad f(\vecb{x}_{t+1})$\;
+  $\vecb{s}_t \gets \vecb{x}_{t+1} - \vecb{x}_t$; \quad $\vecb{y}_t \gets \vecb{g}_{t+1} - \vecb{g}_t$\;
+}
+\Return{$\vecb{x}_{T_{\max}}$}\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Perturbed Gradient Descent (PGD) for Strict-Saddle Escape}
+\label{alg:gdconv:pgd}
+\KwIn{$L$-smooth, $\rho$-Hessian-Lipschitz $f : \R^d \to \R$; initial $\vecb{x}_0 \in \R^d$; step size $\eta \le 1/L$; threshold $g_{\mathrm{thresh}} = \epsilon$; ball radius $r = \tilde{\Theta}(\epsilon / L)$; escape window $t_{\mathrm{thresh}} = \tilde{\Theta}(L / \sqrt{\rho\epsilon})$; drop threshold $f_{\mathrm{thresh}}$.}
+\KwOut{$\epsilon$-Second-Order Stationary Point ($\epsilon$-SOSP) $\hat{\vecb{x}}$.}
+$t_{\mathrm{noise}} \gets -t_{\mathrm{thresh}} - 1$\;
+\For{$t = 0, 1, 2, \dots, T_{\max}-1$}{
+  $\vecb{g}_t \gets \grad f(\vecb{x}_t)$\;
+  \If{$\norm{\vecb{g}_t}_2 \le g_{\mathrm{thresh}}$ \textbf{and} $t - t_{\mathrm{noise}} > t_{\mathrm{thresh}}$}{
+    $\tilde{\vecb{x}}_t \gets \vecb{x}_t$; \quad $t_{\mathrm{noise}} \gets t$\;
+    Sample $\vecb{\xi}_t \sim \mathrm{Unif}(\mathbb{B}_0(r))$ and set $\vecb{x}_t \gets \tilde{\vecb{x}}_t + \vecb{\xi}_t$ \tcp*{Perturb off stable manifold}
+  }
+  \If{$t - t_{\mathrm{noise}} = t_{\mathrm{thresh}}$ \textbf{and} $f(\vecb{x}_t) - f(\tilde{\vecb{x}}_{t_{\mathrm{noise}}}) > -f_{\mathrm{thresh}}$}{
+    \Return{$\tilde{\vecb{x}}_{t_{\mathrm{noise}}}$} \tcp*{Confirmed $\epsilon$-SOSP (no escape direction found)}
+  }
+  $\vecb{x}_{t+1} \gets \vecb{x}_t - \eta \grad f(\vecb{x}_t)$\;
+}
+\Return{$\vecb{x}_{T_{\max}}$}\;
+\end{algorithm}
+
+\begin{crossbook}[Cross-Book Synthesis: First-Order Convergence, Conditioning \& Second-Order Acceleration]
+Synthesizing the optimization chapters across our five sources exposes a sharp division between \emph{non-asymptotic worst-case guarantees} and \emph{geometric preconditioning}:
+\begin{itemize}
+  \item \textbf{Theoretical Oracle Hierarchy:} \bookcite{stochastic_gradient_decent_algorithm_explain}{Table~1, p.~4} and \bookcite{gradient_descent_unconstrained}{Slides~15, 44, 61, 82} categorize deterministic GD cleanly by landscape assumption: $O(1/\epsilon^2)$ to $\epsilon$-FOSP in smooth non-convex problems, $O(1/\epsilon)$ under global/local convexity, and $O(\kappa \log(1/\epsilon))$ under $\mu$-strong convexity or $\mu$-PL.
+  \item \textbf{Curvature Skew vs.\ Preconditioning:} Why does fixed-metric GD stall in elongated valleys? As analyzed in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.3 \& 8.3.1, pp.~286--289}, \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1.1, p.~230}, and \bookcite{deep_learning_foundations_concepts}{Sec.~7.3--7.4, pp.~218--229}, $\grad f$ points normal to elliptical contours rather than toward $\vecb{x}^*$. Three remedies appear across the literature: (i) \emph{data/activation normalization} (\bookcite{deep_learning_foundations_concepts}{Sec.~7.4, pp.~226--229}), (ii) \emph{momentum / Nesterov acceleration} reducing $\kappa$ to $\sqrt{\kappa}$ (\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.4}; \bookcite{mathematics_machine_learning_orienly}{Sec.~7.1.2}), and (iii) \emph{second-order / quasi-Newton preconditioning} ($\mat{P}\inv$ or $\mat{H}_t\inv$ in Newton and L-BFGS) transforming skewed ellipses into isotropic circles at $O(d^3)$ or $O(Md)$ per-step cost (\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3, pp.~289--291}).
+\end{itemize}
+\end{crossbook}
+
+\begin{table}[H]
+\centering
+\caption{Deterministic First-Order Convergence Rates, Step-Size Regimes, and Iteration Complexity.}
+\label{tab:gdconv:complexity}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.20cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Function Class} & \textbf{Step Size} & \textbf{Convergence Metric} & \textbf{Complexity $T(\epsilon)$} & \textbf{Primary Source \& Notes} \\
+\midrule
+$L$-Smooth Non-Convex & $0 < \eta \le \frac{1}{L}$ & $\min_{t < T}\norm{\grad f(\vecb{x}_t)}_2 \le \epsilon$ & $O\!\left(\frac{L\Delta_0}{\epsilon^2}\right)$ & \bookcite{gradient_descent_unconstrained}{Thm.~6}; $\Delta_0 = f(\vecb{x}_0)-f^*$; may stall at saddles. \\
+$L$-Smooth + $\rho$-Hessian-Lip. (PGD) & $\eta \le \frac{1}{L}$, $\vecb{\xi}_t \in \mathbb{B}_0(r)$ & $(\epsilon,\sqrt{\rho\epsilon})$-SOSP & $\tilde{O}\!\left(\frac{L\Delta_0}{\epsilon^2}\right)$ & \bookcite{gradient_descent_unconstrained}{Slide~89}; escapes strict saddles in polylog$(d)$. \\
+Convex + $L$-Smooth & $0 < \eta \le \frac{1}{L}$ & $f(\vecb{x}_T) - f^* \le \epsilon$ & $O\!\left(\frac{L R_0^2}{\epsilon}\right)$ & \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.4}; $R_0 = \norm{\vecb{x}_0-\vecb{x}^*}_2$; $O(\frac{LR_0}{\epsilon})$ for $\norm{\grad f}_2 \le \epsilon$. \\
+Local / Global KL ($\theta \in (\frac{1}{2}, 1)$) & $0 < \eta \le \frac{1}{L}$ & $f(\vecb{x}_T) - f^* \le \epsilon$ & $O\!\left(\epsilon^{-(2\theta-1)}\right)$ & \bookcite{stochastic_gradient_decent_algorithm_explain}{Rem.~2.23}; semi-algebraic / quartics ($\theta=3/4 \implies O(1/\sqrt{\epsilon})$). \\
+$\mu$-PL + $L$-Smooth (Non-Convex OK) & $\eta = \frac{1}{L}$ & $f(\vecb{x}_T) - f^* \le \epsilon \Delta_0$ & $\kappa \log\!\left(\frac{1}{\epsilon}\right)$ & \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.9}; \bookcite{gradient_descent_unconstrained}{Thm.~3}; global from any $\vecb{x}_0$. \\
+$\mu$-SC + $L$-Smooth (Standard) & $\eta = \frac{1}{L}$ & $\norm{\vecb{x}_T - \vecb{x}^*}_2^2 \le \epsilon R_0^2$ & $\kappa \log\!\left(\frac{1}{\epsilon}\right)$ & \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.6}; \bookcite{gradient_descent_unconstrained}{Thm.~1}; rate $(1 - 1/\kappa)^T$. \\
+$\mu$-SC + $L$-Smooth (Optimal $\eta^*$) & $\eta^* = \frac{2}{\mu + L}$ & $\norm{\vecb{x}_T - \vecb{x}^*}_2 \le \epsilon R_0$ & $\frac{\kappa + 1}{2}\log\!\left(\frac{1}{\epsilon}\right)$ & \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.29)}; exact factor $\big(\frac{\kappa-1}{\kappa+1}\big)^T$. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:gdconv:visuals}
+% =============================================================================
+
+Figure~\ref{fig:gdconv:hierarchy} synthesizes the structural containment and implication hierarchy across $L$-smooth optimization classes, pairing each function family with its sharpest non-asymptotic deterministic GD rate. Notice that convexity is neither necessary nor sufficient for linear convergence: $\mu$-PL lies strictly outside the convex cone while guaranteeing $(1-\mu/L)^T$ decay, whereas convex functions without quadratic growth ($f(\vecb{x}) = \norm{\vecb{x}}_2^4$) degrade to sublinear rates.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.55cm and 0.6cm
+]
+  % Outer L-Smooth Universe
+  \node[monoBox, minimum width=16.3cm, minimum height=10.6cm, fill=monographCodeBg, draw=monographSlate] (lsmooth) {};
+  \node[anchor=north, font=\small\bfseries\color{monographNavy}, inner sep=7pt, text width=15.6cm, align=center] at (lsmooth.north)
+    {$L$-Smooth Functions ($\norm{\grad f(\vecb{x})-\grad f(\vecb{y})}_2 \le L\norm{\vecb{x}-\vecb{y}}_2$) \\[-1pt] {\scriptsize Non-Convex FOSP: $O(L\Delta_0/\epsilon^2)$ \quad$\cdot$\quad PGD ($\rho$-Hess.-Lip.): $\tilde{O}(1/\epsilon^2)$ to $\epsilon$-SOSP}};
+
+  % Left Branch: Convexity & Local Strong Convexity
+  \node[monoBox, anchor=north west, minimum width=6.9cm, minimum height=8.85cm, fill=monographNavyBg] (convex)
+    at ([xshift=0.35cm, yshift=-1.45cm]lsmooth.north west) {};
+  \node[anchor=north west, font=\small\bfseries\color{monographNavy}, inner sep=6pt, text width=6.5cm] at (convex.north west)
+    {Convex $\cap$ $L$-Smooth ($\hess f(\vecb{x}) \succeq \mat{0}$)};
+  \node[anchor=north west, font=\scriptsize\color{monographSlate}, align=left, inner sep=6pt, text width=6.5cm]
+    at ([yshift=-0.58cm]convex.north west)
+    {Co-coercive; Fej\'er monotone on $\mathcal{X}^*$\\Global rate: $f(\vecb{x}_T)-f^* \le \frac{\norm{\vecb{x}_0-\vecb{x}^*}_2^2}{2\eta T} = O(1/T)$};
+
+  % Locally Strongly Convex box inside Convex / Border
+  \node[monoTealBox, anchor=south west, minimum width=6.3cm, minimum height=2.30cm, text width=5.9cm, align=left] (lsc)
+    at ([xshift=0.30cm, yshift=3.45cm]convex.south west)
+    {\textbf{Locally $\mu$-Strongly Convex on $\mathbb{B}(\vecb{x}^*, r)$}\\[1pt]
+     {\scriptsize $\hess f(\vecb{x}) \succeq \mu\eye$ for $\norm{\vecb{x}-\vecb{x}^*}_2 \le r$ (e.g., logistic reg.)}\\
+     {\scriptsize Linear rate $(1-\eta\mu)^T$ if $\norm{\vecb{x}_0-\vecb{x}^*}_2 \le r$}};
+
+  % Strongly Convex Core Box
+  \node[monoIndigoBox, anchor=south west, minimum width=6.3cm, minimum height=2.70cm, text width=5.9cm, align=left] (sc)
+    at ([xshift=0.30cm, yshift=0.35cm]convex.south west)
+    {\textbf{$\mu$-Strongly Convex $\cap$ $L$-Smooth}\\[1pt]
+     {\scriptsize $\mu\eye \preceq \hess f(\vecb{x}) \preceq L\eye$; unique $\vecb{x}^*$; $\kappa = L/\mu$}\\
+     {\scriptsize $\eta = 1/L$: rate $(1 - 1/\kappa)^T$, $T = O(\kappa\log(1/\epsilon))$}\\
+     {\scriptsize $\eta^* = \frac{2}{\mu+L}$: tight $\norm{\vecb{x}_T-\vecb{x}^*}_2 \le \big(\frac{\kappa-1}{\kappa+1}\big)^{T}\norm{\vecb{x}_0-\vecb{x}^*}_2$}};
+
+  % Right Branch: QG -> KL -> PL Non-Convex Landscape
+  \node[monoTealBox, anchor=north east, minimum width=6.9cm, minimum height=8.85cm, fill=monographTealBg] (qg)
+    at ([xshift=-0.35cm, yshift=-1.45cm]lsmooth.north east) {};
+  \node[anchor=north west, font=\small\bfseries\color{monographTeal}, inner sep=6pt, text width=6.5cm] at (qg.north west)
+    {Quadratic Growth (QG) \& Local KL};
+  \node[anchor=north west, font=\scriptsize\color{monographSlate}, align=left, inner sep=6pt, text width=6.5cm]
+    at ([yshift=-0.58cm]qg.north west)
+    {QG ($\theta{=}1/2$): $f(\vecb{x})-f^* \ge \frac{\mu}{2}\mathrm{dist}(\vecb{x},\mathcal{X}^*)^2$\\KL ($\theta \in (\frac{1}{2},1)$): $O(T^{-1/(2\theta-1)})$ sublinear rate};
+
+  % PL Box inside QG
+  \node[monoIndigoBox, anchor=south west, minimum width=6.3cm, minimum height=3.80cm, text width=5.9cm, align=left, fill=white] (pl)
+    at ([xshift=0.30cm, yshift=1.95cm]qg.south west)
+    {\textbf{$\mu$-Polyak--\L{}ojasiewicz ($\mu$-PL) $\cap$ $L$-Smooth}\\[2pt]
+     {\scriptsize $\frac{1}{2}\norm{\grad f(\vecb{x})}_2^2 \ge \mu(f(\vecb{x})-f^*)$ globally on $\R^d$}\\
+     {\scriptsize $\bullet$ Stationary $\iff$ global min (non-unique $\mathcal{X}^*$ OK)}\\
+     {\scriptsize $\bullet$ Includes $n < d$ LS, NTK, $t^2{+}3\sin^2 t$, $\mathrm{dist}(\vecb{x};\Omega)^2$}\\
+     {\scriptsize $\bullet$ Global linear rate $(1-\mu/L)^T$ from any $\vecb{x}_0$}};
+
+  % Non-strict saddle warning tag bottom right
+  \node[monoWarnBox, anchor=south west, minimum width=6.3cm, minimum height=1.20cm, text width=5.9cm, align=left] (saddle)
+    at ([xshift=0.30cm, yshift=0.35cm]qg.south west)
+    {\textbf{Non-PL Non-Convex Landscapes}\\[1pt]
+     {\scriptsize Strict saddles escaped a.s.\ ($\eta<1/L$); flat $\hess f{=}\mat{0}$ may trap}};
+
+  % Implication Arrows connecting left and right cleanly in open gaps
+  \draw[monoArrow, monographIndigo, line width=1.2pt]
+    (sc.east) -- node[above, font=\scriptsize\bfseries\color{monographIndigo}, fill=monographCodeBg, inner sep=1.5pt] {$\implies$ $\mu$-PL} (pl.west |- sc.east);
+  \draw[monoArrow, monographTeal, line width=1.1pt]
+    (pl.north) -- node[midway, right=4pt, font=\scriptsize\bfseries\color{monographTeal}] {$\implies$ QG} ([yshift=-1.65cm]qg.north -| pl.north);
+\end{tikzpicture}
+\caption{Function-class inclusion and implication hierarchy inside $L$-smooth optimization. $\mu$-strong convexity implies $\mu$-PL (Theorem~\ref{thm:gdconv:pl_rate}), which in turn implies Quadratic Growth (QG), but $\mu$-PL encompasses non-convex objectives with non-isolated global minimizers while retaining the global linear contraction factor $(1-\mu/L)^T$.}
+\label{fig:gdconv:hierarchy}
+\end{figure}
+
+Figure~\ref{fig:gdconv:rates} compares the exact convergence trajectories across landscape classes (Panel~a) and illustrates step-size stability and eigenmode damping on an anisotropic $\kappa = 10$ quadratic (Panel~b). Notice in Panel~(b) that $\eta = 1/L$ annihilates the high-curvature mode in one step yet lags behind $\eta^* = 2/(\mu+L)$ on the flat valley floor, while $\eta = 1.95/L$ stalls due to violent cross-valley oscillations and $\eta = 2.08/L > 2/L$ diverges exponentially.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=2.05cm,
+  },
+  width=0.425\textwidth,
+  height=6.2cm,
+  grid=major,
+  grid style={monographRule, dashed, line width=0.35pt},
+  tick label style={font=\scriptsize, color=monographSlate},
+  label style={font=\footnotesize\bfseries, color=monographNavy},
+  title style={font=\small\bfseries, color=monographNavy, yshift=-2pt},
+  legend style={
+    font=\tiny,
+    fill=white,
+    fill opacity=0.92,
+    draw=monographRule,
+    rounded corners=2pt,
+    cells={anchor=west}
+  }
+]
+% --- Panel (a): Regime Comparison ---
+\nextgroupplot[
+  title={(a) Landscape Convergence Regimes},
+  xlabel={Iteration $t$},
+  ylabel={Normalized Gap $(f(\vecb{x}_t)-f^*)/(f(\vecb{x}_0)-f^*)$},
+  ymode=log,
+  xmin=0, xmax=50,
+  ymin=1e-7, ymax=2,
+  legend pos=south west
+]
+  % Convex O(1/t)
+  \addplot[monographSlate, dashed, very thick, domain=0:50, samples=51]
+    {1 / (1 + 0.5*x)};
+  \addlegendentry{Convex $O(1/t)$}
+
+  % KL theta=3/4 -> O(1/t^2)
+  \addplot[monographIndigo, dotted, very thick, domain=0:50, samples=51]
+    {1 / (1 + 0.3*x)^2};
+  \addlegendentry{KL ($\theta{=}3/4$): $O(t^{-2})$}
+
+  % Ill-conditioned kappa=25, eta=1/L -> 0.96^t
+  \addplot[monographCrimson, thick, domain=0:50, samples=51]
+    {(1 - 1/25)^x};
+  \addlegendentry{SC/PL ($\kappa{=}25$, $\eta{=}1/L$)}
+
+  % Well-conditioned kappa=4, eta=1/L -> 0.75^t
+  \addplot[monographTeal, very thick, domain=0:50, samples=51]
+    {(1 - 1/4)^x};
+  \addlegendentry{SC/PL ($\kappa{=}4$, $\eta{=}1/L$)}
+
+  % Optimal step size kappa=4, eta*=2/(mu+L) -> (3/5)^(2t) = 0.36^t
+  \addplot[monographNavy, very thick, domain=0:50, samples=51]
+    {((4 - 1)/(4 + 1))^(2*x)};
+  \addlegendentry{SC ($\kappa{=}4$, $\eta^* {=} \frac{2}{\mu+L}$)}
+
+% --- Panel (b): Step-Size Dynamics on kappa=10 Quadratic ---
+\nextgroupplot[
+  title={(b) Step-Size Dynamics ($\kappa{=}10$, $L{=}1$)},
+  xlabel={Iteration $t$},
+  ylabel={Quadratic Ratio $f(\vecb{x}_t)/f(\vecb{x}_0)$},
+  ymode=log,
+  xmin=0, xmax=35,
+  ymin=1e-4, ymax=1e2,
+  legend pos=north east
+]
+  % Divergence eta = 2.08/L > 2/L
+  \addplot[monographCrimson, dashed, very thick, domain=0:35, samples=36]
+    {(0.1*((1 - 0.1*2.08)^2)^x + 1.0*((1 - 1.0*2.08)^2)^x) / 1.1};
+  \addlegendentry{$\eta = 2.08/L$ (Diverges)}
+
+  % Near instability eta = 1.95/L
+  \addplot[monographIndigo, thick, domain=0:35, samples=36]
+    {(0.1*((1 - 0.1*1.95)^2)^x + 1.0*((1 - 1.0*1.95)^2)^x) / 1.1};
+  \addlegendentry{$\eta = 1.95/L$ (Near instability)}
+
+  % Under-damped eta = 0.2/L
+  \addplot[monographSlate, dotted, very thick, domain=0:35, samples=36]
+    {(0.1*((1 - 0.1*0.2)^2)^x + 1.0*((1 - 1.0*0.2)^2)^x) / 1.1};
+  \addlegendentry{$\eta = 0.2/L$ (Slow crawl)}
+
+  % Standard eta = 1/L
+  \addplot[monographTeal, very thick, domain=0:35, samples=36]
+    {(0.1*((1 - 0.1*1.0)^2)^x + 1.0*((1 - 1.0*1.0)^2)^x) / 1.1};
+  \addlegendentry{$\eta = 1/L$ (Greedy)}
+
+  % Optimal eta* = 2/(mu+L) = 2/1.1
+  \addplot[monographNavy, very thick, domain=0:35, samples=36]
+    {(0.1*((1 - 0.1*(2/1.1))^2)^x + 1.0*((1 - 1.0*(2/1.1))^2)^x) / 1.1};
+  \addlegendentry{$\eta^* = \frac{2}{\mu+L}$ (Optimal)}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Analytic convergence dynamics of deterministic gradient descent. \textbf{(a)}~Sublinear $O(1/T)$ convex and $O(t^{-2})$ KL decay vs.\ linear contraction under $\mu$-strong convexity / $\mu$-PL, highlighting the acceleration from $\eta=1/L$ to $\eta^* = 2/(\mu+L)$ and the severe slowdown when $\kappa = L/\mu$ increases from $4$ to $25$. \textbf{(b)}~Exact trajectory ratio on $f(\vecb{x}) = \frac{1}{2}(0.1x_1^2 + x_2^2)$ initialized at $\vecb{x}_0 = (1,1)\T$: $\eta = 0.2/L$ creeps slowly, $\eta = 1/L$ immediately kills the steep $x_2$ mode, $\eta^* = 2/(\mu+L)$ achieves minimax optimal decay, $\eta = 1.95/L$ rings across the valley walls, and $\eta = 2.08/L > 2/L$ diverges exponentially.}
+\label{fig:gdconv:rates}
+\end{figure}
+
+Three 300~DPI benchmark figures from the synthesized texts confirm these geometric behaviors directly on canonical 2D and 3D landscapes. First, Figure~\ref{fig:gdconv:stepsize_osc} contrasts safe monotone progress ($\eta = 0.100$) against sustained limit-cycle oscillation across valley walls ($\eta = 0.600$) on a convex Rosenbrock-like valley \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.2.1, Fig.~8.11, p.~285}. Second, Figure~\ref{fig:gdconv:condition_zigzag} demonstrates the exact-line-search contraction factor $(\frac{\kappa-1}{\kappa+1})^2$: when $\kappa(\mat{A}) = 30.234$, steepest-descent steps zigzag almost orthogonally to the valley axis, whereas at $\kappa(\mat{A}) = 1.854$ two steps nearly reach the minimizer \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.3, Fig.~8.12, p.~287}. Third, Figure~\ref{fig:gdconv:pl_surface} visualizes the non-convex squared-distance function $f(\vecb{x}) = \mathrm{dist}(\vecb{x}; \Omega)^2$ satisfying the global $\mu$-PL condition, whose minimizer set $\Omega$ forms a curved non-convex valley free of spurious local minima \bookcite{stochastic_gradient_decent_algorithm_explain}{Ex.~2.20, Fig.~1, p.~9}.
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_introduction_p315_fig1.png}{Effect of fixed step size on a curved convex valley \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~8.11, p.~285 (PDF p.~315)}: \textbf{(a)}~$\eta = 0.100$ produces slow, stable monotone progress; \textbf{(b)}~$\eta = 0.600$ violates local curvature stability ($\eta > 2/L_{\mathrm{loc}}$) and bounces persistently across the canyon walls without reaching $(1,1)\T$.}{fig:gdconv:stepsize_osc}
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_introduction_p317_fig1.png}{Steepest descent with exact line search under contrasting Hessian condition numbers \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~8.12, p.~287 (PDF p.~317)}: \textbf{(a)}~$\kappa(\mat{A}) = 30.234$ yields $(\frac{\kappa-1}{\kappa+1})^2 \approx 0.876$, producing pronounced orthogonal zig-zagging; \textbf{(b)}~$\kappa(\mat{A}) = 1.854$ yields $(\frac{\kappa-1}{\kappa+1})^2 \approx 0.090$, converging almost directly to the minimum.}{fig:gdconv:condition_zigzag}
+
+\monographfig[0.64\textwidth]{stochastic_gradient_decent_algorithm_explain_p9_fig1.png}{Surface of the non-convex $\mu$-PL function $f(\vecb{x}) = \mathrm{dist}(\vecb{x}; \Omega)^2$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Fig.~1, p.~9}. Although the global minimizer manifold $\Omega$ (white curve) is non-convex and non-isolated, every stationary point is globally optimal, enabling global linear convergence from any initialization.}{fig:gdconv:pl_surface}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:gdconv:pitfalls}
+% =============================================================================
+
+Even when formal convergence theorems hold, naive deterministic GD frequently stalls due to scaling pathologies, unbounded curvature, or degenerate saddles.
+
+\begin{pitfall}[Pitfall 1: Zig-Zagging Under Extreme Conditioning ($\kappa \gg 1$) \& Unnormalized Features]
+\textbf{Symptom:} Gradient descent makes rapid initial objective decrease for $2$--$5$ steps, then stalls with tiny zig-zagging steps while $\norm{\vecb{x}_t - \vecb{x}^*}_2$ barely decays. \\
+\textbf{Root Cause:} In linear least squares $f(\vecb{x}) = \frac{1}{n}\norm{\mat{X}\vecb{x} - \vecb{y}}_2^2$, the Hessian condition number is $\kappa(\mat{X}\T\mat{X}) = \big(\sigma_{\max}(\mat{X})/\sigma_{\min}(\mat{X})\big)^2$ \bookcite{mathematics_machine_learning_orienly}{Ex.~7.2, p.~230}. Unstandardized inputs spanning disparate scales (e.g., height in meters vs.\ platelet counts $\sim 3\times 10^5$) inflate $\kappa$ quadratically \bookcite{deep_learning_foundations_concepts}{Sec.~7.4.1, p.~226}, forcing $\eta < 2/L$ to crawl along $\lambda_{\min}$ at rate $1 - 1/\kappa$ \bookcite{deep_learning_foundations_concepts}{Eq.~(7.30), p.~219}. \\
+\textbf{Remedy:} Standardize inputs to zero mean and unit variance, apply batch/layer normalization to smooth hidden Hessians \bookcite{deep_learning_foundations_concepts}{Sec.~7.4.2--7.4.3, pp.~227--229}, employ Barzilai--Borwein steps (Algorithm~\ref{alg:gdconv:armijo_bb}) or momentum \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.2.4}, or precondition (\bookcite{mathematics_machine_learning_orienly}{p.~230}; L-BFGS in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3.2}).
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 2: Instability Beyond $\eta = 2/L$ \& Breakdown of Global Smoothness]
+\textbf{Symptom:} Loss spikes violently or overflows to \texttt{NaN} despite starting from a seemingly small learning rate $\eta$. \\
+\textbf{Root Cause:} First, any constant $\eta > 2/\lambda_{\max}(\hess f)$ induces $\abs{1 - \eta\lambda_{\max}} > 1$, causing exponential amplification along the top eigenvector \bookcite{deep_learning_foundations_concepts}{p.~219} \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.20), p.~284}. Second, many canonical ML objectives are \emph{not globally $L$-smooth}: in quartic phase retrieval $\mathcal{L}_n(\theta) = \frac{1}{n}\sum_i (Y_i - X_i^2\theta^2)^2$, $\hess \mathcal{L}_n(\theta) = \frac{12}{n}(\sum X_i^4)\theta^2 - \frac{4}{n}\sum Y_i X_i^2$ grows unboundedly as $\abs{\theta} \to \infty$, so any fixed $\eta > 0$ fails outside a bounded ball $\mathbb{B}(\hat{\theta}_n, r_0)$ \bookcite{gradient_descent_unconstrained}{Slides~30--32}. \\
+\textbf{Remedy:} Verify local initialization $\norm{\vecb{x}_0 - \vecb{x}^*}_2 \le r_0$ when $L$ is only local, or replace fixed $\eta$ with Armijo backtracking (Algorithm~\ref{alg:gdconv:armijo_bb}), which adapts dynamically to local curvature $L_{\mathrm{loc}}$ without prior knowledge of $L$.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 3: Non-Strict Saddles, Flat Plateaus \& Deterministic Manifold Traps]
+\textbf{Symptom:} Gradient norm drops below $\epsilon$, yet objective value remains far above $f^*$ and Hessian exhibits near-zero or negative eigenvalues. \\
+\textbf{Root Cause:} Theorem~\ref{thm:gdconv:strict_saddle} guarantees almost-sure avoidance \emph{only} for strict saddles ($\lambda_{\min}(\hess f(\bar{\vecb{x}})) < 0$). On non-strict saddles like the monkey saddle $f(x_1,x_2) = x_1^3 - 3x_1x_2^2$ ($\grad f(\zeros)=\zeros$, $\hess f(\zeros)=\mat{0}$) or flat plateaus ($\grad f \approx \zeros$, $\hess f \approx \mat{0}$), $DT(\bar{\vecb{x}}) = \eye_d$ lacks an unstable direction; GD and PGD can stall indefinitely. Moreover, symmetric initialization (e.g., equal hidden weights, or $(z, 0)$ in \bookcite{gradient_descent_unconstrained}{Slide~92}) lands on the zero-measure stable manifold. \\
+\textbf{Remedy:} Following \bookcite{deep_learning_foundations_concepts}{Sec.~7.2.5, p.~216}, break symmetries via random initialization; inject ball perturbations when $\norm{\grad f(\vecb{x}_t)}_2 \le \epsilon$ (Algorithm~\ref{alg:gdconv:pgd}) to escape strict saddles in polylog$(d)$ time, and use cubic-regularized Newton on degenerate saddles.
+\end{pitfall}
+
+\end{document}

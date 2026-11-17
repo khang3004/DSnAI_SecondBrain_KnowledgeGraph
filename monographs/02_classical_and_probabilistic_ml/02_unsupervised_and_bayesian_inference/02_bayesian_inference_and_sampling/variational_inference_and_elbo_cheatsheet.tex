@@ -1,0 +1,211 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Unsupervised \& Bayesian Inference}{ELBO Decomposition, Mean-Field CAVI, Black-Box VI \& Reparameterization}
+  {Turn intractable integration into optimization: maximize the ELBO to squeeze reverse KL to zero}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{VI \& ELBO\\ \footnotesize\mdseries ELBO $\cdot$ CAVI $\cdot$ Reparam}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[csDom, very thick, domain=-2.2:2.2, samples=60] plot (\x, {0.9*exp(-1.4*(\x+1.0)^2) + 1.1*exp(-1.4*(\x-1.0)^2)});
+    \draw[csA, very thick, dashed, fill=csA!15, domain=-0.3:2.2, samples=40] plot (\x, {1.1*exp(-1.4*(\x-1.0)^2)});
+    \draw[csF, thick, dotted, domain=-2.2:2.2, samples=40] plot (\x, {0.72*exp(-0.35*\x*\x)});
+    \node[font=\tiny, csA] at (1.05,1.35) {$\KL{q}{p}$};
+    \node[font=\tiny, csF] at (-1.2,0.95) {$\KL{p}{q}$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; THE ELBO IDENTITY $-$ three faces}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \csfm{\log p_{\vecb\theta}(\vecb x) = \mathrm{ELBO}(q;\vecb\theta) + \KL{q(\vecb z)}{p_{\vecb\theta}(\vecb z\mid\vecb x)}}
+    \begin{csbul}
+      \item \textbf{Ratio:} $\E_q\!\bigl[\log\frac{p_{\vecb\theta}(\vecb x,\vecb z)}{q(\vecb z)}\bigr]$
+      \item \textbf{Free Energy:} $\E_q[\log p_{\vecb\theta}(\vecb x,\vecb z)] + \Entropy(q) = -\mathcal F$
+      \item \textbf{Recon $-$ KL:} $\E_q[\log p_{\vecb\theta}(\vecb x\mid\vecb z)] - \KL{q(\vecb z)}{p_{\vecb\theta}(\vecb z)}$
+      \item \textbf{IWAE ($S$ draws):} $\mathcal L_1\le\mathcal L_S\uparrow\log p_{\vecb\theta}(\vecb x)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \fill[csD!30] (0,0) rectangle (2.45,2.0);
+      \fill[csA!30] (0,2.0) rectangle (2.45,3.2);
+      \draw[csDom, thick] (0,0) rectangle (2.45,3.2);
+      \draw[csDom, dashed] (0,2.0)--(2.45,2.0);
+      \node at (1.225,1.0) {$\mathrm{ELBO}$};
+      \node[csA] at (1.225,2.6) {$\KL{q}{p}$};
+      \draw[<->, thick, csDom] (2.65,0)--(2.65,3.2) node[midway, right] {$\log p(\vecb x)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; MEAN-FIELD CAVI \& NATURAL GRADIENTS}{%
+  \csfm{q(\vecb z)=\prod_{j=1}^J q_j(\vecb z_j)\;\Longrightarrow\; \log q_j^*(\vecb z_j) = \E_{-j}[\log p_{\vecb\theta}(\vecb x,\vecb z)] + \mathrm{const}}
+  \begin{csbul}
+    \item \textbf{Markov blanket locality:} $\log q_j^*(\vecb z_j) = \E_{\vecb z_{\mathrm{mb}(j)}}[\log p_{\vecb\theta}(\vecb z_j,\vecb z_{\mathrm{mb}(j)},\vecb x)] + c$
+    \item \textbf{Coordinate concavity:} each CAVI step monotonically increases ELBO
+    \item \textbf{Natural gradient (SVI):} for conjugate exp-family $\vecb\lambda$, $\tilde{\grad}_{\vecb\lambda}\mathrm{ELBO} = \mat F(\vecb\lambda)\inv\grad_{\vecb\lambda}\mathrm{ELBO} = \E_q[\vecb\eta(\vecb x,\vecb z)] - \vecb\lambda$; update $\vecb\lambda_{t+1}=(1-\rho_t)\vecb\lambda_t+\rho_t\hat{\vecb\eta}_t$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; GRADIENT ESTIMATORS $-$ Score vs.\ Pathwise}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{2.95cm}>{\raggedright\arraybackslash}p{2.95cm}@{}}
+    & \textbf{\textcolor{csC}{BBVI / REINFORCE}} & \textbf{\textcolor{csC}{Pathwise Reparam.}}\\ \hline
+    Formula & $\E_q\bigl[(\ell(\vecb z)-c)\grad_{\vecb\phi}\log q_{\vecb\phi}\bigr]$ & $\E_{p(\vecb\epsilon)}\bigl[\grad_{\vecb z}f\T\grad_{\vecb\phi}g_{\vecb\phi}(\vecb\epsilon)\bigr]$\\
+    Latents & discrete or continuous & continuous diff.\ $\vecb z$\\
+    Variance & high ($\propto D$); CV $c^*$, RB & low (target slope $\grad_{\vecb z}f$)\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Gaussian reparam:} $\vecb z = \vecb\mu_{\vecb\phi}(\vecb x) + \vecb\sigma_{\vecb\phi}(\vecb x)\odot\vecb\epsilon$, $\vecb\epsilon\sim\Normal(\zeros,\eye)$.}
+
+\csbranch{4}{D}{4\;\; REVERSE vs.\ FORWARD KL $-$ EP \& Laplace}{%
+  \begin{csbul}
+    \item \textbf{VI ($\min_q\KL{q}{p}$):} \emph{zero-avoiding / mode-seeking} ($q\to 0$ where $p\to 0$); underestimates marginal variance on correlated posteriors: $\sigma_j^2=(\mat\Sigma\inv)_{jj}\inv\le\Sigma_{jj}$
+    \item \textbf{EP ($\min_{\tilde q}\KL{q_i^{\mathrm{tilted}}}{\tilde q}$):} \emph{zero-forcing / mode-covering}; matches moments of tilted $q_i^{\mathrm{tilted}}\propto f_i\,q_{\setminus i}$ in cavity $q_{\setminus i}\propto q/\tilde f_i$
+    \item \textbf{Laplace:} local 2nd-order Gaussian $\Normal(\hat{\vecb\theta},\mat H\inv)$ at MAP $\hat{\vecb\theta}$, $\mat H=-\hess\log p(\hat{\vecb\theta},\mathcal D)$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; AMORTIZED VI (VAE) $-$ speed vs.\ gap}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Amortization:} shared encoder $q_{\vecb\phi}(\vecb z_n\mid\vecb x_n)$ gives $\mathcal O(1)$ test inference vs.\ $\mathcal O(N)$ local $\vecb\psi_n$
+      \item \textbf{Amortization gap:} $\mathrm{ELBO}(\vecb\psi_n^*) - \mathrm{ELBO}(q_{\vecb\phi^*})\ge 0$
+      \item \textbf{Closed-form Gaussian KL:} $\frac{1}{2}\sum_{d=1}^D(\sigma_d^2+\mu_d^2-1-\log\sigma_d^2)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{3pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \node[draw=csE, fill=csE!12, rounded corners=2pt] (x) at (0,0) {$\vecb x_n$};
+      \node[draw=csE, fill=csE!20, rounded corners=2pt] (enc) at (1.6,0) {$\vecb\mu,\vecb\sigma$};
+      \node[draw=csA, fill=csA!15, circle, inner sep=1.2pt] (z) at (3.2,0) {$\vecb z_n$};
+      \node[draw=csDom, fill=csDom!15, rounded corners=2pt] (dec) at (4.8,0) {$\hat{\vecb x}_n$};
+      \node[draw=csC, fill=csC!15, circle, inner sep=1pt] (eps) at (3.2,1.2) {$\vecb\epsilon$};
+      \draw[->, thick] (x)--(enc);
+      \draw[->, thick] (enc)--(z);
+      \draw[->, thick] (eps)--(z);
+      \draw[->, thick] (z)--(dec);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; COST \& CONVERGENCE COMPARISON}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.3cm}>{\raggedright\arraybackslash}p{2.6cm}@{}}
+    \textbf{\textcolor{csF}{Method}} & \textbf{\textcolor{csF}{Obj.}} & \textbf{\textcolor{csF}{Memory}} & \textbf{\textcolor{csF}{Guarantee / Variance}}\\ \hline
+    CAVI & $\KL{q}{p}$ & $\mathcal O(NJ)$ & exact coord.\ ascent, 0 var.\\
+    SVI (NatGrad) & $\KL{q}{p}$ & $\mathcal O(BD)$ & Robbins--Monro minibatch\\
+    BBVI (Score) & $\KL{q}{p}$ & $\mathcal O(BD)$ & universal; high grad.\ var.\\
+    Pathwise RVI & $\KL{q}{p}$ & $\mathcal O(BD)$ & low variance; cont.\ $\vecb z$ only\\
+    EP / Laplace & $\KL{p}{q}$ / MAP & $\mathcal O(KD^2)$ & damped moments / local $\mat H\inv$\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{$\log p(\vecb x) = \mathrm{ELBO} + \KL{q}{p}$:\; Lift the Floor to Shrink the Gap} \\[1pt]
+  \footnotesize\mdseries \textbf{Reverse KL ($\KL{q}{p}$) locks onto one mode; Forward KL ($\KL{p}{q}$) stretches across all modes.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Mean-field overconfidence:} matches $(\mat\Sigma\inv)_{jj}\inv\le\Sigma_{jj}$ $\to$ use low-rank+diag
+    \item \textbf{Unbaselined BBVI explodes:} always subtract optimal control variate $c_i^*$ + RB
+    \item \textbf{VAE posterior collapse:} strong decoder sets $\KL{q_{\vecb\phi}}{p}\to 0$ $\to$ $\beta$-anneal
+    \item \textbf{EP negative precision:} cavity subtraction can break PSD $\to$ damp by $\delta\in(0,1]$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Variational Inference, Evidence Lower Bound (ELBO) \& Expectation Propagation}\;---\;Domain 02 $\cdot$ Unsupervised \& Bayesian Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Three ELBO forms ($\tilde{\mathcal L}=\log p_{\vecb\theta}(\vecb x,\vecb z)-\log q(\vecb z)$):\csfm{\mathrm{ELBO} = \E_q[\tilde{\mathcal L}] = \E_q[\log p_{\vecb\theta}(\vecb x,\vecb z)]+\Entropy(q) = \E_q[\log p_{\vecb\theta}(\vecb x\mid\vecb z)]-\KL{q}{p}}
+    \item Optimal BBVI control variate ($g_i=\partial_{\phi_i}\log q_{\vecb\phi}(\vecb z)$):\csfm{c_i^* = \frac{\Cov(g_i\tilde{\mathcal L},\,g_i)}{\Var[g_i]}}
+    \item Change-of-variables density for $\vecb z = g_{\vecb\phi}(\vecb\epsilon,\vecb x)$:\csfm{\log q_{\vecb\phi}(\vecb z) = \log p(\vecb\epsilon) - \log\abs*{\det\pd{\vecb z}{\vecb\epsilon}}}
+    \item EP Cavity--Tilted--Project update:\csfm{q_{\setminus i}\propto \frac{q}{\tilde f_i},\quad q_i^{\mathrm{tilted}}=\frac{f_i q_{\setminus i}}{Z_i},\quad \tilde f_i^{\mathrm{new}}\propto\Bigl(\frac{\mathrm{proj}_{\mathcal Q}(q_i^{\mathrm{tilted}})}{q_{\setminus i}}\Bigr)^\delta\tilde f_i^{1-\delta}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{ALGORITHMIC RECIPES (CAVI vs.\ RVI)}
+  \textbf{Mean-Field CAVI:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=0.5pt, parsep=0pt]
+    \item Initialize factors $q_1(\vecb z_1),\dots,q_J(\vecb z_J)$
+    \item For $j=1,\dots,J$: $q_j(\vecb z_j)\propto\exp\!\bigl(\E_{\vecb z_{\mathrm{mb}(j)}}[\log p_{\vecb\theta}(\vecb z_j,\vecb z_{\mathrm{mb}(j)},\vecb x)]\bigr)$
+    \item Repeat until $\Delta\mathrm{ELBO}<\varepsilon$
+  \end{enumerate}
+  \textbf{Reparameterized SVI (VAE):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=0.5pt, parsep=0pt]
+    \item Draw minibatch $\vecb x_n$ and $\vecb\epsilon_n\sim\Normal(\zeros,\eye)$; encode $(\vecb\mu_n,\vecb\sigma_n)=\mathrm{enc}_{\vecb\phi}(\vecb x_n)$
+    \item Set $\vecb z_n=\vecb\mu_n+\vecb\sigma_n\odot\vecb\epsilon_n$ and ascend $\grad_{(\vecb\theta,\vecb\phi)}\hat{\mathcal L}$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    conjugate exp-family, small $N$ & Exact coordinate-ascent CAVI\\
+    conjugate exp-family, huge $N$ & Natural-gradient SVI ($\vecb\lambda$ minibatch)\\
+    differentiable non-conjugate $\vecb z$ & Pathwise Reparameterization (RVI)\\
+    discrete latents / black-box $p$ & BBVI + control variate + Rao--Blackwell\\
+    fast $\mathcal O(1)$ test-time encoding & Amortized VI + semi-amortized steps\\
+    need mode-covering marginals & Damped Expectation Propagation (EP)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{VARIANCE \& BOUNDS CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Tightness hierarchy:} $\mathrm{ELBO}=\mathcal L_1\le\mathcal L_S\le\log p_{\vecb\theta}(\vecb x)$
+    \item \textbf{Mean-field precision:} $\Var_{q_j}(z_j)=(\mat\Sigma\inv)_{jj}\inv \le \Sigma_{jj}$
+    \item \textbf{IWAE SNR trap:} encoder SNR scales as $\mathcal O(S^{-1/2})$ without DReG
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{BIMODAL TARGET: REVERSE KL vs.\ FORWARD KL / EP}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=-4.2, xmax=4.2, ymin=0, ymax=1.22,
+      xlabel={Latent $z$}, ylabel={Density $p(z),\,q(z)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={-3,-1.8,0,1.8,3}, ytick={0,0.4,0.8,1.2}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.98,0.97)}, anchor=north east, font=\tiny, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csDom, very thick, domain=-4.2:4.2, samples=120]
+        {0.5*(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x+1.8)/0.55)^2) + 0.5*(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x-1.8)/0.55)^2)};
+      \addlegendentry{True Bimodal $p(z)$}
+      \addplot[csA, very thick, dashed, domain=-4.2:4.2, samples=100]
+        {(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x-1.8)/0.55)^2)};
+      \addlegendentry{VI $\KL{q}{p}$ (Mode-Seeking)}
+      \addplot[csF, very thick, dotted, domain=-4.2:4.2, samples=80]
+        {(1/(1.88*sqrt(2*pi)))*exp(-0.5*(x/1.88)^2)};
+      \addlegendentry{EP $\KL{p}{q}$ (Moment-Match)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Passing $\grad_{\vecb\phi}$ inside $\E_{q_{\vecb\phi}}$ directly:} invalid! Must reparameterize $\vecb z=g_{\vecb\phi}(\vecb\epsilon)$ or use score identity $\grad\log q_{\vecb\phi}$
+    \item \textbf{Ignoring $\log q_{\vecb\phi}$ pathwise term:} if stopping gradient on $\vecb\phi$ in $\log q_{\vecb\phi}(\vecb z)$, ensure $\Entropy(q)$ or $\KL{q}{p}$ is differentiated properly
+    \item \textbf{Mean-field uncertainty underestimation:} factorized $q$ locks onto conditional precision $(\mat\Sigma\inv)_{jj}$; never trust raw MF-VI error bars on correlated parameters
+    \item \textbf{Posterior collapse in VAEs:} autoregressive decoder ignores $\vecb z$; use KL warmup ($\beta$: $0\to 1$) or free bits
+    \item \textbf{Undamped EP divergence:} EP has no global Lyapunov guarantee; damp site updates and check positive-definiteness
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Because $\log p(\vecb x) = \mathrm{ELBO}(q) + \KL{q}{p}$, maximizing the \textbf{ELBO} minimizes reverse KL without ever computing the evidence $p(\vecb x)$.
+  Use \textbf{CAVI/SVI} when conditionally conjugate, \textbf{Pathwise Reparameterization} for continuous deep models, \textbf{BBVI+baselines} for discrete latents, and \textbf{EP} when mode-covering moments matter.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,334 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 03: Deep Learning Architectures}{Spatial, Graph \& Sequence Models}{Sequence Models \& State Spaces}{Recurrent Neural Networks, BPTT, LSTMs/GRUs \& Long-Range Gradient Flow}{Goodfellow Ch.~10, Jurafsky \& Martin Ch.~13, Murphy Intro Sec.~15.2}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:rnn:problem}
+
+Sequence modeling requires architectures that process variable-length ordered data $(\vecb{x}_1, \vecb{x}_2, \dots, \vecb{x}_T)$ with $\vecb{x}_t \in \R^{d_x}$ without fixing a finite context window. Unlike feedforward networks or 1-D convolutions with bounded receptive fields, a Recurrent Neural Network (RNN) maintains a stateful hidden representation $\vecb{h}_t \in \R^{d_h}$ that summarizes the entire input history $\vecb{x}_{1:t}$ by sharing parameters across every time step \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~10, PDF pp.~388--389}.
+
+In the canonical Elman simple recurrent network (SRN) \bookcite{speech_language_processing_aug26}{Ch.~14.1, PDF pp.~310--311}, forward propagation from an initial state $\vecb{h}_0 \in \R^{d_h}$ (typically $\vecb{h}_0 = \zeros$) proceeds for $t = 1, \dots, T$ via
+\begin{align}
+  \vecb{a}_t &= \mat{W}_{hh}\vecb{h}_{t-1} + \mat{W}_{hx}\vecb{x}_t + \vecb{b}_h,
+  \label{eq:rnn:elman_pre} \\
+  \vecb{h}_t &= \phi(\vecb{a}_t),
+  \label{eq:rnn:elman_state} \\
+  \vecb{o}_t &= \mat{W}_{oh}\vecb{h}_t + \vecb{b}_o, \qquad \hat{\vecb{y}}_t = \softmax(\vecb{o}_t),
+  \label{eq:rnn:elman_out}
+\end{align}
+where $\mat{W}_{hh} \in \R^{d_h \times d_h}$ is the recurrent hidden-to-hidden transition matrix, $\mat{W}_{hx} \in \R^{d_h \times d_x}$ is the input-to-hidden projection, $\mat{W}_{oh} \in \R^{d_y \times d_h}$ is the hidden-to-output projection, $\phi(\cdot)$ is an element-wise nonlinearity (commonly $\tanh$), and $\vecb{b}_h \in \R^{d_h}$, $\vecb{b}_o \in \R^{d_y}$ are bias vectors \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.2, PDF p.~396}. Given a target sequence $\vecb{y}_{1:T}$ and per-step loss $\ell(\vecb{y}_t, \vecb{o}_t)$ (e.g., cross-entropy negative log-likelihood $-\log p_{\text{model}}(\vecb{y}_t \mid \vecb{x}_{1:t})$), the sequence objective is
+\begin{equation}
+  \mathcal{L}(\theta) = \sum_{t=1}^{T} \ell(\vecb{y}_t, \vecb{o}_t)
+  \quad\text{or normalized}\quad
+  \bar{\mathcal{L}}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \ell(\vecb{y}_t, \vecb{o}_t).
+  \label{eq:rnn:seq_loss}
+\end{equation}
+
+{\sloppy\emergencystretch=4em
+The same recurrent state mechanism supports four primary sequence topologies (see \bookcite{speech_language_processing_aug26}{Sec.~14.6, PDF p.~326} and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.1--15.2.3, PDF pp.~533--538}): (i) \emph{sequence labeling} (aligned many-to-many mapping $\vecb{x}_{1:T} \mapsto \vecb{y}_{1:T}$), (ii) \emph{sequence classification} (many-to-one mapping $\vecb{x}_{1:T} \mapsto \vecb{y}_T$ using $\vecb{h}_T$), (iii) \emph{autoregressive generation / language modeling} (factorizing $p(\vecb{y}_{1:T}) = \prod_{t=1}^T p(\vecb{y}_t \mid \vecb{y}_{1:t-1})$ with $\vecb{x}_t = \vecb{y}_{t-1}$), and (iv) \emph{encoder--decoder seq2seq} (encoding $\vecb{x}_{1:T_x}$ into a context vector and decoding $\vecb{y}_{1:T_y}$). Because hidden-to-hidden recurrence allows unbounded state dependence, finite-size RNNs with rational weights are Turing-universal (\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.1, PDF p.~394}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.1, PDF p.~534}).\par}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:rnn:notation}
+Source textbooks use conflicting matrix letters (notably swapping $\mat{U}$ and $\mat{W}$) and differing tensor layouts (column vectors vs.\ batch-first row matrices): Goodfellow et al.\ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~10}, Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~14}, and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2}. This monograph adopts the explicit subscript convention $\mat{W}_{hh}, \mat{W}_{hx}, \mat{W}_{oh}$ and column vectors $\vecb{x}_t, \vecb{h}_t, \vecb{c}_t$.
+\vspace{4pt}
+\begin{tabularx}{\textwidth}{@{}p{2.3cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Goodfellow et al. (2017)} & \textbf{Jurafsky \& Martin (2026)} & \textbf{Murphy Intro (2025)} \\
+\midrule
+Time-step index & Superscript $\vecb{x}^{(t)}, \vecb{h}^{(t)}, \vecb{o}^{(t)}$ ($t=1\dots\tau$) & Subscript $\vecb{x}_t, \vecb{h}_t, \vecb{y}_t$ ($t=1\dots n$) & Subscript $\vecb{x}_t, \vecb{h}_t, \vecb{o}_t$ or batch $\mat{X}_t, \mat{H}_t$ \\
+Input $\to$ Hidden & $\mat{U}$ & $\mat{W}$ & $\mat{W}_{hx}$ (or $\mat{W}_{xh}$ in vec2seq) \\
+Hidden $\to$ Hidden & $\mat{W}$ & $\mat{U}$ & $\mat{W}_{hh}$ \\
+Hidden $\to$ Output & $\mat{V}$ & $\mat{V}$ & $\mat{W}_{oh}$ (or $\mat{W}_{hy}$) \\
+LSTM cell / gates & Cell $s_i^{(t)}$, forget $f_i^{(t)}$, input $g_i^{(t)}$, output $q_i^{(t)}$ & Context $\vecb{c}_t$, candidate $\vecb{g}_t$, add $\vecb{i}_t$, forget $\vecb{f}_t$, output $\vecb{o}_t$ & Memory $\mat{C}_t$, candidate $\tilde{\mat{C}}_t$, gates $\mat{F}_t, \mat{I}_t, \mat{O}_t$ \\
+GRU gates & Update $u_i^{(t)}$, reset $r_i^{(t)}$ & --- (focuses on LSTM) & Reset $\mat{R}_t$, update $\mat{Z}_t$, candidate $\tilde{\mat{H}}_t$ \\
+\bottomrule
+\end{tabularx}
+\end{crossbook}
+
+\monographfig[0.80\textwidth]{probabilisticml_kevinmurphy_introduction_p540_fig1.png}{Time-unfolded computational graph of an Elman RNN over $T=3$ steps, illustrating parameter sharing across $\mat{W}_{hx}, \mat{W}_{hh}, \mat{W}_{oh}$, the initial state $\vecb{h}_0$, logits $\vecb{o}_t$, targets $\vecb{y}_t$, and total loss $\mathcal{L}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~15.9, PDF p.~540}.}{fig:rnn:unrolled_graph}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:rnn:derivations}
+
+\subsection{Backpropagation Through Time (BPTT)}
+\label{sec:rnn:bptt}
+
+Unfolding the cyclic recurrence in \eqref{eq:rnn:elman_state} across $t=1,\dots,T$ yields a directed acyclic computational graph (Figure~\ref{fig:rnn:unrolled_graph}) to which reverse-mode automatic differentiation applies directly.
+
+\begin{coremath}[BPTT Recursive Gradient Derivation]
+\label{eq:rnn:bptt_box}
+For the Elman RNN in \eqref{eq:rnn:elman_pre}--\eqref{eq:rnn:seq_loss} with softmax cross-entropy loss $\ell(\vecb{y}_t, \vecb{o}_t)$, define the output error signal $\vecb{\delta}_t^o \coloneqq \nabla_{\vecb{o}_t}\mathcal{L} = \hat{\vecb{y}}_t - \vecb{y}_t$ (where $\vecb{y}_t$ is one-hot) \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.2.2, PDF p.~400}. At the final step $T$, $\vecb{h}_T$ only feeds $\vecb{o}_T$, so
+\begin{equation}
+  \nabla_{\vecb{h}_T}\mathcal{L} = \mat{W}_{oh}\T \nabla_{\vecb{o}_T}\mathcal{L}.
+  \label{eq:rnn:bptt_final}
+\end{equation}
+For $t = T-1, \dots, 1$, $\vecb{h}_t$ has two descendants ($\vecb{o}_t$ and $\vecb{h}_{t+1}$). Applying the multivariable chain rule gives the backward recursion:
+\begin{equation}
+  \nabla_{\vecb{h}_t}\mathcal{L}
+  = \left(\pd{\vecb{h}_{t+1}}{\vecb{h}_t}\right)\T \nabla_{\vecb{h}_{t+1}}\mathcal{L}
+  + \left(\pd{\vecb{o}_t}{\vecb{h}_t}\right)\T \nabla_{\vecb{o}_t}\mathcal{L}
+  = \mat{W}_{hh}\T \diag\big(\phi'(\vecb{a}_{t+1})\big) \nabla_{\vecb{h}_{t+1}}\mathcal{L}
+  + \mat{W}_{oh}\T \nabla_{\vecb{o}_t}\mathcal{L}.
+  \label{eq:rnn:bptt_rec}
+\end{equation}
+Unrolling \eqref{eq:rnn:bptt_rec} expresses the sensitivity of the loss at step $t$ to an earlier hidden state $\vecb{h}_k$ ($k < t$) through a product of $t-k$ step-to-step Jacobians $\jac_j \coloneqq \pd{\vecb{h}_j}{\vecb{h}_{j-1}} = \diag\big(\phi'(\vecb{a}_j)\big)\mat{W}_{hh}$:
+\begin{equation}
+  \pd{\vecb{h}_t}{\vecb{h}_k} = \prod_{j=k+1}^{t} \jac_j = \prod_{j=k+1}^{t} \diag\big(\phi'(\vecb{a}_j)\big)\mat{W}_{hh}.
+  \label{eq:rnn:jacobian_prod}
+\end{equation}
+Summing contributions across all time steps yields the exact parameter gradients \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eqs.~10.22--10.28, PDF p.~401}:
+\begin{align}
+  \nabla_{\mat{W}_{oh}}\mathcal{L} &= \sum_{t=1}^{T} (\nabla_{\vecb{o}_t}\mathcal{L})\vecb{h}_t\T, &
+  \nabla_{\mat{W}_{hh}}\mathcal{L} &= \sum_{t=1}^{T} \diag\big(\phi'(\vecb{a}_t)\big)(\nabla_{\vecb{h}_t}\mathcal{L})\vecb{h}_{t-1}\T, \\
+  \nabla_{\mat{W}_{hx}}\mathcal{L} &= \sum_{t=1}^{T} \diag\big(\phi'(\vecb{a}_t)\big)(\nabla_{\vecb{h}_t}\mathcal{L})\vecb{x}_t\T, &
+  \nabla_{\vecb{b}_h}\mathcal{L} &= \sum_{t=1}^{T} \diag\big(\phi'(\vecb{a}_t)\big)\nabla_{\vecb{h}_t}\mathcal{L}.
+  \label{eq:rnn:param_grads}
+\end{align}
+Equivalently, writing $\vecb{h}_t = f(\vecb{x}_t, \vecb{h}_{t-1}, \vecb{w}_h)$ yields the recursive sensitivity \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~15.22, PDF p.~541}:
+\begin{equation}
+  \pd{\vecb{h}_t}{\vecb{w}_h} = \pd{f(\vecb{x}_t,\vecb{h}_{t-1},\vecb{w}_h)}{\vecb{w}_h} + \sum_{i=1}^{t-1} \left(\prod_{j=i+1}^t \pd{f(\vecb{x}_j,\vecb{h}_{j-1},\vecb{w}_h)}{\vecb{h}_{j-1}}\right)\pd{f(\vecb{x}_i,\vecb{h}_{i-1},\vecb{w}_h)}{\vecb{w}_h}.
+  \label{eq:rnn:bptt_murphy}
+\end{equation}
+\end{coremath}
+
+\subsection{Spectral Radius Analysis of Vanishing and Exploding Gradients}
+\label{sec:rnn:spectral}
+
+The Jacobian product \eqref{eq:rnn:jacobian_prod} governs whether long-range credit assignment succeeds or collapses exponentially with lag $\Delta = t - k$.
+
+\begin{coremath}[Spectral Radius \& Eigenvalue-Power Decay/Explosion]
+\label{eq:rnn:spectral_box}
+Consider first a linearized or constant-Jacobian regime where $\jac_j = \jac$ is independent of $j$ (e.g., $\phi(z)=z$ so $\jac = \mat{W}_{hh}$), and suppose $\mat{W}_{hh}$ admits an eigendecomposition $\mat{W}_{hh} = \mat{Q}\mat{\Lambda}\mat{Q}\inv$ with eigenvalues $\set{\lambda_m}_{m=1}^{d_h}$ and spectral radius $\rho(\mat{W}_{hh}) \coloneqq \max_m \abs{\lambda_m}$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.7--10.8, PDF pp.~417--420}. Over $\Delta = t - k$ steps,
+\begin{equation}
+  \jac^{\Delta} = \mat{Q}\mat{\Lambda}^{\Delta}\mat{Q}\inv.
+  \label{eq:rnn:eig_power}
+\end{equation}
+If a gradient perturbation $\delta \vecb{v}$ lies along a unit eigenvector $\vecb{v}$ with eigenvalue $\lambda$, backpropagating $\Delta$ steps scales the perturbation to $\delta \jac^{\Delta}\vecb{v} = \delta \lambda^{\Delta}\vecb{v}$, whose norm is $\delta\abs{\lambda}^{\Delta}$:
+\begin{itemize}
+  \item \textbf{Vanishing ($\abs{\lambda} < 1$):} $\abs{\lambda}^{\Delta} \to 0$ exponentially in $\Delta$; long-term gradient components are drowned out by short-term components.
+  \item \textbf{Exploding ($\abs{\lambda} > 1$):} $\abs{\lambda}^{\Delta} \to \infty$ exponentially in $\Delta$; parameter updates encounter steep ``cliff'' walls in the loss surface \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.11.1, PDF p.~429}.
+\end{itemize}
+In the general nonlinear case $\jac_j = \diag(\phi'(\vecb{a}_j))\mat{W}_{hh}$, let $\gamma \coloneqq \sup_z \abs{\phi'(z)}$ ($\gamma = 1$ for $\tanh$, $\gamma = 1/4$ for logistic $\sigma$) and let $\sigma_{\max}(\mat{W}_{hh}) = \norm{\mat{W}_{hh}}_2$ be the largest singular value of $\mat{W}_{hh}$. By submultiplicativity of the spectral norm,
+\begin{equation}
+  \norm[\bigg]{\pd{\vecb{h}_t}{\vecb{h}_k}}_2
+  \le \prod_{j=k+1}^{t} \norm{\diag(\phi'(\vecb{a}_j))}_2 \norm{\mat{W}_{hh}}_2
+  \le \big(\gamma\,\sigma_{\max}(\mat{W}_{hh})\big)^{t-k}.
+  \label{eq:rnn:vanishing_bound}
+\end{equation}
+Thus $\sigma_{\max}(\mat{W}_{hh}) < 1/\gamma$ is a \emph{sufficient condition} for gradients to vanish exponentially for all input sequences \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.6, PDF p.~541}. Conversely, $\rho(\jac) > 1$ along active non-saturated modes is necessary for gradient explosion.
+\end{coremath}
+
+\begin{intuition}[Why Vanilla RNNs Cannot Simultaneously Store and Compute]
+\sloppy
+In an Elman RNN, the single vector $\vecb{h}_t$ and weight matrix $\mat{W}_{hh}$ must perform two conflicting roles at every step: (1) execute local nonlinear feature extraction for the current prediction $\vecb{o}_t$, and (2) preserve distant context across dozens or hundreds of intervening tokens \bookcite{speech_language_processing_aug26}{Sec.~14.5, PDF p.~315}. When $\mat{W}_{hh}$ is contractive ($\rho < 1$), finite-precision states exponentially forget past inputs; when $\rho > 1$ to retain memory, slight perturbations trigger chaotic oscillations or gradient cliffs \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.8, PDF p.~420}.
+\end{intuition}
+
+\subsection{Constant Error Carousel (CEC) \& Gated Architectures: LSTM and GRU}
+\label{sec:rnn:lstm_gru}
+
+{\sloppy\emergencystretch=4em
+Rather than tuning $\mat{W}_{hh}$ to sit precariously on the $\rho = 1$ boundary, gated RNNs introduce \emph{additive} state highways with input-dependent, dynamically learned time constants (\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.10, PDF pp.~423--427}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.7, PDF p.~542}).\par}
+
+\begin{coremath}[LSTM Equations \& Constant Error Carousel Highway]
+\label{eq:rnn:lstm_box}
+The Long Short-Term Memory (LSTM) augments the hidden output $\vecb{h}_t \in \R^{d_h}$ with an explicit memory cell $\vecb{c}_t \in \R^{d_h}$ regulated by three sigmoidal gates ($\vecb{f}_t, \vecb{i}_t, \vecb{o}_t \in (0,1)^{d_h}$) and a candidate state $\tilde{\vecb{c}}_t \in (-1,1)^{d_h}$ \bookcite{speech_language_processing_aug26}{Eqs.~14.20--14.27, PDF p.~324}; \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~15.27--15.32, PDF pp.~543--544}:
+\begin{align}
+  \vecb{f}_t &= \sigma(\mat{W}_{fx}\vecb{x}_t + \mat{W}_{fh}\vecb{h}_{t-1} + \vecb{b}_f) && \text{(forget gate)}, \label{eq:rnn:lstm_f} \\
+  \vecb{i}_t &= \sigma(\mat{W}_{ix}\vecb{x}_t + \mat{W}_{ih}\vecb{h}_{t-1} + \vecb{b}_i) && \text{(input / add gate)}, \label{eq:rnn:lstm_i} \\
+  \vecb{o}_t &= \sigma(\mat{W}_{ox}\vecb{x}_t + \mat{W}_{oh}\vecb{h}_{t-1} + \vecb{b}_o) && \text{(output gate)}, \label{eq:rnn:lstm_o} \\
+  \tilde{\vecb{c}}_t &= \tanh(\mat{W}_{cx}\vecb{x}_t + \mat{W}_{ch}\vecb{h}_{t-1} + \vecb{b}_c) && \text{(candidate memory)}, \label{eq:rnn:lstm_cand} \\
+  \vecb{c}_t &= \vecb{f}_t \odot \vecb{c}_{t-1} + \vecb{i}_t \odot \tilde{\vecb{c}}_t && \text{(additive cell-state update)}, \label{eq:rnn:lstm_c} \\
+  \vecb{h}_t &= \vecb{o}_t \odot \tanh(\vecb{c}_t) && \text{(gated hidden output)}. \label{eq:rnn:lstm_h}
+\end{align}
+Differentiating $\vecb{c}_t$ with respect to $\vecb{c}_{t-1}$ along the direct cell-state highway (holding the gate activations fixed as functions of $\vecb{h}_{t-1}$) yields the diagonal Jacobian
+\begin{equation}
+  \left.\pd{\vecb{c}_t}{\vecb{c}_{t-1}}\right|_{\text{direct}} = \diag(\vecb{f}_t)
+  \implies
+  \left.\pd{\vecb{c}_t}{\vecb{c}_k}\right|_{\text{direct}} = \diag\!\left(\prod_{j=k+1}^{t} \vecb{f}_j\right).
+  \label{eq:rnn:lstm_cec}
+\end{equation}
+This additive self-loop forms the \emph{Constant Error Carousel (CEC)}: whenever the forget gate remains open ($f_{j,m} \approx 1$, $i_{j,m} \approx 0$), error gradients propagate backward across $t-k$ steps with near-unit gain and \emph{zero} repeated multiplication by $\mat{W}_{hh}$ or $\tanh'(\cdot)$.
+\end{coremath}
+
+The \textbf{Gated Recurrent Unit (GRU)} simplifies the LSTM by merging the cell state and hidden state ($\vecb{h}_t$ only) and coupling the forget and input decisions into a single update gate $\vecb{z}_t$ alongside a reset gate $\vecb{r}_t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.10.2, PDF p.~427}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.7.1, PDF p.~543}:
+\begin{align}
+  \vecb{r}_t &= \sigma(\mat{W}_{rx}\vecb{x}_t + \mat{W}_{rh}\vecb{h}_{t-1} + \vecb{b}_r), \qquad
+  \vecb{z}_t = \sigma(\mat{W}_{zx}\vecb{x}_t + \mat{W}_{zh}\vecb{h}_{t-1} + \vecb{b}_z), \label{eq:rnn:gru_gates} \\
+  \tilde{\vecb{h}}_t &= \tanh\big(\mat{W}_{hx}\vecb{x}_t + \mat{W}_{hh}(\vecb{r}_t \odot \vecb{h}_{t-1}) + \vecb{b}_h\big), \label{eq:rnn:gru_cand} \\
+  \vecb{h}_t &= \vecb{z}_t \odot \vecb{h}_{t-1} + (\ones - \vecb{z}_t) \odot \tilde{\vecb{h}}_t. \label{eq:rnn:gru_state}
+\end{align}
+When $z_{t,m} \to 1$, dimension $m$ copies $h_{t-1,m}$ unchanged; when $r_{t,m} \to 0$, the candidate state ignores past hidden activity and behaves like a feedforward layer on $\vecb{x}_t$.
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:rnn:algorithms}
+
+{\sloppy\emergencystretch=4em
+Full BPTT over a sequence of length $T$ requires $O(T)$ sequential steps and $O(T d_h)$ memory to cache intermediate activations, making long sequences ($T \gg 10^3$) prohibitive (\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.2, PDF p.~396}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.5, PDF p.~541}). In practice, training combines \emph{Truncated BPTT (TBPTT)} over contiguous chunks of length $K$ (with hidden-state carryover) and \emph{global $L_2$-norm gradient clipping} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.11.1, PDF pp.~429--430} to prevent gradient cliffs.\par}
+
+\begin{algorithm}[htbp]
+\caption{Truncated BPTT with Hidden-State Carryover and Norm Gradient Clipping}
+\label{alg:rnn:tbptt_clip}
+\KwIn{Ordered sequence $(\vecb{x}_{1:T}, \vecb{y}_{1:T})$, chunk length $K$, clipping threshold $\nu > 0$, learning rate $\eta$, initial parameters $\theta$}
+\KwOut{Updated parameters $\theta$}
+Initialize recurrent state $\vecb{h}_0 \leftarrow \zeros$ (and $\vecb{c}_0 \leftarrow \zeros$ for LSTM)\;
+\For{$s = 1, K+1, 2K+1, \dots \le T$}{
+  $e \leftarrow \min(s + K - 1, T)$\;
+  Detach $\vecb{h}_{s-1}$ (and $\vecb{c}_{s-1}$) from prior computation graph to bound BPTT horizon to $K$\;
+  \For{$t = s$ \KwTo $e$}{
+    Compute $(\vecb{h}_t, \vecb{o}_t)$ via forward cell equations \eqref{eq:rnn:elman_pre}--\eqref{eq:rnn:elman_out} or \eqref{eq:rnn:lstm_f}--\eqref{eq:rnn:lstm_h}\;
+  }
+  $\mathcal{L}_{\text{chunk}} \leftarrow \frac{1}{e - s + 1} \sum_{t=s}^{e} \ell(\vecb{y}_t, \vecb{o}_t)$\;
+  Compute $\vecb{g} \leftarrow \nabla_{\theta} \mathcal{L}_{\text{chunk}}$ via reverse-mode BPTT from $t=e$ down to $t=s$\;
+  \If{$\norm{\vecb{g}}_2 > \nu$}{
+    $\vecb{g} \leftarrow \frac{\nu}{\norm{\vecb{g}}_2}\,\vecb{g}$ \tcp*{Rescale step norm while preserving descent direction}
+  }
+  $\theta \leftarrow \theta - \eta\,\vecb{g}$\;
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Complexity and gradient-flow comparison across recurrent architectures (input dim $d_x$, hidden dim $d_h$, chunk/sequence length $K \le T$).}
+\label{tab:rnn:complexity}
+\begin{tabularx}{\textwidth}{@{}lccc>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Architecture} & \textbf{Recurrent Params} & \textbf{Time / Step} & \textbf{BPTT Mem.} & \textbf{Long-Range Mechanism} \\
+\midrule
+Elman SRN & $d_h(d_x + d_h + 1)$ & $O(d_h(d_x + d_h))$ & $O(K d_h)$ & None ($\jac_t$ product decays/explodes) \\
+LSTM (4 gates) & $4 d_h(d_x + d_h + 1)$ & $O(4 d_h(d_x + d_h))$ & $O(K d_h)$ & Additive cell $\vecb{c}_t$ (CEC, $\prod \vecb{f}_t$) \\
+GRU (3 gates) & $3 d_h(d_x + d_h + 1)$ & $O(3 d_h(d_x + d_h))$ & $O(K d_h)$ & Convex interpolation $\vecb{z}_t \odot \vecb{h}_{t-1}$ \\
+Echo State Net & $d_y d_h$ trainable & $O(d_h^2)$ & $O(1)$ & Fixed $\mat{W}_{hh}$ with $\rho(\mat{W}_{hh}) \approx 1$ \\
+Bidirectional RNN & $2\times$ base cell & $2\times$ base cell & $O(2 T d_h)$ & Forward + backward states (non-causal) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Alternative Remedies for Long-Range Dependencies]
+The three source texts highlight complementary strategies beyond LSTM/GRU gating:
+\begin{itemize}
+  \item \textbf{Reservoir Computing (ESNs):} Fix random $\mat{W}_{hx}, \mat{W}_{hh}$ near the edge of stability ($\rho \approx 1$) and train only linear readout $\mat{W}_{oh}$ via convex regression \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.8, PDF pp.~419--420}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.6, PDF p.~541}.
+  \item \textbf{Multi-Scale Leaky Units \& Skip Connections:} Linear self-connections $\mu_t = \alpha \mu_{t-1} + (1-\alpha)v_t$ or $d$-step skip edges reduce effective path length from $T$ to $T/d$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.9, PDF pp.~421--423}.
+  \item \textbf{Information-Flow Regularization:} Pascanu et al.\ penalize $\Omega = \sum_t \big(\norm{\jac_t\T \nabla_{\vecb{h}_t}\mathcal{L}}_2 / \norm{\nabla_{\vecb{h}_t}\mathcal{L}}_2 - 1\big)^2$ alongside gradient clipping \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.11.2, PDF pp.~430--431}.
+  \item \textbf{Stacked \& Bidirectional Architectures:} Deepening RNNs vertically or running dual forward/backward chains captures both left and right context in non-causal tasks \bookcite{speech_language_processing_aug26}{Sec.~14.4, PDF pp.~320--323}; \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.3, PDF p.~409}.
+\end{itemize}
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:rnn:visuals}
+
+Figure~\ref{fig:rnn:lstm_gates_tikz} isolates the additive Constant Error Carousel highway inside an LSTM cell, while Figure~\ref{fig:rnn:eigenvalue_decay} quantifies the exponential divergence of $\abs{\lambda}^T$ predicted by \eqref{eq:rnn:eig_power}. Figures~\ref{fig:rnn:lstm_murphy} and~\ref{fig:rnn:gru_murphy} show the corresponding textbook computation graphs for LSTM and GRU cells.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.85cm and 1.15cm,
+  >=Stealth,
+  gate/.style={monoTealBox, minimum width=1.45cm, minimum height=0.70cm, font=\scriptsize\bfseries},
+  cand/.style={monoIndigoBox, minimum width=1.45cm, minimum height=0.70cm, font=\scriptsize\bfseries},
+  op/.style={circle, draw=monographNavy, fill=monographNavyBg, thick, minimum size=0.62cm, inner sep=0pt, font=\small\bfseries},
+  fn/.style={monoBox, minimum width=0.95cm, minimum height=0.50cm, font=\scriptsize\bfseries},
+  state/.style={monoBox, minimum width=1.05cm, minimum height=0.60cm, font=\small}
+]
+  % Top Constant Error Carousel Highway
+  \node[state] (cm1) {$\vecb{c}_{t-1}$};
+  \node[op, right=1.1cm of cm1] (mul_f) {$\odot$};
+  \node[op, right=3.3cm of mul_f] (add_c) {$+$};
+  \node[state, right=2.0cm of add_c] (ct) {$\vecb{c}_t$};
+
+  \draw[monoArrow, monographNavy, very thick] (cm1) -- (mul_f);
+  \draw[monoArrow, monographNavy, very thick] (mul_f) -- node[above=4pt, font=\scriptsize\color{monographNavy}] {CEC Highway ($\vecb{f}_t \odot \vecb{c}_{t-1}$)} (add_c);
+  \draw[monoArrow, monographNavy, very thick] (add_c) -- (ct);
+
+  % Gates row
+  \node[gate, below=1.45cm of mul_f] (fgate) {$\vecb{f}_t = \sigma(\cdot)$};
+  \node[gate, right=0.55cm of fgate] (igate) {$\vecb{i}_t = \sigma(\cdot)$};
+  \node[cand, right=0.55cm of igate] (cgate) {$\tilde{\vecb{c}}_t = \tanh(\cdot)$};
+  \node[gate, right=0.55cm of cgate] (ogate) {$\vecb{o}_t = \sigma(\cdot)$};
+
+  % Input multiply node between i and c
+  \node[op] (mul_i) at ($(igate.north)!0.5!(cgate.north) + (0,0.65cm)$) {$\odot$};
+  \draw[monoArrow] (fgate.north) -- (mul_f.south);
+  \draw[monoArrow] (igate.north) |- (mul_i.west);
+  \draw[monoArrow] (cgate.north) |- (mul_i.east);
+  \draw[monoArrow] (mul_i.north) |- (add_c.south);
+
+  % Output branch (cleanly routed without crossing)
+  \node[fn, below=0.65cm of ct, xshift=-0.75cm] (tanh_c) {$\tanh$};
+  \node[op, right=1.05cm of ogate, yshift=0.35cm] (mul_o) {$\odot$};
+  \node[state, right=0.75cm of mul_o] (ht) {$\vecb{h}_t$};
+
+  \coordinate (ctap) at ($(add_c.east)!0.45!(ct.west)$);
+  \draw[monoArrow] (ctap) |- (tanh_c.west);
+  \draw[monoArrow] (tanh_c.south) -- (mul_o.north);
+  \draw[monoArrow] (ogate.east) -| (mul_o.south);
+  \draw[monoArrow] (mul_o.east) -- (ht.west);
+
+  % Bottom input bus
+  \node[state, below=0.85cm of fgate, xshift=-1.25cm] (htm1) {$\vecb{h}_{t-1}$};
+  \node[state, below=0.85cm of igate] (xt) {$\vecb{x}_t$};
+  \coordinate (bus) at ($(fgate.south) + (0,-0.40cm)$);
+  \draw[monoArrow] (htm1.east) -| (fgate.south);
+  \draw[monoArrow] (xt.north) -- (igate.south);
+  \draw[monoArrow] (xt.north) |- (bus) -| (fgate.south);
+  \draw[monoArrow] (xt.north) |- (bus) -| (cgate.south);
+  \draw[monoArrow] (xt.north) |- (bus) -| (ogate.south);
+\end{tikzpicture}
+\caption{LSTM cell architecture highlighting the additive Constant Error Carousel (CEC) highway $\vecb{c}_t = \vecb{f}_t \odot \vecb{c}_{t-1} + \vecb{i}_t \odot \tilde{\vecb{c}}_t$ and gated output $\vecb{h}_t = \vecb{o}_t \odot \tanh(\vecb{c}_t)$.}
+\label{fig:rnn:lstm_gates_tikz}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.86\textwidth,
+  height=0.40\textwidth,
+  ymode=log,
+  xmin=0, xmax=50,
+  ymin=1e-4, ymax=1e4,
+  xlabel={Sequence Lag $T = t - k$},
+  ylabel={Gradient Gain $\abs{\lambda}^T$ (log scale)},
+  grid=both,
+  grid style={monographRule!40},
+  legend pos=south west,
+  legend style={font=\scriptsize, fill=white, fill opacity=0.9, draw=monographRule},
+  thick
+]
+  \addplot[monographCrimson, domain=0:50, samples=51, very thick] {1.15^x};
+  \addlegendentry{$\abs{\lambda} = 1.15$ (Exploding)}
+  \addplot[monographCrimson, dashed, domain=0:50, samples=51, thick] {1.05^x};
+  \addlegendentry{$\abs{\lambda} = 1.05$ (Mildly Exploding)}
+  \addplot[monographTeal, domain=0:50, samples=51, ultra thick] {1.0^x};
+  \addlegendentry{$\abs{\lambda} = 1.00$ (CEC Highway)}
+  \addplot[monographIndigo, dashed, domain=0:50, samples=51, thick] {0.95^x};
+  \addlegendentry{$\abs{\lambda} = 0.95$ (Mildly Vanishing)}
+  \addplot[monographNavy, domain=0:50, samples=51, very thick] {0.85^x};
+  \addlegendentry{$\abs{\lambda} = 0.85$ (Vanishing)}
+\end{axis}
+\end{tikzpicture}
+\caption{Exponential scaling of Jacobian eigenvalue power $\abs{\lambda}^T$ across sequence lag $T$. Only $\abs{\lambda} \approx 1$ (e.g., an open LSTM forget gate $f_t \approx 1$) preserves gradient magnitude over long horizons.}
+\label{fig:rnn:eigenvalue_decay}
+\end{figure}
+
+\monographfig[0.74\textwidth]{probabilisticml_kevinmurphy_introduction_p544_fig1.png}{LSTM cell computation graph showing the forget gate $\mat{F}_t$, input gate $\mat{I}_t$, candidate memory $\tilde{\mat{C}}_t$, output gate $\mat{O}_t$, and horizontal memory highway $\mat{C}_{t-1} \to \mat{C}_t$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~15.11, PDF p.~544}.}{fig:rnn:lstm_murphy}
+
+\monographfig[0.74\textwidth]{probabilisticml_kevinmurphy_introduction_p542_fig1.png}{GRU cell computation graph showing the reset gate $\mat{R}_t$, update gate $\mat{Z}_t$, candidate state $\tilde{\mat{H}}_t$, and convex interpolation $\mat{H}_t = \mat{Z}_t \odot \mat{H}_{t-1} + (\ones - \mat{Z}_t) \odot \tilde{\mat{H}}_t$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~15.10, PDF p.~542}.}{fig:rnn:gru_murphy}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:rnn:pitfalls}
+
+\begin{pitfall}[Zero-Initialized Forget-Gate Bias ($\vecb{b}_f = \zeros$)]
+Initializing LSTM forget-gate biases to $\vecb{b}_f = \zeros$ yields $f_t \approx \sigma(0) = 0.5$ early in training, causing the CEC product $\prod_{j=1}^{20} f_j \approx 0.5^{20} \approx 9.5 \times 10^{-7}$ to vanish before learning begins \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.7.2, PDF p.~544}. \textbf{Remedy:} Initialize $\vecb{b}_f = \ones$ (or $1.0$--$2.0$) so $f_t \approx 0.73$--$0.88$ by default \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.10.2, PDF p.~427}.
+\end{pitfall}
+
+\begin{pitfall}[Exposure Bias Under Strict Teacher Forcing]
+Training autoregressive RNNs with teacher forcing feeds ground-truth $\vecb{y}_{t-1}$ at step $t$, whereas open-loop inference feeds the model's own sample $\hat{\vecb{y}}_{t-1}$. Errors compound rapidly when the model encounters self-generated states outside the training manifold \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.2.1, PDF p.~399}. \textbf{Remedy:} Apply \emph{scheduled sampling} to anneal from ground-truth inputs to model-generated inputs \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.4, PDF p.~540}.
+\end{pitfall}
+
+\begin{pitfall}[Gradient Clipping Bias \& TBPTT Horizon Blindness]
+Per-minibatch norm clipping ($\vecb{g} \leftarrow \frac{\nu}{\norm{\vecb{g}}_2}\vecb{g}$) introduces a heuristic bias relative to true-gradient clipping because minibatches with large norms are down-weighted \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~10.11.1, PDF p.~430}. Furthermore, TBPTT($K$) cannot propagate credit beyond $K$ steps, and carrying $\vecb{h}_{s-1}$ across non-contiguous or shuffled batches injects corrupted context \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~15.2.5, PDF p.~541}. \textbf{Remedy:} Reset $\vecb{h}_0 = \zeros$ at every sequence boundary and match $K$ to the longest required dependency span.
+\end{pitfall}
+
+\end{document}

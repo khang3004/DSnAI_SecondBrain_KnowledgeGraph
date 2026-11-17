@@ -1,0 +1,222 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{CNNs, GNNs, RNNs \& State-Space Models}{Graph Neural Networks, Message Passing, GCN, GAT, GraphSAGE \& 1-WL}
+  {Aggregate $\cdot$ Transform $\cdot$ Update on $G=(\mathcal V,\mathcal E)$ with built-in permutation equivariance}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{GNN \& MPNN\\ \footnotesize\mdseries Equivariance $\cdot$ Message Passing $\cdot$ 1-WL}{%
+  \begin{tikzpicture}[scale=0.56, every node/.style={font=\scriptsize}]
+    \node[circle, draw=csDom, fill=csDom!15, thick, inner sep=2pt] (c) at (0,0) {$\vecb h_i$};
+    \foreach \ang/\lbl/\col in {45/1/csA, 155/2/csB, 235/3/csE, 325/4/csD}{
+      \node[circle, draw=\col, fill=\col!12, thick, inner sep=1.4pt] (n\lbl) at (\ang:1.45) {$\vecb h_{\lbl}$};
+      \draw[-{Stealth[length=4pt]}, \col, very thick] (n\lbl) -- (c);
+    }
+    \draw[dashed, gray!70] (n1) -- (n2) (n2) -- (n3) (n4) -- (n1);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ permutation symmetry \& MPNN}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\vecb m_i^{(\ell+1)} = \bigoplus_{j\in\mathcal N(i)} \psi_{\mathrm{msg}}\!\bigl(\vecb h_i^{(\ell)},\vecb h_j^{(\ell)},\vecb e_{ij}\bigr)}
+    \begin{csbul}
+      \item \textbf{Update:} $\vecb h_i^{(\ell+1)} = \psi_{\mathrm{upd}}\bigl(\vecb h_i^{(\ell)},\vecb m_i^{(\ell+1)}\bigr)$
+      \item \textbf{Equivariant} (nodes): $\mat F(\mat P\mat X,\mat P\mat A\mat P\T)=\mat P\mat F(\mat X,\mat A)$
+      \item \textbf{Invariant} (graph): $f(\mat P\mat X,\mat P\mat A\mat P\T)=f(\mat X,\mat A)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \node[draw=csA, rounded corners=2pt, fill=csA!10, inner sep=2pt] (n) at (0,1.6) {$\{\!\!\{\vecb h_j\}\!\!\}$};
+      \node[draw=csDom, circle, fill=csDom!12, inner sep=1.5pt] (op) at (0,0.3) {$\bigoplus$};
+      \node[draw=csB, rounded corners=2pt, fill=csB!12, inner sep=2pt] (up) at (0,-1.0) {$\vecb h_i^{(\ell+1)}$};
+      \draw[-{Stealth}, thick, csA] (n) -- (op);
+      \draw[-{Stealth}, thick, csDom] (op) -- (up);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; SPECTRAL TO SPATIAL $-$ GCN, GAT, SAGE}{%
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.95cm}>{\raggedright\arraybackslash}p{3.55cm}>{\raggedright\arraybackslash}p{2.35cm}@{}}
+    \textbf{\textcolor{csB}{Model}} & \textbf{\textcolor{csB}{Layer Update}} & \textbf{\textcolor{csB}{Weight $\gamma_{ij}$}}\\ \hline
+    GCN & $\sigma(\hat{\mat A}\mat H^{(\ell)}\mat W^{(\ell)})$ & $(\tilde d_i \tilde d_j)^{-1/2}$\\
+    GAT & $\sigma\bigl(\sum_j \alpha_{ij}\mat W\vecb h_j^{(\ell)}\bigr)$ & $\softmax_j(e_{ij}^{(\ell)})$\\
+    SAGE & $\sigma(\mat W_1\vecb h_i + \mat W_2\,\mathrm{AGG}_{\mathcal N_S})$ & fanout $q_\ell$\\
+    GIN & $\mathrm{MLP}\bigl((1{+}\epsilon)\vecb h_i + \sum_j \vecb h_j\bigr)$ & sum ($\gamma_{ij}{=}1$)\\
+  \end{tabular}\par\vspace{2pt}
+  \scriptsize \textbf{Kipf trick:} $\tilde{\mat A}=\mat A+\eye_N,\; \hat{\mat A}=\tilde{\mat D}^{-1/2}\tilde{\mat A}\tilde{\mat D}^{-1/2}$ attenuates hubs ($\tilde d_j\gg 1$).}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ 1-WL expressivity \& GIN}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\vecb h_i^{(\ell+1)} = \mathrm{MLP}^{(\ell)}\!\Bigl((1+\epsilon)\vecb h_i^{(\ell)} + \sum_{j\in\mathcal N(i)}\vecb h_j^{(\ell)}\Bigr)}
+    \begin{csbul}
+      \item Every MPNN is bounded by \textbf{1-WL color refinement}
+      \item Exact 1-WL $\iff$ multiset $\bigoplus$ is \textbf{injective}
+      \item \textbf{Sum $>$ Mean $>$ Max}: mean loses count; max loses multiplicity
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.36, every node/.style={font=\tiny}]
+      \foreach \a in {0,60,...,300} \fill[csC] (\a:1.0) circle (3.5pt);
+      \draw[csC, thick] (0:1)--(60:1)--(120:1)--(180:1)--(240:1)--(300:1)--cycle;
+      \node at (0,-1.55) {$C_6$};
+      \begin{scope}[xshift=3.2cm]
+        \draw[csA, thick] (0,1.0)--(-0.85,0.1)--(0.85,0.1)--cycle;
+        \draw[csA, thick] (0,-0.1)--(-0.85,-1.0)--(0.85,-1.0)--cycle;
+        \foreach \p in {(0,1.0),(-0.85,0.1),(0.85,0.1),(0,-0.1),(-0.85,-1.0),(0.85,-1.0)} \fill[csA] \p circle (3.5pt);
+        \node at (0,-1.55) {$2\times C_3$};
+      \end{scope}
+      \node[font=\tiny\bfseries, csDom] at (1.6,1.55) {1-WL tie!};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Fourier, Chebyshev \& attention}{%
+  \begin{csbul}
+    \item \textbf{Graph Laplacian:} $\mat L=\mat D-\mat A$, $\mat L_{\mathrm{sym}}=\eye_N-\mat D^{-1/2}\mat A\mat D^{-1/2}=\mat U\mat\Lambda\mat U\T$
+    \item \textbf{Dirichlet energy:} $\vecb x\T\mat L\vecb x = \frac{1}{2}\sum_{i,j}A_{ij}(x_i-x_j)^2 \ge 0$ (smoothness)
+    \item \textbf{ChebNet ($K=1$):} $\sum_{k=0}^K \theta_k T_k(\tilde{\mat L})\vecb x \;\Rightarrow\;$ 1-hop spatial GCN
+    \item \textbf{Transformer = GAT} on a complete graph ($\mathcal N(i)=\mathcal V$) + positional encodings
+    \item \textbf{CNN = GNN} on a regular 2D grid with directional edge types
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ full-graph vs mini-batch sampling}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{2.25cm}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{1.15cm}@{}}
+    \textbf{\textcolor{csE}{Family}} & \textbf{\textcolor{csE}{Time / Layer}} & \textbf{\textcolor{csE}{Memory}} & \textbf{\textcolor{csE}{Induct.}}\\ \hline
+    Spectral CNN & $O(N^3+N^2d)$ & $O(N^2+LNd)$ & No\\
+    GCN / GIN & $O(Md+Nd^2)$ & $O(LNd+M)$ & Yes\\
+    GAT ($H$ heads) & $O(H(Md+Nd^2))$ & $O(L(Nd+HM))$ & Yes\\
+    GraphSAGE & $O(Bq^Ld^2)$ & $O(Bq^Ld)$ & Yes\\
+  \end{tabular}\par\vspace{2pt}
+  \scriptsize $N=|\mathcal V|,\; M=|\mathcal E|,\; B=$ batch size, $q=$ neighbor sample fanout.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ transductive, inductive \& latent $G$}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Node-level:} citation/fraud (GCN, SAGE)
+      \item \textbf{Edge-level:} link prediction $\vecb h_i\T\vecb h_j$, recsys
+      \item \textbf{Graph-level:} molecules, proteins (GIN)
+      \item \textbf{Latent $\mat A$:} graphical lasso / causal DAGs
+      \item \textbf{Hyperbolic GCN:} tree hierarchies
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \node[circle, fill=csF, inner sep=2pt] (v0) at (0,0) {};
+      \foreach \a in {30,150,270}{
+        \node[circle, fill=csF!65, inner sep=1.6pt] (v\a) at (\a:1.0) {};
+        \draw[csF, thick] (v0)--(v\a);
+        \foreach \da in {-25,25}{
+          \node[circle, fill=csF!35, inner sep=1.2pt] (u\a\da) at (\a+\da:1.95) {};
+          \draw[csF!60, thin] (v\a)--(u\a\da);
+        }
+      }
+      \node at (0,-2.45) {$L$-hop fanout $q^L$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Gather Neighbors $\cdot$ Aggregate Invariantly $\cdot$ Update Self} \\[1pt]
+  \footnotesize\mdseries \textbf{Sum for structure (GIN), Mean for distribution (GCN), Attention for relevance (GAT).}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Over-smoothing:} $\hat{\mat A}^L\to\ker(\tilde{\mat L}_{\mathrm{sym}})$ $\Rightarrow$ add skips / PairNorm
+    \item \textbf{Over-squashing:} $O(\bar d^L)$ nodes crushed into $\R^d$ at bridges
+    \item \textbf{1-WL ceiling:} MPNNs cannot distinguish $C_6$ vs $2{\times}C_3$
+    \item \textbf{Neighbor blowup:} $O(B\bar d^L)$ mem $\Rightarrow$ sample fanout $q_\ell$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Graph Neural Networks, Message Passing \& Graph Convolutional Architectures}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Symmetric Normalized Laplacian:\csfm{\mat L_{\mathrm{sym}}=\eye_N-\mat D^{-1/2}\mat A\mat D^{-1/2},\quad \lambda_i\in[0,2]}
+    \item Kipf--Welling GCN ($\tilde{\mat A}=\mat A+\eye_N$):\csfm{\mat H^{(\ell+1)}=\sigma\!\bigl(\tilde{\mat D}^{-1/2}\tilde{\mat A}\tilde{\mat D}^{-1/2}\mat H^{(\ell)}\mat W^{(\ell)}\bigr)}
+    \item GAT Anisotropic Attention ($j\in\mathcal N(i)\cup\{i\}$):\csfm{\alpha_{ij}^{(\ell)}=\softmax_j\!\Bigl(\mathrm{LeakyReLU}\bigl(\vecb a\T[\mat W\vecb h_i^{(\ell)}\|\mat W\vecb h_j^{(\ell)}]\bigr)\Bigr)}
+    \item GraphSAGE Inductive Update:\csfm{\vecb h_i^{(\ell+1)}=\sigma\!\Bigl(\mat W_1^{(\ell)}\vecb h_i^{(\ell)}+\mat W_2^{(\ell)}\mathrm{AGG}_{j\in\mathcal N_S(i)}\bigl(\vecb h_j^{(\ell)}\bigr)\Bigr)}
+    \item GIN (1-WL Optimal Injectivity):\csfm{\vecb h_i^{(\ell+1)}=\mathrm{MLP}^{(\ell)}\!\Bigl((1+\epsilon^{(\ell)})\vecb h_i^{(\ell)}+\sum_{j\in\mathcal N(i)}\vecb h_j^{(\ell)}\Bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{MINI-BATCH GRAPHSAGE RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Set target batch $\mathcal B^{(L)} \leftarrow \mathcal B \subseteq \mathcal V$
+    \item \textbf{Top-down sample} ($\ell=L\dots 1$): for $i\in\mathcal B^{(\ell)}$, draw $q_\ell$ neighbors $\mathcal N_S^{(\ell)}(i)$ without replacement; $\mathcal B^{(\ell-1)} \leftarrow \mathcal B^{(\ell)}\cup\mathcal N_S^{(\ell)}(i)$
+    \item Initialize $\vecb h_i^{(0)}\leftarrow\vecb x_i$ for all $i\in\mathcal B^{(0)}$
+    \item \textbf{Bottom-up pass} ($\ell=0\dots L-1$): aggregate $\vecb m_i^{(\ell+1)}$ over $\mathcal N_S^{(\ell+1)}(i)$, apply $\sigma(\mat W_1\vecb h_i+\mat W_2\vecb m_i)$, and $\ell_2$-normalize $\vecb h_i^{(\ell+1)}$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    small homophilic graph & Kipf--Welling GCN ($L=2$--$3$)\\
+    noisy / heterophilic edges & GAT (multi-head attention $\alpha_{ij}$)\\
+    giant graph ($N>10^6$) & GraphSAGE ($q_1{=}25, q_2{=}10$) or Cluster-GCN\\
+    molecular / isomorphism task & GIN (Sum + MLP, exact 1-WL)\\
+    cycles / regular graphs & MPNN + Laplacian PE or $k$-WL\\
+    deep GNN ($L\ge 8$) & Residual skips + PairNorm / DropEdge\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{EXPRESSIVITY \& SPECTRAL BOUNDS}
+  \begin{csbul}
+    \item \textbf{Aggregator rank:} $\mathrm{Sum}$ (all multisets) $\succ \mathrm{Mean}$ (proportions) $\succ \mathrm{Max}$ (set support)
+    \item \textbf{Dirichlet decay:} $E(\mat H^{(\ell)})\le (1-\lambda_2)^2 s_{\max}^2 E(\mat H^{(\ell-1)})$
+    \item \textbf{Sampled footprint:} $O(B\prod_{\ell=1}^L q_\ell)$ vs full-batch $O(N)$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{OVER-SMOOTHING: DIRICHLET ENERGY DECAY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=1, xmax=16, ymin=1e-4, ymax=1.2,
+      ymode=log, xlabel={Depth $L$ (Layers)}, ylabel={$E(\mat H^{(L)})/E(\mat H^{(0)})$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,4,8,12,16}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.03)}, anchor=south west, font=\tiny, draw=gray!40, fill=white, fill opacity=0.85}]
+      \addplot[csA, very thick, mark=*, mark size=1.2pt] coordinates {(1,0.58)(4,0.113)(8,0.0128)(12,0.00145)(16,0.00016)};
+      \addlegendentry{Vanilla GCN}
+      \addplot[csE, thick, dashed, mark=triangle*, mark size=1.3pt] coordinates {(1,0.74)(4,0.30)(8,0.09)(12,0.027)(16,0.0081)};
+      \addlegendentry{+ DropEdge}
+      \addplot[csD, very thick, mark=diamond*, mark size=1.4pt] coordinates {(1,0.82)(4,0.60)(8,0.495)(12,0.468)(16,0.460)};
+      \addlegendentry{ResGCN (skips)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing self-loops ($\mat A$ vs $\tilde{\mat A}$):} omitting $+\eye_N$ discards node $i$'s own features in 1-hop GCNs
+    \item \textbf{Unnormalized sum explosion:} $\tilde{\mat A}\mat H\mat W$ scales linearly with degree $d_i$; use $\tilde{\mat D}^{-1/2}\tilde{\mat A}\tilde{\mat D}^{-1/2}$ or MLP+BN (GIN)
+    \item \textbf{Stacking $>4$ vanilla GCN layers:} features collapse to $\vecb u_1 \propto \sqrt{\tilde d_i}$ ($\ker(\tilde{\mat L}_{\mathrm{sym}})$); always add residual connections $\vecb h^{(\ell+1)} = f(\cdot)+\vecb h^{(\ell)}$
+    \item \textbf{Tree/bridge bottlenecks (Over-squashing):} $\norm{\partial\vecb h_i^{(L)}/\partial\vecb x_j}$ decays exponentially with distance; add a virtual super-node or graph rewiring
+    \item \textbf{Data leakage in transductive splits:} test nodes $\mathcal V_{\mathrm{trans}}$ may pass messages during training, but their \emph{labels} must never enter the loss
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{A GNN layer is local message passing}: each node collects neighbor vectors, aggregates them with a \textbf{permutation-invariant} $\bigoplus$, and updates its state with shared weights ($\Rightarrow$ \textbf{permutation-equivariant} node embeddings). \textbf{GCN} uses fixed degree-normalized smoothing, \textbf{GAT} learns attention weights, \textbf{GraphSAGE} samples bounded fanouts for scale, and \textbf{GIN} uses injective sum+MLP to match the \textbf{1-WL isomorphism ceiling}.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

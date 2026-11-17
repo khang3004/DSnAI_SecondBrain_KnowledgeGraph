@@ -1,0 +1,206 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Policy Gradients, MBRL \& Alignment}{Dyna, MCTS, World Models, Offline RL \& Multi-Agent Reinforcement Learning}
+  {Simulate short branches or latent rollouts; regularize against out-of-distribution actions and opponent shift}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MBRL \& MARL\\ \footnotesize\mdseries MCTS $\cdot$ World Models $\cdot$ Offline}{%
+  \begin{tikzpicture}[scale=0.52]
+    \node[circle, draw=csDom, fill=csDom!15, inner sep=2pt, font=\scriptsize\bfseries] (s0) at (0,0.9) {$z_t$};
+    \node[circle, draw=csB, fill=csB!15, inner sep=1.5pt, font=\tiny] (s1) at (-1.2,-0.2) {$z_{t+1}^a$};
+    \node[circle, draw=csC, fill=csC!15, inner sep=1.5pt, font=\tiny] (s2) at (1.2,-0.2) {$z_{t+1}^b$};
+    \node[circle, draw=csE, fill=csE!15, inner sep=1.2pt, font=\tiny] (s3) at (0.6,-1.25) {$V_\theta$};
+    \node[circle, draw=csE, fill=csE!15, inner sep=1.2pt, font=\tiny] (s4) at (1.8,-1.25) {$V_\theta$};
+    \draw[-{Stealth}, thick, csB] (s0)--(s1) node[midway, above left=-1pt, font=\tiny] {$a_1$};
+    \draw[-{Stealth}, very thick, csC] (s0)--(s2) node[midway, above right=-1pt, font=\tiny] {PUCT};
+    \draw[-{Stealth}, thick, csE] (s2)--(s3);
+    \draw[-{Stealth}, thick, csE] (s2)--(s4);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; DYNA, MPC \& COMPOUNDING ERROR $-$ short branches}{%
+  \csfm{\abs{J_{\hat{\mathcal{M}}}(\pi)-J_{\mathcal{M}}(\pi)} \le \frac{2R_{\max}}{(1-\gamma)^2}\!\left[\epsilon_\pi+\frac{\gamma}{1-\gamma}\epsilon_m\right]}
+  \begin{minipage}[t]{0.61\linewidth}
+    \begin{csbul}
+      \item \textbf{Dyna-Q:} 1 real step $\to$ model $\hat{M}$ + $N$ planning steps
+      \item \textbf{MPC:} optimize $a_{t:t+H-1}$ on $\sum R + \hat{V}(s_{t+H})$, run $a^*_t$
+      \item \textbf{PETS:} ensemble $\{\Normal(\mu_b,\Sigma_b)\}$ splits aleatoric ($\Sigma_b$) \& epistemic ($\mu_b$)
+      \item \textbf{MBPO:} $k$-step branches from $\mathcal{D}$ cap error at $\mathcal{O}(k^2\epsilon_m)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.44, every node/.style={font=\tiny}]
+      \draw[very thick, csD] (0,0) .. controls (1.2,0.5) and (2.2,0.2) .. (3.4,0.6);
+      \node[csD, below] at (1.7,0.15) {Real $\mathcal{D}$};
+      \foreach \x/\y in {0.8/0.25, 1.9/0.35, 2.7/0.45}{
+        \fill[csD] (\x,\y) circle (2.5pt);
+        \draw[-{Stealth}, thick, csA, dashed] (\x,\y) -- (\x+0.55,\y+0.95);
+      }
+      \node[csA, align=center] at (1.8,1.8) {$k$-step MBPO\\branches};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; DECISION-TIME MCTS $-$ UCT, AlphaZero \& MuZero}{%
+  \csfm{a_t = \argmax_{a}\!\left[Q(s,a) + c_{\mathrm{puct}}\,P_\theta(a\mid s)\frac{\sqrt{N(s)}}{1+N(s,a)}\right]}
+  \begin{csbul}
+    \item \textbf{4 phases ($K$ sims):} Select (PUCT) $\to$ Expand $\to$ Evaluate ($V_\theta$) $\to$ Backup ($N,Q$)
+    \item \textbf{AlphaZero:} targets $\pi^{\mathrm{MCTS}}_s(a)\propto N(s,a)^{1/\tau}$ and $V^{\mathrm{MCTS}}_s$; no random rollouts
+    \item \textbf{MuZero:} latent $z_t=e_\phi(o_t)$, $(z_{t+1},\hat{r}_t)=M_w(z_t,a_t)$ matches value, policy \& reward \emph{without} pixel reconstruction (solves objective mismatch)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; LATENT WORLD MODELS (Dreamer) \& SUCCESSOR FEATURES}{%
+  \csfm{\mathcal{L}_{\mathrm{WM}} = \sum_{t=1}^T \Big(-\beta_o\E_q\big[\ln D(o_t\mid z_t,h_t)\big] + \beta_z\KL{E(z_t\mid h_t,o_t)}{P(\hat{z}_t\mid h_t)}\Big)}
+  \begin{csbul}
+    \item \textbf{Dreamer RSSM:} deterministic recurrent $h_t=U(h_{t-1},a_{t-1},z_{t-1})$ + stochastic $z_t$
+    \item \textbf{Latent imagination:} unroll $\hat{z}_t\sim P(\cdot\mid h_t)$ to train actor-critic on $\lambda$-returns $G_t^\lambda$
+    \item \textbf{Successor Features \& GPI:} $\vecb{\psi}^\pi(s,a)=\E_\pi[\sum_{t\ge 0}\gamma^t\vecb{\phi}(s_{t+1})]\implies Q^{\pi,\vecb{w}}=\vecb{\psi}^\pi(s,a)\T\vecb{w}$; fast transfer across tasks $\vecb{w}_{\mathrm{new}}$ via $a^*=\argmax_a\max_i\vecb{\psi}^{\pi_i}(s,a)\T\vecb{w}_{\mathrm{new}}$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; OFFLINE RL \& DUALDICE $-$ conquering OOD extrapolation}{%
+  \csfm{\mathcal{L}_{\mathrm{CQL}}(w)=\alpha\Big(\E_{s\sim\mathcal{D},a\sim\mu}[Q_w]-\E_{(s,a)\sim\mathcal{D}}[Q_w]+\mathcal{R}(\mu)\Big)+\tfrac{1}{2}\mathcal{E}(B,w)}
+  \begin{minipage}[t]{0.62\linewidth}
+    \begin{csbul}
+      \item \textbf{CQL:} pushes down OOD $Q_w(s,a)$ ($\log\sum_a\exp Q_w$) \& pushes up dataset $\mathcal{D}$
+      \item \textbf{AWR / AWAC:} $\pi_{k+1}(a\mid s)\propto\pi_b(a\mid s)\exp(Q^{\pi_k}/\alpha)$
+      \item \textbf{MOPO:} uncertainty-penalized $\tilde{R}(s,a)=R(s,a)-\lambda u(s,a)$
+      \item \textbf{DualDICE:} stationary $\zeta^*(s,a)=p_\pi^\infty/p_{\mathcal{D}}$ avoids horizon IS
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \fill[csD!20] (0.15,0) rectangle (2.45,1.85);
+      \node[csD!80!black] at (1.3,1.62) {Support $\mathcal{D}$};
+      \draw[csA, thick, dashed, samples=30, domain=0:3.0] plot (\x, {0.85+0.55*sin(\x*110)});
+      \draw[csD, very thick, samples=30, domain=0:3.0] plot (\x, {0.85+0.55*sin(\x*110) - 0.65*((\x-1.3)^2)});
+      \draw[-{Stealth}, thick, csA] (2.6,1.4)--(2.6,0.45) node[midway,right]{CQL};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; MULTI-AGENT RL (MARL) $-$ CTDE, QMIX, MAPPO \& MMDS}{%
+  \csfm{\argmax_{\vecb{a}} Q_{\mathrm{tot}}(\vecb{h}_t,c_t,\vecb{a}) = \big(\argmax_{a^1} Q_1(h_t^1,a^1),\dots,\argmax_{a^n} Q_n(h_t^n,a^n)\big)}
+  \begin{csbul}
+    \item \textbf{IGM via VDN vs.\ QMIX:} additive $\sum_i Q_i$ vs.\ monotonic hypernetwork $\frac{\partial f_{\mathrm{mix}}}{\partial Q_i}\ge 0$
+    \item \textbf{MAPPO:} centralized critic $V_i^\pi(\hat{h})$ with local actors $\pi_i(a_i\mid h_i;\theta_i)$
+    \item \textbf{Zero-Sum / Imperfect Info:} Magnetic Mirror Descent (MMDS) \& CFR converge to Nash Equilibrium $\pi^*$ instead of cycling
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; PARADIGM TRADE-OFFS $-$ when to plan or constrain}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\bfseries\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{1.3cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csF}{Paradigm}} & \textbf{\textcolor{csF}{Planning}} & \textbf{\textcolor{csF}{Samples}} & \textbf{\textcolor{csF}{Primary Bottleneck}}\\ \hline
+    Model-Free & None & $\mathcal{O}(10^7)$ & Interaction sample cost\\
+    Dyna / MBPO & $k$-step bg. & High & Compounding $\mathcal{O}(k^2\epsilon_m)$\\
+    MuZero / AZ & Tree ($K$ sims) & High & $\mathcal{O}(K\cdot d)$ search compute\\
+    Dreamer RSSM & Latent bg. & Very high & Pixel distractor / KL collapse\\
+    Offline (CQL) & Static $\mathcal{D}$ & $0$ online & OOD action overestimation\\
+    CTDE MARL & CTDE critic & Medium & Opponent $\pi_{-i}$ shift\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Branch Short in Dyna $\cdot$ Search Deep in MuZero $\cdot$ Penalize OOD in Offline RL} \\[2pt]
+  \footnotesize\mdseries \textbf{Learned models multiply sample efficiency, but must bound $\mathcal{O}(H^2\epsilon_m)$ drift and OOD extrapolation.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Deadly triad:} FA + bootstrapping + off-policy diverges (Baird)
+    \item \textbf{Long rollouts:} unrolling $\hat{M}$ to $H$ compounds error $\mathcal{O}(H^2\epsilon_m)$
+    \item \textbf{Return-conditioned optimism:} DT mistakes noise in $\mathcal{D}$ for skill
+    \item \textbf{Independent MARL:} SGA oscillates in 0-sum games without CFR
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Dyna, MCTS, World Models, Offline RL \& Multi-Agent Reinforcement Learning}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item AlphaZero / MuZero PUCT Selection:\csfm{a_t = \argmax_{a}\!\left[Q(s,a) + c_{\mathrm{puct}}\,P_\theta(a\mid s)\frac{\sqrt{N(s)}}{1+N(s,a)}\right]}
+    \item MuZero Value-Equivalent Loss:\csfm{\mathcal{L}_{\mathrm{MZ}} = (V^{\mathrm{MCTS}}{-}V_\theta)^2 - \bm{\pi}^{\mathrm{MCTS}}\cdot\log\bm{\pi}_\theta + (r_t{-}\hat{r}_t)^2}
+    \item Dreamer Imagination $\lambda$-Return:\csfm{G_t^\lambda = r_t + \gamma\big((1-\lambda)V(h_{t+1}) + \lambda G_{t+1}^\lambda\big)}
+    \item Conservative Q-Learning (CQL):\csfm{\mathcal{L}_{\mathrm{CQL}}(w) = \alpha\!\left(\E_{s\sim\mathcal{D}}\!\Big[\log\sum_a e^{Q_w(s,a)}\Big] - \E_{(s,a)\sim\mathcal{D}}[Q_w(s,a)]\right) + \frac{1}{2}\mathcal{E}(B,w)}
+    \item QMIX Monotonic Mixing \& MMDS:\csfm{\frac{\partial f_{\mathrm{mix}}}{\partial Q_i}\ge 0,\qquad \pi_{\mathrm{new}} = \argmax_{\pi'\in\Delta}\!\left[\inner{\pi'}{q} - \alpha\KL{\pi'}{\rho} - \frac{1}{\eta}\KL{\pi'}{\pi}\right]}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{UNIFIED MCTS + DYNA/MBPO LOOP}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Encode root:} $z_t \leftarrow e_\phi(o_t)$ (identity in AlphaZero).
+    \item \textbf{MCTS ($K$ sims):} traverse via PUCT and $(z',\hat{r})\leftarrow M_w(z,a)$; evaluate leaf $V_\theta(z_{\mathrm{leaf}})$; backup $u\leftarrow \hat{r}_j+\gamma u$ into $Q(z_j,a_j)$.
+    \item \textbf{Act \& Store:} sample $a_t\sim N(z_t,a)^{1/\tau}$, step env, append to $\mathcal{D}$.
+    \item \textbf{Background Dyna/MBPO:} sample real $o\sim\mathcal{D}$, unroll $k_{\mathrm{branch}}$ steps under $M_w$, update $(\theta,w,\phi)$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.15}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    discrete actions + search budget & MuZero / AlphaZero (PUCT tree search)\\
+    continuous control, costly env & MBPO ($k$-step rollouts + PETS ensemble)\\
+    high-dim pixel observations & Dreamer RSSM (latent imagination)\\
+    fixed dataset $\mathcal{D}$, no simulator & CQL, AWAC, or MOPO ($\tilde{R}=R-\lambda u$)\\
+    cooperative / competitive MARL & QMIX / MAPPO (coop) or MMDS (0-sum)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{ERROR \& EQUILIBRIUM CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Finite-Horizon Model Error:} $\mathcal{E}_{\mathrm{finite}}(H) = \mathcal{O}(H^2\epsilon_m)$
+    \item \textbf{GPI Guarantee:} $Q^{\pi_{\mathrm{GPI}}}(s,a) \ge \max_{i\in\{1\dots N\}} Q^{\pi_i}(s,a)$
+    \item \textbf{DualDICE Off-Policy Eval:} $J(\pi)=\frac{1}{1-\gamma}\E_{(s,a)\sim p_{\mathcal{D}}}[\zeta^*(s,a)R(s,a)]$
+    \item \textbf{Exploitability (2-Player Zero-Sum):} $\frac{1}{2}\big[\max_{\pi'_1}J(\pi'_1,\pi_2)-\min_{\pi'_2}J(\pi_1,\pi'_2)\big]$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{COMPOUNDING MODEL ERROR vs.\ HORIZON $H$ (MBPO sweet spot)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.6cm, xmin=1, xmax=22, ymin=0, ymax=1.05,
+      xlabel={Model Rollout Horizon $H$ (steps)}, ylabel={Normalized Return Error},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,6,10,15,20}, ytick={0,0.3,0.6,0.9}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csA, very thick, domain=1:22, samples=40] {0.002*x^2};
+      \addplot[csE, very thick, dashed, domain=1:22, samples=40] {0.55*exp(-0.24*x)+0.04};
+      \addplot[csDom, ultra thick, domain=1:22, samples=40] {0.002*x^2 + 0.55*exp(-0.24*x)+0.04};
+      \draw[csF, thick, dotted] (axis cs:5.8,0) -- (axis cs:5.8,0.245);
+      \fill[csF] (axis cs:5.8,0.245) circle (2pt);
+      \node[font=\scriptsize\bfseries, csF, anchor=south] at (axis cs:7.2,0.28) {Optimal $H^*\approx 6$};
+      \node[font=\tiny, csA, anchor=east] at (axis cs:15.2,0.72) {$\propto H^2\epsilon_m$ drift};
+      \node[font=\tiny, csE, anchor=west] at (axis cs:12.5,0.16) {bias decay $e^{-\alpha H}$};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Model exploitation:} policies quickly exploit deterministic model hallucinations; always use probabilistic ensembles (PETS) or truncate rollouts ($k\le 5$).
+    \item \textbf{Objective mismatch in pixel WMs:} reconstructing background clutter wastes capacity; use value-equivalent latent models (MuZero) or task-aware bottlenecks.
+    \item \textbf{Unconstrained offline $\max_{a'}Q(s',a')$:} queries OOD actions where $Q_w$ is wildly overestimated; add CQL's log-sum-exp penalty or AWAC's KL constraint.
+    \item \textbf{Trajectory IS products in OPE:} $\prod_{t=1}^T \frac{\pi_e}{\pi_b}$ has exponential variance in $T$; use marginalized stationary density ratios (DualDICE).
+    \item \textbf{Non-monotonic MARL mixing:} if $\frac{\partial Q_{\mathrm{tot}}}{\partial Q_i}<0$, greedy local actions $\argmax_{a^i} Q_i$ violate $\argmax_{\vecb{a}} Q_{\mathrm{tot}}$ (IGM fails).
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Model-Based RL} replaces environment samples with imagination: \textbf{Dyna/MBPO} branches short $k$-step rollouts from real data to beat $\mathcal{O}(H^2\epsilon_m)$ compounding error, \textbf{MuZero} searches forward with PUCT in a value-equivalent latent space, \textbf{Offline RL (CQL/MOPO)} penalizes out-of-distribution fantasies, and \textbf{CTDE MARL (QMIX/MAPPO)} centralizes training so decentralized agents act coherently.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

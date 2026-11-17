@@ -1,0 +1,217 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Bandits, MDPs \& Value-Based RL}{MDPs, Bellman Optimality Equations, Policy/Value Iteration \& GPI}
+  {Compress infinite-horizon trees into $V^*(s)$ via $\gamma$-contractions; alternate evaluation and greedy improvement}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MDPs \& DP\\ \footnotesize\mdseries $\Bellman^\pi \cdot \Bellman^* \cdot \text{GPI}$}{%
+  \begin{tikzpicture}[scale=0.55]
+    \node[circle, draw=csDom, very thick, fill=white, inner sep=2.5pt, label=above:{\tiny $s$}] (s) at (0,0.6) {};
+    \node[circle, fill=csB, inner sep=2pt] (a1) at (-0.9,-0.4) {};
+    \node[circle, fill=csB, inner sep=2pt, label=right:{\tiny $a^*$}] (a2) at (0.9,-0.4) {};
+    \draw[->] (s)--(a1); \draw[->] (s)--(a2);
+    \draw[csA, very thick] (-0.42,0.12) arc[start angle=-130, end angle=-50, radius=0.65cm];
+    \node[font=\tiny, csA] at (0,-0.15) {$\max_a$};
+    \node[circle, draw=csDom, thick, fill=white, inner sep=1.8pt] (s1) at (-1.3,-1.35) {};
+    \node[circle, draw=csDom, thick, fill=white, inner sep=1.8pt] (s2) at (-0.5,-1.35) {};
+    \node[circle, draw=csDom, thick, fill=white, inner sep=1.8pt] (s3) at (0.5,-1.35) {};
+    \node[circle, draw=csDom, thick, fill=white, inner sep=1.8pt, label=right:{\tiny $s'$}] (s4) at (1.3,-1.35) {};
+    \draw[->] (a1)--(s1); \draw[->] (a1)--(s2);
+    \draw[->] (a2)--(s3); \draw[->] (a2)--(s4);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Markov decision process}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{G_t = \sum_{k=0}^\infty \gamma^k R_{t+k+1} = R_{t+1} + \gamma G_{t+1}}
+    \begin{csbul}
+      \item Tuple $\langle\States, \Actions, p, R, \gamma, p_0\rangle$, $\gamma \in [0,1)$
+      \item Markov: $p(s',r\mid s,a)$ independent of $H_{t-1}$
+      \item $V^\pi(s) = \E_\pi[G_t\mid S_t=s]$, $Q^\pi(s,a)$
+      \item Advantage $A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \node[draw=csA, rounded corners=2pt, fill=csA!10, inner sep=2.5pt] (ag) at (0,2.1) {Agent $\pi$};
+      \node[draw=csDom, rounded corners=2pt, fill=csDom!10, inner sep=2.5pt] (env) at (0,0) {Env $p$};
+      \draw[->, thick] (ag.east) -- ++(0.55,0) |- node[pos=0.25, right] {$A_t$} (env.east);
+      \draw[->, thick] (env.west) -- ++(-0.55,0) |- node[pos=0.25, left] {$S',R$} (ag.west);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; BELLMAN $-$ expectation vs.\ optimality}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.35cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{2.75cm}@{}}
+    & \textbf{\textcolor{csB}{Expectation $\Bellman^\pi$}} & \textbf{\textcolor{csB}{Optimality $\Bellman^*$}}\\ \hline
+    Backup & $\sum_a \pi(a\mid s)\,Q^\pi(s,a)$ & $\max_a Q^*(s,a)$\\
+    System & Linear: $(\eye{-}\gamma\mat{P}_\pi)\vecb{v}_\pi=\vecb{r}_\pi$ & Nonlinear fixed point\\
+    Solution & $(\eye-\gamma\mat{P}_\pi)\inv\vecb{r}_\pi$ & VI / PI / LP\\
+    Norm $\norm{\cdot}_\infty$ & $\gamma$-contraction to $V^\pi$ & $\gamma$-contraction to $V^*$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{One-step lookahead:} knowing $Q^*(s,a)$ makes $\pi^*(s)=\argmax_a Q^*(s,a)$ model-free.}
+
+\csbranch{3}{C}{3\;\; KEY THEOREMS $-$ Banach \& improvement}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\norm{\Bellman^* U - \Bellman^* V}_\infty \le \gamma\norm{U - V}_\infty}
+    \begin{csbul}
+      \item \textbf{Banach:} unique $V^*$, $\norm{V_k-V^*}_\infty \le \gamma^k\norm{V_0-V^*}_\infty$
+      \item \textbf{Policy Improvement:} if $Q^\pi(s,\pi'(s)) \ge V^\pi(s)\;\forall s$, then $V^{\pi'} \ge V^\pi$ componentwise
+      \item Strict improvement until $\Bellman^* V^\pi = V^\pi = V^*$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csC, dashed, fill=csC!10] (0,0) circle (2.1);
+      \draw[csC, thick, fill=csC!25] (0,0) circle (1.2);
+      \fill[csA] (0,0) circle (2.5pt) node[below] {$V^*$};
+      \draw[->, thick, csDom] (-1.7,1.0) -- (-0.9,0.55) -- (-0.4,0.2) -- (0,0);
+      \node at (0,-2.55) {$\times\gamma$ per sweep};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ GPI, LP dual \& POMDPs}{%
+  \begin{csbul}
+    \item \textbf{GPI:} interleaves evaluation ($V\to V^\pi$) and improvement ($\pi\to\mathrm{greedy}(V)$)
+    \item \textbf{Modified PI:} $m$ evaluation sweeps interpolate VI ($m=1$) and PI ($m=\infty$)
+    \item \textbf{Primal LP:} $\min_{\vecb{v}} \vecb{p}_0\T\vecb{v}$ s.t.\ $\vecb{v} \ge \Bellman^*\vecb{v}$ ($|\States|$ vars, $|\States||\Actions|$ constraints)
+    \item \textbf{Dual LP:} $\max_{d\ge 0}\sum_{s,a} d(s,a)R(s,a)$ over discounted occupancy measures
+    \item \textbf{RTDP / Async DP:} backup along sampled trajectories without full sweeps
+    \item \textbf{POMDP:} reduces to belief-state MDP over $b_t(w_t)=p(w_t\mid o_{1:t},a_{1:t-1})$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ exact planning algorithms}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{2.65cm}@{}}
+    \textbf{\textcolor{csE}{Algorithm}} & \textbf{\textcolor{csE}{Per-Iter Cost}} & \textbf{\textcolor{csE}{Convergence}}\\ \hline
+    Policy Eval. & $O(|\States|^2)$ (iter) / $O(|\States|^3)$ & Linear $O(\gamma^k)$ / exact\\
+    Policy Iter.\ (PI) & $O(|\States|^3 + |\States|^2|\Actions|)$ & Finite ($\le |\Actions|^{|\States|}$), superlinear\\
+    Value Iter.\ (VI) & $O(|\States|^2|\Actions|)$ & Linear $O(\gamma^k)$, $\frac{\log(1/\epsilon)}{1-\gamma}$ sweeps\\
+    Modified PI & $O(m|\States|^2 + |\States|^2|\Actions|)$ & Geometric $\to$ superlinear\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Effective horizon:} $(1-\gamma)\inv$; as $\gamma\to 1$, VI slows down as $1/(1-\gamma)$.}
+
+\csbranch{6}{F}{6\;\; GPI GEOMETRY $-$ competing pulls}{%
+  \begin{minipage}[t]{0.56\linewidth}
+    \begin{csbul}
+      \item \textbf{Eval line:} $V = V^\pi$
+      \item \textbf{Greedy line:} $\pi = \mathrm{greedy}(V)$
+      \item Orthogonal goals meet at the unique joint fixed point $(V^*,\pi^*)$
+      \item Episodic tasks use absorbing $s_\perp$ ($r=0$, $p(s_\perp\mid s_\perp)=1$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.41\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[csDom, very thick] (0,2.8) -- node[pos=0.3, above right=-1pt] {$V=V^\pi$} (3.4,1.4);
+      \draw[csF, very thick] (0,0) -- node[pos=0.3, below right=-1pt] {$\pi=\mathrm{greedy}(V)$} (3.4,1.4);
+      \draw[->, csA, thick] (0.3,0.4) -- (0.7,2.45) -- (1.3,0.55) -- (1.8,2.05) -- (2.4,0.95) -- (3.3,1.4);
+      \fill[csA] (3.4,1.4) circle (3pt) node[right=1pt] {$V^*,\pi^*$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Bellman $\gamma$-Contraction $+$ Greedy Lookahead $=$ Optimal Control} \\[2pt]
+  \footnotesize\mdseries \textbf{Evaluate to push $V \to V^\pi$; act greedily to push $\pi \to \pi^*$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item Tied $Q_V$ in PI cycles $\to$ require strict $Q_V(s,a^*) > Q_V(s,\pi(s))$
+    \item VI stop $\Delta<\theta$ leaves $\frac{\gamma}{1-\gamma}\theta$ error $\to$ $\theta=\epsilon(1-\gamma)/(2\gamma)$
+    \item $\gamma=1$ in continuing MDPs makes $\eye-\mat{P}_\pi$ singular $\to$ avg.\ reward
+    \item $O(|\States|^2|\Actions|)$ tabular sweeps explode as state vars grow
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{MDPs, Bellman Optimality Equations, Policy/Value Iteration \& GPI}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Bellman expectation ($V^\pi$ \& matrix form):\csfm{V^\pi(s) = \sum_{a}\pi(a\mid s)\sum_{s',r}p(s',r\mid s,a)\bigl[r+\gamma V^\pi(s')\bigr]}
+    \item Exact Neumann inversion ($\gamma<1$):\csfm{\vecb{v}_\pi = (\eye - \gamma\mat{P}_\pi)\inv\vecb{r}_\pi = \sum_{t=0}^\infty \gamma^t\mat{P}_\pi^t\vecb{r}_\pi}
+    \item Bellman optimality ($V^*$ \& $Q^*$):\csfm{V^*(s) = \max_{a\in\Actions(s)}\sum_{s',r}p(s',r\mid s,a)\bigl[r + \gamma V^*(s')\bigr]}
+    \csfm{Q^*(s,a) = \sum_{s',r}p(s',r\mid s,a)\Bigl[r + \gamma\max_{a'}Q^*(s',a')\Bigr]}
+    \item Advantage function:\csfm{A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s),\quad \E_{a\sim\pi}[A^\pi(s,a)]=0}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{POLICY ITERATION vs.\ VALUE ITERATION}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{PI Step 1 (Eval):} sweep $V(s)\gets (\Bellman^\pi V)(s)$ until $\Delta<\theta$ (or solve $(\eye-\gamma\mat{P}_\pi)\vecb{v}_\pi=\vecb{r}_\pi$).
+    \item \textbf{PI Step 2 (Improve):} $a^*\gets\argmax_a Q_V(s,a)$; if $Q_V(s,a^*)>Q_V(s,\pi(s))$ strictly, set $\pi(s)\gets a^*$.
+    \item \textbf{VI Shortcut:} fuse into 1 sweep $V_{k+1}\gets\Bellman^* V_k$ until $\norm{V_k-V_{k-1}}_\infty < \frac{\epsilon(1-\gamma)}{2\gamma}$, then extract greedy $\pi$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    small $|\States|$ ($\le 10^3$), $\gamma\to 1$ & Policy Iteration (exact linear solve)\\
+    medium $|\States|$, moderate $\gamma$ & Value Iteration or Modified PI ($m\approx 5$)\\
+    sparse reachable states & Real-Time DP (RTDP) / Async DP\\
+    linear state/action constraints & Dual Linear Program (occupancy $d(s,a)$)\\
+    hidden state $w_t$, obs.\ $o_t$ & POMDP belief update $b_t(w_t)$\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{CONTRACTION \& STOPPING BOUNDS}
+  \begin{csbul}
+    \item Geometric rate: $\norm{V_k - V^*}_\infty \le \gamma^k\norm{V_0 - V^*}_\infty$, horizon $(1-\gamma)\inv$
+    \item Residual-to-true error: $\norm{V_k - V^*}_\infty \le \frac{\gamma}{1-\gamma}\norm{V_k - V_{k-1}}_\infty$
+    \item Greedy policy loss: $\norm{V^{\pi_k} - V^*}_\infty \le \frac{2\gamma}{1-\gamma}\norm{V_k - V_{k-1}}_\infty$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{BANACH CONTRACTION DECAY $\norm{V_k - V^*}_\infty$ vs.\ $k$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, ymode=log, xmin=0, xmax=40, ymin=1e-5, ymax=1.5,
+      xlabel={Iteration $k$}, ylabel={$\norm{V_k-V^*}_\infty / \norm{V_0-V^*}_\infty$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.97,0.04)}, anchor=south east, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csE, very thick, domain=0:16.5, samples=21] {0.5^x};
+      \addlegendentry{VI ($\gamma=0.5$): $\gamma^k$}
+      \addplot[csF, very thick, domain=0:40, samples=41] {0.9^x};
+      \addlegendentry{VI ($\gamma=0.9$): $\gamma^k$}
+      \addplot[csA, very thick, domain=0:40, samples=41] {0.99^x};
+      \addlegendentry{VI ($\gamma=0.99$): $\gamma^k$}
+      \addplot[csDom, very thick, dashed, mark=*, mark size=1.4pt] coordinates {(0,1.0)(1,0.25)(2,0.03)(3,0.0015)(4,0.00002)};
+      \addlegendentry{Policy Iteration (finite)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Tie-breaking oscillation in PI:} if $Q_V(s,a_1)=Q_V(s,a_2)$ and $\argmax$ flips between $a_1,a_2$, $\text{policy\_stable}$ never triggers $\to$ require strict inequality $Q_V(s,a^*) > Q_V(s,\pi(s))$
+    \item \textbf{Unscaled stopping threshold $\theta$:} at $\gamma=0.999$, $\Delta_k = 10^{-3}$ still allows $\norm{V_k-V^*}_\infty \approx 1.0$ $\to$ always scale $\theta$ by $(1-\gamma)/(2\gamma)$
+    \item \textbf{Undiscounted continuing loops ($\gamma=1$):} $\mat{P}_\pi\ones=\ones \implies \eye-\mat{P}_\pi$ is non-invertible and $\Bellman^*$ is non-contractive
+    \item \textbf{Reward-on-entry vs.\ transition:} if reward depends on $s'$, compute $R(s,a) = \sum_{s',r} r\,p(s',r\mid s,a)$ before forming $\vecb{r}_\pi$
+    \item \textbf{In-place (Gauss--Seidel) vs.\ synchronous sweeps:} in-place $V(s)$ updates converge faster than two-array sweeps while preserving $\gamma$-contraction
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Every MDP is governed by two contractions: \textbf{$\Bellman^\pi$} (linear expectation) and \textbf{$\Bellman^*$} (nonlinear max-backup).
+  \textbf{GPI} bounces between the evaluation line $V=V^\pi$ and the greedy curve $\pi=\mathrm{greedy}(V)$ until hitting the unique Banach fixed point $(V^*,\pi^*)$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

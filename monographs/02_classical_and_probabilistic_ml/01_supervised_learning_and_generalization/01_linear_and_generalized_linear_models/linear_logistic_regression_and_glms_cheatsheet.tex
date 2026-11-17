@@ -1,0 +1,225 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Supervised Learning \& Generalization}{Linear, Ridge/Lasso, Logistic, Softmax \& Generalized Linear Models}
+  {One linear predictor $\vecb\eta=\mat\Phi\vecb w$, three canonical links, one residual-weighted gradient $\mat\Phi\T(\vecb\mu-\vecb y)$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{GLMs\\ \footnotesize\mdseries OLS $\cdot$ Ridge/Lasso $\cdot$ Logit}{%
+  \begin{tikzpicture}[scale=0.55]
+    % L1 diamond vs L2 circle + sigmoid curve
+    \begin{scope}[xshift=-1.6cm]
+      \draw[gray!50, thin] (-1.2,0)--(1.2,0) (0,-1.2)--(0,1.2);
+      \draw[csC, very thick, fill=csC!12] (0,0.85)--(0.85,0)--(0,-0.85)--(-0.85,0)--cycle;
+      \draw[csA, thick, rotate=25] (0.55,0.65) ellipse (0.55 and 0.28);
+      \fill[csA] (0,0.85) circle (2.2pt);
+      \node[font=\tiny, csC, below] at (0,-0.85) {$\ell_1$ sparse};
+    \end{scope}
+    \draw[-{Stealth}, thick, csDom] (-0.25,0)--(0.45,0) node[midway, above, font=\tiny] {$A'(\eta)$};
+    \begin{scope}[xshift=1.85cm]
+      \draw[gray!50, thin] (-1.1,-0.7)--(1.1,-0.7) (0,-0.8)--(0,0.9);
+      \draw[csB, very thick, domain=-1.05:1.05, samples=30] plot (\x, {-0.7 + 1.4/(1+exp(-3.2*\x))});
+      \node[font=\tiny, csB, below] at (0,-0.75) {$\mu=\sigmoid(\eta)$};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ OLS Projection \& Gaussian MLE}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\hat{\vecb w}_{\mathrm{MLE}}=(\mat\Phi\T\mat\Phi)\inv\mat\Phi\T\vecb y}
+    \begin{csbul}
+      \item Gaussian noise $\epsilon_n\sim\Normal(0,\sigma^2)\iff$ min $\frac{1}{2}\norm{\vecb y-\mat\Phi\vecb w}_2^2$
+      \item $\hat{\vecb y}=\mat P_{\mathcal S}\vecb y$, $\mat P_{\mathcal S}=\mat\Phi(\mat\Phi\T\mat\Phi)\inv\mat\Phi\T$
+      \item Residual $\vecb r=\vecb y-\hat{\vecb y}\perp\colsp(\mat\Phi)$: $\mat\Phi\T\vecb r=\zeros$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \fill[csA!12] (0,0)--(3.2,0.5)--(4.0,2.1)--(0.8,1.6)--cycle;
+      \node[csA] at (3.3,0.85) {$\mathcal S$};
+      \draw[-{Stealth}, thick, csB] (0.8,0.6)--(2.4,1.3) node[below, pos=0.65] {$\hat{\vecb y}$};
+      \draw[-{Stealth}, thick, csDom] (0.8,0.6)--(2.4,3.1) node[left, pos=0.6] {$\vecb y$};
+      \draw[dashed, thick, csA] (2.4,1.3)--(2.4,3.1) node[right, midway] {$\vecb r$};
+      \draw (2.2,1.21)--(2.2,1.45)--(2.4,1.54);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; RIDGE ($\ell_2$) vs LASSO ($\ell_1$) $-$ Prior \& Geometry}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.25cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{3.1cm}@{}}
+    & \textbf{\textcolor{csB}{Ridge ($\ell_2$)}} & \textbf{\textcolor{csB}{Lasso ($\ell_1$)}}\\ \hline
+    Penalty & $\lambda\norm{\vecb w}_2^2$ (Gaussian prior) & $\lambda\norm{\vecb w}_1$ (Laplace prior)\\
+    Solution & $(\mat\Phi\T\mat\Phi+\lambda\eye_D)\inv\mat\Phi\T\vecb y$ & $\mathcal S_\lambda(c_j)=\sign(c_j)(|c_j|-\lambda)_+$\\
+    SVD filter & $\frac{\sigma_j^2}{\sigma_j^2+\lambda}$ (smooth damping) & Cross-polytope corners $\Rightarrow w_j=0$\\
+    Bayes pred. & $\Normal(\vecb m_N\T\vecb\phi_*,\sigma^2+\vecb\phi_*\T\mat S_N\vecb\phi_*)$ & MAP only (non-Gaussian post.)\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Elastic-Net:} $\lambda_1\norm{\vecb w}_1+\frac{\lambda_2}{2}\norm{\vecb w}_2^2$ groups correlated features.}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ Canonical Exp-Family GLM}{%
+  \csfm{p(y_n\mid\theta_n,\phi)=h(y_n,\phi)\exp\!\left(\frac{y_n\theta_n-A(\theta_n)}{\phi}\right)}
+  \begin{csbul}
+    \item \textbf{Cumulants:} $\mu_n=\E[y_n]=A'(\theta_n)$,\; $\Var(y_n)=\phi A''(\theta_n)$
+    \item \textbf{Canonical link} $g=(A')\inv\implies \theta_n=\eta_n=\vecb w\T\vecb\phi_n$
+    \item \textbf{Universal Gradient \& Hessian} ($W_{nn}=A''(\eta_n)$):
+      \csfm{\grad_{\vecb w}\mathrm{NLL}=\tfrac{1}{\phi}\mat\Phi\T(\vecb\mu-\vecb y),\quad \mat H(\vecb w)=\tfrac{1}{\phi}\mat\Phi\T\mat W\mat\Phi\succeq\zeros}
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ The Canonical GLM Triad}{%
+  \renewcommand{\arraystretch}{1.18}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{2.35cm}@{}}
+    \textbf{\textcolor{csD}{Family}} & \textbf{\textcolor{csD}{$A(\eta)$}} & \textbf{\textcolor{csD}{Link $g(\mu)$}} & \textbf{\textcolor{csD}{Mean $\mu=A'(\eta)$ / $W_{nn}$}}\\ \hline
+    Gaussian $\R$ & $\frac{1}{2}\eta^2$ & $\mu$ (identity) & $\eta$ \;/\; $1$\\
+    Bernoulli $\{0,1\}$ & $\log(1+e^\eta)$ & $\log\frac{\mu}{1-\mu}$ & $\sigmoid(\eta)$ \;/\; $\mu(1-\mu)$\\
+    Poisson $\N_0$ & $e^\eta$ & $\log\mu$ & $e^\eta$ \;/\; $e^\eta$\\
+  \end{tabular}\par\vspace{2pt}
+  \begin{csbul}
+    \item \textbf{Softmax ($C$-class):} $\mu_{nc}=e^{\vecb w_c\T\vecb\phi_n}/\sum_k e^{\vecb w_k\T\vecb\phi_n}$, $\mat H\succeq\zeros$
+    \item \textbf{Probit vs Logit:} Probit tails $\mathcal O(e^{-\eta^2/2})$ $\Rightarrow$ outlier-sensitive
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Solver Complexity \& Regimes}{%
+  \renewcommand{\arraystretch}{1.18}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{3.0cm}@{}}
+    \textbf{\textcolor{csE}{Solver}} & \textbf{\textcolor{csE}{Time / Mem}} & \textbf{\textcolor{csE}{Regime}}\\ \hline
+    OLS / Ridge (QR) & $\mathcal O(ND^2)$ / $\mathcal O(ND)$ & $N\ge D$, avoids $\kappa(\mat\Phi)^2$\\
+    Ridge (Dual SVD) & $\mathcal O(DN^2)$ / $\mathcal O(ND)$ & $D\gg N$ ($N\times N$ Gram)\\
+    Lasso (Coord.\ Desc.) & $\mathcal O(K_{\mathrm{sw}}ND)$ / $\mathcal O(ND)$ & Sparse active-set soft-thresh.\\
+    GLM IRLS (Newton) & $\mathcal O(T_{\mathrm{IRLS}}ND^2)$ & Quadratic conv., small--med $D$\\
+    L-BFGS / SGD & $\mathcal O(KND)$ / $\mathcal O(mD)$ & Massive $D$ or streaming $N$\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Shrinkage \& Link Geometry}{%
+  \begin{minipage}[t]{0.57\linewidth}
+    \begin{csbul}
+      \item \textbf{Continuous targets:} OLS / Ridge / Bayesian linear regression
+      \item \textbf{High-$D$ feature selection:} Lasso ($\ell_1$) or Elastic-Net
+      \item \textbf{Calibrated probabilities:} Binary Logit / Multinomial Softmax
+      \item \textbf{Count / rate data:} Poisson GLM ($\mu=e^\eta>0$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.40\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.46, every node/.style={font=\tiny}]
+      \draw[gray!50, ->] (-1.8,0)--(1.8,0) node[right] {$c_j$};
+      \draw[gray!50, ->] (0,-1.5)--(0,1.5) node[above] {$\hat w_j$};
+      \draw[dashed, gray] (-1.5,-1.5)--(1.5,1.5);
+      \draw[csE, thick] (-1.5,-0.95)--(1.5,0.95);
+      \draw[csA, very thick] (-1.5,-0.9)--(-0.6,0)--(0.6,0)--(1.5,0.9);
+      \node[csA] at (0.9,-0.55) {Lasso};
+      \node[csE] at (-0.9,0.75) {Ridge};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Linear Predictor $\eta=\vecb w\T\vecb\phi$ $+$ Cumulant $A(\eta)$ $\Rightarrow$ Gradient is ALWAYS $\mat\Phi\T(\vecb\mu-\vecb y)$}\\[2pt]
+  \footnotesize\mdseries \textbf{Ridge damps small $\sigma_j$; Lasso clips small correlations to zero; IRLS solves weighted OLS per step.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Separable classes:} unregularized logit diverges ($\norm{\vecb w}_2\to\infty$) $\to$ add $\lambda>0$
+    \item \textbf{Logit overflow:} $e^\eta$ overflows at $\eta>709.8$ $\to$ use Log-Sum-Exp shift
+    \item \textbf{Unscaled / normal eqs:} scale $\vecb\phi_j$ (not $w_0$); avoid $(\mat\Phi\T\mat\Phi)\inv$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Linear Regression, Ridge/Lasso Regularization, Logistic Regression \& GLMs}\;---\;Domain 02 $\cdot$ Supervised Learning \& Generalization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Ridge ($\ell_2$) \& Effective DoF:\csfm{\hat{\vecb w}_{\mathrm{Ridge}}=(\mat\Phi\T\mat\Phi+\lambda\eye_D)\inv\mat\Phi\T\vecb y,\quad \mathrm{dof}(\lambda)=\sum_{j=1}^r\frac{\sigma_j^2}{\sigma_j^2+\lambda}}
+    \item Bayesian Linear Posterior ($\lambda=\sigma^2/\tau^2$):\csfm{\mat S_N\inv=\mat S_0\inv+\frac{1}{\sigma^2}\mat\Phi\T\mat\Phi,\quad \vecb m_N=\mat S_N\!\left(\mat S_0\inv\vecb m_0+\frac{1}{\sigma^2}\mat\Phi\T\vecb y\right)}
+    \item Lasso KKT \& Soft-Thresholding ($\mat\Phi\T\mat\Phi=\eye_D$):\csfm{\hat w_j=\mathcal S_\lambda(c_j)=\sign(c_j)\max(0,|c_j|-\lambda),\quad |\vecb\varphi_j\T\vecb r|\le\lambda}
+    \item Canonical GLM Score \& Fisher Matrix:\csfm{\grad_{\vecb w}\mathrm{NLL}=\frac{1}{\phi}\mat\Phi\T(\vecb\mu-\vecb y),\quad \mathcal I(\vecb w)=\frac{1}{\phi}\mat\Phi\T\mat W\mat\Phi}
+    \item Numerically Stable Log-Sum-Exp / Softplus:\csfm{\log\sum_k e^{\eta_k}=m+\log\sum_k e^{\eta_k-m},\;\; \softplus(\eta)=\max(\eta,0)+\log(1+e^{-|\eta|})}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{IRLS \& COORDINATE DESCENT RECIPES}
+  \textbf{IRLS (Canonical GLM Newton--Raphson):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Compute $\vecb\eta=\mat\Phi\vecb w^{(t)}$, $\vecb\mu=A'(\vecb\eta)$, $\mat W=\diag(A''(\vecb\eta))$
+    \item Working response: $\vecb z=\vecb\eta+\mat W\inv(\vecb y-\vecb\mu)$
+    \item Solve $(\mat\Phi\T\mat W\mat\Phi+\lambda\eye_D)\vecb w^{(t+1)}=\mat\Phi\T\mat W\vecb z$
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Lasso Coordinate Descent ($\norm{\vecb\varphi_j}_2^2=N$):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Partial residual: $\rho_j=\vecb\varphi_j\T(\vecb r+w_j\vecb\varphi_j)$
+    \item Update $w_j^{\mathrm{new}}=\frac{1}{N}\mathcal S_\lambda(\rho_j)$ and refresh $\vecb r$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    collinear features, all useful & Ridge ($\ell_2$) via QR / SVD\\
+    $D\gg N$, few true signals & Lasso ($\ell_1$) or Elastic-Net\\
+    need error bars on $y_*$ & Conjugate Bayesian Linear Reg.\\
+    binary / multiclass probs & Logistic / Softmax $+\;\ell_2$ reg.\\
+    non-negative integer counts & Poisson GLM ($\log$ link $\mu=e^\eta$)\\
+    heavy label noise / outliers & Logistic over Probit (linear tail)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SHRINKAGE \& TAIL CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Ridge attenuation:} singular mode $j$ scaled by $\sigma_j^2/(\sigma_j^2+\lambda)$
+    \item \textbf{Lasso deadzone:} feature $j$ zeroed iff $|\vecb\varphi_j\T(\vecb y-\mat\Phi\hat{\vecb w})|\le\lambda$
+    \item \textbf{Softmax identifiability:} $\ell_2$ penalty enforces $\sum_{c=1}^C\hat w_{cj}=0$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{SHRINKAGE OPERATORS ($\mat\Phi\T\mat\Phi=\eye_D$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, xmin=-3.0, xmax=3.0, ymin=-2.8, ymax=2.8,
+      xlabel={Correlation $c_j=\vecb\varphi_j\T\vecb y$}, ylabel={Coefficient $\hat w_j$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north west, legend style={font=\tiny, draw=none, fill=white, fill opacity=0.85}]
+      \addplot[gray, dashed, thick, domain=-3:3] {x};
+      \addlegendentry{OLS}
+      \addplot[csE, very thick, domain=-3:3] {x/1.7};
+      \addlegendentry{Ridge}
+      \addplot[csA, very thick, domain=-3:3, samples=120] {(abs(x)>1.1) ? (x>0 ? x-1.1 : x+1.1) : 0};
+      \addlegendentry{Lasso}
+      \addplot[csF, thick, domain=-3:3, samples=120] {(abs(x)>1.1) ? ((x>0 ? x-1.1 : x+1.1)/1.5) : 0};
+      \addlegendentry{Elastic-Net}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Complete separation in Logistic Regression:} when classes are linearly separable, $\mathrm{NLL}\to 0$ as $\norm{\vecb w}_2\to\infty$ and IRLS weights $W_{nn}=\mu_n(1-\mu_n)\to 0$; always include $\lambda>0$
+    \item \textbf{Normal equations square conditioning:} $\kappa(\mat\Phi\T\mat\Phi)=\kappa(\mat\Phi)^2$; solve OLS/Ridge via thin QR or SVD
+    \item \textbf{Scale sensitivity of $\ell_1/\ell_2$:} standardize columns of $\mat\Phi$ to zero mean and unit variance before fitting, and never penalize the bias $w_0$
+    \item \textbf{Float64 exp overflow:} never evaluate $1/(1+e^{-\eta})$ or $\log(1+e^\eta)$ raw; use branch-split sigmoid and Log-Sum-Exp
+    \item \textbf{OLS on count data:} predicts negative counts $\hat y<0$ and miscalibrates variance $\Var(y)=\mu$; use Poisson GLM
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Every canonical GLM} maps $\vecb x\mapsto\eta=\vecb w\T\vecb\phi(\vecb x)\mapsto\mu=A'(\eta)$.
+  Because $g=(A')\inv$, the gradient is universally $\frac{1}{\phi}\mat\Phi\T(\vecb\mu-\vecb y)$ and the Hessian $\frac{1}{\phi}\mat\Phi\T\mat W\mat\Phi$ is always convex ($\succeq\zeros$).
+  \textbf{Ridge} rotates to the SVD basis and damps noisy axes; \textbf{Lasso} clips small correlations to exact zero at the $\ell_1$ diamond corners.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

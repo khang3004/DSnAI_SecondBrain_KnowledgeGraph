@@ -1,0 +1,323 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Linear Models, Generalization, Kernels \& Ensembles}{Linear, Regularized \& Generalized Linear Models}{Bias-Variance Decomposition, Overfitting, Generalization \& Double Descent}{\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 5, pp. 110--131}, \bookcite{understandingdl_simonprince}{Ch. 8 \& 20, pp. 120--134, 410--414}, \bookcite{introduction_probability_data_science}{Ch. 7, pp. 420--439}, \bookcite{deep_learning_foundations_concepts}{Ch. 4, pp. 123--127}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 8, pp. 91--97}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:biasvar:formulation}
+% =============================================================================
+
+\begingroup\sloppy
+The central distinction between numerical optimization and statistical machine learning is \emph{generalization}: minimizing error on previously unseen inputs drawn from the data-generating distribution rather than merely memorizing the training sample \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.2, p. 110}. Consider a supervised regression problem with inputs $\vecb{x} \in \mathcal{X} \subseteq \R^d$ and scalar targets $y \in \R$ governed by an additive-noise data-generating process:
+\par\endgroup
+\begin{equation}
+  y = f(\vecb{x}) + \epsilon,
+  \qquad
+  f(\vecb{x}) = \E[y \mid \vecb{x}],
+  \qquad
+  \E[\epsilon \mid \vecb{x}] = 0,
+  \qquad
+  \Var(\epsilon \mid \vecb{x}) = \sigma_\epsilon^2,
+  \label{eq:biasvar:dgp}
+\end{equation}
+where $f : \mathcal{X} \to \R$ is the Bayes-optimal regression function and $\epsilon$ is irreducible observation noise. A training dataset $\mathcal{D} = \{(\vecb{x}_i, y_i)\}_{i=1}^N \simiid p_{\mathrm{data}}(\vecb{x}, y)$ of size $N$ is used by a learning algorithm $\mathcal{A}$ to produce a hypothesis $\hat{f}_{\mathcal{D}} \in \mathcal{F}$ with $P$ effective parameters (e.g., $\hat{f}_{\mathcal{D}}(\vecb{x}) = \vecb{\phi}(\vecb{x})\T \hat{\vecb{w}}$ for a feature map $\vecb{\phi} : \mathcal{X} \to \R^P$). Under squared-error loss $\ell(\hat{y}, y) = (\hat{y} - y)^2$, we contrast the \emph{empirical training risk} and the \emph{expected population (test) risk}:
+\begin{equation}
+  \hat{R}_N(\hat{f}_{\mathcal{D}}) = \frac{1}{N} \sum_{i=1}^N \big(\hat{f}_{\mathcal{D}}(\vecb{x}_i) - y_i\big)^2,
+  \qquad
+  R(\hat{f}_{\mathcal{D}}) = \E_{(\vecb{x}, y) \sim p_{\mathrm{data}}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\vecb{x}) - y\big)^2\Big].
+  \label{eq:biasvar:risks}
+\end{equation}
+Averaging $R(\hat{f}_{\mathcal{D}})$ over random draws of the training set $\mathcal{D}$ of size $N$ yields the \emph{expected generalization error} $\E_{\mathcal{D}}[R(\hat{f}_{\mathcal{D}})]$, which decomposes cleanly into bias, variance, and irreducible noise.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{cb:biasvar:notation}
+Because statistical, deep learning, and probabilistic texts adopt different symbols for sample count, parameter count, targets, and predictors, the table below establishes a unified notation used throughout this monograph.
+\par\vspace{4pt}
+\noindent
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}X @{}}
+\toprule
+Concept & Unified & Goodfellow et al. & Bishop / Chan & Prince / Tiep Vu \\
+\midrule
+Training sample size & $N$ & $m$ & $N$ & $I$ (Prince), $N$ (Tiep Vu) \\
+Model capacity / params & $P$ & Capacity / $d_{\mathrm{VC}}$ & $M$ (Bishop), $d$ (Chan) & $D$ units / $P$ params \\
+Ground-truth function & $f(\vecb{x})$ & True $p_{\mathrm{data}}(y\mid\vecb{x})$ & $h(\vecb{x})$ (Bishop), $f(\vecb{x})$ (Chan) & True function $f(x)$ \\
+Learned predictor & $\hat{f}_{\mathcal{D}}(\vecb{x})$ & $\hat{g}(\vecb{x})$ / $\hat{\theta}_m$ & $f(\vecb{x}; \mathcal{D})$ (Bishop), $g(\mathcal{D})$ (Chan) & $\mathrm{f}[x, \hat{\phi}]$ / $f(x)$ \\
+Irreducible noise & $\epsilon,\;\sigma_\epsilon^2$ & Bayes error & $t - h(\vecb{x})$ (Bishop), $e,\;\sigma^2$ (Chan) & $\epsilon \sim \Normal(0, \sigma^2)$ \\
+Weight penalty & $\lambda \ge 0$ & Weight decay $\alpha$ & $\lambda$ (Bishop) & $\lambda$ (Tiep Vu) \\
+\bottomrule
+\end{tabularx}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:biasvar:derivations}
+% =============================================================================
+
+\subsection{Exact Squared-Error Bias--Variance--Noise Decomposition}
+
+\begin{coremath}[Theorem: Exact Bias--Variance--Noise Decomposition]
+\label{thm:biasvar:decomp}
+Let $y = f(\vecb{x}) + \epsilon$ satisfy~\eqref{eq:biasvar:dgp} with $\epsilon$ independent of the training set $\mathcal{D}$ at any test point $\vecb{x}$, and define the ensemble-averaged predictor $\bar{f}(\vecb{x}) \triangleq \E_{\mathcal{D}}[\hat{f}_{\mathcal{D}}(\vecb{x})]$. Then the pointwise expected squared test error decomposes exactly into three non-negative terms \bookcite{deep_learning_foundations_concepts}{Sec. 4.3, pp. 124--125} \bookcite{introduction_probability_data_science}{Thm. 7.5, pp. 431--432}:
+\begin{equation}
+  \E_{\mathcal{D},\, \epsilon}\!\Big[\big(y - \hat{f}_{\mathcal{D}}(\vecb{x})\big)^2 \;\Big|\; \vecb{x}\Big]
+  = \underbrace{\big(\bar{f}(\vecb{x}) - f(\vecb{x})\big)^2}_{\mathrm{Bias}^2(\hat{f}_{\mathcal{D}};\, \vecb{x})}
+  \;+\; \underbrace{\E_{\mathcal{D}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\vecb{x}) - \bar{f}(\vecb{x})\big)^2\Big]}_{\mathrm{Var}(\hat{f}_{\mathcal{D}};\, \vecb{x})}
+  \;+\; \underbrace{\sigma_\epsilon^2}_{\text{Irreducible Noise}}.
+  \label{eq:biasvar:pointwise_bv}
+\end{equation}
+\textbf{Proof.} Fix $\vecb{x}$ and add and subtract $f(\vecb{x})$ inside the square:
+\begin{align}
+  \E_{\mathcal{D},\, \epsilon}\!\Big[\big(f(\vecb{x}) + \epsilon - \hat{f}_{\mathcal{D}}(\vecb{x})\big)^2\Big]
+  &= \E_{\mathcal{D}}\!\Big[\big(f(\vecb{x}) - \hat{f}_{\mathcal{D}}(\vecb{x})\big)^2\Big]
+   + 2\,\E_{\mathcal{D},\, \epsilon}\!\Big[\epsilon\,\big(f(\vecb{x}) - \hat{f}_{\mathcal{D}}(\vecb{x})\big)\Big]
+   + \E_{\epsilon}[\epsilon^2]. \label{eq:biasvar:step1}
+\end{align}
+Because test noise $\epsilon$ is independent of $\mathcal{D}$ and $\E[\epsilon \mid \vecb{x}] = 0$, the cross-term vanishes:
+\[
+  \E_{\mathcal{D},\, \epsilon}\!\Big[\epsilon\,\big(f(\vecb{x}) - \hat{f}_{\mathcal{D}}(\vecb{x})\big)\Big]
+  = \E_{\epsilon}[\epsilon] \cdot \E_{\mathcal{D}}\!\big[f(\vecb{x}) - \hat{f}_{\mathcal{D}}(\vecb{x})\big] = 0,
+\]
+while $\E_{\epsilon}[\epsilon^2] = \sigma_\epsilon^2$. For the first term of~\eqref{eq:biasvar:step1}, add and subtract $\bar{f}(\vecb{x}) = \E_{\mathcal{D}}[\hat{f}_{\mathcal{D}}(\vecb{x})]$:
+\begin{align*}
+  \E_{\mathcal{D}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\vecb{x}) - f(\vecb{x})\big)^2\Big]
+  &= \E_{\mathcal{D}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\vecb{x}) - \bar{f}(\vecb{x}) + \bar{f}(\vecb{x}) - f(\vecb{x})\big)^2\Big] \\
+  &= \E_{\mathcal{D}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\vecb{x}) - \bar{f}(\vecb{x})\big)^2\Big]
+   + \big(\bar{f}(\vecb{x}) - f(\vecb{x})\big)^2 \\
+  &\quad + 2\big(\bar{f}(\vecb{x}) - f(\vecb{x})\big)\underbrace{\E_{\mathcal{D}}\!\big[\hat{f}_{\mathcal{D}}(\vecb{x}) - \bar{f}(\vecb{x})\big]}_{=\,0}.
+\end{align*}
+Integrating~\eqref{eq:biasvar:pointwise_bv} against $p_{\mathrm{data}}(\vecb{x})$ yields the global expected test risk $\E_{\mathcal{D}}[R(\hat{f}_{\mathcal{D}})] = \int \mathrm{Bias}^2(\vecb{x})\,p_{\mathrm{data}}(\vecb{x})\,\mathrm{d}\vecb{x} + \int \mathrm{Var}(\vecb{x})\,p_{\mathrm{data}}(\vecb{x})\,\mathrm{d}\vecb{x} + \sigma_\epsilon^2$. \hfill $\blacksquare$
+\end{coremath}
+
+Note that for parameter estimation of a vector $\vecb{\theta} \in \R^P$ by $\hat{\vecb{\theta}}_N$, the exact same identity holds as $\mathrm{MSE}(\hat{\vecb{\theta}}_N) = \norm{\mathrm{Bias}(\hat{\vecb{\theta}}_N)}_2^2 + \Tr(\Cov(\hat{\vecb{\theta}}_N))$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq. 5.53--5.54, p. 129}.
+
+\begin{intuition}[Geometric \& Physical Meaning of Bias, Variance, and Capacity]
+\label{int:biasvar:dartboard}
+Bias measures \emph{systematic approximation error}: how far the average model $\bar{f}$ across infinitely many training sets lies from the true function $f$. Variance measures \emph{estimation sensitivity}: how wildly individual fits $\hat{f}_{\mathcal{D}}$ fluctuate around $\bar{f}$ due to finite, noisy samples $\mathcal{D}$ \bookcite{introduction_probability_data_science}{Fig. 7.15, p. 432}. In classical parametric models ($P < N$), increasing capacity $P$ (or decreasing regularization $\lambda$) shrinks $\mathrm{Bias}^2$ by enlarging $\mathcal{F}$, while inflating $\mathrm{Var}$ as the model chases sample noise---producing the classical U-shaped test-error curve \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Fig. 5.6, p. 130}.
+\end{intuition}
+
+\subsection{Fixed-Design Linear Risk ($N > P$) vs.\ Minimum-Norm Interpolation ($P \ge N$)}
+
+To see both the classical trade-off and the modern interpolation singularity analytically, consider linear regression in a $P$-dimensional feature space with design matrix $\mat{\Phi} \in \R^{N \times P}$ and targets $\vecb{y} = \mat{\Phi}\vecb{w}^\star + \vecb{\epsilon}$, $\vecb{\epsilon} \sim \Normal(\zeros, \sigma_\epsilon^2 \eye_N)$.
+
+\begin{coremath}[Theorem: Exact Linear Risk Across the $P = N$ Threshold]
+\label{thm:biasvar:linear_risk}
+\textbf{(1) Underparameterized Regime ($N > P$, $\rank(\mat{\Phi}) = P$).}
+The ordinary least squares (OLS) estimator $\hat{\vecb{w}} = (\mat{\Phi}\T\mat{\Phi})\inv\mat{\Phi}\T\vecb{y}$ produces in-sample predictions $\hat{\vecb{y}} = \mat{H}\vecb{y}$, where $\mat{H} = \mat{\Phi}(\mat{\Phi}\T\mat{\Phi})\inv\mat{\Phi}\T$ is the orthogonal projection (hat) matrix satisfying $\mat{H}^2 = \mat{H} = \mat{H}\T$ and $\Tr(\mat{H}) = P$. Evaluating on the same design $\mat{\Phi}$ with fresh test noise $\vecb{\epsilon}' \sim \Normal(\zeros, \sigma_\epsilon^2 \eye_N)$ independent of $\vecb{\epsilon}$ \bookcite{introduction_probability_data_science}{Thm. 7.4, pp. 424--425}:
+\begin{align}
+  \E_{\vecb{\epsilon}}[\hat{R}_N] &= \frac{1}{N}\E\big[\norm{(\mat{H} - \eye_N)\vecb{\epsilon}}_2^2\big] = \sigma_\epsilon^2\!\left(1 - \frac{P}{N}\right), \nonumber \\
+  \E_{\vecb{\epsilon},\,\vecb{\epsilon}'}[R_{\mathrm{fixed}}] &= \frac{1}{N}\E\big[\norm{\mat{H}\vecb{\epsilon} - \vecb{\epsilon}'}_2^2\big] = \sigma_\epsilon^2\!\left(1 + \frac{P}{N}\right).
+  \label{eq:biasvar:chan_linear}
+\end{align}
+Here the optimism gap $R_{\mathrm{fixed}} - \hat{R}_N = \frac{2P}{N}\sigma_\epsilon^2$ grows linearly with $P/N$ until $\hat{R}_N \to 0$ at $P = N$.
+
+\textbf{(2) Overparameterized Regime ($P > N$, $\rank(\mat{\Phi}) = N$).}
+When $P > N$, $\mat{\Phi}\T\mat{\Phi}$ is singular and infinitely many interpolators satisfy $\mat{\Phi}\vecb{w} = \vecb{y}$. Running gradient descent from $\vecb{w}_0 = \zeros$ or taking the ridgeless limit $\lambda \to 0^+$ of Ridge regression $\hat{\vecb{w}}_\lambda = (\mat{\Phi}\T\mat{\Phi} + \lambda\eye_P)\inv\mat{\Phi}\T\vecb{y}$ selects the unique \emph{minimum-$\ell_2$-norm interpolator}:
+\begin{equation}
+  \hat{\vecb{w}}_{\mathrm{min}} = \argmin_{\vecb{w} : \mat{\Phi}\vecb{w} = \vecb{y}} \norm{\vecb{w}}_2 = \mat{\Phi}\pinv \vecb{y} = \mat{\Phi}\T(\mat{\Phi}\mat{\Phi}\T)\inv \vecb{y}.
+  \label{eq:biasvar:min_norm}
+\end{equation}
+Decomposing $\vecb{y} = \mat{\Phi}\vecb{w}^\star + \vecb{\epsilon}$ and letting $\mat{P}_{\parallel} = \mat{\Phi}\pinv\mat{\Phi}$ be the orthogonal projector onto $\mathrm{row}(\mat{\Phi})$, the parameter bias and variance for an out-of-sample test covariance $\mat{\Sigma} = \E[\vecb{\phi}(\vecb{x})\vecb{\phi}(\vecb{x})\T]$ are:
+\begin{equation}
+  \mathrm{Bias}^2(\hat{\vecb{w}}_{\mathrm{min}}) = \norm{\mat{\Sigma}^{1/2}(\eye_P - \mat{P}_{\parallel})\vecb{w}^\star}_2^2,
+  \qquad
+  \mathrm{Var}(\hat{\vecb{w}}_{\mathrm{min}}) = \sigma_\epsilon^2 \Tr\!\big(\mat{\Sigma}\,(\mat{\Phi}\T\mat{\Phi})\pinv\big) = \sigma_\epsilon^2 \sum_{j=1}^N \frac{\vecb{v}_j\T \mat{\Sigma}\vecb{v}_j}{s_j^2(\mat{\Phi})},
+  \label{eq:biasvar:overparam_bv}
+\end{equation}
+where $\{s_j(\mat{\Phi}), \vecb{v}_j\}_{j=1}^N$ are the nonzero singular values and right singular vectors of $\mat{\Phi}$.
+\end{coremath}
+
+Equation~\eqref{eq:biasvar:overparam_bv} explains the **double descent cusp** rigorously: for isotropic random features ($\mat{\Sigma} = \eye_P$), the Marchenko--Pastur law gives $s_{\min}^2(\mat{\Phi}) \propto (\sqrt{P} - \sqrt{N})^2$. As $P \to N$, $s_{\min}(\mat{\Phi}) \to 0$ and the variance $\sigma_\epsilon^2 \sum_{j=1}^N s_j^{-2} \approx \frac{\sigma_\epsilon^2}{|1 - P/N|}$ diverges, forcing the model to contort its weights to fit noise \bookcite{understandingdl_simonprince}{Sec. 8.4, pp. 129--131}. Once $P \gg N$, additional orthogonal directions absorb the noise energy across $P - N$ extra degrees of freedom, $s_{\min}(\mat{\Phi})$ grows again, and $\mathrm{Var}(\hat{\vecb{w}}_{\mathrm{min}}) \approx \sigma_\epsilon^2 \frac{N}{P - N} \to 0$ (**benign overfitting**), while Ridge regularization ($\lambda > 0$) replaces $s_j^{-2}$ with $\frac{s_j^2}{(s_j^2 + \lambda)^2}$, completely smoothing out the $P = N$ singularity.
+
+\subsection{Capacity Bounds: VC-Dimension and Rademacher Complexity}
+
+Statistical learning theory upper-bounds the generalization gap $R(f) - \hat{R}_N(f)$ uniformly over $\mathcal{F}$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.2, p. 114}:
+
+\begin{coremath}[Uniform Convergence Capacity Bounds]
+\label{thm:biasvar:capacity}
+\textbf{(1) VC-Dimension Bound (Binary Classification).}
+If $\mathcal{F}$ has Vapnik--Chervonenkis dimension $d_{\mathrm{VC}}$ (the largest $m$ such that $\mathcal{F}$ can shatter $m$ points), then with probability at least $1 - \delta$ over $\mathcal{D}$:
+\begin{equation}
+  R(f) \le \hat{R}_N(f) + \sqrt{\frac{d_{\mathrm{VC}}\big(\ln(2N/d_{\mathrm{VC}}) + 1\big) + \ln(4/\delta)}{N}},
+  \qquad \forall f \in \mathcal{F}.
+  \label{eq:biasvar:vc_bound}
+\end{equation}
+\textbf{(2) Rademacher Complexity Bound (Norm-Constrained Predictors).}
+For bounded losses $\ell \in [0, 1]$ and empirical Rademacher complexity $\hat{\mathfrak{R}}_N(\mathcal{F}) = \E_{\vecb{\sigma} \in \{\pm 1\}^N}\!\big[\sup_{f \in \mathcal{F}} \frac{1}{N}\sum_{i=1}^N \sigma_i f(\vecb{x}_i)\big]$, with probability at least $1 - \delta$:
+\begin{equation}
+  R(f) \le \hat{R}_N(f) + 2\hat{\mathfrak{R}}_N(\mathcal{F}) + 3\sqrt{\frac{\ln(2/\delta)}{2N}}.
+  \label{eq:biasvar:rademacher}
+\end{equation}
+For linear predictors $\norm{\vecb{w}}_2 \le B$ with $\norm{\vecb{\phi}(\vecb{x}_i)}_2 \le R_\phi$, $\hat{\mathfrak{R}}_N(\mathcal{F}) \le \frac{B R_\phi}{\sqrt{N}}$ \emph{independently of $P$}.
+\end{coremath}
+
+While~\eqref{eq:biasvar:vc_bound} becomes vacuous when $P \ge N$ (since $d_{\mathrm{VC}} \propto P$), the norm-based Rademacher bound~\eqref{eq:biasvar:rademacher} shows why overparameterized models that find small-norm interpolators ($\norm{\hat{\vecb{w}}_{\mathrm{min}}}_2$) can generalize well even in infinite-dimensional feature spaces.
+
+\begin{intuition}[Epoch-Wise Double Descent, Implicit Bias \& the Goldilocks Zone]
+\label{int:biasvar:double_descent}
+Double descent occurs not only as parameter count $P$ increases (\emph{model-wise}), but also as training time $t$ increases (\emph{epoch-wise}) and sample count $N$ increases (\emph{sample-wise}) \bookcite{understandingdl_simonprince}{Sec. 8.4, pp. 127--130}. During early training, gradient descent learns low-frequency, large-singular-value components first; near the interpolation epoch, it fits label noise and test error peaks; with continued training or wider networks, implicit regularization drives weights toward minimum-norm / flat-minima solutions inside a ``Goldilocks zone'' of $\ell_2$ weight norm where the model interpolates smoothly between sparse high-dimensional training points \bookcite{understandingdl_simonprince}{Sec. 20.4.4--20.4.5, pp. 412--413}.
+\end{intuition}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:biasvar:algorithm}
+% =============================================================================
+
+To empirically locate optimal capacity or regularization $\lambda$ without leaking test data---and to diagnose whether a model sits in the underparameterized, critical, or overparameterized regime---we pair nested $K$-fold cross-validation \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.3.1, p. 122} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 8.2, pp. 93--95} with a systematic capacity/regularization sweep (Algorithm~\ref{alg:biasvar:nested_cv}).
+
+\begin{algorithm}[htbp]
+\caption{Nested $K$-Fold Cross-Validation \& Empirical Double-Descent Sweep}
+\label{alg:biasvar:nested_cv}
+\KwIn{Dataset $\mathcal{D} = \{(\vecb{x}_i, y_i)\}_{i=1}^N$; capacity grid $\mathcal{P} = \{P_1, \dots, P_m\}$; ridge grid $\Lambda = \{\lambda_1, \dots, \lambda_r\}$; outer folds $K_{\mathrm{out}}$, inner folds $K_{\mathrm{in}}$.}
+\KwOut{Unbiased outer test risk curve $\hat{R}_{\mathrm{test}}(P)$ and optimal $(\hat{P}^\star, \hat{\lambda}^\star)$.}
+Partition $\mathcal{D}$ into $K_{\mathrm{out}}$ disjoint outer folds $\{\mathcal{D}_1, \dots, \mathcal{D}_{K_{\mathrm{out}}}\}$\;
+\For{$P \in \mathcal{P}$}{
+  \For{$k = 1, \dots, K_{\mathrm{out}}$}{
+    $\mathcal{D}_{\mathrm{train}}^{(k)} \leftarrow \mathcal{D} \setminus \mathcal{D}_k$, \quad $\mathcal{D}_{\mathrm{test}}^{(k)} \leftarrow \mathcal{D}_k$\;
+    Partition $\mathcal{D}_{\mathrm{train}}^{(k)}$ into $K_{\mathrm{in}}$ inner folds $\{\mathcal{I}_1, \dots, \mathcal{I}_{K_{\mathrm{in}}}\}$\;
+    \For{$\lambda \in \Lambda$}{
+      $\mathrm{CV}_{\mathrm{in}}(\lambda) \leftarrow \frac{1}{K_{\mathrm{in}}} \sum_{j=1}^{K_{\mathrm{in}}} \frac{1}{|\mathcal{I}_j|} \sum_{(\vecb{x}, y) \in \mathcal{I}_j} \big(\hat{f}_{P,\lambda}(\vecb{x}; \mathcal{D}_{\mathrm{train}}^{(k)} \setminus \mathcal{I}_j) - y\big)^2$\;
+    }
+    $\lambda_k^\star \leftarrow \argmin_{\lambda \in \Lambda} \mathrm{CV}_{\mathrm{in}}(\lambda)$\;
+    Fit $\hat{f}_{P, \lambda_k^\star}$ on full $\mathcal{D}_{\mathrm{train}}^{(k)}$ (via min-norm $\mat{\Phi}\pinv\vecb{y}$ if $\lambda_k^\star = 0$ and $P > |\mathcal{D}_{\mathrm{train}}^{(k)}|$)\;
+    $e_k(P) \leftarrow \frac{1}{|\mathcal{D}_{\mathrm{test}}^{(k)}|} \sum_{(\vecb{x}, y) \in \mathcal{D}_{\mathrm{test}}^{(k)}} \big(\hat{f}_{P, \lambda_k^\star}(\vecb{x}) - y\big)^2$\;
+  }
+  $\hat{R}_{\mathrm{test}}(P) \leftarrow \frac{1}{K_{\mathrm{out}}} \sum_{k=1}^{K_{\mathrm{out}}} e_k(P)$\;
+}
+\Return $\hat{R}_{\mathrm{test}}(\cdot)$ and $(\hat{P}^\star, \hat{\lambda}^\star) = \argmin_{P \in \mathcal{P}} \hat{R}_{\mathrm{test}}(P)$\;
+\end{algorithm}
+
+Table~\ref{tab:biasvar:regimes} summarizes the statistical and computational trade-offs across the four generalization regimes.
+
+\begin{table}[htbp]
+\centering
+\caption{Statistical Behavior and Computational Complexity Across Generalization Regimes}
+\label{tab:biasvar:regimes}
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}l @{\hspace{5pt}} >{\footnotesize}X @{}}
+\toprule
+Regime & Ratio $P/N$ & $\mathrm{Bias}^2$ & $\mathrm{Var}$ & Complexity \& Dominant Mechanism \\
+\midrule
+Underparameterized & $P \ll N$ & High & Low ($\propto \frac{P}{N}\sigma_\epsilon^2$) & $\mathcal{O}(NP^2 + P^3)$; model lacks capacity to represent $f$. \\
+Classical Sweet Spot & $P < N$ & Moderate & Moderate & $\mathcal{O}(NP^2 + P^3)$; optimal classical bias--variance balance. \\
+Critical Interpolation & $P \approx N$ & Low & Divergent ($\propto \frac{\sigma_\epsilon^2}{|1 - P/N|}$) & $\kappa(\mat{\Phi}\T\mat{\Phi}) \to \infty$; weights contort to fit $\epsilon$ exactly. \\
+Overparameterized Min-Norm & $P \gg N$ & Low & Decaying ($\propto \frac{N}{P-N}\sigma_\epsilon^2$) & $\mathcal{O}(PN^2 + N^3)$ dual solve; implicit min-$\ell_2$-norm smoothness. \\
+Ridge-Regularized ($\lambda > 0$) & Any $P/N$ & Controlled & Bounded ($\le \frac{\sigma_\epsilon^2}{4\lambda}$) & $\mathcal{O}(\min(NP^2, PN^2))$; damps small singular values $s_j$. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Classical Trade-Off vs. Modern Double Descent]
+\label{cb:biasvar:synthesis}
+Classical treatments \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.2--5.4} \bookcite{deep_learning_foundations_concepts}{Sec. 4.3} \bookcite{introduction_probability_data_science}{Sec. 7.2--7.3} \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 8} focus on the $P \le N$ regime, where increasing capacity monotonically trades bias for variance and produces a U-shaped test error curve mitigated by validation sets, early stopping, and $\ell_1/\ell_2$ regularization. Prince \bookcite{understandingdl_simonprince}{Ch. 8 \& 20} extends this classical picture beyond the interpolation threshold $P = N$: when $\mathcal{F}$ is overparameterized and optimization favors minimum-norm or flat-minima solutions, the classical U-curve forms only the left half of a \emph{double descent} curve, with the second descent driven by smoother high-dimensional interpolation.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:biasvar:visuals}
+% =============================================================================
+
+Figure~\ref{fig:biasvar:tikz_regimes} maps the four capacity regimes geometrically, while Figure~\ref{fig:biasvar:pgf_double_descent} plots the exact Bias$^2$, Variance, and Total Excess Risk across $P/N$ alongside the smoothing effect of Ridge regularization.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.4cm and 0.65cm]
+  \node[monoBox, text width=3.1cm] (under) {\textbf{1. Underparameterized}\\$P \ll N$\\[2pt]High $\mathrm{Bias}^2$, Low $\mathrm{Var}$\\$\hat{R}_N > 0$ (Underfitting)};
+  \node[monoTealBox, right=of under, text width=3.1cm] (sweet) {\textbf{2. Classical Optimum}\\$P < N$\\[2pt]Balanced $\mathrm{Bias}^2 + \mathrm{Var}$\\Classical U-Minimum};
+  \node[monoWarnBox, right=of sweet, text width=3.1cm] (crit) {\textbf{3. Critical Cusp}\\$P \approx N$\\[2pt]$s_{\min}(\mat{\Phi}) \to 0$\\Variance Blow-Up};
+  \node[monoIndigoBox, right=of crit, text width=3.1cm] (over) {\textbf{4. Overparameterized}\\$P \gg N$\\[2pt]Min-Norm $\hat{\vecb{w}} = \mat{\Phi}\pinv\vecb{y}$\\Benign Overfitting};
+
+  \draw[monoArrow] (under) -- (sweet);
+  \draw[monoArrow] (sweet) -- (crit);
+  \draw[monoArrow] (crit) -- (over);
+
+  \node[below=0.55cm of sweet, font=\scriptsize\color{monographSlate}, align=center] (capaxis)
+    {Increasing Model Capacity $P/N$ $\longrightarrow$};
+  \node[below=0.55cm of crit, font=\scriptsize\color{monographCrimson}, align=center] (ridge)
+    {Ridge ($\lambda > 0$) damps $s_{\min}^{-2}$ peak};
+  \draw[monoArrow, dashed, color=monographCrimson] (ridge.north) -- (crit.south);
+\end{tikzpicture}
+\caption{Conceptual regime map across the capacity-to-sample ratio $P/N$. Classical learning theory governs Regimes~1--3; implicit minimum-$\ell_2$-norm bias governs Regime~4.}
+\label{fig:biasvar:tikz_regimes}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.90\textwidth,
+  height=6.8cm,
+  xlabel={Capacity Ratio $P/N$},
+  ylabel={Expected Excess Risk (units of $\sigma_\epsilon^2$)},
+  xmin=0.05, xmax=3.8,
+  ymin=0, ymax=4.8,
+  grid=major,
+  grid style={dashed, monographRule!60},
+  legend style={at={(0.98,0.97)}, anchor=north east, font=\scriptsize, fill=white, draw=monographRule},
+  tick label style={font=\scriptsize},
+  label style={font=\small\color{monographNavy}}
+]
+  % Classical + Double Descent Variance (capped near 1 for clean plotting)
+  \addplot[domain=0.05:0.88, samples=80, thick, dashed, color=monographTeal]
+    {0.9*x/(1 - x)};
+  \addlegendentry{Variance ($\lambda = 0^+$)}
+  \addplot[domain=1.14:3.8, samples=100, thick, dashed, color=monographTeal, forget plot]
+    {0.9/(x - 1)};
+
+  % Squared Bias
+  \addplot[domain=0.05:1.0, samples=60, thick, dotted, color=monographIndigo]
+    {1.8*(1 - x)^2 + 0.08};
+  \addlegendentry{$\mathrm{Bias}^2$ ($\lambda = 0^+$)}
+  \addplot[domain=1.0:3.8, samples=60, thick, dotted, color=monographIndigo, forget plot]
+    {0.08 + 0.15/x};
+
+  % Total Excess Risk (Double Descent)
+  \addplot[domain=0.05:0.88, samples=80, very thick, color=monographCrimson]
+    {1.8*(1 - x)^2 + 0.08 + 0.9*x/(1 - x)};
+  \addlegendentry{Total Risk ($\lambda = 0^+$, Double Descent)}
+  \addplot[domain=1.14:3.8, samples=100, very thick, color=monographCrimson, forget plot]
+    {0.08 + 0.15/x + 0.9/(x - 1)};
+
+  % Ridge Regularized (smooths the P=N cusp)
+  \addplot[domain=0.05:3.8, samples=120, very thick, color=monographNavy]
+    {1.8*(1 - min(x,1))^2 + 0.14 + 0.9*x/((1 - x)^2 + 0.45)};
+  \addlegendentry{Ridge-Regularized Risk ($\lambda > 0$)}
+
+  % Interpolation threshold line
+  \draw[dashed, thick, color=monographSlate] (axis cs:1,0) -- (axis cs:1,4.8);
+  \node[anchor=south west, font=\scriptsize\color{monographSlate}] at (axis cs:1.03,4.2) {$P = N$ (Interpolation)};
+\end{axis}
+\end{tikzpicture}
+\caption{Analytical Bias$^2$, Variance, and Total Excess Test Risk across $P/N$. In the ridgeless limit ($\lambda \to 0^+$), variance diverges at $P/N = 1$ before descending again in the overparameterized regime ($P > N$). Positive Ridge regularization ($\lambda > 0$) eliminates the interpolation cusp.}
+\label{fig:biasvar:pgf_double_descent}
+\end{figure}
+
+Figure~\ref{fig:biasvar:bishop_fits} illustrates the classical frequentist ensemble experiment on sinusoidal data, showing how decreasing regularization $\lambda$ shifts error from bias to variance. Figures~\ref{fig:biasvar:prince_dd} and~\ref{fig:biasvar:prince_smooth} demonstrate empirical double descent across MNIST-1D, MNIST, and CIFAR-100, together with the geometric smoothing mechanism in overparameterized networks.
+
+\monographfig[0.74\textwidth]{deep_learning_foundations_concepts_p146_fig1.png}{Classical bias--variance trade-off on $L=100$ datasets ($N=25$, $M=25$ Gaussian basis functions) as $\ln\lambda$ decreases from $3$ to $-3$: left column shows $20$ individual fits $\hat{f}_{\mathcal{D}}$ (variance); right column compares the ensemble mean $\bar{f}$ (red) against $f(x)=\sin(2\pi x)$ (green, bias) \bookcite{deep_learning_foundations_concepts}{Fig. 4.7, p. 127}.}{fig:biasvar:bishop_fits}
+
+\monographfig[0.76\textwidth]{understandingdl_simonprince_p144_fig1.png}{Empirical double descent across (a--b) MNIST-1D without and with $15\%$ label noise, (c) shallow networks on MNIST, and (d) ResNet-18 on CIFAR-100. Test error peaks near the interpolation threshold (dashed vertical line) and descends below the classical minimum in the overparameterized regime \bookcite{understandingdl_simonprince}{Fig. 8.10, p. 130}.}{fig:biasvar:prince_dd}
+
+\monographfig[0.78\textwidth]{understandingdl_simonprince_p145_fig1.png}{Geometric mechanism of the second descent: (a) sparse training points in high-dimensional space; (b) a model with just enough capacity ($6$ units) contorts wildly between points; (c--f) adding hidden units enables progressively smoother minimum-norm interpolation \bookcite{understandingdl_simonprince}{Fig. 8.11, p. 131}.}{fig:biasvar:prince_smooth}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:biasvar:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Validation-Set Leakage and Test-Set Staleness]
+\label{pit:biasvar:leakage}
+Selecting hyperparameters ($\lambda$, polynomial degree, early-stopping epoch) on the test set---or fitting preprocessing statistics (mean, variance, PCA) on $\mathcal{D}_{\mathrm{train}} \cup \mathcal{D}_{\mathrm{val}}$ prior to splitting---leaks information and produces optimistically biased risk estimates \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.3, p. 121} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 8.2, p. 94}. Always compute all data-dependent transforms strictly inside each training fold (Algorithm~\ref{alg:biasvar:nested_cv}).
+\end{pitfall}
+
+\begin{pitfall}[Ill-Conditioning and Variance Catastrophe at $P \approx N$]
+\label{pit:biasvar:cusp}
+Solving unregularized normal equations $\mat{\Phi}\T\mat{\Phi}\vecb{w} = \mat{\Phi}\T\vecb{y}$ near the interpolation threshold $P \approx N$ is numerically catastrophic: the smallest singular value $s_{\min}(\mat{\Phi}) \to 0$, inflating the condition number $\kappa(\mat{\Phi}\T\mat{\Phi}) = (s_{\max}/s_{\min})^2$ and amplifying both label noise $\sigma_\epsilon^2$ and floating-point roundoff. Remedy: add explicit Ridge damping $\lambda > 0$, use SVD/QR solvers rather than forming $\mat{\Phi}\T\mat{\Phi}$, or move cleanly into the overparameterized regime with weight decay \bookcite{understandingdl_simonprince}{Sec. 8.4, p. 129}.
+\end{pitfall}
+
+\begin{pitfall}[Misinterpreting Zero Training Loss as Generalization (Confidence Blow-Up \& Grokking)]
+\label{pit:biasvar:zero_loss}
+In classification with cross-entropy loss, test accuracy can plateau while test negative log-likelihood \emph{increases} because softmax logits diverge to drive training probabilities toward $1$ \bookcite{understandingdl_simonprince}{Sec. 8.1, p. 120}. Conversely, in \emph{grokking}, training loss reaches zero long before generalization suddenly improves as weight decay shrinks $\norm{\vecb{w}}_2$ into the Goldilocks zone \bookcite{understandingdl_simonprince}{Sec. 20.4.4, pp. 412--413}. Never terminate model diagnostics solely on $\hat{R}_N \approx 0$.
+\end{pitfall}
+
+\end{document}

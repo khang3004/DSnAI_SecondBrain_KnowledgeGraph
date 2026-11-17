@@ -1,0 +1,659 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Convex, Smooth \& Stochastic Optimization}{Stochastic, Adaptive, Proximal \& Second-Order Optimizers}{Momentum, Nesterov, Adam/AdamW, LR Schedules \& Second-Order / Natural Gradient}{%
+  \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~8, Sec.~8.2--8.7, pp.~282--320 (PDF pp.~297--335)},
+  \bookcite{understandingdl_simonprince}{Ch.~6 \& Ch.~9, pp.~86--95, 138--156 (PDF pp.~100--109, 152--170)},
+  \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.~3 \& Ch.~7, pp.~13--18, 36--39},
+  \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~3.3.4, 5.1.9, 6.3--6.4, 17.3.2 (PDF pp.~109--111, 267, 305--320, 686--687)},
+  \bookcite{build_large_language_model_from_scratch}{Ch.~5 \& App.~D, pp.~371--372, 754--775},
+  \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~12, pp.~140--155 (PDF pp.~152--167)}%
+}
+
+\begingroup
+\setlength{\emergencystretch}{5em}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:optalg:formulation}
+% =============================================================================
+
+First-order steepest descent $\vecb{\theta}_{t+1} = \vecb{\theta}_t - \eta_t \vecb{g}_t$ suffers a fundamental geometric handicap on modern statistical models: its step direction $-\vecb{g}_t$ is tied to the canonical Euclidean inner product $\norm{\vecb{\delta}}_2^2$, so on any anisotropic landscape with Hessian condition number $\kappa = L/\mu \gg 1$, progress along shallow ravine axes is throttled by the step-size stability limit $\eta_t < 2/L$ imposed by steep orthogonal walls \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.2.1, p.~282} \bookcite{understandingdl_simonprince}{Sec.~6.4, p.~88}. In stochastic mini-batch regimes $\mathcal{L}(\vecb{\theta}) = \E_{\vecb{z}}[\ell(\vecb{\theta};\vecb{z})]$ or finite-sum empirical risk minimization $\mathcal{L}(\vecb{\theta}) = \frac{1}{N}\sum_{n=1}^N \ell_n(\vecb{\theta})$, sampling variance $\sigma_*^2$ further forces decaying step sizes unless gradient directions are smoothed across iterations \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.3, pp.~271--273} \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.~6--7, pp.~34--39}.
+
+Following the general framework of \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(6.48), p.~273} and \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.68), p.~298}, every optimizer synthesized in this monograph---from Polyak heavy-ball momentum and Nesterov acceleration to adaptive moment methods (AdaGrad, RMSProp, Adam, AdamW), quasi-Newton methods (BFGS, L-BFGS), Gauss--Newton, and Natural Gradient Descent (NGD/K-FAC)---specializes a single \emph{preconditioned, regularized update template}:
+\begin{equation}
+\label{eq:optalg:unified_template}
+  \vecb{\theta}_{t} = (1 - \eta_t \lambda)\vecb{\theta}_{t-1} - \eta_t \mat{P}_t\inv \vecb{d}_t,
+\end{equation}
+where $\eta_t > 0$ is the scheduled global learning rate, $\lambda \ge 0$ is the decoupled weight-decay coefficient, $\vecb{d}_t \in \R^P$ is an instantaneous, lookahead, or exponentially smoothed gradient surrogate, and $\mat{P}_t \in \mathbb{S}_{++}^P$ is a symmetric positive-definite preconditioning metric:
+\begin{itemize}
+  \item \textbf{Isotropic first-order:} $\mat{P}_t = \eye_P$, varying $\vecb{d}_t$ via momentum memory or lookahead gradient evaluation \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.~7, p.~36} \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~12.4--12.5, pp.~148--152}.
+  \item \textbf{Diagonal adaptive preconditioning:} $\mat{P}_t = \diag(\sqrt{\hat{\vecb{v}}_t} + \epsilon\ones)$, scaling each coordinate inversely with its smoothed gradient root-mean-square magnitude across iterations, as developed in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5, pp.~306--311} and \bookcite{understandingdl_simonprince}{Sec.~6.4, pp.~88--90}.
+  \item \textbf{Structured curvature \& information geometry:} $\mat{P}_t$ approximates the Hessian $\mat{H}_t = \hess\mathcal{L}(\vecb{\theta}_{t-1})$ (Newton, Levenberg--Marquardt, BFGS/L-BFGS), the Generalized Gauss--Newton matrix $\mat{G}_t = \mat{J}_t\T \mat{\Lambda}_t \mat{J}_t$, or the Fisher Information Matrix $\mat{F}_t$ (NGD, K-FAC) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4 \& Sec.~17.3.2, pp.~279--286, 652--653}.
+\end{itemize}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Because optimization theory spans machine learning, numerical PDEs, and information geometry, our six source textbooks collide heavily on symbols for learning rates, momentum weights, velocity sign conventions, and second-moment accumulators. Table~\ref{tab:optalg:notation} establishes the canonical notation used throughout this monograph. In particular, note two algebraic conventions that alter effective step sizes if overlooked:
+\begin{enumerate}
+  \item \textbf{Convex-combination vs.\ unnormalized momentum:} Adam and Prince formulate velocity as a normalized EMA $\vecb{m}_t = \beta_1 \vecb{m}_{t-1} + (1 - \beta_1)\vecb{g}_t$ \bookcite{understandingdl_simonprince}{Eq.~(6.11), p.~86}, keeping $\vecb{m}_t$ on the same scale as $\vecb{g}_t$ ($\vecb{m}_\infty = \vecb{g}$ for constant $\vecb{g}$). By contrast, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(8.15), p.~296}, \bookcite{stochastic_gradient_decent_algorithm_explain}{Eq.~(58), p.~36}, and \bookcite{machine_learning_co_ban_tiep_vu}{Eq.~(12.7), p.~149} use unnormalized accumulation $\vecb{m}_t = \beta \vecb{m}_{t-1} + \vecb{g}_t$, amplifying steady-state gradients by $\frac{1}{1-\beta}$ (a factor of $10\times$ at $\beta = 0.9$). Both rules yield identical iterates under the learning-rate rescaling $\eta_{\mathrm{raw}} = (1-\beta)\eta_{\mathrm{ema}}$.
+  \item \textbf{Bias-correction indexing:} $1$-indexed loops ($t = 1,2,\dots$ starting from $\vecb{m}_0 = \vecb{v}_0 = \zeros$) divide by $1 - \beta_1^t$ and $1 - \beta_2^t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.7, p.~311} \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.80), p.~300}, whereas $0$-indexed updates computing $\vecb{m}_{t+1}$ at step $t=0$ divide by $1 - \beta^{t+1}$ \bookcite{understandingdl_simonprince}{Eq.~(6.16), p.~90}. Both represent the same $k$-th update step.
+\end{enumerate}
+\end{crossbook}
+
+\begin{table}[htbp]
+\centering
+\caption{Unified Notation and Cross-Book Convention Reconciliation across Optimization Sources.}
+\label{tab:optalg:notation}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Symbol} & \textbf{Source Textbook Conventions \& Reconciliation} \\
+\midrule
+Parameter vector & $\vecb{\theta}_t \in \R^P$ & $\vecb{\theta}$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.3}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.1}, and \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~12}; $\vecb{\phi}_t$ in \bookcite{understandingdl_simonprince}{Sec.~6.3}; $\vecb{x}_t \in \R^d$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Ch.~7}. \\
+Learning rate & $\eta_t > 0$ & $\eta_t$ in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.3} and \bookcite{machine_learning_co_ban_tiep_vu}{Eq.~(12.2)}; $\epsilon$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.1--8.7}; $\alpha$ in \bookcite{understandingdl_simonprince}{Sec.~6.3}; $\gamma_t$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Alg.~7.1}. \\
+Stochastic gradient & $\vecb{g}_t = \grad\mathcal{L}_{B_t}(\vecb{\theta}_{t-1})$ & $\hat{\vecb{g}}$ or $\vecb{g}$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.1}; $\sum_{i\in B_t}\pd{\ell_i}{\phi}$ in \bookcite{understandingdl_simonprince}{Eq.~(6.11)}; $\grad f_{i_t}(\vecb{x}_t)$ in \bookcite{stochastic_gradient_decent_algorithm_explain}{Eq.~(58)}. \\
+1st-moment state & $\vecb{m}_t,\; \beta_1 \in [0,1)$ & $(\vecb{v}, \alpha)$ with negative-gradient sign in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(8.15)} and $(\vecb{s}, \rho_1)$ in Alg.~8.7; $(\vecb{m}_t, \beta)$ in \bookcite{understandingdl_simonprince}{Eq.~(6.15)}; $(\vecb{v}_t, \gamma)$ in \bookcite{machine_learning_co_ban_tiep_vu}{Eq.~(12.7)}. \\
+2nd-moment state & $\vecb{v}_t,\; \beta_2 \in [0,1)$ & $(\vecb{r}, \rho)$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.5} and $(\vecb{r}, \rho_2)$ in Alg.~8.7; $(\vecb{v}_t, \gamma)$ in \bookcite{understandingdl_simonprince}{Eq.~(6.15)}; $(\vecb{s}_t, \beta_2)$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.78)}. \\
+Numerical stabilizer & $\epsilon > 0$ & $\delta$ ($10^{-7}$--$10^{-8}$) in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.4--8.7}; $\epsilon$ in \bookcite{understandingdl_simonprince}{Eq.~(6.14)} and \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.79), $10^{-6}$}. \\
+Weight decay rate & $\lambda \ge 0$ & Decoupled \texttt{weight\_decay} in \bookcite{build_large_language_model_from_scratch}{p.~372} and \bookcite{understandingdl_simonprince}{p.~156, $\lambda'$}; distinct from $L_2$ coefficient $\lambda$ in Eq.~(9.5). \\
+Fisher / Hessian & $\mat{F}(\vecb{\theta}),\; \mat{H}(\vecb{\theta})$ & $\mat{F}(\vecb{\theta})$ in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(6.84)}; $\mat{H} = \hess J$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(8.26)} and \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.40)}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:optalg:theory}
+% =============================================================================
+
+\subsection{Polyak Heavy-Ball Momentum: Equivalences \& Spectral Acceleration}
+\label{subsec:optalg:heavyball}
+
+In optimization literature, momentum appears in three superficially distinct algebraic formats: the ML velocity update, Polyak's two-step Heavy-Ball recursion, and the Iterate-Moving-Average (IMA) form. \bookcite{stochastic_gradient_decent_algorithm_explain}{Sec.~7.1, Lemmas~7.2--7.3, pp.~36--37} establishes their exact trajectory equivalence.
+
+\begin{coremath}[Proposition: Three-Way Equivalence \& Stochastic Momentum Rate]
+\label{thm:optalg:momentum_equiv}
+Consider the stochastic momentum sequence initialized at $\vecb{\theta}_0 = \vecb{\theta}_{-1} \in \R^P$, $\vecb{m}_0 = \zeros$, with step sizes $\{\gamma_t\}_{t \ge 1}$ and momentum weights $\{\beta_t\}_{t \ge 1} \subset [0, 1)$:
+\begin{equation}
+\label{eq:optalg:ml_mom}
+  \text{(ML Momentum)}\qquad \vecb{m}_t = \beta_t \vecb{m}_{t-1} + \vecb{g}_t, \qquad \vecb{\theta}_{t} = \vecb{\theta}_{t-1} - \gamma_t \vecb{m}_t.
+\end{equation}
+Then:
+\begin{enumerate}
+  \item \textbf{Heavy-Ball Equivalence:} For $t \ge 1$, the iterates $\{\vecb{\theta}_t\}$ obey Polyak's Heavy-Ball form
+  \begin{equation}
+  \label{eq:optalg:hb_form}
+    \vecb{\theta}_t = \vecb{\theta}_{t-1} - \hat{\gamma}_t \vecb{g}_t + \hat{\beta}_t(\vecb{\theta}_{t-1} - \vecb{\theta}_{t-2}),
+  \end{equation}
+  with $\hat{\gamma}_t = \gamma_t$, $\hat{\beta}_1 = 0$, and $\hat{\beta}_t = \frac{\gamma_t}{\gamma_{t-1}}\beta_t$ for $t \ge 2$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Lemma~7.2, p.~36}. When $\gamma_t \equiv \gamma$ is constant, $\hat{\beta}_t = \beta_t$.
+  \item \textbf{Iterate-Moving-Average (IMA) Equivalence:} Choosing $(\eta_t, \lambda_t)$ satisfying $\beta_t \lambda_{t+1} = \frac{\gamma_{t-1}}{\gamma_t}\lambda_t - \beta_t$ and $\eta_t = (1 + \lambda_{t+1})\gamma_t$ (with $\vecb{z}_0 = \vecb{\theta}_0$ and $\vecb{z}_{t-1} = \vecb{\theta}_{t-1} + \lambda_t(\vecb{\theta}_{t-1} - \vecb{\theta}_{t-2})$),~\eqref{eq:optalg:ml_mom} is identical to
+  \begin{equation}
+  \label{eq:optalg:ima_form}
+    \vecb{z}_t = \vecb{z}_{t-1} - \eta_t \vecb{g}_t, \qquad \vecb{\theta}_t = \frac{\lambda_{t+1}}{\lambda_{t+1}+1}\vecb{\theta}_{t-1} + \frac{1}{\lambda_{t+1}+1}\vecb{z}_t.
+  \end{equation}
+  \item \textbf{Stochastic Convex Convergence:} If each component $f_i$ is convex and $L_{\max}$-smooth with gradient noise $\sigma_f^* = \inf_{\vecb{\theta}^*\in\argmin f}\Var[\grad f_i(\vecb{\theta}^*)]$ at optima, then choosing $\gamma_t = \frac{2\eta}{t+2}$ and $\beta_t = \frac{t-1}{t+1}$ ($t \ge 1$, corresponding to constant $\eta_t \equiv \eta \le \frac{1}{4L_{\max}}$ and $\lambda_t = \frac{t-1}{2}$) yields last-iterate convergence \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~7.4 \& Cor.~7.5, pp.~38--39}:
+  \begin{equation}
+  \label{eq:optalg:stoch_mom_rate}
+    \E\bigl[f(\vecb{\theta}_T) - \inf f\bigr] \le \frac{\norm{\vecb{\theta}_0 - \vecb{\theta}^*}_2^2}{\eta T} + 2\eta\sigma_f^*,
+  \end{equation}
+  giving $O(1/\varepsilon^2)$ complexity for $\eta = \frac{1}{4L_{\max}\sqrt{T}}$ (without iterate averaging).
+\end{enumerate}
+
+\textbf{Proof of (1)--(2).} From~\eqref{eq:optalg:ml_mom} at step $t-1$ ($t \ge 2$), $\vecb{m}_{t-1} = \frac{1}{\gamma_{t-1}}(\vecb{\theta}_{t-2} - \vecb{\theta}_{t-1})$. Substituting into $\vecb{\theta}_t = \vecb{\theta}_{t-1} - \gamma_t(\beta_t\vecb{m}_{t-1} + \vecb{g}_t)$ gives $\vecb{\theta}_t = \vecb{\theta}_{t-1} - \gamma_t\vecb{g}_t + \frac{\gamma_t\beta_t}{\gamma_{t-1}}(\vecb{\theta}_{t-1} - \vecb{\theta}_{t-2})$, proving~\eqref{eq:optalg:hb_form}. For (2), isolating $\vecb{z}_t = (1 + \lambda_{t+1})\vecb{\theta}_t - \lambda_{t+1}\vecb{\theta}_{t-1}$ and inserting~\eqref{eq:optalg:hb_form} yields
+\[
+  \vecb{z}_t = \vecb{\theta}_{t-1} + (1 + \lambda_{t+1})\hat{\beta}_t(\vecb{\theta}_{t-1} - \vecb{\theta}_{t-2}) - (1 + \lambda_{t+1})\gamma_t \vecb{g}_t = \vecb{z}_{t-1} - \eta_t \vecb{g}_t,
+\]
+because the stated recurrence ensures $(1+\lambda_{t+1})\hat{\beta}_t = (1+\lambda_{t+1})\frac{\gamma_t}{\gamma_{t-1}}\beta_t = \lambda_t$. \qed
+\end{coremath}
+
+While Theorem~\ref{thm:optalg:momentum_equiv} guarantees last-iterate stability in stochastic convex optimization, Polyak Heavy-Ball reveals its signature \emph{square-root condition-number speedup} on deterministic strongly convex quadratics.
+
+\begin{coremath}[Theorem: Polyak Heavy-Ball $\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$ Spectral Acceleration]
+\label{thm:optalg:hb_rate}
+Let $f(\vecb{\theta}) = \frac{1}{2}\vecb{\theta}\T \mat{A}\vecb{\theta} - \vecb{b}\T\vecb{\theta}$ with $\mat{A} \in \mathbb{S}_{++}^P$ having eigenvalues $0 < \mu = \lambda_1 \le \dots \le \lambda_P = L$ and condition number $\kappa = L/\mu$. Under constant Heavy-Ball updates $\vecb{\theta}_{t+1} = \vecb{\theta}_t - \alpha \grad f(\vecb{\theta}_t) + \beta(\vecb{\theta}_t - \vecb{\theta}_{t-1})$ with optimal hyperparameters
+\begin{equation}
+\label{eq:optalg:hb_opt_params}
+  \alpha^* = \frac{4}{(\sqrt{L} + \sqrt{\mu})^2}, \qquad \beta^* = \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^2,
+\end{equation}
+the augmented error state $\vecb{\xi}_t = [(\vecb{\theta}_t - \vecb{\theta}^*)\T,\; (\vecb{\theta}_{t-1} - \vecb{\theta}^*)\T]\T$ contracts asymptotically with spectral radius
+\begin{equation}
+\label{eq:optalg:hb_spectral}
+  \rho_{\mathrm{HB}}^* = \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = 1 - \frac{2}{\sqrt{\kappa} + 1},
+\end{equation}
+achieving $\norm{\vecb{\theta}_T - \vecb{\theta}^*}_2 \le C_\delta (\rho_{\mathrm{HB}}^* + \delta)^T \norm{\vecb{\theta}_0 - \vecb{\theta}^*}_2$ for any $\delta > 0$, improving iteration complexity from $O(\kappa \log(1/\varepsilon))$ for optimal gradient descent ($\rho_{\mathrm{GD}}^* = \frac{\kappa - 1}{\kappa + 1}$) to $O(\sqrt{\kappa}\log(1/\varepsilon))$.
+
+\textbf{Proof.} Write $\mat{A} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ via the spectral theorem and transform the error $\vecb{e}_t = \mat{Q}\T(\vecb{\theta}_t - \vecb{\theta}^*)$, where $\grad f(\vecb{\theta}_t) = \mat{A}(\vecb{\theta}_t - \vecb{\theta}^*)$. Each eigenmode $i \in \{1,\dots,P\}$ decouples into a $2\times 2$ linear dynamical system:
+\[
+  \begin{bmatrix} e_{t+1,i} \\ e_{t,i} \end{bmatrix}
+  = \underbrace{\begin{bmatrix} 1 + \beta - \alpha \lambda_i & -\beta \\ 1 & 0 \end{bmatrix}}_{\mat{T}(\lambda_i)}
+  \begin{bmatrix} e_{t,i} \\ e_{t-1,i} \end{bmatrix}.
+\]
+The eigenvalues $r \in \C$ of $\mat{T}(\lambda_i)$ satisfy the characteristic quadratic $r^2 - (1 + \beta - \alpha\lambda_i)r + \beta = 0$. Whenever the discriminant is non-positive,
+\[
+  \Delta(\lambda_i) = (1 + \beta - \alpha\lambda_i)^2 - 4\beta \le 0 \iff (1 - \sqrt{\beta})^2 \le \alpha \lambda_i \le (1 + \sqrt{\beta})^2,
+\]
+both roots form a complex-conjugate pair $r_{1,2} = \frac{1}{2}(1 + \beta - \alpha\lambda_i \pm \mathrm{i}\sqrt{-\Delta(\lambda_i)})$ lying strictly on the circle of radius $|r_1| = |r_2| = \sqrt{\beta}$ in $\C$. Enforcing $\Delta(\lambda_i) \le 0$ uniformly across the entire spectrum $[\mu, L]$ requires $(1-\sqrt{\beta})^2 \le \alpha \mu$ and $\alpha L \le (1+\sqrt{\beta})^2$. Minimizing the common spectral radius $\sqrt{\beta}$ makes both endpoint constraints tight:
+\[
+  \frac{L}{\mu} = \kappa = \left(\frac{1 + \sqrt{\beta^*}}{1 - \sqrt{\beta^*}}\right)^2 \implies \sqrt{\kappa}(1 - \sqrt{\beta^*}) = 1 + \sqrt{\beta^*} \implies \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}.
+\]
+Substituting $\sqrt{\beta^*}$ back into $\alpha^* \mu = (1 - \sqrt{\beta^*})^2 = \frac{4}{(\sqrt{\kappa}+1)^2}$ yields $\alpha^* = \frac{4}{\mu(\sqrt{\kappa}+1)^2} = \frac{4}{(\sqrt{L}+\sqrt{\mu})^2}$. By Gelfand's spectral radius formula $\lim_{T\to\infty}\norm{\mat{T}(\lambda_i)^T}_2^{1/T} = \rho(\mat{T}(\lambda_i)) = \sqrt{\beta^*}$, establishing~\eqref{eq:optalg:hb_spectral}. \qed
+\end{coremath}
+
+\begin{intuition}[Newtonian Particle with Viscous Drag \& Non-Normal Overshoot]
+\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.3.2, pp.~298--300} interprets momentum as Euler discretization of a unit-mass particle sliding down potential $J(\vecb{\theta})$ under viscous drag: $\ddot{\vecb{\theta}}(t) = -\grad J(\vecb{\theta}(t)) - \gamma\dot{\vecb{\theta}}(t)$. Unlike turbulent drag ($\propto -\norm{\dot{\vecb{\theta}}}^2$, too weak to stop oscillation) or dry Coulomb friction (constant magnitude, halting short of minima), linear viscous drag dissipates oscillations across steep canyon walls while allowing sustained acceleration along the flat valley floor (\bookcite{machine_learning_co_ban_tiep_vu}{Sec.~12.4, pp.~148--150} notes that finite inertia can also carry iterates over shallow local-minimum barriers). Note, however, that because $\mat{T}(\lambda_i)$ in Theorem~\ref{thm:optalg:hb_rate} is non-normal, $\norm{\mat{T}(\lambda_i)^t}_2$ exhibits a transient early-step hump before exponential decay takes hold (see Figure~\ref{fig:optalg:dynamics}a), and on general non-quadratic strongly convex objectives Heavy-Ball with fixed $(\alpha^*,\beta^*)$ lacks a global convergence guarantee without lookahead correction.
+\end{intuition}
+
+\subsection{Nesterov Accelerated Gradient (NAG): Lookahead Correction \& \texorpdfstring{$O(1/T^2)$}{O(1/T\texttwosuperior)} Rate}
+\label{subsec:optalg:nesterov}
+
+To cure Heavy-Ball's late-stage valley overshoot, Nesterov Accelerated Gradient (NAG) evaluates the gradient not at the current iterate $\vecb{\theta}_{t-1}$, but at the momentum-extrapolated \emph{lookahead} point \bookcite{understandingdl_simonprince}{Eq.~(6.12), p.~88} \bookcite{machine_learning_co_ban_tiep_vu}{Eq.~(12.10), p.~152} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.3, p.~300}:
+\begin{align}
+\text{(Sutskever Lookahead)}\quad & \tilde{\vecb{\theta}}_t = \vecb{\theta}_{t-1} + \beta_t \vecb{v}_{t-1},\quad \vecb{v}_t = \beta_t \vecb{v}_{t-1} - \eta_t \grad f(\tilde{\vecb{\theta}}_t),\quad \vecb{\theta}_t = \vecb{\theta}_{t-1} + \vecb{v}_t, \label{eq:optalg:nag_sutskever} \\
+\text{(Nesterov Extrapolation)}\quad & \vecb{y}_t = \vecb{x}_t + \beta_t(\vecb{x}_t - \vecb{x}_{t-1}),\quad \vecb{x}_{t+1} = \vecb{y}_t - \eta_t \grad f(\vecb{y}_t). \label{eq:optalg:nag_nesterov}
+\end{align}
+Setting $\vecb{v}_t = \vecb{x}_{t+1} - \vecb{x}_t$ and $\vecb{y}_t = \vecb{x}_t + \beta_t \vecb{v}_{t-1}$ shows exact equivalence when $\beta_t$ is constant ($\vecb{x}_{t+1} - \vecb{x}_t = \beta(\vecb{x}_t - \vecb{x}_{t-1}) - \eta\grad f(\vecb{y}_t)$) \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.35)--(8.38), p.~288}; for time-varying $\beta_t$,~\eqref{eq:optalg:nag_nesterov} is the canonical convex acceleration scheme whose $O(1/T^2)$ suboptimality matches the information-theoretic first-order oracle lower bound.
+
+\begin{coremath}[Theorem: Optimal $O(1/T^2)$ Convergence of NAG via Lyapunov Potential]
+\label{thm:optalg:nag_rate}
+Let $f : \R^P \to \R$ be convex and $L$-smooth with minimizer $\vecb{x}^* \in \argmin f$. Starting from $\vecb{x}_0 = \vecb{x}_{-1} \in \R^P$, define $\lambda_0 = 0$, $\lambda_1 = 1$, and
+\begin{equation}
+\label{eq:optalg:nag_seq}
+  \lambda_{t+1} = \frac{1 + \sqrt{1 + 4\lambda_t^2}}{2}, \qquad \beta_t = \frac{\lambda_t - 1}{\lambda_{t+1}} \qquad (t \ge 1).
+\end{equation}
+Running~\eqref{eq:optalg:nag_nesterov} with $\eta_t \equiv 1/L$ guarantees, for every $T \ge 1$:
+\begin{equation}
+\label{eq:optalg:nag_bound}
+  f(\vecb{x}_T) - f(\vecb{x}^*) \le \frac{2L\norm{\vecb{x}_0 - \vecb{x}^*}_2^2}{(T + 1)^2} = O\!\left(\frac{1}{T^2}\right),
+\end{equation}
+improving quadratically upon deterministic gradient descent's $O(1/T)$ bound $\frac{L\norm{\vecb{x}_0-\vecb{x}^*}_2^2}{2T}$ \bookcite{stochastic_gradient_decent_algorithm_explain}{Thm.~3.4, p.~14} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.3.3, p.~300}. For $\mu$-strongly convex $L$-smooth objectives, constant $\eta_t \equiv 1/L$ and $\beta_t \equiv \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$ achieve global linear convergence $f(\vecb{x}_T) - f(\vecb{x}^*) \le \left(1 - \frac{1}{\sqrt{\kappa}}\right)^T \bigl(f(\vecb{x}_0) - f(\vecb{x}^*) + \frac{\mu}{2}\norm{\vecb{x}_0 - \vecb{x}^*}_2^2\bigr)$.
+
+\textbf{Proof.} Let $A_t \triangleq \lambda_t^2$ and $a_{t+1} \triangleq \lambda_{t+1}$ for $t \ge 0$ (so $A_0 = 0$, $A_1 = a_1 = 1$). By~\eqref{eq:optalg:nag_seq}, $\lambda_{t+1}^2 - \lambda_{t+1} = \lambda_t^2$, meaning $A_{t+1} = A_t + a_{t+1}$ and $a_{t+1}^2 = A_{t+1}$. Define the auxiliary mirror sequence $\vecb{z}_0 = \vecb{x}_0$ and
+\[
+  \vecb{z}_{t+1} = \vecb{z}_t - \frac{a_{t+1}}{L}\grad f(\vecb{y}_t), \qquad \vecb{y}_t = \frac{A_t}{A_{t+1}}\vecb{x}_t + \frac{a_{t+1}}{A_{t+1}}\vecb{z}_t.
+\]
+(Unrolling $a_t\vecb{z}_t = A_t\vecb{x}_t - A_{t-1}\vecb{x}_{t-1}$ gives $\vecb{z}_t = \vecb{x}_t + (a_t - 1)(\vecb{x}_t - \vecb{x}_{t-1})$, which upon substitution recovers $\vecb{y}_t = \vecb{x}_t + \frac{a_t - 1}{a_{t+1}}(\vecb{x}_t - \vecb{x}_{t-1}) = \vecb{x}_t + \beta_t(\vecb{x}_t - \vecb{x}_{t-1})$.) Introduce the Lyapunov potential
+\[
+  \mathcal{E}_t \triangleq A_t\bigl(f(\vecb{x}_t) - f(\vecb{x}^*)\bigr) + \frac{L}{2}\norm{\vecb{z}_t - \vecb{x}^*}_2^2.
+\]
+By $L$-smoothness at $\vecb{y}_t$ and $\vecb{x}_{t+1} = \vecb{y}_t - \frac{1}{L}\grad f(\vecb{y}_t)$, descent yields $f(\vecb{x}_{t+1}) \le f(\vecb{y}_t) - \frac{1}{2L}\norm{\grad f(\vecb{y}_t)}_2^2$. Meanwhile, convexity of $f$ at $\vecb{y}_t$ gives $f(\vecb{x}_t) \ge f(\vecb{y}_t) + \inner{\grad f(\vecb{y}_t)}{\vecb{x}_t - \vecb{y}_t}$ and $f(\vecb{x}^*) \ge f(\vecb{y}_t) + \inner{\grad f(\vecb{y}_t)}{\vecb{x}^* - \vecb{y}_t}$. Weighting these two inequalities by $A_t$ and $a_{t+1}$ ($A_{t+1} = A_t + a_{t+1}$) and using $A_t(\vecb{x}_t - \vecb{y}_t) = a_{t+1}(\vecb{y}_t - \vecb{z}_t)$ yields
+\[
+  A_{t+1} f(\vecb{y}_t) \le A_t f(\vecb{x}_t) + a_{t+1} f(\vecb{x}^*) + a_{t+1}\inner{\grad f(\vecb{y}_t)}{\vecb{z}_t - \vecb{x}^*}.
+\]
+Combining with $A_{t+1}f(\vecb{x}_{t+1}) \le A_{t+1}f(\vecb{y}_t) - \frac{A_{t+1}}{2L}\norm{\grad f(\vecb{y}_t)}_2^2$ and subtracting $A_{t+1}f(\vecb{x}^*)$ produces
+\begin{equation}
+\label{eq:optalg:nag_step1}
+  A_{t+1}\bigl(f(\vecb{x}_{t+1}) - f(\vecb{x}^*)\bigr) - A_t\bigl(f(\vecb{x}_t) - f(\vecb{x}^*)\bigr)
+  \le a_{t+1}\inner{\grad f(\vecb{y}_t)}{\vecb{z}_t - \vecb{x}^*} - \frac{A_{t+1}}{2L}\norm{\grad f(\vecb{y}_t)}_2^2.
+\end{equation}
+Expanding $\frac{L}{2}\norm{\vecb{z}_{t+1} - \vecb{x}^*}_2^2$ via $\vecb{z}_{t+1} = \vecb{z}_t - \frac{a_{t+1}}{L}\grad f(\vecb{y}_t)$ yields
+\begin{equation}
+\label{eq:optalg:nag_step2}
+  \frac{L}{2}\norm{\vecb{z}_{t+1} - \vecb{x}^*}_2^2 - \frac{L}{2}\norm{\vecb{z}_t - \vecb{x}^*}_2^2
+  = -a_{t+1}\inner{\grad f(\vecb{y}_t)}{\vecb{z}_t - \vecb{x}^*} + \frac{a_{t+1}^2}{2L}\norm{\grad f(\vecb{y}_t)}_2^2.
+\end{equation}
+Adding~\eqref{eq:optalg:nag_step1} and~\eqref{eq:optalg:nag_step2} cancels the cross-term identically and leaves $\mathcal{E}_{t+1} - \mathcal{E}_t \le \frac{a_{t+1}^2 - A_{t+1}}{2L}\norm{\grad f(\vecb{y}_t)}_2^2 = 0$. Finally, induction on~\eqref{eq:optalg:nag_seq} shows $\lambda_t \ge \frac{t+1}{2}$ for all $t \ge 1$ (since $\lambda_1 = 1$ and $\lambda_{t+1} > \frac{1 + 2\lambda_t}{2} = \lambda_t + \frac{1}{2}$), whence $A_T = \lambda_T^2 \ge \frac{(T+1)^2}{4}$. Since $\mathcal{E}_T \le \mathcal{E}_0 = \frac{L}{2}\norm{\vecb{x}_0 - \vecb{x}^*}_2^2$, dividing by $A_T$ yields~\eqref{eq:optalg:nag_bound}. \qed
+\end{coremath}
+
+\begin{intuition}[Why Lookahead Acts as Curvature-Aware Damping]
+Writing $\grad f(\vecb{y}_t) \approx \grad f(\vecb{x}_t) + \beta_t \mat{H}(\vecb{x}_t)(\vecb{x}_t - \vecb{x}_{t-1})$, NAG implicitly injects a finite-difference Hessian-velocity braking term $-\eta_t \beta_t \mat{H}(\vecb{x}_t)(\vecb{x}_t - \vecb{x}_{t-1})$ without forming $\mat{H}$ \bookcite{machine_learning_co_ban_tiep_vu}{Fig.~12.11, p.~151} \bookcite{understandingdl_simonprince}{Fig.~6.8, p.~87}. Along high-curvature directions where momentum threatens to overshoot across the canyon floor, $\grad f(\vecb{y}_t)$ reverses sign ahead of impact and brakes velocity immediately; along flat valley directions where curvature is tiny, $\grad f(\vecb{y}_t) \approx \grad f(\vecb{x}_t)$ preserves full momentum acceleration. In noisy mini-batch regimes, however, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.3.3, p.~300} cautions that stochastic variance $O(\sigma/\sqrt{T})$ dominates deterministic acceleration unless mini-batch variance is simultaneously controlled.
+\end{intuition}
+
+\subsection{Adaptive Moments: AdaGrad \texorpdfstring{$\to$}{->} RMSProp \texorpdfstring{$\to$}{->} Adam Bias Correction \texorpdfstring{$\to$}{->} AdamW}
+\label{subsec:optalg:adaptive}
+
+Even with momentum, isotropic methods apply a single scalar step size $\eta_t$ across all $P$ coordinates, failing when parameter sensitivities span orders of magnitude across layers or sparse features \bookcite{understandingdl_simonprince}{Sec.~6.4, p.~88} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.6, pp.~298--300}. Diagonal adaptive optimizers construct coordinate-wise preconditioners $\mat{P}_t = \diag(\sqrt{\hat{\vecb{v}}_t} + \epsilon\ones)$:
+\begin{enumerate}
+  \item \textbf{AdaGrad:} Accumulates the unattenuated sum of squared gradients $\vecb{v}_t = \vecb{v}_{t-1} + \vecb{g}_t \odot \vecb{g}_t$, updating $\vecb{\theta}_t = \vecb{\theta}_{t-1} - \frac{\eta}{\sqrt{\vecb{v}_t} + \epsilon} \odot \vecb{g}_t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.4, p.~308} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.69)--(8.71), p.~299}. While optimal for sparse convex problems, monotonic growth of $\vecb{v}_t$ prematurely freezes learning rates before reaching local minima in deep non-convex trajectories \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5.1, p.~307} \bookcite{understandingdl_simonprince}{p.~93}.
+  \item \textbf{RMSProp:} Replaces cumulative summation with an exponentially weighted moving average (EWMA) $\vecb{v}_t = \beta_2 \vecb{v}_{t-1} + (1 - \beta_2)\vecb{g}_t^{\odot 2}$, forgetting ancient curvature history so the optimizer adapts locally inside each non-convex basin \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.5, p.~309} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.72)--(8.74), p.~299}.
+  \item \textbf{Adam:} Couples EWMA first-moment smoothing $\vecb{m}_t = \beta_1 \vecb{m}_{t-1} + (1-\beta_1)\vecb{g}_t$ with RMSProp's second-moment accumulator $\vecb{v}_t = \beta_2 \vecb{v}_{t-1} + (1-\beta_2)\vecb{g}_t^{\odot 2}$ and exact zero-initialization bias correction \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.7, p.~311} \bookcite{understandingdl_simonprince}{Eqs.~(6.15)--(6.17), p.~90}.
+\end{enumerate}
+
+\begin{coremath}[Derivation: Adam Bias Correction \& Adaptive Step-Size Normalization]
+\label{thm:optalg:adam_bias}
+Initializing $\vecb{m}_0 = \vecb{v}_0 = \zeros$ with decay rates $\beta_1, \beta_2 \in [0, 1)$, unrolling the Adam second-moment recurrence for $t \ge 1$ gives
+\begin{equation}
+\label{eq:optalg:adam_unroll}
+  \vecb{m}_t = (1 - \beta_1)\sum_{i=1}^t \beta_1^{t-i}\vecb{g}_i, \qquad
+  \vecb{v}_t = (1 - \beta_2)\sum_{i=1}^t \beta_2^{t-i}\vecb{g}_i^{\odot 2}.
+\end{equation}
+Assuming stationary gradient moments $\E[\vecb{g}_i] = \E[\vecb{g}]$ and $\E[\vecb{g}_i^{\odot 2}] = \E[\vecb{g}^{\odot 2}]$ (or shifting weights onto the geometric sum $(1 - \beta_2)\sum_{i=1}^t \beta_2^{t-i} = 1 - \beta_2^t$ up to a transient non-stationarity remainder $\vecb{\zeta}_t$),
+\[
+  \E[\vecb{m}_t] = (1 - \beta_1^t)\E[\vecb{g}] + \vecb{\zeta}_t^{(1)}, \qquad
+  \E[\vecb{v}_t] = (1 - \beta_2^t)\E[\vecb{g}^{\odot 2}] + \vecb{\zeta}_t^{(2)}.
+\]
+Dividing out the geometric normalization shortfall yields the bias-corrected moments \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.7, p.~311} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.80)--(8.81), p.~300}:
+\begin{equation}
+\label{eq:optalg:adam_bc}
+  \hat{\vecb{m}}_t = \frac{\vecb{m}_t}{1 - \beta_1^t}, \qquad
+  \hat{\vecb{v}}_t = \frac{\vecb{v}_t}{1 - \beta_2^t}, \qquad
+  \Delta\vecb{\theta}_t = -\eta_t \frac{\hat{\vecb{m}}_t}{\sqrt{\hat{\vecb{v}}_t} + \epsilon}.
+\end{equation}
+\textbf{Scale Invariance \& Early-Step Stabilization:} At $t=1$, without bias correction ($\beta_1=0.9, \beta_2=0.999$), $\vecb{m}_1/\sqrt{\vecb{v}_1} = \frac{1-\beta_1}{\sqrt{1-\beta_2}}\sign(\vecb{g}_1) \approx 3.162\,\sign(\vecb{g}_1)$, inflating the first step by over $3\times$ relative to $\eta_1$ (whereas RMSProp without correction exhibits severe early variance bias \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5.3, p.~309}). With bias correction, $\hat{\vecb{m}}_1/\sqrt{\hat{\vecb{v}}_1} = \sign(\vecb{g}_1)$, capping $|\Delta\theta_{1,j}| \le \eta_1$. Moreover, in the stationary regime ($\epsilon \to 0$, $t \gg (1-\beta_2)\inv$), Jensen's inequality on the ratio gives $|\hat{m}_{t,j}|/\sqrt{\hat{v}_{t,j}} \le 1$ whenever gradients remain aligned ($\vecb{g}_i \approx \vecb{g}$), bounding per-coordinate displacement to an approximate trust region $|\Delta\theta_{t,j}| \lesssim \eta_t$ invariant to positive gradient rescaling $\vecb{g}_i \mapsto c\,\vecb{g}_i$ ($c > 0$).
+\end{coremath}
+
+Although Kingma \& Ba (2015) proved $O(1/\sqrt{T})$ regret for Adam in convex optimization, Reddi et al.\ (2018) constructed a stochastic convex counterexample where exponential forgetting of large rare gradients in $\vecb{v}_t$ allows $\eta_t / \sqrt{\hat{\vecb{v}}_t}$ to increase and diverge \bookcite{understandingdl_simonprince}{p.~93} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.6.4, p.~301}. Remedies include \textbf{AMSGrad} ($\hat{v}_{t,\max} = \max(\hat{v}_{t-1,\max}, \hat{v}_t)$ enforcing non-increasing effective step sizes), \textbf{Yogi} ($\vecb{v}_t = \vecb{v}_{t-1} + (1-\beta_2)\sign(\vecb{g}_t^{\odot 2} - \vecb{v}_{t-1}) \odot \vecb{g}_t^{\odot 2}$ preventing excessive growth), and \textbf{ADOPT} (preconditioning $\vecb{g}_t$ by $\sqrt{\vecb{v}_{t-1}}+\epsilon$ \emph{before} momentum accumulation) \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.82)--(8.83), p.~301}.
+
+Equally critical in modern deep learning and LLM pretraining is how $L_2$ regularization interacts with adaptive scaling \bookcite{understandingdl_simonprince}{Sec.~6.6 \& Sec.~9.1, pp.~94, 156} \bookcite{build_large_language_model_from_scratch}{Ch.~5, pp.~371--372}.
+
+\begin{coremath}[Theorem: Coupled $L_2$ Regularization vs.\ Decoupled Weight Decay (AdamW)]
+\label{thm:optalg:adamw}
+Consider minimizing the $L_2$-penalized objective $\tilde{\mathcal{L}}(\vecb{\theta}) = \mathcal{L}(\vecb{\theta}) + \frac{\lambda}{2}\norm{\vecb{\theta}}_2^2$, whose stochastic gradient is $\tilde{\vecb{g}}_t = \vecb{g}_t + \lambda\vecb{\theta}_{t-1}$.
+\begin{enumerate}
+  \item \textbf{Exact Equivalence under Vanilla SGD:} With no adaptive preconditioning ($\mat{P}_t = \eye_P$), substituting $\tilde{\vecb{g}}_t$ into SGD gives
+  \[
+    \vecb{\theta}_t = \vecb{\theta}_{t-1} - \eta_t(\vecb{g}_t + \lambda\vecb{\theta}_{t-1}) = (1 - \eta_t\lambda)\vecb{\theta}_{t-1} - \eta_t \vecb{g}_t,
+  \]
+  so $L_2$ regularization with strength $\lambda$ is algebraically identical to multiplicative weight decay with factor $\lambda_{\mathrm{WD}} = \eta_t\lambda$ \bookcite{understandingdl_simonprince}{p.~156}.
+  \item \textbf{Coupled Distortion under Adam ($L_2$):} Injecting $\tilde{\vecb{g}}_t = \vecb{g}_t + \lambda\vecb{\theta}_{t-1}$ into~\eqref{eq:optalg:adam_unroll} mixes $\lambda\vecb{\theta}_{t-1}$ into \emph{both} $\vecb{m}_t$ and $\vecb{v}_t$, yielding (for $\beta_1=0$ for clarity, or exponentially smoothed for $\beta_1>0$):
+  \[
+    \vecb{\theta}_t = \vecb{\theta}_{t-1} - \eta_t \frac{\hat{\vecb{m}}_t^{\mathcal{L}}}{\sqrt{\hat{\vecb{v}}_t^{\mathrm{coupled}}} + \epsilon}
+    - \eta_t \frac{\lambda_{\mathrm{eff},t}}{\sqrt{\hat{\vecb{v}}_t^{\mathrm{coupled}}} + \epsilon} \odot \vecb{\theta}_{t-1}.
+  \]
+  Consequently, parameters with historically large loss gradients (large $\sqrt{\hat{v}_{t,j}}$) receive strongly attenuated decay $\propto \lambda / \sqrt{\hat{v}_{t,j}}$, while flat directions undergo excessive shrinkage, coupling the optimal regularization hyperparameter $\lambda$ tightly to $\eta_t$ and gradient scale \bookcite{understandingdl_simonprince}{p.~156}.
+  \item \textbf{AdamW Decoupling:} Loshchilov \& Hutter (2019) decouple weight decay from gradient moments using pure loss gradients $\vecb{g}_t = \grad\mathcal{L}_{B_t}(\vecb{\theta}_{t-1})$:
+  \begin{equation}
+  \label{eq:optalg:adamw_update}
+    \vecb{\theta}_t = (1 - \eta_t \lambda)\vecb{\theta}_{t-1} - \eta_t \frac{\hat{\vecb{m}}_t}{\sqrt{\hat{\vecb{v}}_t} + \epsilon},
+  \end{equation}
+  restoring uniform exponential decay $(1 - \eta_t\lambda)$ across all weights independently of gradient curvature \bookcite{build_large_language_model_from_scratch}{p.~371} \bookcite{understandingdl_simonprince}{p.~94}.
+\end{enumerate}
+\end{coremath}
+
+\subsection{Learning Rate Schedules: Warmup, Cosine Annealing \& Gradient Clipping}
+\label{subsec:optalg:schedules}
+
+Because stochastic gradients retain non-zero variance $\sigma_f^*$ at optima, stochastic optimization requires step-size scheduling. Classical Robbins--Monro theory guarantees convergence under $\sum_{t=1}^\infty \eta_t = \infty$ and $\sum_{t=1}^\infty \eta_t^2 < \infty$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eqs.~(8.12)--(8.13), pp.~294--295} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(6.44), p.~272}, instantiated via step decay, polynomial decay $\eta_t = \eta_0(\beta t + 1)^{-\alpha}$, or linear decay \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(6.45)--(6.47), p.~272}.
+
+For deep Transformer and LLM pretraining, \bookcite{build_large_language_model_from_scratch}{App.~D, pp.~758--775} and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.3, p.~296} prescribe a three-part stabilization schedule over total steps $T$ with warmup horizon $T_w \in [0.001\,T,\, 0.20\,T]$:
+\begin{equation}
+\label{eq:optalg:warmup_cosine}
+  \eta_t =
+  \begin{cases}
+    \eta_{\mathrm{init}} + \dfrac{t}{T_w}(\eta_{\max} - \eta_{\mathrm{init}}), & 0 \le t < T_w \quad\text{(Linear Warmup)}, \\[8pt]
+    \eta_{\min} + \dfrac{1}{2}(\eta_{\max} - \eta_{\min})\!\left[1 + \cos\!\left(\pi\,\dfrac{t - T_w}{T - T_w}\right)\right], & T_w \le t \le T \quad\text{(Cosine Annealing)},
+  \end{cases}
+\end{equation}
+paired post-warmup with global $L_2$-norm gradient clipping over the concatenated parameter gradient $\vecb{g}_t \in \R^P$ \bookcite{build_large_language_model_from_scratch}{Sec.~D.3, pp.~766--770} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.2.4, p.~289}:
+\begin{equation}
+\label{eq:optalg:grad_clip}
+  \vecb{g}_t \leftarrow \min\!\left(1,\; \frac{\tau_{\mathrm{clip}}}{\norm{\vecb{g}_t}_2}\right)\vecb{g}_t, \qquad \norm{\vecb{g}_t}_2 = \left(\sum_{k=1}^{L_{\mathrm{layers}}} \norm{\vecb{g}_t^{(k)}}_F^2\right)^{1/2}.
+\end{equation}
+
+\begin{intuition}[Why Adaptive Moments Need Warmup \& Global Clipping]
+Two complementary mechanisms explain~\eqref{eq:optalg:warmup_cosine}--\eqref{eq:optalg:grad_clip}: (i) During the first $t \ll (1-\beta_2)\inv$ iterations, Adam's second-moment accumulator $\hat{\vecb{v}}_t$ is estimated from only a handful of mini-batches, producing high-variance step ratios $\hat{\vecb{m}}_t/\sqrt{\hat{\vecb{v}}_t}$ unless $\eta_t$ ramps up smoothly (or Rectified Adam delays adaptive variance scaling) \bookcite{understandingdl_simonprince}{p.~93} \bookcite{probabilisticml_kevinmurphy_introduction}{p.~296}; (ii) Deep architectures and sequence models exhibit sharp ``cliff'' nonlinearities where $\norm{\vecb{g}_t}_2$ spikes abruptly, catapulting unclipped iterates out of valid trust regions \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Fig.~8.3, p.~289} \bookcite{build_large_language_model_from_scratch}{Sec.~D.3, p.~766}. Notice that global clipping~\eqref{eq:optalg:grad_clip} preserves the exact descent direction $-\vecb{g}_t/\norm{\vecb{g}_t}_2$ across all parameter tensors while enforcing $\norm{\vecb{g}_t}_2 \le \tau_{\mathrm{clip}}$ (typically $\tau_{\mathrm{clip}} = 1.0$).
+\end{intuition}
+
+\subsection{Second-Order, Quasi-Newton \& Information-Geometric Methods}
+\label{subsec:optalg:secondorder}
+
+Diagonal preconditioners cannot decouple rotated, off-diagonal parameter correlations \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.6.5, p.~301}. Full curvature methods replace $\mat{P}_t = \eye$ with structured $P \times P$ curvature matrices.
+
+\paragraph{Newton's Method \& Tikhonov Trust-Region Damping.}
+Minimizing the second-order Taylor model $M_t(\vecb{\delta}) = \mathcal{L}(\vecb{\theta}_t) + \vecb{g}_t\T\vecb{\delta} + \frac{1}{2}\vecb{\delta}\T \mat{H}_t\vecb{\delta}$ over $\vecb{\delta} = \vecb{\theta} - \vecb{\theta}_t$ yields Newton's step $\vecb{\delta}_t = -\mat{H}_t\inv\vecb{g}_t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eqs.~(8.26)--(8.27), p.~311} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.39)--(8.42), p.~289}. On strictly positive-definite quadratics, Newton reaches $\vecb{\theta}^*$ in a single step; near strict non-degenerate local minima, it achieves local quadratic convergence $\norm{\vecb{\theta}_{t+1}-\vecb{\theta}^*}_2 \le C\norm{\vecb{\theta}_t-\vecb{\theta}^*}_2^2$. Near saddle points where $\mat{H}_t$ is indefinite, constraining $\norm{\vecb{\delta}}_2 \le r_t$ via a quadratic trust region produces the Levenberg--Marquardt / Tikhonov-damped step $\vecb{\delta}_t = -(\mat{H}_t + \lambda_{\mathrm{LM}}\eye_P)\inv \vecb{g}_t$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(8.28), p.~312} \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.51)--(8.52), p.~292}. Because forming and inverting $\mat{H}_t \in \R^{P \times P}$ costs $O(P^2)$ memory and $O(P^3)$ time, exact Newton is intractable for large $P$.
+
+\begin{coremath}[Derivation: BFGS Secant Update, Inverse Hessian \& Two-Loop L-BFGS]
+\label{thm:optalg:bfgs_lbfgs}
+Quasi-Newton methods maintain a symmetric positive-definite Hessian approximation $\mat{B}_t \approx \mat{H}_t$ (or inverse $\mat{C}_t = \mat{B}_t\inv \approx \mat{H}_t\inv$) using only first-order differences $\vecb{s}_t = \vecb{\theta}_{t+1} - \vecb{\theta}_t$ and $\vecb{y}_t = \vecb{g}_{t+1} - \vecb{g}_t$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3.2, pp.~290--291} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.6.3, pp.~316--317}. By the fundamental theorem of calculus, $\vecb{y}_t = \left(\int_0^1 \hess\mathcal{L}(\vecb{\theta}_t + \tau\vecb{s}_t)\,\mathrm{d}\tau\right)\vecb{s}_t$, motivating the \emph{secant equations} $\mat{B}_{t+1}\vecb{s}_t = \vecb{y}_t$ and $\mat{C}_{t+1}\vecb{y}_t = \vecb{s}_t$.
+
+Finding the closest $\mat{C}_{t+1} \in \mathbb{S}_{++}^P$ to $\mat{C}_t$ in weighted Frobenius norm subject to $\mat{C}_{t+1}\vecb{y}_t = \vecb{s}_t$ yields the rank-two \textbf{BFGS inverse Hessian update} ($\rho_t \triangleq (\vecb{y}_t\T \vecb{s}_t)\inv$):
+\begin{equation}
+\label{eq:optalg:bfgs_inv}
+  \mat{C}_{t+1} = \mat{V}_t\T \mat{C}_t \mat{V}_t + \rho_t \vecb{s}_t \vecb{s}_t\T, \qquad \mat{V}_t \triangleq \eye_P - \rho_t \vecb{y}_t \vecb{s}_t\T,
+\end{equation}
+while Sherman--Morrison--Woodbury inversion gives the primal Hessian update \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs.~(8.44), (8.48), pp.~290--291}:
+\begin{equation}
+\label{eq:optalg:bfgs_primal}
+  \mat{B}_{t+1} = \mat{B}_t + \frac{\vecb{y}_t \vecb{y}_t\T}{\vecb{y}_t\T \vecb{s}_t} - \frac{(\mat{B}_t\vecb{s}_t)(\mat{B}_t\vecb{s}_t)\T}{\vecb{s}_t\T \mat{B}_t \vecb{s}_t}.
+\end{equation}
+\textbf{Positive-Definiteness Preservation:} If $\mat{C}_t \succ \mat{0}$ and a Wolfe line search guarantees the curvature condition $\vecb{y}_t\T \vecb{s}_t > 0$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(8.47), p.~291}, then for any nonzero $\vecb{u} \in \R^P$,
+\[
+  \vecb{u}\T \mat{C}_{t+1}\vecb{u} = (\mat{V}_t\vecb{u})\T \mat{C}_t (\mat{V}_t\vecb{u}) + \rho_t (\vecb{s}_t\T \vecb{u})^2 > 0,
+\]
+since $\mat{V}_t\vecb{u} = \zeros \implies \vecb{u} = \rho_t(\vecb{s}_t\T\vecb{u})\vecb{y}_t \neq \zeros \implies \vecb{s}_t\T\vecb{u} \neq 0$, so both terms cannot vanish simultaneously. Hence $\mat{C}_{t+1} \succ \mat{0}$ inductively!
+
+\textbf{Two-Loop L-BFGS Compression:} Rather than storing $\mat{C}_t \in \R^{P \times P}$ ($O(P^2)$), L-BFGS retains only the most recent $M$ curvature pairs $\{(\vecb{s}_i, \vecb{y}_i)\}_{i=t-M}^{t-1}$ ($M \approx 5$--$20$) and unrolls~\eqref{eq:optalg:bfgs_inv} from a scaled diagonal seed $\mat{C}_t^0 = \gamma_t \eye_P$, $\gamma_t = \frac{\vecb{s}_{t-1}\T\vecb{y}_{t-1}}{\vecb{y}_{t-1}\T\vecb{y}_{t-1}}$:
+\begin{equation}
+\label{eq:optalg:lbfgs_unroll}
+  \mat{C}_t = (\mat{V}_{t-1}\T \cdots \mat{V}_{t-M}\T)\mat{C}_t^0(\mat{V}_{t-M}\cdots\mat{V}_{t-1})
+  + \sum_{k=t-M}^{t-1} \rho_k (\mat{V}_{t-1}\T\cdots\mat{V}_{k+1}\T)\vecb{s}_k\vecb{s}_k\T(\mat{V}_{k+1}\cdots\mat{V}_{t-1}).
+\end{equation}
+Applying $\mat{C}_t$ to $\vecb{g}_t$ via a backward pass (computing $\vecb{q} \leftarrow \mat{V}_{t-M}\cdots\mat{V}_{t-1}\vecb{g}_t$ and scalars $\alpha_i = \rho_i \vecb{s}_i\T\vecb{q}$) followed by $\vecb{r} \leftarrow \mat{C}_t^0\vecb{q}$ and a forward pass (accumulating $\mat{V}_i\T$ products and $(\alpha_i - \rho_i\vecb{y}_i\T\vecb{r})\vecb{s}_i$) yields the exact quasi-Newton direction $\vecb{d}_t = -\mat{C}_t\vecb{g}_t$ in $O(MP)$ memory and $4MP + O(P)$ FLOPs \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3.2, p.~291} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.6.3, p.~317}.
+\end{coremath}
+
+\paragraph{Generalized Gauss--Newton (GGN) \& Natural Gradient Descent (NGD/K-FAC).}
+For probabilistic prediction models $p_{\vecb{\theta}}(y\mid\vecb{x}) = p(y\mid f(\vecb{x};\vecb{\theta}))$ minimizing negative log-likelihood $\mathcal{L}(\vecb{\theta}) = -\E_{\hat{p}}[\log p_{\vecb{\theta}}(y\mid\vecb{x})]$, second-order curvature admits two closely allied positive-semidefinite factorizations \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~3.3.4, 5.1.9, 6.4, 17.3.2}.
+
+\begin{coremath}[Theorem: Natural Gradient Trust Region, Invariance, GGN \& K-FAC]
+\label{thm:optalg:ngd_kfac}
+Let $p_{\vecb{\theta}}(y\mid\vecb{x})$ be a conditional model with score $\vecb{s}_{\vecb{\theta}}(\vecb{x},y) = \grad_{\vecb{\theta}}\log p_{\vecb{\theta}}(y\mid\vecb{x})$ and averaged \textbf{Fisher Information Matrix (FIM)} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(3.40), (6.83)--(6.84), pp.~76, 280}:
+\begin{equation}
+\label{eq:optalg:fim}
+  \mat{F}(\vecb{\theta}) \triangleq \E_{p_{\mathcal{D}}(\vecb{x})}\E_{p_{\vecb{\theta}}(y\mid\vecb{x})}\!\left[\vecb{s}_{\vecb{\theta}}\vecb{s}_{\vecb{\theta}}\T\right]
+  = -\E_{p_{\mathcal{D}}(\vecb{x})}\E_{p_{\vecb{\theta}}(y\mid\vecb{x})}\!\left[\hess_{\vecb{\theta}}\log p_{\vecb{\theta}}(y\mid\vecb{x})\right] \succeq \mat{0}.
+\end{equation}
+\begin{enumerate}
+  \item \textbf{KL Trust-Region Derivation:} Second-order Taylor expansion of the expected KL divergence (using $\E_{p_{\vecb{\theta}}}[\vecb{s}_{\vecb{\theta}}] = \zeros$) yields $\E_{p_{\mathcal{D}}}[\KL{p_{\vecb{\theta}}}{p_{\vecb{\theta}+\vecb{\delta}}}] = \frac{1}{2}\vecb{\delta}\T \mat{F}(\vecb{\theta})\vecb{\delta} + O(\norm{\vecb{\delta}}_2^3)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(5.81), p.~233; Eq.~(6.82), p.~280}. Minimizing the linearized objective subject to a KL penalty $\min_{\vecb{\delta}} \vecb{g}_t\T\vecb{\delta} + \frac{1}{2\eta_t}\vecb{\delta}\T\mat{F}(\vecb{\theta}_t)\vecb{\delta}$ gives the \textbf{Natural Gradient} update \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(6.85)--(6.90), p.~281}:
+  \begin{equation}
+  \label{eq:optalg:ngd}
+    \tilde{\grad}\mathcal{L}(\vecb{\theta}_t) \triangleq \mat{F}(\vecb{\theta}_t)\inv \grad\mathcal{L}(\vecb{\theta}_t), \qquad \vecb{\theta}_{t+1} = \vecb{\theta}_t - \eta_t \tilde{\grad}\mathcal{L}(\vecb{\theta}_t).
+  \end{equation}
+  \item \textbf{Reparameterization Invariance:} Let $\vecb{\theta} = \psi(\vecb{\xi})$ be any smooth diffeomorphism with Jacobian $\mat{J} = \pd{\vecb{\theta}}{\vecb{\xi}}$. By the chain rule, $\grad_{\vecb{\xi}}\log p = \mat{J}\T\grad_{\vecb{\theta}}\log p$ and $\grad_{\vecb{\xi}}\mathcal{L} = \mat{J}\T\grad_{\vecb{\theta}}\mathcal{L}$, so $\mat{F}_{\vecb{\xi}} = \mat{J}\T\mat{F}_{\vecb{\theta}}\mat{J}$. Consequently, for small $\eta_t$, the induced step in $\vecb{\theta}$-space is invariant to parameterization:
+  \[
+    \Delta\vecb{\theta} \approx \mat{J}\Delta\vecb{\xi}
+    = -\eta_t \mat{J}(\mat{J}\T \mat{F}_{\vecb{\theta}}\mat{J})\inv (\mat{J}\T \grad_{\vecb{\theta}}\mathcal{L})
+    = -\eta_t \mat{F}_{\vecb{\theta}}\inv \grad_{\vecb{\theta}}\mathcal{L}.
+  \]
+  In exponential families with natural parameters $\vecb{\lambda}$, cumulant $A(\vecb{\lambda})$, and moment parameters $\vecb{\mu} = \grad_{\vecb{\lambda}}A(\vecb{\lambda})$, $\mat{F}(\vecb{\lambda}) = \hess_{\vecb{\lambda}} A(\vecb{\lambda}) = \pd{\vecb{\mu}}{\vecb{\lambda}}$, giving the remarkable duality $\tilde{\grad}_{\vecb{\lambda}}L(\vecb{\lambda}) = \mat{F}(\vecb{\lambda})\inv\grad_{\vecb{\lambda}}L(\vecb{\lambda}) = \grad_{\vecb{\mu}}L(\vecb{\mu})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(6.99)--(6.101), p.~284}.
+  \item \textbf{Generalized Gauss--Newton (GGN) \& Equivalence:} Let $f(\vecb{x};\vecb{\theta}) \in \R^C$ denote network logits, $\mat{J}_{\vecb{\theta}}(\vecb{x}) = \pd{f}{\vecb{\theta}} \in \R^{C \times P}$ the network Jacobian, $\vecb{r} = \grad_f \log p(y\mid f)$, and $\mat{\Lambda} = -\hess_f \log p(y\mid f) \succeq \mat{0}$. Differentiating~\eqref{eq:optalg:fim} gives the exact NLL Hessian \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~(17.14)--(17.15), pp.~652--653}:
+  \begin{equation}
+  \label{eq:optalg:ggn}
+    \hess_{\vecb{\theta}}\bigl(-\log p(y\mid f)\bigr) = \mat{J}_{\vecb{\theta}}\T \mat{\Lambda} \mat{J}_{\vecb{\theta}} - \sum_{c=1}^C r_c \hess_{\vecb{\theta}} f_c
+    \quad \xRightarrow{\text{drop }\hess f_c}\quad
+    \mat{G}(\vecb{\theta}) = \E_{\hat{p}}\!\left[\mat{J}_{\vecb{\theta}}\T \mat{\Lambda} \mat{J}_{\vecb{\theta}}\right] \succeq \mat{0}.
+  \end{equation}
+  Because $\mat{\Lambda}$ is the output Fisher of an exponential family loss (e.g., $\eye_C$ for Gaussian MSE, $\diag(\vecb{\pi})-\vecb{\pi}\vecb{\pi}\T$ for softmax cross-entropy), $\mat{G}(\vecb{\theta})$ equals $\mat{F}(\vecb{\theta})$ identically and stays guaranteed positive semidefinite even at non-convex saddles \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4.2.2, p.~281; Sec.~17.3.2, p.~653}.
+  \item \textbf{K-FAC Kronecker Factorization:} For a linear layer $\vecb{s}_\ell = \mat{W}_\ell \vecb{a}_{\ell-1}$ with vectorized weight gradient $\mathrm{vec}(\grad_{\mat{W}_\ell}\log p) = \vecb{g}_{\vecb{s}_\ell} \otimes \vecb{a}_{\ell-1}$, assuming approximate independence between forward activations $\vecb{a}_{\ell-1} \in \R^{d_{\mathrm{in}}}$ and backpropagated pre-activation scores $\vecb{g}_{\vecb{s}_\ell} \in \R^{d_{\mathrm{out}}}$ yields the block-diagonal Kronecker approximation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4.4, p.~283} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~17.3.2, p.~653}:
+  \begin{equation}
+  \label{eq:optalg:kfac}
+  \begin{aligned}
+    \mat{F}_\ell &\approx \E[\vecb{a}_{\ell-1}\vecb{a}_{\ell-1}\T] \otimes \E[\vecb{g}_{\vecb{s}_\ell}\vecb{g}_{\vecb{s}_\ell}\T] = \mat{A}_{\ell-1} \otimes \mat{G}_\ell, \\
+    \mat{F}_\ell\inv \mathrm{vec}(\grad_{\mat{W}_\ell}\mathcal{L}) &\approx \mathrm{vec}\!\left(\mat{G}_\ell\inv (\grad_{\mat{W}_\ell}\mathcal{L}) \mat{A}_{\ell-1}\inv\right),
+  \end{aligned}
+  \end{equation}
+  reducing per-layer inversion complexity from $O((d_{\mathrm{in}}d_{\mathrm{out}})^3)$ to $O(d_{\mathrm{in}}^3 + d_{\mathrm{out}}^3)$.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Riemannian Whitening in Distribution Space]
+Figure~\ref{fig:optalg:murphy_ngd} illustrates why NGD outperforms steepest descent on curved statistical manifolds \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4.2--6.4.3, pp.~281--283}: Euclidean balls in $\vecb{\theta}$-space correspond to highly eccentric KL ellipsoids whenever parameters interact (such as $\mu$ and $\sigma$ in a Gaussian, where shifting $\mu$ by $\delta$ matters vastly more when $\sigma$ is small \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~6.5, p.~280}). Multiplying by $\mat{F}\inv$ is algebraically equivalent to performing ordinary gradient descent in the locally whitened coordinates $\vecb{\phi} = \mat{F}^{1/2}\vecb{\theta}$, restoring spherical gradient fields and escaping flat plateaus where Euclidean gradients vanish.
+\end{intuition}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:optalg:algorithms}
+% =============================================================================
+
+Modern large-scale training pipelines pair AdamW with linear warmup, cosine decay, and post-warmup global $L_2$ norm clipping in Algorithm~\ref{alg:optalg:adamw}, synthesizing the schedules of \bookcite{build_large_language_model_from_scratch}{Sec.~D.1--D.3, pp.~760--770}, the bias-corrected moments of \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.7, p.~311}, and the decoupled decay rule of \bookcite{understandingdl_simonprince}{p.~156}; by contrast, convex linear probes, physics-informed nets, and small-batch scientific fitting routinely deploy Two-Loop L-BFGS via Algorithm~\ref{alg:optalg:lbfgs} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3.2, pp.~290--291}.
+
+\begin{algorithm}[htbp]
+\caption{Decoupled AdamW with Linear Warmup, Cosine Decay \& Global Norm Clipping}
+\label{alg:optalg:adamw}
+\KwIn{Initial weights $\vecb{\theta}_0 \in \R^P$; schedule $(\eta_{\mathrm{init}}, \eta_{\max}, \eta_{\min}, T_w, T)$; decay $\lambda$; $(\beta_1, \beta_2, \epsilon)$; clip $\tau_{\mathrm{clip}}$.}
+\KwOut{Trained parameters $\vecb{\theta}_T$.}
+Initialize $\vecb{m}_0 \leftarrow \zeros$, $\vecb{v}_0 \leftarrow \zeros$\;
+\For{$t = 1$ \KwTo $T$}{
+  Sample mini-batch $B_t$ and compute pure loss gradient $\vecb{g}_t \leftarrow \frac{1}{|B_t|}\sum_{i \in B_t} \grad_{\vecb{\theta}}\ell_i(\vecb{\theta}_{t-1})$\;
+  \eIf{$t \le T_w$}{
+    $\eta_t \leftarrow \eta_{\mathrm{init}} + \frac{t - 1}{T_w}(\eta_{\max} - \eta_{\mathrm{init}})$ \Comment*[r]{Linear warmup}
+  }{
+    $\eta_t \leftarrow \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\bigl(1 + \cos(\pi\frac{t - 1 - T_w}{T - T_w})\bigr)$ \Comment*[r]{Cosine annealing}
+    \If{$\norm{\vecb{g}_t}_2 > \tau_{\mathrm{clip}}$}{
+      $\vecb{g}_t \leftarrow \frac{\tau_{\mathrm{clip}}}{\norm{\vecb{g}_t}_2}\vecb{g}_t$ \Comment*[r]{Global $L_2$ norm clip}
+    }
+  }
+  $\vecb{m}_t \leftarrow \beta_1 \vecb{m}_{t-1} + (1 - \beta_1)\vecb{g}_t$; \quad $\vecb{v}_t \leftarrow \beta_2 \vecb{v}_{t-1} + (1 - \beta_2)(\vecb{g}_t \odot \vecb{g}_t)$\;
+  $\hat{\vecb{m}}_t \leftarrow \vecb{m}_t / (1 - \beta_1^t)$; \quad $\hat{\vecb{v}}_t \leftarrow \vecb{v}_t / (1 - \beta_2^t)$ \Comment*[r]{Bias correction}
+  $\vecb{\theta}_t \leftarrow (1 - \eta_t \lambda)\vecb{\theta}_{t-1} - \eta_t \hat{\vecb{m}}_t / \bigl(\sqrt{\hat{\vecb{v}}_t} + \epsilon\bigr)$ \Comment*[r]{Decoupled weight decay}
+}
+\Return $\vecb{\theta}_T$\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Two-Loop L-BFGS Direction Computation with Curvature Guard}
+\label{alg:optalg:lbfgs}
+\KwIn{Current gradient $\vecb{g}_t \in \R^P$; history buffer $\mathcal{H}_t = \{(\vecb{s}_i, \vecb{y}_i)\}_{i=\max(0, t-M)}^{t-1}$ with $\rho_i = (\vecb{y}_i\T\vecb{s}_i)\inv > 0$.}
+\KwOut{Quasi-Newton descent direction $\vecb{d}_t = -\mat{C}_t \vecb{g}_t$.}
+$\vecb{q} \leftarrow \vecb{g}_t$\;
+\For{$i = t-1$ \KwTo $\max(0, t-M)$}{
+  $\alpha_i \leftarrow \rho_i (\vecb{s}_i\T \vecb{q})$; \quad $\vecb{q} \leftarrow \vecb{q} - \alpha_i \vecb{y}_i$ \Comment*[r]{Backward loop applying $\mat{V}_i$}
+}
+\eIf{$t > 0$}{
+  $\gamma_t \leftarrow \frac{\vecb{s}_{t-1}\T \vecb{y}_{t-1}}{\vecb{y}_{t-1}\T \vecb{y}_{t-1}}$; \quad $\vecb{r} \leftarrow \gamma_t \vecb{q}$ \Comment*[r]{Initial Hessian scale $\mat{C}_t^0 = \gamma_t \eye_P$}
+}{
+  $\vecb{r} \leftarrow \vecb{q}$\;
+}
+\For{$i = \max(0, t-M)$ \KwTo $t-1$}{
+  $\beta_i \leftarrow \rho_i (\vecb{y}_i\T \vecb{r})$; \quad $\vecb{r} \leftarrow \vecb{r} + (\alpha_i - \beta_i)\vecb{s}_i$ \Comment*[r]{Forward loop reconstructing $-\vecb{d}_t$}
+}
+\Return $\vecb{d}_t \leftarrow -\vecb{r}$ \Comment*[r]{Use Wolfe line search; skip pair if $\vecb{y}_t\T\vecb{s}_t \le \varepsilon_{\mathrm{curv}}\norm{\vecb{s}_t}\norm{\vecb{y}_t}$}
+\end{algorithm}
+
+Table~\ref{tab:optalg:complexity} synthesizes the computational cost, optimizer state overhead, and convergence geometry across all optimizer classes.
+
+\begin{table}[htbp]
+\centering
+\caption{Computational Complexity, Memory Footprint ($P$ Parameters), and Convergence Comparison.}
+\label{tab:optalg:complexity}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.05cm}@{\hspace{5pt}}>{\raggedright\arraybackslash}p{2.45cm}@{\hspace{5pt}}>{\raggedright\arraybackslash}p{1.55cm}@{\hspace{5pt}}>{\raggedright\arraybackslash}p{2.05cm}@{\hspace{5pt}}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Optimizer} & \textbf{Preconditioner $\mat{P}_t$} & \textbf{Step Time} & \textbf{State Mem.} & \textbf{Convex Rate / Key Trade-Off} \\
+\midrule
+SGD (Fixed/Decay) & $\eye_P$ & $O(P)$ & $0P$ (stateless) & $O(1/T)$ smooth, $(1-\mu/L)^T$ strongly convex \bookcite{stochastic_gradient_decent_algorithm_explain}{Thms.~3.4--3.6}; flat minima generalization. \\
+Heavy-Ball / NAG & $\eye_P$ (history / lookahead) & $O(P)$ & $1P$ ($\vecb{m}_t$) & $O(1/T^2)$ convex (NAG); $(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^{2T}$ quadratic (HB) \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.3}. \\
+AdaGrad & $\diag(\sqrt{\sum \vecb{g}_i^2}+\epsilon)$ & $O(P)$ & $1P$ ($\vecb{v}_t$) & $O(1/\sqrt{T})$ convex regret; stalls prematurely in non-convex deep nets \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5.1}. \\
+RMSProp & $\diag(\sqrt{\vecb{v}_t}+\epsilon)$ & $O(P)$ & $1P$ ($\vecb{v}_t$) & Adapts to local basin curvature; lacks bias correction and momentum \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5.2}. \\
+Adam / AdamW & $\diag(\sqrt{\hat{\vecb{v}}_t}+\epsilon)$ & $O(P)$ & $2P$ ($\vecb{m}_t,\vecb{v}_t$);\newline $12P$ B FP32 & Robust across Transformer depths; AdamW decouples $\lambda\vecb{\theta}$ \bookcite{understandingdl_simonprince}{Sec.~6.4, 9.1} \bookcite{build_large_language_model_from_scratch}{p.~371}. \\
+L-BFGS ($M$ pairs) & Secant low-rank $\mat{C}_t$ & $O(MP)$ & $2MP$ ($\vecb{s}_i,\vecb{y}_i$) & Superlinear (batch); sensitive to mini-batch noise, needs line search \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.3.2}. \\
+Newton / LM & $\mat{H}_t + \lambda_{\mathrm{LM}}\eye_P$ & $O(P^3)$ & $O(P^2)$ & Quadratic local rate; intractable for $P \gg 10^4$, needs damping \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.6.1}. \\
+K-FAC (Block NGD) & $\bigoplus_\ell (\mat{A}_{\ell-1}\otimes \mat{G}_\ell)$ & $O(\sum_\ell d_{\mathrm{in}}^3$\newline $+ d_{\mathrm{out}}^3)$ & $O(\sum_\ell d_{\mathrm{in}}^2$\newline $+ d_{\mathrm{out}}^2)$ & KL-invariant, escapes plateaus; requires amortized block inversions \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4.4}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Generalization, Robustness \& Curvature Scaling]
+Synthesizing all six textbooks resolves a long-standing pedagogical tension between SGD+Momentum and Adam/AdamW:
+\begin{itemize}
+  \item \textbf{Ravine Robustness vs.\ Generalization:} \bookcite{understandingdl_simonprince}{Sec.~6.6, p.~94} summarizes Wilson et al.\ (2017)'s observation that SGD+Momentum can achieve lower test error than vanilla Adam with $L_2$ coupling, alongside Choi et al.\ (2019) showing properly tuned Adam/AdamW matches SGD generalization while converging faster, and Keskar \& Socher (2017)'s SWATS switching from Adam to SGD. In deep Transformers, \bookcite{build_large_language_model_from_scratch}{pp.~371--372, 758--775} adopts AdamW + linear warmup + cosine decay + gradient clipping because layer-wise gradient magnitudes vary sharply across attention, LayerNorm, and embedding matrices \bookcite{understandingdl_simonprince}{Sec.~6.4, p.~91}.
+  \item \textbf{True Curvature vs.\ Diagonal Scaling:} Textbook framings separate optimization along two complementary axes: Goodfellow et al.\ treat AdaGrad, RMSProp, and Adam as axis-aligned heuristics alongside batch BFGS and conjugate-gradient methods \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.5--8.6}, whereas Murphy unifies adaptive and second-order optimizers via preconditioning \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4}: Adam acts as a diagonal smoothed square-root empirical Fisher, while K-FAC and Shampoo (\bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.6.5}) capture off-diagonal layer-wise Kronecker couplings at tractable cost.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:optalg:visuals}
+% =============================================================================
+
+Figure~\ref{fig:optalg:taxonomy} maps the mathematical preconditioning hierarchy linking isotropic first-order, diagonal adaptive, and structured curvature/natural-gradient methods, alongside deep-network stabilizers.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.85cm and 0.55cm]
+  % Root node
+  \node[monoBox, text width=11.8cm] (root) {%
+    \centering
+    \textbf{Unified Preconditioned \& Regularized Optimizer Template}\\[2pt]
+    $\vecb{\theta}_t = (1 - \eta_t\lambda)\vecb{\theta}_{t-1} - \eta_t \mat{P}_t\inv \vecb{d}_t$
+    \quad$\cdot$\quad Global LR $\eta_t$, Decoupled Decay $\lambda$, Preconditioner $\mat{P}_t \succ \mat{0}$
+  };
+
+  % Tier 1: Three columns (uniform height)
+  \node[monoTealBox, text width=4.65cm, minimum height=2.35cm, align=center, below=0.95cm of root] (adap) {%
+    \textbf{Diagonal Adaptive}\\[1pt]
+    $(\mat{P}_t = \diag)$\\[2pt]
+    AdaGrad $\to$ RMSProp $\to$ Adam / AdamW\\[2pt]
+    $\mat{P}_t = \diag(\sqrt{\hat{\vecb{v}}_t} + \epsilon)$,\; $O(P)$ time,\; $2P$ state
+  };
+  \node[monoBox, text width=4.65cm, minimum height=2.35cm, align=center, left=0.5cm of adap] (first) {%
+    \textbf{Isotropic First-Order}\\[1pt]
+    $(\mat{P}_t = \eye_P)$\\[2pt]
+    SGD, Polyak Heavy-Ball, Nesterov NAG\\[2pt]
+    $\vecb{d}_t$ uses velocity / lookahead,\; $O(P)$ time,\; $1P$ state
+  };
+  \node[monoIndigoBox, text width=4.65cm, minimum height=2.35cm, align=center, right=0.5cm of adap] (second) {%
+    \textbf{Structured Curvature}\\[1pt]
+    $(\mat{P}_t \approx \mat{H}, \mat{F})$\\[2pt]
+    Newton-LM, BFGS/L-BFGS, GGN, K-FAC\\[2pt]
+    Secant / Kronecker blocks,\; $O(MP)$--$O(P^3)$
+  };
+
+  % Tier 2: Regime & guarantees (uniform height)
+  \node[monoBox, text width=4.65cm, minimum height=2.15cm, align=center, below=0.75cm of first, fill=white] (first_geo) {%
+    \textbf{Acceleration \& Limits}\\[2pt]
+    HB: $\rho^* = \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$ on quadratics;\\
+    NAG: $O(1/T^2)$ convex,\\
+    valley oscillation damping
+  };
+  \node[monoTealBox, text width=4.65cm, minimum height=2.2cm, align=center, below=0.75cm of adap, fill=white] (adap_geo) {%
+    \textbf{Axis Scaling \& Decoupling}\\[2pt]
+    Normalizes depth \& sparse scales;\\
+    $\hat{\vecb{m}}_t,\hat{\vecb{v}}_t$ bias + decoupled AdamW
+  };
+  \node[monoIndigoBox, text width=4.65cm, minimum height=2.15cm, align=center, below=0.75cm of second, fill=white] (second_geo) {%
+    \textbf{Geometric Invariance}\\[2pt]
+    KL-metric invariance $\mat{F}\inv\grad\mathcal{L}$;\\
+    GGN \& Fisher stay PSD\\
+    across saddle points
+  };
+
+  % Tier 3: Stabilizer banner
+  \node[monoWarnBox, text width=15.2cm, below=0.9cm of adap_geo] (stab) {%
+    \centering
+    \textbf{Deep Non-Convex Stabilizers \& Precision Guards}\\[2pt]
+    Warmup $t < T_w$ (early $\hat{\vecb{v}}_t$ variance) $\;\to\;$
+    Cosine Decay $\;\to\;$ Global $L_2$ Clip ($\norm{\vecb{g}_t}_2 \le \tau_{\mathrm{clip}}$)\\[1pt]
+    $\to\;$ FP16/BF16 $\epsilon$-Guard \& Levenberg--Marquardt Saddle Damping $(\mat{H}_t + \lambda_{\mathrm{LM}}\eye_P)$
+  };
+
+  % Arrows & clean collector bus
+  \draw[monoArrow] (root.south) -| (first.north);
+  \draw[monoArrow] (root.south) -- (adap.north);
+  \draw[monoArrow] (root.south) -| (second.north);
+  \draw[monoArrow] (first.south) -- (first_geo.north);
+  \draw[monoArrow] (adap.south) -- (adap_geo.north);
+  \draw[monoArrow] (second.south) -- (second_geo.north);
+  \coordinate (bus) at ([yshift=-0.45cm]adap_geo.south);
+  \draw[thick, monographSlate!75, rounded corners=2pt] (first_geo.south) |- (bus);
+  \draw[thick, monographSlate!75, rounded corners=2pt] (second_geo.south) |- (bus);
+  \draw[monoArrow] (adap_geo.south) -- (stab.north);
+\end{tikzpicture}
+\caption{Taxonomy and preconditioning hierarchy uniting first-order momentum, diagonal adaptive moments, and structured second-order / natural-gradient optimizers.}
+\label{fig:optalg:taxonomy}
+\end{figure}
+
+Figure~\ref{fig:optalg:dynamics} quantifies two pivotal empirical dynamics derived in Section~\ref{sec:optalg:theory}: (a) on an ill-conditioned quadratic ($\kappa = 100$), optimal Polyak Heavy-Ball exhibits a $13.6\times$ transient overshoot from non-normal companion dynamics before locking onto the $(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1})^{2t} = (9/11)^{2t}$ slope, whereas Nesterov lookahead damps the steep mode on step~1; (b) under standard Adam ($\beta_1=0.9, \beta_2=0.999$), the second-moment bias factor $1 - \beta_2^t$ stays far below unity throughout a $10\%$ warmup window ($0.095$ at $t=100$) and even at $t=1000$ ($0.632$), underscoring why bias correction and warmup must act together.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \begin{groupplot}[
+    group style={
+      group size=2 by 1,
+      horizontal sep=1.95cm
+    },
+    width=0.415\textwidth,
+    height=5.7cm,
+    grid=major,
+    grid style={monographRule!50},
+    label style={font=\small, color=monographSlate},
+    tick label style={font=\scriptsize, color=monographSlate},
+    title style={font=\small\bfseries, color=monographNavy},
+    legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9, text opacity=1}
+  ]
+  % Left Panel: GD vs HB vs NAG on kappa=100 quadratic
+  \nextgroupplot[
+    title={(a) Quadratic Error ($\kappa=100$)},
+    xlabel={Iteration $t$},
+    ylabel={Normalized Error $f(\vecb{\theta}_t)/f(\vecb{\theta}_0)$},
+    ymode=log,
+    xmin=0, xmax=50,
+    ymin=5e-6, ymax=40,
+    legend pos=south west
+  ]
+    \addplot[color=monographCrimson, thick, dashed] coordinates {
+      (0,1.0000e+00) (1,9.6079e-01) (2,9.2311e-01) (3,8.8692e-01) (4,8.5214e-01)
+      (5,8.1873e-01) (6,7.8662e-01) (8,7.2614e-01) (10,6.7031e-01) (12,6.1877e-01)
+      (14,5.7120e-01) (16,5.2728e-01) (18,4.8674e-01) (20,4.4932e-01) (22,4.1477e-01)
+      (25,3.6787e-01) (28,3.2627e-01) (31,2.8937e-01) (34,2.5665e-01) (37,2.2763e-01)
+      (40,2.0189e-01) (43,1.7906e-01) (46,1.5881e-01) (50,1.3533e-01)
+    };
+    \addlegendentry{GD ($\alpha=\frac{2}{L+\mu}$)}
+
+    \addplot[color=monographNavy, very thick] coordinates {
+      (0,1.0000e+00) (1,5.2733e+00) (2,9.5457e+00) (3,1.2381e+01) (4,1.3613e+01)
+      (5,1.3558e+01) (6,1.2641e+01) (8,9.6514e+00) (10,6.5849e+00) (12,4.1756e+00)
+      (14,2.5151e+00) (16,1.4582e+00) (18,8.2093e-01) (20,4.5148e-01) (22,2.4361e-01)
+      (25,9.3818e-02) (28,3.5141e-02) (31,1.2874e-02) (34,4.6312e-03) (37,1.6410e-03)
+      (40,5.7408e-04) (43,1.9864e-04) (46,6.8082e-05) (50,1.6122e-05)
+    };
+    \addlegendentry{Heavy-Ball ($\alpha^*,\beta^*$)}
+
+    \addplot[color=monographTeal, very thick] coordinates {
+      (0,1.0000e+00) (1,9.7040e-03) (2,9.3543e-03) (3,8.8924e-03) (4,8.3536e-03)
+      (5,7.7676e-03) (6,7.1586e-03) (8,5.9443e-03) (10,4.8149e-03) (12,3.8225e-03)
+      (14,2.9846e-03) (16,2.2982e-03) (18,1.7487e-03) (20,1.3171e-03) (22,9.8322e-04)
+      (25,6.2509e-04) (28,3.9159e-04) (31,2.4226e-04) (34,1.4828e-04) (37,8.9912e-05)
+      (40,5.4078e-05) (43,3.2291e-05) (46,1.9159e-05) (50,9.4674e-06)
+    };
+    \addlegendentry{NAG ($\frac{1}{L}, \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$)}
+
+    \addplot[color=monographIndigo, thick, dotted, domain=0:50, samples=51] {(9/11)^(2*x)};
+    \addlegendentry{$(9/11)^{2t}$ envelope}
+
+  % Right Panel: Warmup + Cosine Decay & Adam Bias Factors
+  \nextgroupplot[
+    title={(b) LR Schedule \& Adam Bias},
+    xlabel={Training Step $t$ ($T=1000,\; T_w=100$)},
+    ylabel={Normalized Scale ($\in [0, 1]$)},
+    xmin=0, xmax=1000,
+    ymin=0, ymax=1.08,
+    legend pos=south east
+  ]
+    % Linear warmup [0, 100] from 0.05 to 1.0
+    \addplot[color=monographTeal, very thick, domain=0:100, samples=21] {0.05 + 0.95*(x/100)};
+    \addlegendentry{$\eta_t / \eta_{\max}$ (Warmup + Cosine)}
+    % Cosine decay [100, 1000] from 1.0 to 0.1
+    \addplot[color=monographTeal, very thick, domain=100:1000, samples=91, forget plot] {0.1 + 0.45*(1 + cos(deg(pi*(x-100)/900)))};
+    % Adam beta1 = 0.9 bias factor
+    \addplot[color=monographIndigo, thick, dashed, domain=1:1000, samples=100] {1 - (0.9)^x};
+    \addlegendentry{$1 - \beta_1^t$ ($\beta_1=0.9$)}
+    % Adam beta2 = 0.999 bias factor
+    \addplot[color=monographCrimson, thick, dashdotted, domain=1:1000, samples=100] {1 - (0.999)^x};
+    \addlegendentry{$1 - \beta_2^t$ ($\beta_2=0.999$)}
+    % Vertical marker at T_w=100
+    \draw[dashed, color=monographSlate] (axis cs:100,0) -- (axis cs:100,1.04) node[anchor=north west, font=\scriptsize, color=monographSlate] {$T_w$};
+  \end{groupplot}
+\end{tikzpicture}
+\caption{Quantitative optimization dynamics. \textbf{(a)} Exact suboptimality trajectories on $f(\vecb{\theta}) = \frac{1}{2}(\theta_1^2 + 100\theta_2^2)$ ($\kappa=100$, $\vecb{\theta}_0=[1,1]\T$): Heavy-Ball suffers transient non-normal overshoot before achieving the $(9/11)^{2t}$ slope, whereas Nesterov lookahead damps the steep direction immediately. \textbf{(b)} Normalized linear-warmup + cosine-annealing schedule~\eqref{eq:optalg:warmup_cosine} ($\eta_{\mathrm{init}}/\eta_{\max}=0.05$, $\eta_{\min}/\eta_{\max}=0.1$) juxtaposed with Adam's geometric bias factors $1-\beta_1^t$ and $1-\beta_2^t$.}
+\label{fig:optalg:dynamics}
+\end{figure}
+
+The three source textbook visualizations below corroborate these geometric regimes directly on stochastic multi-valley, anisotropic ravine, and probabilistic manifold landscapes. Figure~\ref{fig:optalg:prince_momentum} contrasts noisy zig-zagging in vanilla SGD against momentum-smoothed traversal across narrow basins \bookcite{understandingdl_simonprince}{Fig.~6.7, p.~87}. Figure~\ref{fig:optalg:prince_adam} isolates why isotropic step sizes fail on ill-conditioned ravines ($\alpha=0.05$ stalls horizontally; $\alpha=1.0$ oscillates vertically), why unsmoothed sign normalization chatters at the valley floor, and how Adam's dual EWMA moments smoothly track the minimum \bookcite{understandingdl_simonprince}{Fig.~6.9, p.~89}. Finally, Figure~\ref{fig:optalg:murphy_ngd} demonstrates Fisher whitening in Natural Gradient Descent: transforming raw coupled coordinates $\vecb{\theta}$ into $\vecb{\phi} = \mat{F}^{1/2}\vecb{\theta}$ turns skewed trajectories into direct radial descent and collapses KL divergence orders of magnitude faster \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~6.6, p.~283}.
+
+\monographfig[0.84\textwidth]{understandingdl_simonprince_p101_fig1.png}{Stochastic gradient descent trajectories on a multi-valley non-convex loss surface \bookcite{understandingdl_simonprince}{Fig.~6.7, p.~87 (PDF p.~101)}. \textbf{(a)} Unsmoothed mini-batch SGD oscillates noisily across valley walls; \textbf{(b)} Momentum smoothing averages out orthogonal batch noise and accelerates along consistent downhill directions.}{fig:optalg:prince_momentum}
+
+\monographfig[0.80\textwidth]{understandingdl_simonprince_p103_fig1.png}{Ravine geometry under adaptive preconditioning \bookcite{understandingdl_simonprince}{Fig.~6.9, p.~89 (PDF p.~103)}. \textbf{(a)} Small fixed step ($\alpha=0.05$) crawls along the shallow horizontal axis; \textbf{(b)} Large step ($\alpha=1.0$) diverges/oscillates across the steep vertical wall; \textbf{(c)} Unsmoothed normalized (sign) gradients advance diagonally but chatter around the minimum; \textbf{(d)} Adam ($\alpha=0.05,\beta_1=0.9,\beta_2=0.99$) smooths both moments to converge smoothly.}{fig:optalg:prince_adam}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p317_fig1.png}{Natural Gradient Descent versus Euclidean steepest descent on a coupled 2D Gaussian cross-entropy objective \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~6.6, p.~283 (PDF p.~317)}. \textbf{(a)} Parameter-space trajectories from $(1,-1)$ to $(0,0)$; \textbf{(b)} KL divergence vs.\ update steps showing rapid collapse under NGD; \textbf{(c)} Skewed Euclidean gradient field in $\vecb{\theta}$; \textbf{(d)} Isotropic whitened gradient field in $\vecb{\phi} = \mat{F}^{1/2}\vecb{\theta}$.}{fig:optalg:murphy_ngd}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:optalg:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Pitfall 1: $L_2$ Regularization Coupling Suppresses Weight Decay in Adam]
+\label{pit:optalg:l2_coupling}
+\textbf{Failure Mode:} Passing \texttt{weight\_decay} through the loss penalty $\frac{\lambda}{2}\norm{\vecb{\theta}}_2^2$ inside standard Adam multiplies the decay force on coordinate $j$ by $1/(\sqrt{\hat{v}_{t,j}} + \epsilon)$. Parameters with large gradient variance (e.g., dense attention projections or early layers) experience severely weakened shrinkage, inflating weight norms and degrading generalization \bookcite{understandingdl_simonprince}{Sec.~6.6 \& Sec.~9.1, pp.~94, 156}.\\
+\textbf{Remedy:} Always use decoupled weight decay (AdamW,~\eqref{eq:optalg:adamw_update}), and exclude 1D scale/bias parameters (LayerNorm/RMSNorm $\vecb{\gamma},\vecb{\beta}$) from $\lambda > 0$ so normalization invariances are not artificially shrunk \bookcite{build_large_language_model_from_scratch}{pp.~371--372}.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 2: $\epsilon$-Denominator Masking \& Underflow in FP16/BF16 Mixed Precision]
+\label{pit:optalg:eps_masking}
+\textbf{Failure Mode:} Standard references specify different default Adam stabilizers: $\delta = 10^{-8}$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Alg.~8.7, p.~311} versus $\epsilon = 10^{-6}$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~8.4.6.3, p.~300}. In IEEE FP16 (smallest positive normal number $2^{-14} \approx 6.1\times 10^{-5}$, subnormal underflow below $5.96\times 10^{-8}$), small gradients $|g_{t,j}| < 10^{-4}$ cause $g_{t,j}^2$ to flush to zero in half precision. Conversely, raising $\epsilon$ aggressively (e.g., $\epsilon = 10^{-4}$--$10^{-2}$) on coordinates where $\sqrt{\hat{v}_{t,j}} \ll \epsilon$ converts Adam's update into un-normalized momentum $-\frac{\eta_t}{\epsilon}\hat{\vecb{m}}_t$, destroying adaptive scale invariance on small-gradient embeddings.\\
+\textbf{Remedy:} Maintain optimizer accumulators $(\vecb{m}_t,\vecb{v}_t)$ and master parameters strictly in FP32 even when forward/backward passes run in BF16/FP16, and tune $\epsilon \in [10^{-8}, 10^{-6}]$ only after verifying typical $\sqrt{\hat{v}_{t,j}}$ magnitudes across layers.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 3: Indefinite Hessian Saddle Attraction \& Empirical Fisher Collapse]
+\label{pit:optalg:saddle_efim}
+\textbf{Failure Mode:} Because exact Newton solves $\grad\mathcal{L} + \mat{H}\vecb{\delta} = \zeros$ for \emph{any} stationary point, negative eigenvalues $\lambda_i(\mat{H}_t) < 0$ turn $-\mat{H}_t\inv\vecb{g}_t$ into an \emph{ascent} direction along concave ridges, pulling iterates toward high-cost saddles or maxima \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~8.2.3 \& Sec.~8.6.1, pp.~288, 312} \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~8.14b, p.~290}. Separately, approximating the true FIM~\eqref{eq:optalg:fim} with the empirical Fisher $\hat{\mat{F}} = \frac{1}{|B|}\sum_{n\in B}\grad\log p(y_n\mid\vecb{x}_n,\vecb{\theta})\grad\log p(y_n\mid\vecb{x}_n,\vecb{\theta})\T$ fails on flat plateaus: as training loss gradients vanish, $\hat{\mat{F}} \to \mat{0}$ becomes singular and stalls progress \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.4.4, Eqs.~(6.95)--(6.97), p.~284}.\\
+\textbf{Remedy:} Regularize Newton via Levenberg--Marquardt damping $(\mat{H}_t + \lambda_{\mathrm{LM}}\eye_P)\inv$ (monitoring that $\lambda_{\mathrm{LM}}$ does not grow so large that it collapses curvature into tiny GD steps), or substitute guaranteed-PSD curvature matrices: GGN $\mat{G} = \mat{J}\T\mat{\Lambda}\mat{J}$ or true Fisher $\mat{F}$ sampled over model predictions $y \sim p_{\vecb{\theta}}(y\mid\vecb{x})$.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 4: Optimizer State Memory Footprint in Large Language Models]
+\label{pit:optalg:memory_llm}
+\textbf{Failure Mode:} While AdamW computes updates in $O(P)$ FLOPs, its auxiliary state dominates GPU memory in mixed-precision LLM pretraining \bookcite{build_large_language_model_from_scratch}{Ch.~5 \& App.~D}. Storing BF16 weights ($2P$ bytes), BF16 gradients ($2P$ bytes), FP32 master weights ($4P$ bytes), FP32 first moments $\vecb{m}_t$ ($4P$ bytes), and FP32 second moments $\vecb{v}_t$ ($4P$ bytes) consumes $16P$ bytes statically---$12P$ bytes for master/optimizer states alone ($6\times$ the BF16 model footprint). For a $P = 7\times 10^9$ model, static optimizer states occupy $\approx 112\text{ GB}$ before any activations or KV cache.\\
+\textbf{Remedy:} Shard optimizer states across $N_{\mathrm{GPU}}$ devices via ZeRO-1/FSDP (reducing per-GPU optimizer state to $12P / N_{\mathrm{GPU}}$ bytes), compress $(\vecb{m}_t,\vecb{v}_t)$ using blockwise 8-bit quantization or factored second-moment estimators (Adafactor), and avoid L-BFGS unless $2MP$ history fits comfortably inside memory.
+\end{pitfall}
+
+\endgroup
+\end{document}

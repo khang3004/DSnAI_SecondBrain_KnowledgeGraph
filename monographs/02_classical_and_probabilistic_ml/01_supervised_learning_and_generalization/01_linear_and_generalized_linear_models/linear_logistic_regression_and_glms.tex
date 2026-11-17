@@ -1,0 +1,368 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Linear Models, Generalization, Kernels \& Ensembles}{Linear, Regularized \& Generalized Linear Models}{Linear Regression, Ridge/Lasso Regularization, Logistic Regression \& GLMs}{\bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10--12}, \bookcite{mathematics_machine_learning_orienly}{Ch.~9}, \bookcite{introduction_probability_data_science}{Ch.~7}, \bookcite{speech_language_processing_aug26}{Ch.~4}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~7, 14--15}, \bookcite{deep_learning_foundations_concepts}{Ch.~4--5}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:glm:formulation}
+% =============================================================================
+
+Given a supervised dataset $\mathcal{D} = \{(\vecb{x}_n, y_n)\}_{n=1}^N$ with inputs $\vecb{x}_n \in \R^d$ and targets $y_n \in \mathcal{Y}$, a linear or generalized linear model (GLM) maps each input through a fixed feature map $\vecb{\phi}: \R^d \to \R^D$ (often with $\phi_0(\vecb{x}) = 1$ absorbing the bias) to form the design matrix $\mat{\Phi} = [\vecb{\phi}(\vecb{x}_1), \dots, \vecb{\phi}(\vecb{x}_N)]\T \in \R^{N \times D}$ and linear predictor
+\begin{equation}
+\label{eq:glm:linear_predictor}
+\vecb{\eta} = \mat{\Phi}\vecb{w} \in \R^N, \qquad \eta_n = \vecb{w}\T \vecb{\phi}(\vecb{x}_n),
+\end{equation}
+where $\vecb{w} \in \R^D$ is the parameter vector. In ordinary least squares (OLS), $\mathcal{Y} = \R$ and the conditional mean equals $\eta_n$. In classification ($\mathcal{Y} = \{0,1\}$ or $\{1,\dots,C\}$) and count regression ($\mathcal{Y} = \N_0$), $\eta_n$ parameterizes an exponential-family conditional distribution $p(y_n \mid \eta_n, \phi)$ via a monotone link function $g(\mu_n) = \eta_n$ with $\mu_n = \E[y_n \mid \vecb{x}_n, \vecb{w}] = g\inv(\eta_n)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~12, PDF p.~445}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Source textbooks adopt distinct conventions for design matrices, parameter vectors, targets, and link/activation functions. Table~\ref{tab:glm:notation} establishes a unified mapping used throughout this monograph, reconciling \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10--12}, \bookcite{mathematics_machine_learning_orienly}{Ch.~9}, \bookcite{introduction_probability_data_science}{Ch.~7}, \bookcite{speech_language_processing_aug26}{Ch.~4}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~7, 14--15}, and \bookcite{deep_learning_foundations_concepts}{Ch.~4--5}.
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Unified} & \textbf{Source Variants} & \textbf{Reconciliation Notes} \\
+\midrule
+Design matrix & $\mat{\Phi} \in \R^{N \times D}$ & $\mat{X}$ (Murphy, IPDS, Tiep~Vu); $\mat{\Phi}$ (MML, Bishop) & Rows are feature vectors $\vecb{\phi}(\vecb{x}_n)\T$; $D=d$ when $\vecb{\phi}(\vecb{x})=\vecb{x}$. \\
+Weight vector & $\vecb{w} \in \R^D$ & $\vecb{w}$ (Murphy, Bishop, Tiep~Vu); $\vecb{\theta}$ (MML, IPDS, SLP) & Bias $w_0$ is absorbed via $\phi_0(\vecb{x})=1$, but excluded from $\ell_1/\ell_2$ penalties. \\
+Target / observation & $y_n \in \mathcal{Y}$ & $y_n$ (Murphy, MML, IPDS, SLP); $t_n$ (Bishop) & Bishop reserves $y(\vecb{x},\vecb{w})$ for the model prediction $\hat{y}_n = \mu_n$. \\
+Dispersion / noise & $\phi$ (or $\sigma^2$) & $\sigma^2$ (Murphy, MML); $s$ (Bishop Ch.~5.4.6) & Gaussian $\phi = \sigma^2$; Bernoulli and Poisson have fixed $\phi = 1$. \\
+Link / inverse link & $g(\mu) = \eta$ & $\ell(\mu) = \eta$ (Murphy); $f(\eta)=\mu,\, f\inv=\psi$ (Bishop) & Statistics uses link $g=f\inv$; ML uses activation $f = g\inv$. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\captionof{table}{Cross-book notation reconciliation across the six mapped textbooks.}
+\label{tab:glm:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:glm:derivations}
+% =============================================================================
+
+\subsection{OLS Orthogonal Projection \& Gaussian MLE Equivalence}
+\label{subsec:glm:ols}
+
+\begin{coremath}[Normal Equations, Orthogonal Projection \& Gaussian MLE]
+Assume i.i.d.\ observations $y_n = \vecb{w}\T\vecb{\phi}(\vecb{x}_n) + \epsilon_n$ with $\epsilon_n \simiid \Normal(0, \sigma^2)$ \bookcite{deep_learning_foundations_concepts}{Ch.~4, PDF p.~134}. The negative log-likelihood is
+\begin{equation}
+\label{eq:glm:ols_nll}
+-\log p(\vecb{y} \mid \mat{\Phi}, \vecb{w}, \sigma^2) = \frac{N}{2}\log(2\pi\sigma^2) + \frac{1}{2\sigma^2}\norm{\vecb{y} - \mat{\Phi}\vecb{w}}_2^2.
+\end{equation}
+Because $\sigma^2 > 0$ is independent of $\vecb{w}$, maximizing the Gaussian likelihood is equivalent to minimizing the residual sum of squares $\mathcal{L}_{\mathrm{OLS}}(\vecb{w}) = \frac{1}{2}\norm{\vecb{y} - \mat{\Phi}\vecb{w}}_2^2$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~7, PDF p.~97}. Setting $\grad_{\vecb{w}}\mathcal{L}_{\mathrm{OLS}}(\vecb{w}) = \mat{\Phi}\T(\mat{\Phi}\vecb{w} - \vecb{y}) = \zeros$ yields the normal equations:
+\begin{equation}
+\label{eq:glm:normal_eq}
+(\mat{\Phi}\T\mat{\Phi})\hat{\vecb{w}}_{\mathrm{MLE}} = \mat{\Phi}\T\vecb{y} \implies \hat{\vecb{w}}_{\mathrm{MLE}} = (\mat{\Phi}\T\mat{\Phi})\inv \mat{\Phi}\T \vecb{y} \quad (\text{if }\rank(\mat{\Phi}) = D).
+\end{equation}
+The predicted target vector $\hat{\vecb{y}} = \mat{\Phi}\hat{\vecb{w}}_{\mathrm{MLE}} = \mat{P}_{\mathcal{S}}\vecb{y}$ is the orthogonal projection of $\vecb{y} \in \R^N$ onto the $D$-dimensional column space $\mathcal{S} = \colsp(\mat{\Phi}) \subset \R^N$, where
+\begin{equation}
+\label{eq:glm:proj_matrix}
+\mat{P}_{\mathcal{S}} = \mat{\Phi}(\mat{\Phi}\T\mat{\Phi})\inv\mat{\Phi}\T
+\end{equation}
+is symmetric ($\mat{P}_{\mathcal{S}}\T = \mat{P}_{\mathcal{S}}$) and idempotent ($\mat{P}_{\mathcal{S}}^2 = \mat{P}_{\mathcal{S}}$), and the residual $\vecb{r} = \vecb{y} - \hat{\vecb{y}} = (\eye_N - \mat{P}_{\mathcal{S}})\vecb{y}$ is orthogonal to $\mathcal{S}$, i.e., $\mat{\Phi}\T\vecb{r} = \zeros$ \bookcite{mathematics_machine_learning_orienly}{Ch.~9, PDF p.~320}.
+\end{coremath}
+
+\begin{intuition}[Subspace Geometry of Least Squares]
+In sample space $\R^N$, each column $\vecb{\varphi}_j \in \R^N$ of $\mat{\Phi}$ spans one coordinate axis of the hypothesis subspace $\mathcal{S} = \spn\{\vecb{\varphi}_1,\dots,\vecb{\varphi}_D\}$. Any linear model prediction $\mat{\Phi}\vecb{w}$ lies in $\mathcal{S}$. The Euclidean distance $\norm{\vecb{y} - \mat{\Phi}\vecb{w}}_2$ is minimized precisely when the error vector $\vecb{y} - \hat{\vecb{y}}$ meets $\mathcal{S}$ at a right angle (Figure~\ref{fig:glm:ols_proj}). When the basis columns are orthonormal ($\mat{\Phi}\T\mat{\Phi} = \eye_D$), features decouple completely: $\hat{\vecb{y}} = \sum_{j=1}^D \vecb{\varphi}_j(\vecb{\varphi}_j\T\vecb{y})$ \bookcite{mathematics_machine_learning_orienly}{Ch.~9, PDF p.~320}.
+\end{intuition}
+
+\monographfig[0.52\textwidth]{deep_learning_foundations_concepts_p136_fig1.png}{Orthogonal projection geometry of ordinary least squares in $\R^N$: the target vector $\mathbf{t}$ (denoted $\vecb{y}$ in our unified notation) is projected orthogonally onto the subspace $\mathcal{S}$ spanned by basis columns $\boldsymbol{\varphi}_1, \boldsymbol{\varphi}_2$, yielding the minimum-norm residual $\mathbf{t} - \mathbf{y}$. Source: \bookcite{deep_learning_foundations_concepts}{Ch.~4, Fig.~4.3, PDF p.~136}.}{fig:glm:ols_proj}
+
+\subsection{Bayesian Linear Regression \& Ridge ($\ell_2$) Duality}
+\label{subsec:glm:ridge}
+
+\begin{coremath}[Conjugate Gaussian Posterior \& Ridge MAP Equivalence]
+Place a conjugate Gaussian prior $p(\vecb{w}) = \Normal(\vecb{w} \mid \vecb{m}_0, \mat{S}_0)$ on the weights. By completing the square in the log-joint $\log p(\vecb{y} \mid \mat{\Phi},\vecb{w},\sigma^2) + \log p(\vecb{w})$, the exact posterior is $p(\vecb{w} \mid \mathcal{D}) = \Normal(\vecb{w} \mid \vecb{m}_N, \mat{S}_N)$ \bookcite{mathematics_machine_learning_orienly}{Ch.~9, PDF p.~310}, where
+\begin{equation}
+\label{eq:glm:bayes_post}
+\mat{S}_N\inv = \mat{S}_0\inv + \frac{1}{\sigma^2}\mat{\Phi}\T\mat{\Phi}, \qquad
+\vecb{m}_N = \mat{S}_N\!\left(\mat{S}_0\inv\vecb{m}_0 + \frac{1}{\sigma^2}\mat{\Phi}\T\vecb{y}\right).
+\end{equation}
+Integrating out $\vecb{w}$ yields the Gaussian posterior predictive distribution at a test input $\vecb{\phi}_* = \vecb{\phi}(\vecb{x}_*)$:
+\begin{equation}
+\label{eq:glm:bayes_pred}
+p(y_* \mid \vecb{x}_*, \mathcal{D}) = \int \Normal(y_* \mid \vecb{w}\T\vecb{\phi}_*, \sigma^2)\Normal(\vecb{w} \mid \vecb{m}_N, \mat{S}_N)\,\mathrm{d}\vecb{w}
+= \Normal\!\left(y_* \,\middle|\, \vecb{m}_N\T\vecb{\phi}_*,\; \sigma^2 + \vecb{\phi}_*\T\mat{S}_N\vecb{\phi}_*\right),
+\end{equation}
+where $\vecb{\phi}_*\T\mat{S}_N\vecb{\phi}_*$ captures epistemic parameter uncertainty \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~437}. Choosing an isotropic zero-mean prior $\vecb{m}_0 = \zeros$, $\mat{S}_0 = \tau^2\eye_D$ reduces the negative log-posterior to the Tikhonov/Ridge objective \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~412}:
+\begin{equation}
+\label{eq:glm:ridge_obj}
+\hat{\vecb{w}}_{\mathrm{Ridge}} = \argmin_{\vecb{w}\in\R^D} \left\{\norm{\vecb{y} - \mat{\Phi}\vecb{w}}_2^2 + \lambda\norm{\vecb{w}}_2^2\right\} = (\mat{\Phi}\T\mat{\Phi} + \lambda\eye_D)\inv\mat{\Phi}\T\vecb{y}, \quad \lambda = \frac{\sigma^2}{\tau^2}.
+\end{equation}
+\end{coremath}
+
+Taking the eigendecomposition $\mat{\Phi}\T\mat{\Phi} = \mat{V}\mat{\Sigma}^2\mat{V}\T$ (from the thin SVD $\mat{\Phi} = \mat{U}\mat{\Sigma}\mat{V}\T$ with singular values $\sigma_j \ge 0$), Ridge shifts every eigenvalue of $\mat{\Phi}\T\mat{\Phi}$ from $\sigma_j^2$ to $\sigma_j^2 + \lambda > 0$, guaranteeing invertibility even when $D > N$ or $\mat{\Phi}$ is rank-deficient \bookcite{introduction_probability_data_science}{Ch.~7, PDF p.~458}. On the training data, the Ridge fit acts as a smooth spectral filter \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~413}:
+\begin{equation}
+\label{eq:glm:ridge_svd}
+\hat{\vecb{y}}_{\mathrm{Ridge}} = \mat{\Phi}\hat{\vecb{w}}_{\mathrm{Ridge}} = \sum_{j=1}^{r} \frac{\sigma_j^2}{\sigma_j^2 + \lambda}\vecb{u}_j(\vecb{u}_j\T\vecb{y}), \qquad
+\mathrm{dof}(\lambda) = \Tr\!\left(\mat{\Phi}(\mat{\Phi}\T\mat{\Phi}+\lambda\eye_D)\inv\mat{\Phi}\T\right) = \sum_{j=1}^r \frac{\sigma_j^2}{\sigma_j^2 + \lambda}.
+\end{equation}
+Directions with small singular values $\sigma_j^2 \ll \lambda$ (high-variance noise directions) are heavily attenuated, trading a small bias for a large variance reduction.
+
+\subsection{Lasso ($\ell_1$) Sparsity, Subdifferential Optimality \& Soft-Thresholding}
+\label{subsec:glm:lasso}
+
+\begin{coremath}[Laplace Prior MAP, KKT Subdifferential \& Soft-Thresholding]
+Replacing the Gaussian prior with an i.i.d.\ Laplace prior $p(\vecb{w} \mid \lambda) = \prod_{j=1}^D \frac{\lambda}{2}\exp(-\lambda\abs{w_j})$ yields the Lasso ($\ell_1$-regularized) convex optimization problem \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~415}:
+\begin{equation}
+\label{eq:glm:lasso_obj}
+\hat{\vecb{w}}_{\mathrm{Lasso}} = \argmin_{\vecb{w}\in\R^D} \left\{\frac{1}{2}\norm{\vecb{y} - \mat{\Phi}\vecb{w}}_2^2 + \lambda\norm{\vecb{w}}_1\right\}, \qquad \norm{\vecb{w}}_1 = \sum_{j=1}^D \abs{w_j}.
+\end{equation}
+Because $\abs{w_j}$ is non-differentiable at $w_j = 0$, first-order optimality requires $\zeros \in \mat{\Phi}\T(\mat{\Phi}\vecb{w} - \vecb{y}) + \lambda\partial\norm{\vecb{w}}_1$, where the coordinate-wise subdifferential is $\partial\abs{w_j} = \{\sign(w_j)\}$ for $w_j \neq 0$ and $[-1, 1]$ for $w_j = 0$. Consequently, for each coordinate $j$:
+\begin{equation}
+\label{eq:glm:lasso_kkt}
+\vecb{\varphi}_j\T(\mat{\Phi}\hat{\vecb{w}} - \vecb{y}) = -\lambda\sign(\hat{w}_j) \;\; (\hat{w}_j \neq 0), \qquad
+\abs{\vecb{\varphi}_j\T(\mat{\Phi}\hat{\vecb{w}} - \vecb{y})} \le \lambda \;\; (\hat{w}_j = 0).
+\end{equation}
+When columns of $\mat{\Phi}$ are orthonormal ($\mat{\Phi}\T\mat{\Phi} = \eye_D$) with $c_j = \vecb{\varphi}_j\T\vecb{y}$, the coordinates decouple and yield the exact closed-form soft-thresholding operator:
+\begin{equation}
+\label{eq:glm:soft_thresh}
+\hat{w}_j^{\mathrm{Lasso}} = \mathcal{S}_\lambda(c_j) \triangleq \sign(c_j)\max(0, \abs{c_j} - \lambda).
+\end{equation}
+\end{coremath}
+
+By Lagrangian duality, \eqref{eq:glm:lasso_obj} is equivalent to minimizing $\frac{1}{2}\norm{\vecb{y}-\mat{\Phi}\vecb{w}}_2^2$ subject to $\norm{\vecb{w}}_1 \le B$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~416}. As shown in Figure~\ref{fig:glm:l1_l2_geom}, the $\ell_1$ ball is a cross-polytope (diamond in 2D) whose sharp vertices lie on the coordinate axes; expanding elliptical MSE level sets generically intersect a vertex first, forcing $\hat{w}_j = 0$ exactly. By contrast, the smooth $\ell_2$ ball has no corners, shrinking coefficients toward zero without inducing exact sparsity \bookcite{introduction_probability_data_science}{Ch.~7, PDF p.~466}. Combining both penalties yields Elastic-Net, $\lambda_1\norm{\vecb{w}}_1 + \frac{\lambda_2}{2}\norm{\vecb{w}}_2^2$, which preserves sparsity while stabilizing correlated feature groups.
+
+\monographfig[0.74\textwidth]{probabilisticml_kevinmurphy_introduction_p416_fig1.png}{Constraint-set geometry of $\ell_1$ Lasso (left) versus $\ell_2$ Ridge (right) regularization. Elliptical least-squares contours centered at $\hat{\mathbf{w}}_{\mathrm{MLE}}$ first contact the $\ell_1$ diamond at a coordinate axis vertex ($w_1 = 0$), inducing exact sparsity, whereas the smooth $\ell_2$ disk yields a dense shrunk solution. Source: \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, Fig.~11.8, PDF p.~416}.}{fig:glm:l1_l2_geom}
+
+\subsection{Binary \& Multinomial Logistic Regression, Hessian \& IRLS}
+\label{subsec:glm:logistic}
+
+\begin{coremath}[Cross-Entropy Gradient, Convexity \& IRLS Hessian]
+For binary targets $y_n \in \{0,1\}$, modeling $p(y_n=1 \mid \vecb{x}_n, \vecb{w}) = \mu_n = \sigmoid(\eta_n) = (1 + e^{-\eta_n})\inv$ with $\eta_n = \vecb{w}\T\vecb{\phi}_n$ gives the Bernoulli negative log-likelihood (binary cross-entropy) \bookcite{speech_language_processing_aug26}{Ch.~4, PDF p.~110}:
+\begin{equation}
+\label{eq:glm:bce}
+\mathrm{NLL}(\vecb{w}) = -\sum_{n=1}^N \Big[y_n\log\mu_n + (1-y_n)\log(1-\mu_n)\Big].
+\end{equation}
+Using the sigmoid identity $\sigmoid'(\eta_n) = \mu_n(1-\mu_n)$, the gradient and Hessian with respect to $\vecb{w}$ are \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10, PDF p.~374}:
+\begin{equation}
+\label{eq:glm:logreg_grad_hess}
+\grad_{\vecb{w}}\mathrm{NLL}(\vecb{w}) = \mat{\Phi}\T(\vecb{\mu} - \vecb{y}), \qquad
+\mat{H}(\vecb{w}) = \hess_{\vecb{w}}\mathrm{NLL}(\vecb{w}) = \mat{\Phi}\T\mat{W}\mat{\Phi},
+\end{equation}
+where $\mat{W} = \diag(\mu_1(1-\mu_1), \dots, \mu_N(1-\mu_N))$. Since $\mu_n(1-\mu_n) > 0$, for any $\vecb{v} \in \R^D$, $\vecb{v}\T\mat{H}(\vecb{w})\vecb{v} = \norm{\mat{W}^{1/2}\mat{\Phi}\vecb{v}}_2^2 \ge 0$, proving $\mathrm{NLL}(\vecb{w})$ is convex (Figure~\ref{fig:glm:logreg_surface}). Applying Newton--Raphson $\vecb{w}^{(t+1)} = \vecb{w}^{(t)} - \mat{H}(\vecb{w}^{(t)})\inv \grad\mathrm{NLL}(\vecb{w}^{(t)})$ yields Iteratively Reweighted Least Squares (IRLS):
+\begin{equation}
+\label{eq:glm:irls_update}
+\vecb{w}^{(t+1)} = (\mat{\Phi}\T\mat{W}^{(t)}\mat{\Phi})\inv \mat{\Phi}\T\mat{W}^{(t)}\vecb{z}^{(t)}, \qquad
+\vecb{z}^{(t)} = \mat{\Phi}\vecb{w}^{(t)} + (\mat{W}^{(t)})\inv(\vecb{y} - \vecb{\mu}^{(t)}).
+\end{equation}
+For $C$-class multinomial logistic (softmax) regression with weights $\mat{W}_{\mathrm{cls}} = [\vecb{w}_1,\dots,\vecb{w}_C] \in \R^{D \times C}$, class probabilities are $\mu_{nc} = \frac{\exp(\vecb{w}_c\T\vecb{\phi}_n)}{\sum_{k=1}^C\exp(\vecb{w}_k\T\vecb{\phi}_n)}$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~15, PDF p.~198}. With one-hot targets $\vecb{y}_n \in \{0,1\}^C$, the cross-entropy gradient for class $c$ is $\grad_{\vecb{w}_c}\mathrm{NLL} = \sum_{n=1}^N (\mu_{nc} - y_{nc})\vecb{\phi}_n$, and the block Hessian is \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10, PDF p.~385}
+\begin{equation}
+\label{eq:glm:softmax_hess}
+\mat{H}(\vecb{w}) = \sum_{n=1}^N \Big(\diag(\vecb{\mu}_n) - \vecb{\mu}_n\vecb{\mu}_n\T\Big) \otimes (\vecb{\phi}_n\vecb{\phi}_n\T) \succeq \zeros.
+\end{equation}
+Note that unregularized softmax is shift-invariant ($\vecb{w}_c \mapsto \vecb{w}_c + \vecb{c}$ leaves $\mu_{nc}$ unchanged); adding $\ell_2$ regularization $\frac{\lambda}{2}\sum_{c=1}^C\norm{\vecb{w}_c}_2^2$ enforces the unique sum-to-zero constraint $\sum_{c=1}^C \hat{w}_{cj} = 0$ for every feature $j$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10, PDF p.~386}.
+\end{coremath}
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p375_fig1.png}{Binary logistic regression NLL loss surface in 2D parameter space $(w, b)$: (a) convex contour plot and (b) bowl-shaped surface with a unique global minimum whenever the data are not linearly separable. Source: \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10, Fig.~10.5, PDF p.~375}.}{fig:glm:logreg_surface}
+
+\subsection{Unified Canonical Exponential-Family GLMs}
+\label{subsec:glm:exponential_family}
+
+\begin{coremath}[Exponential Dispersion Family \& Canonical Link Gradient]
+A Generalized Linear Model assumes the target $y_n$ follows an exponential dispersion family distribution conditional on $\vecb{x}_n$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~12, PDF p.~445; \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF p.~183}}:
+\begin{equation}
+\label{eq:glm:exp_disp}
+p(y_n \mid \theta_n, \phi) = h(y_n, \phi)\exp\!\left(\frac{y_n\theta_n - A(\theta_n)}{\phi}\right),
+\end{equation}
+where $\theta_n$ is the natural (canonical) parameter, $A(\theta_n)$ is the log-partition (cumulant) function, and $\phi > 0$ is the dispersion parameter. Differentiating the normalization identity $\int p(y\mid\theta,\phi)\,\mathrm{d}y = 1$ twice with respect to $\theta$ gives the exact mean and variance:
+\begin{equation}
+\label{eq:glm:cumulants}
+\mu_n = \E[y_n \mid \theta_n] = A'(\theta_n), \qquad \Var(y_n \mid \theta_n) = \phi A''(\theta_n) = \phi\, V(\mu_n).
+\end{equation}
+A \emph{canonical link function} chooses $g = (A')\inv$ so that the natural parameter equals the linear predictor directly: $\theta_n = g(\mu_n) = \eta_n = \vecb{w}\T\vecb{\phi}_n$ \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF p.~184}. Under this canonical pairing, the log-likelihood $\ell(\vecb{w}) = \sum_{n=1}^N \frac{y_n\eta_n - A(\eta_n)}{\phi} + \mathrm{const}$ has score and Fisher Information:
+\begin{equation}
+\label{eq:glm:canonical_score}
+\pd{\ell_n}{\eta_n} = \frac{y_n - A'(\eta_n)}{\phi} = \frac{y_n - \mu_n}{\phi}, \qquad
+\grad_{\vecb{w}}\mathrm{NLL}(\vecb{w}) = \frac{1}{\phi}\mat{\Phi}\T(\vecb{\mu} - \vecb{y}), \qquad
+\mathcal{I}(\vecb{w}) = \frac{1}{\phi}\mat{\Phi}\T\mat{W}\mat{\Phi},
+\end{equation}
+where $W_{nn} = A''(\eta_n) = \dd{\mu_n}{\eta_n}$. Thus, OLS, logistic regression, and Poisson regression share the identical residual-weighted gradient structure $\mat{\Phi}\T(\vecb{\mu} - \vecb{y})$ and positive semi-definite Hessian $\mat{\Phi}\T\mat{W}\mat{\Phi}$.
+\end{coremath}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}l l l c l X@{}}
+\toprule
+\textbf{Distribution} & \textbf{Support $\mathcal{Y}$} & \textbf{Cumulant $A(\eta)$} & \textbf{$\phi$} & \textbf{Canonical Link $g(\mu)$} & \textbf{Mean $\mu = A'(\eta)$} \\
+\midrule
+Gaussian $\Normal(\mu,\sigma^2)$ & $\R$ & $\frac{1}{2}\eta^2$ & $\sigma^2$ & $\mu$ (Identity) & $\eta$ \\
+Bernoulli $\Bernoulli(\mu)$ & $\{0,1\}$ & $\log(1+e^\eta)$ & $1$ & $\log\frac{\mu}{1-\mu}$ (Logit) & $\sigmoid(\eta)$ \\
+Poisson $\mathrm{Poi}(\mu)$ & $\N_0$ & $e^\eta$ & $1$ & $\log\mu$ (Log) & $\exp(\eta)$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Canonical Exponential-Family GLMs unifying linear, logistic, and Poisson regression \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~12, PDF pp.~446--447}.}
+\label{tab:glm:canonical_table}
+\end{center}
+
+Non-canonical links decouple $\theta_n$ from $\eta_n$, adding a Jacobian factor $\frac{\mathrm{d}\theta_n}{\mathrm{d}\eta_n} = [A''(\theta_n) g'(\mu_n)]\inv$ to the score \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF p.~184}. For example, probit regression uses $\eta_n = \Phi_{\Normal}\inv(\mu_n)$ (inverse standard normal CDF). Because $\Phi_{\Normal}(\eta)$ has Gaussian tails $\mathcal{O}(e^{-\eta^2/2})$ rather than logistic tails $\mathcal{O}(e^{-\abs{\eta}})$, probit regression is significantly more sensitive to mislabeled outliers far from the decision boundary \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF p.~183}.
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:glm:algorithms}
+% =============================================================================
+
+We present two core production solvers: Algorithm~\ref{alg:glm:irls} (IRLS for any canonical GLM, which reduces to a single step for Gaussian OLS) and Algorithm~\ref{alg:glm:coord_lasso} (Coordinate Descent with soft-thresholding for Lasso, avoiding non-smooth subgradient oscillation).
+
+\begin{algorithm}[htbp]
+\caption{Iteratively Reweighted Least Squares (IRLS) for Canonical GLMs}
+\label{alg:glm:irls}
+\KwIn{Design matrix $\mat{\Phi} \in \R^{N \times D}$, targets $\vecb{y} \in \mathcal{Y}^N$, ridge $\lambda \ge 0$, tolerance $\varepsilon > 0$}
+\KwOut{MAP/MLE parameter vector $\hat{\vecb{w}} \in \R^D$}
+Initialize $\vecb{w}^{(0)} \leftarrow \zeros$\;
+\For{$t = 0, 1, \dots, T_{\max}$}{
+  $\vecb{\eta} \leftarrow \mat{\Phi}\vecb{w}^{(t)}$ \Comment*{Linear predictor}
+  $\vecb{\mu} \leftarrow A'(\vecb{\eta})$,\quad $\mat{W} \leftarrow \diag\!\big(A''(\vecb{\eta})\big)$ \Comment*{Mean and variance weights}
+  $\vecb{z} \leftarrow \vecb{\eta} + \mat{W}\inv(\vecb{y} - \vecb{\mu})$ \Comment*{Working response}
+  Solve $(\mat{\Phi}\T\mat{W}\mat{\Phi} + \lambda\eye_D)\vecb{w}^{(t+1)} = \mat{\Phi}\T\mat{W}\vecb{z}$ via Cholesky / QR\;
+  \lIf{$\norm{\vecb{w}^{(t+1)} - \vecb{w}^{(t)}}_2 < \varepsilon$}{\Return $\vecb{w}^{(t+1)}$}
+}
+\Return $\vecb{w}^{(T_{\max})}$\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Coordinate Descent with Soft-Thresholding for Lasso ($\ell_1$)}
+\label{alg:glm:coord_lasso}
+\KwIn{Standardized $\mat{\Phi} \in \R^{N \times D}$ ($\norm{\vecb{\varphi}_j}_2^2 = N$), centered $\vecb{y}$, penalty $\lambda > 0$, tol $\varepsilon$}
+\KwOut{Sparse parameter vector $\hat{\vecb{w}} \in \R^D$}
+Initialize $\vecb{w} \leftarrow \zeros$,\quad $\vecb{r} \leftarrow \vecb{y} - \mat{\Phi}\vecb{w}$\;
+\While{$\norm{\vecb{w} - \vecb{w}_{\mathrm{prev}}}_\infty > \varepsilon$}{
+  $\vecb{w}_{\mathrm{prev}} \leftarrow \vecb{w}$\;
+  \For{$j = 1, \dots, D$}{
+    $\rho_j \leftarrow \vecb{\varphi}_j\T(\vecb{r} + w_j\vecb{\varphi}_j)$ \Comment*{Partial residual correlation}
+    $w_j^{\mathrm{new}} \leftarrow \frac{1}{N}\sign(\rho_j)\max(0,\, \abs{\rho_j} - \lambda)$ \Comment*{Soft-thresholding}
+    $\vecb{r} \leftarrow \vecb{r} - (w_j^{\mathrm{new}} - w_j)\vecb{\varphi}_j$,\quad $w_j \leftarrow w_j^{\mathrm{new}}$\;
+  }
+}
+\Return $\vecb{w}$\;
+\end{algorithm}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}l l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Model / Solver} & \textbf{Time Complexity} & \textbf{Memory} & \textbf{Regime \& Numerical Trade-off} \\
+\midrule
+OLS / Ridge (QR) & $\mathcal{O}(ND^2)$ & $\mathcal{O}(ND)$ & Preferred for $N \ge D$; avoids squaring condition number $\kappa(\mat{\Phi})$. \\
+Ridge (Dual SVD) & $\mathcal{O}(DN^2)$ & $\mathcal{O}(ND)$ & Optimal when $D \gg N$; operates in $N\times N$ Gram space. \\
+Lasso (Coord.\ Desc.) & $\mathcal{O}(K_{\mathrm{sweep}} ND)$ & $\mathcal{O}(ND)$ & Exact sparsity via active-set updates; no matrix inversion. \\
+GLM / Logistic (IRLS) & $\mathcal{O}(T_{\mathrm{IRLS}} ND^2)$ & $\mathcal{O}(ND + D^2)$ & Quadratic convergence; requires solving $D\times D$ system per step. \\
+Logistic (L-BFGS / SGD) & $\mathcal{O}(K N D)$ / $\mathcal{O}(K B D)$ & $\mathcal{O}(mD)$ / $\mathcal{O}(BD)$ & Scales to massive $D$ and streaming $N$ where $D^2$ Hessian is intractable. \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Computational complexity and numerical regime comparison across linear and GLM solvers \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF pp.~412--413}; \bookcite{speech_language_processing_aug26}{Ch.~4, PDF p.~115}.}
+\label{tab:glm:complexity}
+\end{center}
+
+\begin{crossbook}[Cross-Book Synthesis: Generative vs.\ Discriminative Classifiers \& Calibration]
+Both \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~9, PDF p.~366} and \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF pp.~172--178} prove that Linear Discriminant Analysis (LDA) with tied class covariances $\mat{\Sigma}_c = \mat{\Sigma}$ yields a posterior $p(y=c \mid \vecb{x})$ of exact softmax form. However, logistic regression estimates $p(y \mid \vecb{x})$ directly without modeling $p(\vecb{x} \mid y)$, making it more robust to non-Gaussian features, whereas generative models can handle missing inputs and require fewer samples when model assumptions hold. For count/rate targets (e.g., insurance claims), \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~12, PDF pp.~450--451} demonstrates that Ridge linear regression can predict negative counts and miscalibrate low-frequency bins, whereas a Poisson GLM with canonical log link ($\mu = e^\eta$) minimizes Poisson deviance and maintains calibrated expected totals.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:glm:visuals}
+% =============================================================================
+
+Figure~\ref{fig:glm:tikz_pipeline} maps the canonical GLM architecture from input features through the exponential dispersion family to IRLS parameter updates. Figure~\ref{fig:glm:pgf_paths} provides exact analytical comparisons of regularization shrinkage paths under orthonormal design and binary classification tail behavior.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.95cm and 1.15cm]
+  \node[monoBox] (x) {Input Features\\$\vecb{\phi}(\vecb{x}_n) \in \R^D$};
+  \node[monoTealBox, right=of x] (eta) {Linear Predictor\\$\eta_n = \vecb{w}\T\vecb{\phi}(\vecb{x}_n)$};
+  \node[monoIndigoBox, right=of eta] (expfam) {Exp.\ Family\\$p(y_n\mid\eta_n,\phi)$\\Cumulant $A(\eta_n)$};
+  \node[monoTealBox, right=of expfam] (moments) {Mean \& Var\\$\mu_n = A'(\eta_n)$\\$W_{nn} = A''(\eta_n)$};
+  \node[monoBox, below=1.05cm of expfam] (irls) {Canonical Score \& IRLS\\$\grad_{\vecb{w}}\mathrm{NLL} = \frac{1}{\phi}\mat{\Phi}\T(\vecb{\mu}-\vecb{y})$, \quad $\mat{H} = \frac{1}{\phi}\mat{\Phi}\T\mat{W}\mat{\Phi}$};
+
+  \draw[monoArrow] (x) -- (eta);
+  \draw[monoArrow] (eta) -- node[above, font=\scriptsize, color=monographSlate] {$\theta_n = \eta_n$} (expfam);
+  \draw[monoArrow] (expfam) -- (moments);
+  \draw[monoArrow] (moments.south) |- (irls.east);
+  \draw[monoArrow] (irls.west) -| node[pos=0.75, left, font=\scriptsize, color=monographSlate] {update $\vecb{w}^{(t+1)}$} (eta.south);
+\end{tikzpicture}
+\caption{Canonical Generalized Linear Model (GLM) pipeline: choosing the canonical link $g=(A')\inv$ equates the natural parameter $\theta_n$ to $\eta_n$, collapsing the score to residual-weighted features and yielding the IRLS Fisher scoring update.}
+\label{fig:glm:tikz_pipeline}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    name=plotA,
+    width=0.47\textwidth,
+    height=5.6cm,
+    xlabel={Correlation $c_j = \vecb{\varphi}_j\T\vecb{y}$},
+    ylabel={Estimated coefficient $\hat{w}_j$},
+    title={(a) Shrinkage Operators ($\lambda_1=1.2,\, \lambda_2=0.8$)},
+    title style={font=\small\bfseries, color=monographNavy},
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    xmin=-3.2, xmax=3.2, ymin=-3.2, ymax=3.2,
+    grid=major, grid style={monographRule!40},
+    legend pos=north west,
+    legend style={font=\scriptsize, fill=white, fill opacity=0.9, draw=monographRule}
+  ]
+    \addplot[domain=-3:3, samples=60, thick, dashed, color=monographSlate] {x};
+    \addlegendentry{OLS}
+    \addplot[domain=-3:3, samples=60, very thick, color=monographNavy] {x/(1+0.8)};
+    \addlegendentry{Ridge ($\ell_2$)}
+    \addplot[domain=-3:3, samples=200, very thick, color=monographTeal] { (abs(x) > 1.2) ? (x > 0 ? x - 1.2 : x + 1.2) : 0 };
+    \addlegendentry{Lasso ($\ell_1$)}
+    \addplot[domain=-3:3, samples=200, thick, color=monographIndigo] { (abs(x) > 1.2) ? ((x > 0 ? x - 1.2 : x + 1.2)/(1+0.8)) : 0 };
+    \addlegendentry{Elastic-Net}
+  \end{axis}
+
+  \begin{axis}[
+    name=plotB,
+    at={(plotA.south east)}, anchor=south west, xshift=1.35cm,
+    width=0.47\textwidth,
+    height=5.6cm,
+    xlabel={Linear predictor $\eta = \vecb{w}\T\vecb{\phi}(\vecb{x})$},
+    ylabel={NLL / Probability},
+    title={(b) Logit vs.\ Probit Loss ($y=1$) \& Link},
+    title style={font=\small\bfseries, color=monographNavy},
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    xmin=-4, xmax=4, ymin=0, ymax=5.0,
+    grid=major, grid style={monographRule!40},
+    legend pos=north east,
+    legend style={font=\scriptsize, fill=white, fill opacity=0.9, draw=monographRule}
+  ]
+    \addplot[domain=-4:4, samples=100, very thick, color=monographNavy] {1/(1+exp(-x))};
+    \addlegendentry{Sigmoid $\sigmoid(\eta)$}
+    \addplot[domain=-4:4, samples=100, very thick, color=monographTeal] {ln(1+exp(-x))};
+    \addlegendentry{Logit NLL $\approx -\eta$}
+    \addplot[domain=-4:0.5, samples=80, thick, dashed, color=monographCrimson] {0.5*x^2 - ln(0.5) - 0.6};
+    \addlegendentry{Probit NLL $\sim \frac{1}{2}\eta^2$}
+  \end{axis}
+\end{tikzpicture}
+\caption{Exact analytical diagnostics: (a) under orthonormal design, Ridge shrinks proportionally, whereas Lasso and Elastic-Net apply soft-thresholding with a deadzone $[-\lambda_1, \lambda_1]$; (b) for misclassified outliers ($\eta \ll 0$), logistic NLL grows linearly while probit NLL grows quadratically \bookcite{deep_learning_foundations_concepts}{Ch.~5, PDF p.~183}.}
+\label{fig:glm:pgf_paths}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:glm:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Complete \& Quasi-Complete Separation in Logistic Regression]
+If training classes are linearly separable ($\exists \vecb{w}: (2y_n - 1)\vecb{w}\T\vecb{\phi}_n > 0\;\forall n$), scaling $\vecb{w} \leftarrow \alpha\vecb{w}$ with $\alpha \to \infty$ drives $\mathrm{NLL}(\alpha\vecb{w}) \to 0$ strictly. Consequently, the MLE does not exist at any finite $\vecb{w}$, causing unregularized Newton/IRLS steps to diverge ($\norm{\vecb{w}}_2 \to \infty$) and $\mat{W} \to \zeros$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~10, PDF p.~378}. \textbf{Remedy:} Always include $\ell_2$ regularization ($\lambda > 0$) or a Jeffreys prior, which makes the objective strongly convex and guarantees a unique finite MAP estimate.
+\end{pitfall}
+
+\begin{pitfall}[Logit \& Softmax Overflow/Underflow]
+Evaluating $\log(1 + e^\eta)$ or $\softmax(\vecb{\eta})_c = \frac{e^{\eta_c}}{\sum_k e^{\eta_k}}$ naively overflows IEEE-754 float64 for $\eta_c > 709.78$ and underflows to $0/0 = \mathrm{NaN}$ when all $\eta_c \ll -745$. \textbf{Remedy:} Apply the Log-Sum-Exp shift $m = \max_k \eta_k$:
+\begin{equation}
+\label{eq:glm:lse_stable}
+\log\sum_{k=1}^C e^{\eta_k} = m + \log\sum_{k=1}^C e^{\eta_k - m}, \qquad
+\softplus(\eta) = \max(\eta, 0) + \log\!\left(1 + e^{-\abs{\eta}}\right).
+\end{equation}
+\end{pitfall}
+
+\begin{pitfall}[Collinearity, Unscaled Features \& Normal-Equation Conditioning]
+Forming $(\mat{\Phi}\T\mat{\Phi})\inv$ explicitly squares the condition number, $\kappa(\mat{\Phi}\T\mat{\Phi}) = \kappa(\mat{\Phi})^2$, losing double precision digits when features are collinear \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~11, PDF p.~412}. Furthermore, Ridge and Lasso penalties $\norm{\vecb{w}}_2^2, \norm{\vecb{w}}_1$ are not scale-invariant: multiplying feature $j$ by $10^{-3}$ scales $w_j$ by $10^3$, disproportionately penalizing small-scale features. \textbf{Remedy:} Standardize features to zero mean and unit variance before regularization (keeping the intercept $w_0$ unpenalized), and solve OLS/Ridge via QR or SVD rather than normal equations.
+\end{pitfall}
+
+\end{document}

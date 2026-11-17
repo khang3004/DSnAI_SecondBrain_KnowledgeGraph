@@ -1,0 +1,385 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf
+  {Classical, Kernel \& Probabilistic Machine Learning}
+  {Linear Models, Generalization, Kernels \& Ensembles}
+  {Kernel Methods, Support Vector Machines \& Tree Ensembles}
+  {Decision Trees, Bagging, Random Forests \& Gradient Boosting}
+  {\bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~7.11}, \bookcite{chip_huyen_designing_machine_learning_systems}{Sec.~6.1}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+% =============================================================================
+
+Given a supervised dataset $\mathcal{D} = \{(\vecb{x}_i, y_i)\}_{i=1}^{N}$ with feature vectors $\vecb{x}_i \in \mathcal{X} \subseteq \R^{D}$ (possibly mixing continuous and categorical coordinates) and targets $y_i \in \mathcal{Y}$, a \emph{tree ensemble} constructs a predictor $f : \mathcal{X} \to \R$ (or $\R^{C}$ for $C$-class logits) as a weighted combination of $M$ base decision trees:
+\begin{equation}
+  f(\vecb{x}; \Theta) = \sum_{m=1}^{M} \beta_m F_m(\vecb{x}; \theta_m), \qquad
+  F_m(\vecb{x}; \theta_m) = \sum_{j=1}^{J_m} w_{jm}\, \mathbb{I}(\vecb{x} \in R_{jm}),
+  \label{eq:trees:ensemble_def}
+\end{equation}
+where $\{R_{1m}, \dots, R_{J_m m}\}$ forms a disjoint axis-aligned partition of $\mathcal{X}$ induced by tree $m$ with $J_m$ leaves, and $w_{jm}$ is the leaf prediction weight \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~603--611}. Letting $q_m : \mathcal{X} \to \{1, \dots, J_m\}$ map $\vecb{x}$ to its leaf index, we write $F_m(\vecb{x}) = w_{q_m(\vecb{x}), m}$.
+
+Because tree ensembles unify parallel variance-reduction methods (Bagging, Random Forests) and sequential bias-reduction methods (AdaBoost, Gradient Boosted Decision Trees), notation varies across statistical, deep learning, and ML systems texts. Table~\ref{tab:trees:notation} establishes a unified convention.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:trees:notation}
+Notation reconciled across Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18}, Goodfellow et al.\ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~7.11}, and Huyen \bookcite{chip_huyen_designing_machine_learning_systems}{Sec.~6.1}:
+
+\smallskip
+\centering
+\footnotesize
+\begin{tabularx}{\linewidth}{@{} >{\bfseries}l l l l X @{}}
+\toprule
+Concept & Unified & Murphy (Ch.~18) & Goodfellow (7.11) & Huyen (Sec.~6.1) \\
+\midrule
+Ensemble size & $M$ (or $B$) & $M$ & $k$ & $n$ base learners \\
+Base tree / learner & $F_m(\vecb{x})$ & $F_m(\vecb{x}; \theta_m)$ & $i$-th model & Base learner \\
+Leaf count / regions & $J_m$, $R_{jm}$ & $J$, $R_j$ & --- & --- \\
+Error var.\ / cov. & $\sigma^2$, $\rho\sigma^2$ & $\Var$, bias-var. & $v$, $c$ & Uncorr.\ vs.\ corr. \\
+Sample weights & $\omega_{i,m}$ & $\omega_{i,m}$ & --- & Reweighted samples \\
+Shrinkage / step & $\nu$, $\beta_m$ & $\nu$, $\beta_m$ & --- & Learning rate \\
+\bottomrule
+\end{tabularx}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+% =============================================================================
+
+\subsection{CART Greedy Axis-Aligned Partitioning \& Pruning}
+
+Finding the globally optimal binary tree partition minimizing empirical risk $\sum_{i=1}^{N} \ell(y_i, f(\vecb{x}_i; \theta))$ is NP-complete \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~605}. Classification and Regression Trees (CART) instead grow a binary tree greedily top-down. At internal node $i$ receiving sample subset $\mathcal{D}_i \subseteq \mathcal{D}$, each candidate split $(d, t)$ on feature $d \in \{1,\dots,D\}$ and threshold $t \in \mathcal{T}_d$ partitions $\mathcal{D}_i$ into left and right children:
+\begin{equation}
+  \mathcal{D}_{i}^{L}(d, t) = \{(\vecb{x}_n, y_n) \in \mathcal{D}_i : x_{n,d} \le t\}, \qquad
+  \mathcal{D}_{i}^{R}(d, t) = \{(\vecb{x}_n, y_n) \in \mathcal{D}_i : x_{n,d} > t\}.
+  \label{eq:trees:split_sets}
+\end{equation}
+
+\begin{coremath}[CART Split Criterion \& Minimal Cost-Complexity Pruning]
+At node $i$, CART selects $(d_i^*, t_i^*)$ minimizing the size-weighted child impurity \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~605--606}:
+\begin{equation}
+  (d_i^*, t_i^*) = \argmin_{d \in \{1,\dots,D\},\; t \in \mathcal{T}_d} \left[
+    \frac{|\mathcal{D}_i^L(d, t)|}{|\mathcal{D}_i|}\, c(\mathcal{D}_i^L(d, t))
+    + \frac{|\mathcal{D}_i^R(d, t)|}{|\mathcal{D}_i|}\, c(\mathcal{D}_i^R(d, t))
+  \right].
+  \label{eq:trees:cart_objective}
+\end{equation}
+For regression, $c(\mathcal{D}_i) = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i}(y_n - \bar{y}_i)^2$ with $\bar{y}_i = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i} y_n$. For $C$-class classification with empirical class frequencies $\hat{\pi}_{ic} = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i}\mathbb{I}(y_n = c)$, standard impurity functions are:
+\begin{align}
+  G_i &= \sum_{c=1}^{C} \hat{\pi}_{ic}(1 - \hat{\pi}_{ic}) = 1 - \sum_{c=1}^{C} \hat{\pi}_{ic}^2 \quad \text{(Gini index)}, \label{eq:trees:gini} \\
+  H_i &= -\sum_{c=1}^{C} \hat{\pi}_{ic} \log \hat{\pi}_{ic} \quad \text{(Shannon entropy / deviance)}. \label{eq:trees:entropy}
+\end{align}
+To prevent overfitting from unpruned deep trees, minimal cost-complexity pruning grows a maximal tree $T_0$ and selects the subtree $T \preceq T_0$ minimizing
+\begin{equation}
+  R_{\alpha}(T) = R(T) + \alpha |T|,
+  \label{eq:trees:ccp}
+\end{equation}
+where $R(T) = \sum_{j=1}^{|T|} \frac{|\mathcal{D}_j|}{N} c(\mathcal{D}_j)$ is total leaf impurity, $|T|$ is the number of terminal leaves, and $\alpha \ge 0$ is tuned via cross-validation.
+\end{coremath}
+
+\begin{intuition}[Why Single Trees Are Unstable Yet Invariant]
+Because splits depend only on threshold orderings $x_{n,d} \le t$, CART is strictly invariant to monotone transformations of any feature, handles mixed continuous/categorical inputs without scaling, and performs embedded feature selection \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~607}. However, hierarchical greedy splitting creates high variance: perturbing even a single training point near the root can alter the top split and cascade into a completely different partition.
+\end{intuition}
+
+\subsection{Bagging Variance Reduction, Correlation Floor \& Random Forests}
+
+Bootstrap Aggregating (Bagging) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~609} turns tree instability into a virtue by drawing $B$ bootstrap datasets $\mathcal{D}^{(1)}, \dots, \mathcal{D}^{(B)}$ of size $N$ with replacement, fitting a tree $F_b$ on each, and averaging $\bar{F}_B(\vecb{x}) = \frac{1}{B}\sum_{b=1}^{B} F_b(\vecb{x})$ (or taking majority vote in classification).
+
+\begin{coremath}[Ensemble Variance Decomposition \& Out-of-Bag Probability]
+Suppose each base predictor $F_b(\vecb{x})$ incurs a zero-mean error $\epsilon_b$ on test point $\vecb{x}$ with identical variance $\E[\epsilon_b^2] = \sigma^2$ and pairwise covariance $\E[\epsilon_a \epsilon_b] = \rho\sigma^2$ for $a \neq b$ (where $\rho \in [0, 1]$ is the pairwise error correlation; cf.\ $v = \sigma^2$, $c = \rho\sigma^2$, $k = B$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~7.11, Eq.~7.51}). The expected squared error of the ensemble average $\frac{1}{B}\sum_{b=1}^{B}\epsilon_b$ is:
+\begin{align}
+  \E\!\left[\left(\frac{1}{B}\sum_{b=1}^{B}\epsilon_b\right)^2\right]
+  &= \frac{1}{B^2}\left(\sum_{b=1}^{B} \E[\epsilon_b^2] + \sum_{a \neq b} \E[\epsilon_a \epsilon_b]\right) \nonumber \\
+  &= \frac{1}{B^2}\left(B\sigma^2 + B(B-1)\rho\sigma^2\right)
+  = \rho\sigma^2 + \frac{1 - \rho}{B}\sigma^2.
+  \label{eq:trees:bagging_var}
+\end{align}
+As $B \to \infty$, the second term vanishes and error converges to the irreducible correlation floor $\rho\sigma^2$. Moreover, in each bootstrap sample of size $N$, the probability that training example $i$ is never drawn is
+\begin{equation}
+  \Prob(i \notin \mathcal{D}^{(b)}) = \left(1 - \frac{1}{N}\right)^{N} \xrightarrow{N \to \infty} e^{-1} \approx 0.368,
+  \label{eq:trees:oob}
+\end{equation}
+leaving $\approx 36.8\%$ \emph{out-of-bag} (OOB) instances per tree for internal cross-validation without a separate holdout set \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~609}.
+\end{coremath}
+
+\textbf{Random Forests} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~610} break the $\rho\sigma^2$ ceiling by injecting a second source of randomness: at every internal node $i$, the split search in Eq.~\eqref{eq:trees:cart_objective} is restricted to a uniformly sampled feature subset $\mathcal{S}_i \subset \{1, \dots, D\}$ of size $m$ (typically $m = \lfloor \sqrt{D} \rfloor$ for classification and $m = \lfloor D/3 \rfloor$ for regression). When a few dominant predictors exist, standard bagged trees repeatedly select those predictors near the root, keeping $\rho$ high; Random Forest feature subsampling forces diverse split paths, lowering $\rho$ substantially at a modest increase in single-tree bias.
+
+\subsection{AdaBoost: Exponential Loss \& Stagewise Additive Modeling}
+
+Rather than averaging independent trees to cut variance, \emph{boosting} reduces bias by fitting weak learners sequentially. In forward stagewise additive modeling, iteration $m$ solves
+\begin{equation}
+  (\beta_m, F_m) = \argmin_{\beta,\, F} \sum_{i=1}^{N} \ell\!\left(y_i,\, f_{m-1}(\vecb{x}_i) + \beta F(\vecb{x}_i)\right),
+  \qquad f_m(\vecb{x}) = f_{m-1}(\vecb{x}) + \beta_m F_m(\vecb{x}),
+  \label{eq:trees:fsam}
+\end{equation}
+freezing previously added learners $F_1, \dots, F_{m-1}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~612}.
+
+\begin{coremath}[Derivation of AdaBoost.M1 from Exponential Loss]
+For binary targets $\tilde{y}_i \in \{-1, +1\}$ and base classifiers $F_m(\vecb{x}) \in \{-1, +1\}$, AdaBoost minimizes the exponential margin loss $\ell(\tilde{y}, f) = \exp(-\tilde{y} f)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~614--615}. Defining sample weights $\omega_{i,m} \triangleq \exp(-\tilde{y}_i f_{m-1}(\vecb{x}_i))$, the step-$m$ objective is:
+\begin{align}
+  \mathcal{L}_m(\beta, F) &= \sum_{i=1}^{N} \omega_{i,m} \exp\!\left(-\beta \tilde{y}_i F(\vecb{x}_i)\right) \nonumber \\
+  &= e^{-\beta}\sum_{\tilde{y}_i = F(\vecb{x}_i)} \omega_{i,m} + e^{\beta}\sum_{\tilde{y}_i \neq F(\vecb{x}_i)} \omega_{i,m} \nonumber \\
+  &= (e^{\beta} - e^{-\beta}) \sum_{i=1}^{N} \omega_{i,m}\,\mathbb{I}(\tilde{y}_i \neq F(\vecb{x}_i)) + e^{-\beta}\sum_{i=1}^{N}\omega_{i,m}.
+  \label{eq:trees:adaboost_obj}
+\end{align}
+For any $\beta > 0$, the optimal weak learner minimizes weighted misclassification error:
+\begin{equation}
+  F_m = \argmin_{F} \sum_{i=1}^{N} \omega_{i,m}\,\mathbb{I}(\tilde{y}_i \neq F(\vecb{x}_i)).
+\end{equation}
+Letting $\mathrm{err}_m = \frac{\sum_{i=1}^{N} \omega_{i,m}\mathbb{I}(\tilde{y}_i \neq F_m(\vecb{x}_i))}{\sum_{i=1}^{N} \omega_{i,m}}$ and setting $\pd{\mathcal{L}_m}{\beta} = 0$ yields the closed-form step weight and multiplicative sample reweighting:
+\begin{equation}
+  \beta_m = \frac{1}{2}\log\!\left(\frac{1 - \mathrm{err}_m}{\mathrm{err}_m}\right), \qquad
+  \omega_{i,m+1} = \omega_{i,m}\exp\!\left(2\beta_m\,\mathbb{I}(\tilde{y}_i \neq F_m(\vecb{x}_i))\right) \cdot e^{-\beta_m}.
+  \label{eq:trees:adaboost_update}
+\end{equation}
+Dropping the common factor $e^{-\beta_m}$ leaves misclassified examples scaled by $e^{2\beta_m} = \frac{1-\mathrm{err}_m}{\mathrm{err}_m} > 1$ whenever $\mathrm{err}_m < 0.5$.
+\end{coremath}
+
+\subsection{Functional Gradient Boosting \& Second-Order XGBoost/LightGBM}
+
+To optimize arbitrary differentiable losses $\ell(y_i, f(\vecb{x}_i))$, Friedman's Gradient Boosting Machine (GBM) treats the evaluation vector $\vecb{f} = (f(\vecb{x}_1), \dots, f(\vecb{x}_N))\T \in \R^N$ as the parameter being updated via functional steepest descent \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~616--618}. At iteration $m$, the negative gradient (pseudo-residual) is
+\begin{equation}
+  r_{im} = -g_{im} = -\left.\pd{\ell(y_i, f(\vecb{x}_i))}{f(\vecb{x}_i)}\right|_{f = f_{m-1}},
+  \label{eq:trees:pseudo_residual}
+\end{equation}
+and a regression tree $F_m$ is fit by least squares to $\{(\vecb{x}_i, r_{im})\}_{i=1}^{N}$, followed by a shrunk update $f_m(\vecb{x}) = f_{m-1}(\vecb{x}) + \nu F_m(\vecb{x})$ with learning rate $0 < \nu \le 1$.
+
+\begin{coremath}[Second-Order Taylor Objective, Optimal Leaf Weights \& Split Gain]
+Modern implementations (XGBoost, LightGBM) augment the functional objective with a tree complexity penalty $\Omega(F) = \gamma J + \frac{1}{2}\lambda \sum_{j=1}^{J} w_j^2$ and expand $\ell$ to second order around $f_{m-1}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~619--620}:
+\begin{equation}
+  \tilde{\mathcal{L}}^{(m)}(q, \vecb{w}) = \sum_{i=1}^{N} \left[g_{im} w_{q(\vecb{x}_i)} + \frac{1}{2} h_{im} w_{q(\vecb{x}_i)}^2\right] + \gamma J + \frac{1}{2}\lambda \sum_{j=1}^{J} w_j^2,
+  \label{eq:trees:xgb_taylor}
+\end{equation}
+where $g_{im} = \partial_{f}\ell(y_i, f_{m-1}(\vecb{x}_i))$ and $h_{im} = \partial_{f}^2\ell(y_i, f_{m-1}(\vecb{x}_i)) \ge 0$. Grouping samples by leaf index $I_j = \{i : q(\vecb{x}_i) = j\}$ and defining $G_{jm} = \sum_{i \in I_j} g_{im}$ and $H_{jm} = \sum_{i \in I_j} h_{im}$ decouples Eq.~\eqref{eq:trees:xgb_taylor} into $J$ independent quadratics:
+\begin{equation}
+  \tilde{\mathcal{L}}^{(m)}(q, \vecb{w}) = \sum_{j=1}^{J} \left[G_{jm} w_j + \frac{1}{2}(H_{jm} + \lambda) w_j^2\right] + \gamma J.
+  \label{eq:trees:xgb_leaf_sum}
+\end{equation}
+Setting $\pd{\tilde{\mathcal{L}}^{(m)}}{w_j} = 0$ gives the exact Newton leaf weight and optimal tree structure score:
+\begin{equation}
+  w_j^* = -\frac{G_{jm}}{H_{jm} + \lambda}, \qquad
+  \tilde{\mathcal{L}}^{(m)}(q, \vecb{w}^*) = -\frac{1}{2}\sum_{j=1}^{J}\frac{G_{jm}^2}{H_{jm} + \lambda} + \gamma J.
+  \label{eq:trees:xgb_opt_leaf}
+\end{equation}
+Evaluating a candidate split $I = I_L \cup I_R$ yields the exact loss reduction (split gain):
+\begin{equation}
+  \mathrm{Gain}(I_L, I_R) = \frac{1}{2}\left[\frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda}\right] - \gamma,
+  \label{eq:trees:xgb_gain}
+\end{equation}
+which automatically enforces $L_2$ leaf shrinkage ($\lambda$) and minimum-gain pre-pruning ($\gamma$).
+\end{coremath}
+
+\begin{intuition}[Why Second-Order Gradients Accelerate Boosting]
+First-order GBM fits all leaf regions with uniform MSE weighting, requiring a separate line search or Newton step per leaf afterward. Using $h_{im}$ inside the split criterion acts as diagonal Newton preconditioning: regions with small curvature $H_{jm}$ (e.g., confident log-loss predictions where $\pi_i(1-\pi_i) \approx 0$) are regularized strongly by $\lambda$, preventing explosive leaf steps without manual step-size tuning.
+\end{intuition}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+% =============================================================================
+
+To scale Eq.~\eqref{eq:trees:xgb_gain} to millions of rows, XGBoost and LightGBM replace exact feature sorting with quantile/histogram binning ($K_{\mathrm{bin}} \approx 256$ bins per feature), reducing split-finding from $\mathcal{O}(N D \log N)$ to $\mathcal{O}(K_{\mathrm{bin}} D)$ per node once $(g_{im}, h_{im})$ are accumulated into histograms.
+
+\begin{algorithm}[htbp]
+\caption{Second-Order Histogram Gradient Boosted Decision Tree (XGBoost / LightGBM)}
+\label{alg:trees:hist_gbdt}
+\KwIn{Dataset $\mathcal{D} = \{(\vecb{x}_i, y_i)\}_{i=1}^{N}$, loss $\ell$, iterations $M$, shrinkage $\nu \in (0,1]$, depth $d_{\max}$, regularization $(\gamma, \lambda)$, subsample rates $(r_{\mathrm{row}}, r_{\mathrm{col}})$}
+\KwOut{Additive tree ensemble $f_M(\vecb{x})$}
+Quantile-bin continuous features into discrete bin indices $b_{i,d} \in \{1, \dots, K_{\mathrm{bin}}\}$\;
+Initialize $f_0(\vecb{x}) \leftarrow \argmin_{c \in \R} \sum_{i=1}^{N} \ell(y_i, c)$\;
+\For{$m = 1, \dots, M$}{
+  Sample row subset $\mathcal{I}_m \subseteq \{1,\dots,N\}$ (rate $r_{\mathrm{row}}$) and feature subset $\mathcal{S}_m \subseteq \{1,\dots,D\}$ (rate $r_{\mathrm{col}}$)\;
+  Compute gradients $g_{im} \leftarrow \partial_f \ell(y_i, f_{m-1}(\vecb{x}_i))$ and Hessians $h_{im} \leftarrow \partial_f^2 \ell(y_i, f_{m-1}(\vecb{x}_i))$ for $i \in \mathcal{I}_m$\;
+  Grow tree $F_m$ up to depth $d_{\max}$ by recursively splitting active leaf $I$:\;
+  \For{each feature $d \in \mathcal{S}_m$}{
+    Accumulate bin sums $G_{d,k} \leftarrow \sum_{i \in I : b_{i,d}=k} g_{im}$ and $H_{d,k} \leftarrow \sum_{i \in I : b_{i,d}=k} h_{im}$\;
+    Scan prefix sums $(G_L, H_L)$ across bins $k=1,\dots,K_{\mathrm{bin}}-1$ to evaluate $\mathrm{Gain}$ via Eq.~\eqref{eq:trees:xgb_gain}\;
+  }
+  \If{$\max_{d,k} \mathrm{Gain}(d, k) > 0$}{
+    Split $I$ into $(I_L, I_R)$ at $(d^*, k^*)$\;
+  }
+  \Else{
+    Set leaf weight $w_I^* \leftarrow -\frac{\sum_{i \in I} g_{im}}{\sum_{i \in I} h_{im} + \lambda}$\;
+  }
+  Update ensemble: $f_m(\vecb{x}) \leftarrow f_{m-1}(\vecb{x}) + \nu F_m(\vecb{x})$\;
+}
+\Return{$f_M(\vecb{x})$}\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Computational and statistical comparison across tree-based paradigms.}
+\label{tab:trees:complexity}
+\begin{tabularx}{\textwidth}{@{} >{\bfseries}l l l l X @{}}
+\toprule
+Method & Train Complexity & Parallelism & Primary Effect & Key Hyperparameters \\
+\midrule
+Single CART & $\mathcal{O}(D N \log N)$ & Per-feature & Low bias (deep) & $d_{\max}$, min leaf size, $\alpha$ \\
+Bagged Trees & $\mathcal{O}(B D N \log N)$ & Embarrassing ($B$) & Variance $\downarrow$ & $B$, bootstrap size \\
+Random Forest & $\mathcal{O}(B m N \log N)$ & Embarrassing ($B$) & Variance $\downarrow$, $\rho \downarrow$ & $B$, $m \approx \sqrt{D}$, $d_{\max}$ \\
+AdaBoost.M1 & $\mathcal{O}(M D N \log N)$ & Sequential in $M$ & Bias $\downarrow$ (margin) & $M$, stump/tree depth \\
+Hist-GBDT & $\mathcal{O}(M (N D_{\mathrm{sub}} + 2^{d} K_{\mathrm{bin}} D_{\mathrm{sub}}))$ & Feature/bin-level & Bias $\downarrow$, reg. & $M$, $\nu$, $d_{\max}$, $\lambda$, $\gamma$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Statistical Theory vs.\ Deep Learning vs.\ Production Systems]
+\label{box:trees:synthesis}
+\begin{itemize}[leftmargin=1.4em, itemsep=0.3em]
+  \item \textbf{Statistical \& Probabilistic View} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~609--620}: Ensembling is \emph{not} Bayes Model Averaging (BMA). BMA weights $\Prob(m \mid \mathcal{D})$ collapse onto the single MAP model as $N \to \infty$, whereas ensemble weights expand the hypothesis class so diverse trees jointly approximate smooth, non-axis-aligned decision boundaries.
+  \item \textbf{Deep Learning Regularization View:} While bagging is a universal variance-reduction principle \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~7.11, pp.~256--257}, deep neural networks rarely benefit from bootstrap resampling because seeing only $63.2\%$ of unique examples degrades representation learning; instead, neural ensembles rely on random initialization and minibatch stochasticity for diversity.
+  \item \textbf{Production ML Systems View} \bookcite{chip_huyen_designing_machine_learning_systems}{Sec.~6.1, pp.~150--161}: Gradient-boosted trees (XGBoost, LightGBM) dominate structured tabular workloads and strict-latency CPU serving, outperforming deep networks on small-to-medium tabular data and handling class imbalance effectively. However, large multi-model ensembles increase deployment complexity and are reserved for high-ROI tasks (e.g., ad click-through rate prediction) where marginal AUC gains translate directly to revenue.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+% =============================================================================
+
+Figure~\ref{fig:trees:arch} contrasts the geometric partition of a single CART tree with the parallel variance-reduction topology of Bagging/Random Forests and the sequential functional residual descent of Gradient Boosting. Figure~\ref{fig:trees:curves} quantifies the two governing theoretical curves: the $\rho\sigma^2$ correlation floor in Eq.~\eqref{eq:trees:bagging_var} and the binary node impurity profiles in Eqs.~\eqref{eq:trees:gini}--\eqref{eq:trees:entropy}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, font=\small]
+  % --- Panel (a): Axis-aligned CART feature-space partition ---
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\small\bfseries\color{monographNavy}] at (2.1, 4.15) {(a) CART Axis-Aligned Partition};
+    % Regions
+    \fill[monographNavyBg] (0,0) rectangle (2.2, 2.3);
+    \fill[monographTealBg] (0,2.3) rectangle (2.2, 3.6);
+    \fill[monographIndigoBg] (2.2,0) rectangle (4.2, 1.5);
+    \fill[monographCrimsonBg] (2.2,1.5) rectangle (4.2, 3.6);
+    % Outer box & splits
+    \draw[thick, monographNavy] (0,0) rectangle (4.2, 3.6);
+    \draw[very thick, monographCrimson] (2.2,0) -- (2.2, 3.6) node[below, pos=0, yshift=-3pt, font=\scriptsize\color{monographCrimson}] {$x_1 = t_1$};
+    \draw[very thick, monographTeal] (0,2.3) -- (2.2, 2.3) node[above, pos=0.5, font=\scriptsize\color{monographTeal}] {$x_2 = t_2$};
+    \draw[very thick, monographIndigo] (2.2,1.5) -- (4.2, 1.5) node[above, pos=0.5, font=\scriptsize\color{monographIndigo}] {$x_2 = t_3$};
+    % Region labels
+    \node[font=\footnotesize\bfseries\color{monographNavy}] at (1.1, 1.15) {$R_1\,(w_1)$};
+    \node[font=\footnotesize\bfseries\color{monographTeal}] at (1.1, 3.05) {$R_2\,(w_2)$};
+    \node[font=\footnotesize\bfseries\color{monographIndigo}] at (3.2, 0.75) {$R_3\,(w_3)$};
+    \node[font=\footnotesize\bfseries\color{monographSlate}] at (3.2, 2.65) {$R_4\,(w_4)$};
+    \node[font=\scriptsize\color{monographSlate}] at (2.1, -0.75) {Feature $x_1$};
+    \node[font=\scriptsize\color{monographSlate}, rotate=90] at (-0.55, 1.8) {Feature $x_2$};
+  \end{scope}
+
+  % --- Panel (b): Parallel Bagging vs Sequential Boosting ---
+  \begin{scope}[shift={(5.8,0)}]
+    \node[font=\small\bfseries\color{monographNavy}] at (4.1, 4.15) {(b) Parallel Bagging vs.\ Sequential Boosting};
+    % Bagging row (top)
+    \node[monoBox, minimum width=1.4cm, minimum height=0.65cm, font=\scriptsize] (dboot) at (0.8, 3.0) {Bootstrap\\$\mathcal{D}^{(1)}\dots\mathcal{D}^{(B)}$};
+    \node[monoTealBox, minimum width=1.5cm, minimum height=0.65cm, font=\scriptsize] (t1) at (3.3, 3.45) {Tree $F_1$ ($\mathcal{S}_i$)};
+    \node[monoTealBox, minimum width=1.5cm, minimum height=0.65cm, font=\scriptsize] (tb) at (3.3, 2.55) {Tree $F_B$ ($\mathcal{S}_i$)};
+    \node[monoBox, minimum width=1.6cm, minimum height=0.65cm, font=\scriptsize] (avg) at (6.0, 3.0) {Average $\frac{1}{B}\sum F_b$\\($\Var \downarrow$, $\rho \downarrow$)};
+    \draw[monoArrow] (dboot.east) -- (t1.west);
+    \draw[monoArrow] (dboot.east) -- (tb.west);
+    \draw[monoArrow] (t1.east) -- (avg.west);
+    \draw[monoArrow] (tb.east) -- (avg.west);
+
+    % Divider
+    \draw[dashed, monographRule] (0.0, 1.95) -- (8.0, 1.95);
+
+    % Boosting row (bottom)
+    \node[monoIndigoBox, minimum width=1.4cm, minimum height=0.65cm, font=\scriptsize] (f0) at (0.8, 0.85) {Init $f_0(\vecb{x})$};
+    \node[monoIndigoBox, minimum width=1.7cm, minimum height=0.65cm, font=\scriptsize] (g1) at (3.3, 0.85) {Fit $F_1$ to\\$(g_{i1}, h_{i1})$};
+    \node[monoIndigoBox, minimum width=1.7cm, minimum height=0.65cm, font=\scriptsize] (g2) at (6.0, 0.85) {Fit $F_m$ to\\$(g_{im}, h_{im})$};
+    \node[font=\scriptsize\color{monographIndigo}] (fend) at (7.7, 0.85) {$f_M$};
+    \draw[monoArrow] (f0.east) -- node[above, font=\scriptsize] {$r_{i1}$} (g1.west);
+    \draw[monoArrow] (g1.east) -- node[above, font=\scriptsize] {$+\nu F_1$} (g2.west);
+    \draw[monoArrow] (g2.east) -- (fend.west);
+    \node[font=\scriptsize\color{monographSlate}] at (4.0, 0.1) {Sequential functional residual descent (Bias $\downarrow$)};
+  \end{scope}
+\end{tikzpicture}
+\caption{Geometric and architectural duality of tree ensembles: (a) recursive axis-aligned splits partition $\R^2$ into constant-weight rectangles; (b) Bagging/Random Forests average parallel decorrelated trees to reduce variance, whereas Gradient Boosting sequentially fits trees to negative gradients and Hessians to reduce bias.}
+\label{fig:trees:arch}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  % Left plot: Bagging / RF Variance Decay
+  \begin{axis}[
+    width=0.47\textwidth,
+    height=5.2cm,
+    at={(0,0)},
+    xlabel={Ensemble Size $B$},
+    ylabel={Normalized Variance $\Var(\bar{F}_B)/\sigma^2$},
+    xmin=1, xmax=100,
+    ymin=0, ymax=1.05,
+    grid=both,
+    grid style={monographRule!35},
+    legend pos=north east,
+    legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9},
+    title={\small\bfseries (a) Bagging Variance vs.\ Correlation $\rho$},
+    tick label style={font=\scriptsize},
+    label style={font=\footnotesize}
+  ]
+    \addplot[thick, monographNavy, domain=1:100, samples=80] {0.0 + (1-0.0)/x};
+    \addlegendentry{$\rho = 0.00$}
+    \addplot[thick, monographTeal, domain=1:100, samples=80] {0.15 + (1-0.15)/x};
+    \addlegendentry{$\rho = 0.15$ (RF)}
+    \addplot[thick, monographIndigo, dashed, domain=1:100, samples=80] {0.40 + (1-0.40)/x};
+    \addlegendentry{$\rho = 0.40$ (Bag)}
+    \addplot[thick, monographCrimson, dotted, domain=1:100, samples=80] {0.75 + (1-0.75)/x};
+    \addlegendentry{$\rho = 0.75$}
+  \end{axis}
+
+  % Right plot: Impurity Criteria
+  \begin{axis}[
+    width=0.47\textwidth,
+    height=5.2cm,
+    at={(0.51\textwidth,0)},
+    xlabel={Positive Class Proportion $\hat{\pi}$},
+    ylabel={Node Impurity $c(\hat{\pi})$},
+    xmin=0, xmax=1,
+    ymin=0, ymax=0.55,
+    grid=both,
+    grid style={monographRule!35},
+    legend style={at={(0.5,0.04)}, anchor=south, font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9},
+    title={\small\bfseries (b) Binary Node Impurity Criteria},
+    tick label style={font=\scriptsize},
+    label style={font=\footnotesize}
+  ]
+    \addplot[thick, monographTeal, domain=0.001:0.999, samples=100] {-0.5*(x*ln(x)/ln(2) + (1-x)*ln(1-x)/ln(2))};
+    \addlegendentry{Scaled Entropy $\frac{1}{2}H_2(\hat{\pi})$}
+    \addplot[thick, monographNavy, domain=0:1, samples=100] {2*x*(1-x)};
+    \addlegendentry{Gini $2\hat{\pi}(1-\hat{\pi})$}
+    \addplot[thick, monographCrimson, dashed, domain=0:0.5, samples=50] {x};
+    \addlegendentry{Misclass.\ $1-\max(\hat{\pi},1-\hat{\pi})$}
+    \addplot[thick, monographCrimson, dashed, domain=0.5:1, samples=50, forget plot] {1-x};
+  \end{axis}
+\end{tikzpicture}
+\caption{Quantitative ensemble and splitting laws: (a) ensemble variance $\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2$ plateaus at $\rho\sigma^2$, explaining why Random Forest feature subsampling outperforms pure Bagging; (b) Gini and scaled Shannon entropy are strictly concave and differentiable on $(0,1)$, favoring purer child splits more aggressively than misclassification error.}
+\label{fig:trees:curves}
+\end{figure}
+
+Empirical comparisons from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18} corroborate these theoretical curves: Figure~\ref{fig:trees:rf_boundary} illustrates how averaging 50 trees smooths the jagged axis-aligned overfitting of a single CART model, Figure~\ref{fig:trees:spam_err} demonstrates the test-error hierarchy $\text{Boosting} < \text{Random Forest} < \text{Bagging}$ on the 57-feature spam dataset, and Figure~\ref{fig:trees:boost_resid} visualizes sequential residual fitting in 1D regression.
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p640_fig1.png}{Decision boundaries in 2D feature space: (a) a single unpruned CART tree overfits noisy pockets ($\text{acc}=0.86$); (b--c) bagging 10 and 50 trees stabilizes the boundary ($\text{acc}=0.91$); (d) a 50-tree Random Forest ($\text{acc}=0.90$) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, Fig.~18.4, p.~610}.}{fig:trees:rf_boundary}
+
+\monographfig[0.68\textwidth]{probabilisticml_kevinmurphy_introduction_p641_fig1.png}{Test error vs.\ number of trees on the 4,601-sample email spam dataset ($D=57$): Random Forests substantially outperform Bagging by decorrelating trees across irrelevant features, while Gradient Boosting achieves the lowest test error via sequential bias reduction \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, Fig.~18.5, p.~611}.}{fig:trees:spam_err}
+
+\monographfig[0.76\textwidth]{probabilisticml_kevinmurphy_introduction_p643_fig1.png}{Stagewise residual fitting with depth-2 regression trees on a 1D quadratic curve: left panels show each weak learner $F_m(x_1)$ fitted to the current residuals $y - f_{m-1}(x_1)$; right panels show the cumulative strong learner $f_m(x_1) = \sum_{k=1}^{m} F_k(x_1)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, Fig.~18.6, p.~613}.}{fig:trees:boost_resid}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+% =============================================================================
+
+\begin{pitfall}[Axis-Aligned Staircase Extrapolation Failure]
+Because every leaf region $R_{jm}$ predicts a constant $w_{jm}$, tree ensembles \emph{cannot extrapolate} linear or monotonic trends beyond the minimum and maximum feature values observed in $\mathcal{D}$. Under covariate shift (e.g., forecasting prices or temporal growth outside historical bounds), predictions clamp flatly at boundary leaf values. \textbf{Remedy:} Detrend targets with a linear/GAM baseline prior to tree fitting, or use linear-tree hybrids when extrapolation is required.
+\end{pitfall}
+
+\begin{pitfall}[High-Cardinality Categorical Split Overfitting \& Target-Encoding Leakage]
+Allowing arbitrary subset splits on a categorical feature with $K$ levels searches $2^{K-1}-1$ partitions, severely biasing greedy Gini/gain selection toward high-cardinality IDs. Conversely, naive out-of-fold-free target encoding leaks $y_i$ into feature values. \textbf{Remedy:} Use LightGBM's Fisher-sorted histogram categorical partitioning \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, p.~619}, or compute smoothed target statistics strictly inside cross-validation folds / ordered boosting permutations.
+\end{pitfall}
+
+\begin{pitfall}[Boosting Overfitting Without Shrinkage $\nu$ \& Early Stopping]
+Unlike Random Forests---where increasing $B$ never overfits in expectation (Eq.~\eqref{eq:trees:bagging_var})---unregularized boosting ($M \to \infty$ with $\nu = 1$) drives training loss to zero and memorizes label noise, especially under exponential loss which assigns $\exp(-\tilde{y}_i f(\vecb{x}_i))$ penalty to outliers \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~18, pp.~614, 617}. \textbf{Remedy:} Set small shrinkage $\nu \in [0.01, 0.1]$, enable row/column subsampling ($r_{\mathrm{row}}, r_{\mathrm{col}} < 1$), and halt at the minimum validation loss via early stopping.
+\end{pitfall}
+
+\begin{pitfall}[Probabilistic Calibration \& OOB Shift Sensitivity]
+Unconstrained Random Forests push leaf probabilities toward $0$ or $1$ or suffer bias from class-reweighting heuristics, while OOB error estimates assume i.i.d.\ sampling and fail under temporal or group-structured data \bookcite{chip_huyen_designing_machine_learning_systems}{Sec.~6.1, pp.~155, 158}. \textbf{Remedy:} Apply post-hoc Platt scaling or isotonic regression on a held-out calibration split, and replace OOB with time-series or group-aware cross-validation.
+\end{pitfall}
+
+\end{document}

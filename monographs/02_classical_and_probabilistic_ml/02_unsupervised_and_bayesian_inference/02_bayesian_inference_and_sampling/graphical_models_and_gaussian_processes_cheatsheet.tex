@@ -1,0 +1,211 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Unsupervised \& Bayesian Inference}{Directed/Undirected Graphical Models, Belief Propagation \& Gaussian Processes}
+  {Graph topology factorizes joints; message passing marginalizes trees; kernels put priors on functions}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{PGMs \& GPs\\ \footnotesize\mdseries DAG/MRF $\cdot$ BP $\cdot$ Kernels}{%
+  \begin{tikzpicture}[scale=0.54]
+    \node[circle, draw=csA, fill=csA!12, thick, inner sep=1.5pt, font=\tiny] (a) at (-2.1,0.5) {$x_1$};
+    \node[circle, draw=csA, fill=csA!12, thick, inner sep=1.5pt, font=\tiny] (b) at (-0.9,0.5) {$x_2$};
+    \node[circle, draw=csDom, fill=csDom!25, thick, inner sep=1.5pt, font=\tiny] (c) at (-1.5,-0.55) {$x_3$};
+    \draw[-{Stealth}, thick, csA] (a)--(c);
+    \draw[-{Stealth}, thick, csA] (b)--(c);
+    \draw[dashed, thick, csB] (a)--(b);
+    \begin{scope}[xshift=0.3cm, yshift=-0.1cm]
+      \draw[csE, thick, dashed, domain=0:2.4, samples=30] plot (\x, {0.45*sin(deg(2.2*\x))+0.35});
+      \draw[csE, thick, dashed, domain=0:2.4, samples=30] plot (\x, {0.45*sin(deg(2.2*\x))-0.35});
+      \draw[csDom, very thick, domain=0:2.4, samples=30] plot (\x, {0.45*sin(deg(2.2*\x))});
+      \fill[csA] (0.5,0.4) circle (1.8pt) (1.6,-0.17) circle (1.8pt);
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; DAGs $-$ d-separation \& explaining away}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{p(\vecb x) = \prod_{i=1}^D p(x_i\mid\vecb x_{\mathrm{pa}(i)})}
+    \begin{csbul}
+      \item \textbf{Chain / Fork:} $s\to m\to t$ or $s\leftarrow m\to t$ blocked iff $m\in C$
+      \item \textbf{Collider (v-struct):} $s\to m\leftarrow t$ blocked iff $m,\mathrm{desc}(m)\notin C$
+      \item \textbf{Observing $m$} unblocks collider (\emph{explaining away})
+      \item \textbf{Blanket:} $\mathrm{MB}(i)=\mathrm{pa}(i)\cup\mathrm{ch}(i)\cup\mathrm{coparents}(i)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \node[circle, draw=csA, thick, inner sep=1.5pt] (b) at (-0.9,1.0) {$B$};
+      \node[circle, draw=csA, thick, inner sep=1.5pt] (f) at (0.9,1.0) {$F$};
+      \node[circle, draw=csDom, fill=csDom!25, thick, inner sep=1.5pt] (g) at (0,-0.3) {$G$};
+      \draw[-{Stealth}, thick, csA] (b)--(g);
+      \draw[-{Stealth}, thick, csA] (f)--(g);
+      \draw[csB, thick, dashed, <->] (b)--(f);
+      \node[csDom, align=center] at (0,-1.25) {obs.\ $G$ couples\\$(B,F)$ given $G$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; MRFs \& FACTOR GRAPHS $-$ Hammersley--Clifford}{%
+  \csfm{p(\vecb x) = \frac{1}{Z}\prod_{c\in\mathcal C}\psi_c(\vecb x_c) = \frac{1}{Z}\exp\!\Bigl(-\sum_{c\in\mathcal C} E_c(\vecb x_c)\Bigr)}
+  \begin{csbul}
+    \item \textbf{Undirected CI:} $\vecb x_A\indep\vecb x_B\mid\vecb x_C \iff C$ separates $A,B$; $\mathrm{MB}(i)=\mathrm{nbr}(i)$
+    \item \textbf{DAG $\to$ MRF (Moralize):} marry unmarried parents sharing a child, drop arrows
+    \item \textbf{Factor graph:} bipartite $(\mathcal V_{\mathrm{var}},\mathcal V_{\mathrm{fac}},\mathcal E)$ resolves clique ambiguity
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; BELIEF PROPAGATION $-$ trees, JTA \& loopy}{%
+  \csfm{m_{s\to t}(z_t) = \sum_{z_s}\psi_{st}(z_s,z_t)\psi_s(z_s)\!\prod_{u\in\mathrm{nbr}(s)\setminus\{t\}}\! m_{u\to s}(z_s)}
+  \begin{csbul}
+    \item \textbf{Sum-Product:} exact marginals $\mathrm{bel}_s(z_s)\propto\psi_s(z_s)\prod_u m_{u\to s}(z_s)$ in 2 passes (post-order collect, pre-order distribute) in $\mathcal O(|\mathcal E|K^2)$
+    \item \textbf{Max-Product (Max-Sum):} replace $\sum_{z_s}$ by $\max_{z_s}$ for exact MAP
+    \item \textbf{Cycles:} triangulate to chordal Junction Tree ($\mathcal O(|\mathcal C|K^{w^*+1})$) or run damped Residual Loopy BP (Bethe stationary points)
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; GAUSSIAN PROCESSES $-$ prior over functions}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{p(\vecb f_*\mid\mat X_*,\mathcal D) = \Normal(\vecb\mu_*,\mat\Sigma_*),\quad \mat K_y=\mat K_{X,X}+\sigma_y^2\eye_N}
+    \begin{csbul}
+      \item \textbf{Mean:} $\vecb\mu_* = \vecb m(\mat X_*) + \mat K_{*,X}\mat K_y\inv(\vecb y-\vecb m(\mat X))$
+      \item \textbf{Cov:} $\mat\Sigma_* = \mat K_{*,*} - \mat K_{*,X}\mat K_y\inv\mat K_{X,*}$
+      \item \textbf{SE ($C^\infty$):} $\sigma_f^2\exp(-r^2/(2\ell^2))$
+      \item \textbf{Mat\'ern-$\nu$:} $k$-times MS diff.\ iff $\nu>k$ ($\nu=\frac{1}{2}\Rightarrow C^0$, $\nu=\frac{3}{2}\Rightarrow C^1$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[csD, thick, dashed, domain=-2:2, samples=40] plot (\x, {0.5*sin(deg(1.6*\x))+0.45*(1-0.75*exp(-2*(\x+1)^2)-0.75*exp(-2*(\x-0.8)^2))});
+      \draw[csD, thick, dashed, domain=-2:2, samples=40] plot (\x, {0.5*sin(deg(1.6*\x))-0.45*(1-0.75*exp(-2*(\x+1)^2)-0.75*exp(-2*(\x-0.8)^2))});
+      \draw[csDom, very thick, domain=-2:2, samples=40] plot (\x, {0.5*sin(deg(1.6*\x))});
+      \fill[csA] (-1,-0.5) circle (2.2pt) (0.8,0.48) circle (2.2pt);
+      \node[csDom] at (0,-1.2) {$\mu_*(x)\pm 2\sigma_*(x)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; OCCAM'S RAZOR \& SPARSE GP ($\mathcal O(NM^2)$)}{%
+  \csfm{\log p(\vecb y\mid\mat X,\vecb\theta) = \underbrace{-\tfrac{1}{2}\vecb y\T\mat K_y\inv\vecb y}_{\text{data fit}} \underbrace{-\tfrac{1}{2}\log\det\mat K_y}_{\text{complexity}} - \tfrac{N}{2}\log(2\pi)}
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{3.4cm}@{}}
+    \textbf{\textcolor{csE}{GP Variant}} & \textbf{\textcolor{csE}{Train / Test}} & \textbf{\textcolor{csE}{Approx.\ ($\mat Q_{A,B}=\mat K_{A,Z}\mat K_{Z,Z}\inv\mat K_{Z,B}$)}}\\ \hline
+    Exact Cholesky & $\mathcal O(N^3)$ / $\mathcal O(N^2)$ & $\mat L\mat L\T=\mat K_y+\epsilon\eye_N$\\
+    SOR / DTC & $\mathcal O(NM^2)$ / $\mathcal O(M^2)$ & rank-$M$ prior; DTC keeps $\mat K_{*,*}$\\
+    FITC & $\mathcal O(NM^2)$ / $\mathcal O(M^2)$ & $\mat Q_{X,X}+\diag(\mat K_{X,X}-\mat Q_{X,X})$\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; CONNECTIONS $-$ graphs meet kernels}{%
+  \begin{csbul}
+    \item \textbf{Weight-space $\leftrightarrow$ Function-space:} Bayesian ridge $\vecb w\sim\Normal(\zeros,\mat\Sigma_w)$ with $k(\vecb x,\vecb x')=\vecb\phi(\vecb x)\T\mat\Sigma_w\vecb\phi(\vecb x')$ equals GP via Woodbury
+    \item \textbf{GP as MRF:} dense Gaussian MRF over $(\vecb f_X,\vecb f_*)$ with local emissions $y_i\mid f_i$
+    \item \textbf{Sparse GP as CI:} $M$ inducing points $\vecb u=f(\mat Z)$ enforce $\vecb f_*\indep\vecb f_X\mid\vecb u$
+    \item \textbf{ARD kernel:} per-feature lengthscales $\ell_d$ prune irrelevant inputs via LML
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Graphs factorize joints;\; Messages marginalize trees;\; Kernels covary functions} \\[1pt]
+  \footnotesize\mdseries \textbf{Conditioning unblocks colliders (DAG), shrinks GP bands ($\mat\Sigma_*$), and separates $\vecb f_*\indep\vecb f_X\mid\vecb u$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Never invert $\mat K_y$:} use jittered Cholesky $\mat L\mat L\T=\mat K_y+\epsilon\eye_N$
+    \item \textbf{Loopy BP oscillation:} synchronous updates diverge on tight cycles $\to$ damp/residual
+    \item \textbf{Inconsistent Nystr\"om:} mixing $\mat Q_{X,X}$ and exact $\mat K_{*,X}$ gives $\sigma_*^2<0$
+    \item \textbf{LML local optima:} short-$\ell$/low-$\sigma_y$ vs.\ long-$\ell$/high-$\sigma_y$ $\to$ multi-restart
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Probabilistic Graphical Models, Message Passing \& Gaussian Processes}\;---\;Domain 02 $\cdot$ Unsupervised \& Bayesian Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item DAG Markov blanket conditional:\csfm{p(x_i\mid\vecb x_{-i}) \propto p(x_i\mid\vecb x_{\mathrm{pa}(i)})\!\prod_{k\in\mathrm{ch}(i)}\! p(x_k\mid\vecb x_{\mathrm{pa}(k)})}
+    \item Sum-Product belief \& fast cavity message:\csfm{\mathrm{bel}_s(z_s)\propto\psi_s(z_s)\!\prod_{u\in\mathrm{nbr}(s)}\! m_{u\to s}(z_s),\quad \prod_{u\neq t} m_{u\to s} = \frac{\mathrm{bel}_s}{m_{t\to s}}}
+    \item GP LML gradient ($\vecb\alpha=\mat K_y\inv\vecb y$):\csfm{\pd{}{\theta_j}\log p(\vecb y\mid\mat X,\vecb\theta) = \frac{1}{2}\Tr\!\Bigl((\vecb\alpha\vecb\alpha\T-\mat K_y\inv)\pd{\mat K_y}{\theta_j}\Bigr)}
+    \item Mat\'ern-$3/2$ kernel ($C^1$ paths):\csfm{k_{3/2}(r) = \sigma_f^2\Bigl(1+\frac{\sqrt{3}\,r}{\ell}\Bigr)\exp\!\Bigl(-\frac{\sqrt{3}\,r}{\ell}\Bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{CHOLESKY GP \& TREE BP RECIPES}
+  \textbf{Cholesky GP ($\mathcal O(N^3)$):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=0.5pt, parsep=0pt]
+    \item $\mat L\gets\mathrm{cholesky}(\mat K_{X,X}+(\sigma_y^2+\epsilon)\eye_N)$
+    \item $\vecb\alpha\gets\mat L\T\backslash(\mat L\backslash\vecb y)$;\; $\vecb\mu_*\gets\mat K_{*,X}\vecb\alpha$
+    \item $\mat V\gets\mat L\backslash\mat K_{X,*}$;\; $\mat\Sigma_*\gets\mat K_{*,*}-\mat V\T\mat V$
+    \item $\log p(\vecb y\mid\mat X) = -\tfrac{1}{2}\vecb y\T\vecb\alpha - \sum_i\log L_{ii} - \tfrac{N}{2}\log(2\pi)$
+  \end{enumerate}
+  \textbf{Tree BP ($\mathcal O(|\mathcal E|K^2)$):} root at $r$; post-order leaves$\to r$, then pre-order $r\to$leaves using $\mathrm{bel}_s/m_{t\to s}$.
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.2}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    ancestral causal generation & Directed DAG ($Z=1$ automatically)\\
+    symmetric spatial/grid potentials & Undirected MRF / Factor Graph\\
+    tree or polytree PGM & Exact 2-pass Sum/Max-Product BP\\
+    small-treewidth cyclic PGM & Junction Tree Algorithm ($\mathcal O(K^{w^*+1})$)\\
+    dense loopy grid MRF & Damped Residual Loopy BP\\
+    rough physical function ($C^1$) & Mat\'ern-$3/2$ GP (not $C^\infty$ SE)\\
+    GP with $N > 10^4$ points & Inducing-point Sparse GP (FITC/SVGP)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{COMPLEXITY \& SMOOTHNESS CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Treewidth $w^*$:} JTA scales as $\mathcal O(|\mathcal C|K^{w^*+1})$ ($w^*=1$ on trees)
+    \item \textbf{Sparse GP:} $M\ll N$ pseudo-inputs cut $\mathcal O(N^3)\to\mathcal O(NM^2+M^3)$
+    \item \textbf{Smoothness:} Mat\'ern-$\nu$ is $k$-times MS differentiable iff $\nu > k$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{MAT\'ERN vs.\ SE KERNEL DECAY ($r=\norm{\vecb x-\vecb x'}_2$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=0, xmax=3.5, ymin=0, ymax=1.08,
+      xlabel={Normalized Distance $r/\ell$}, ylabel={Correlation $k(r)/\sigma_f^2$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,1,2,3}, ytick={0,0.25,0.5,0.75,1.0}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.98,0.95)}, anchor=north east, font=\tiny, draw=gray!40}]
+      \addplot[csA, thick, dashed, domain=0:3.5, samples=70] {exp(-x)};
+      \addlegendentry{Mat\'ern-$1/2$ ($C^0$ OU)}
+      \addplot[csD, very thick, domain=0:3.5, samples=70] {(1+sqrt(3)*x)*exp(-sqrt(3)*x)};
+      \addlegendentry{Mat\'ern-$3/2$ ($C^1$)}
+      \addplot[csF, very thick, dotted, domain=0:3.5, samples=70] {exp(-0.5*x^2)};
+      \addlegendentry{SE / RBF ($C^\infty$)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Collider trap:} conditioning on a collider \emph{or any descendant} creates dependence (explaining away)
+    \item \textbf{Moralization omission:} converting DAG$\to$MRF without marrying co-parents loses v-structure CI constraints
+    \item \textbf{Max-Product underflow:} products of many potentials underflow; run Max-Sum in log-domain
+    \item \textbf{Ill-conditioned SE kernel:} $\kappa(\mat K_y)>10^{12}$ for close points; add diagonal jitter $\epsilon\approx 10^{-6}\sigma_f^2$ before Cholesky
+    \item \textbf{SOR uncertainty collapse:} SOR rank-$M$ covariance underestimates variance far from inducing inputs $\mat Z$; use DTC/FITC
+    \item \textbf{Bimodal LML surface:} always optimize $(\ell,\sigma_f,\sigma_y)$ in $\log$-space with multiple restarts
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{DAGs} factorize top-down ($Z=1$, Bayes-ball d-separation); \textbf{MRFs} factorize over cliques ($Z=\sum\prod\psi_c$).
+  \textbf{Belief Propagation} pushes sum/max messages across trees in two passes.
+  \textbf{Gaussian Processes} turn infinite basis expansions into finite $N\times N$ Cholesky algebra with calibrated $\mu_*\pm 2\sigma_*$ bands and automatic $\log\det\mat K_y$ Occam regularization.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,209 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Production ML Systems \& AgentOps}{Outside-In Agent Evaluation, LLM-as-a-Judge, Observability, Guardrails \& AgentOps CI/CD}
+  {Validate outcomes outside-in, trace trajectories glass-box, de-bias pairwise judges \& gate rollouts}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{AgentOps\\ \footnotesize\mdseries Eval $\cdot$ OTel $\cdot$ Guardrails}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny\sffamily}]
+    % Trajectory chain s0 -> (z,a,o) -> y with shield & judge
+    \node[draw=csDom, fill=csDom!15, circle, inner sep=1.5pt] (s0) at (-2.0,0.65) {$s_0$};
+    \node[draw=csB, fill=csB!15, rounded corners=1.5pt, inner sep=2pt] (zao) at (0,0.65) {$z_t,a_t,o_t$};
+    \node[draw=csD, fill=csD!15, circle, inner sep=2pt] (y) at (2.0,0.65) {$y$};
+    \draw[-{Stealth}, thick, csDom] (s0)--(zao);
+    \draw[-{Stealth}, thick, csDom] (zao)--(y);
+    % Bottom: Guardrail gate + Judge
+    \node[draw=csA, fill=csA!20, thick, rounded corners=2pt, inner sep=2.5pt] (gate) at (-1.25,-0.55) {Gate $G(\tau)$};
+    \node[draw=csF, fill=csF!20, thick, rounded corners=2pt, inner sep=2.5pt] (judge) at (1.25,-0.55) {Judge $J_\phi$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Outside-In \& Four Pillars}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\tau=(s_0,z_1,a_1,o_1,\dots,z_H,a_H,o_H,y)}
+    \begin{csbul}
+      \item \textbf{Effectiveness:} goal completion, CSAT
+      \item \textbf{Efficiency:} tokens $N_{\mathrm{tok}}$, P99 $L(\tau)$, steps $H$
+      \item \textbf{Robustness:} API timeouts, schema noise
+      \item \textbf{Safety:} policy, PII, injection defense
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny\sffamily}]
+      \draw[fill=csA!12, draw=csA, thick, rounded corners=2pt] (0,0) rectangle (4.2,3.1);
+      \node[csA, font=\tiny\bfseries] at (2.1,2.65) {1. Outside: Outcome $y$};
+      \draw[fill=csB!18, draw=csB, thick, rounded corners=2pt] (0.25,0.20) rectangle (3.95,2.15);
+      \node[csB, font=\tiny\bfseries] at (2.1,1.75) {2. Inside: Glass-Box};
+      \node[align=center] at (2.1,0.90) {Plan $z_t$ $\cdot$ Tool $a_t$\\Obs $o_t$ $\cdot$ RAG};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HORIZON DECAY $-$ \texttt{pass@k} vs.\ \texttt{pass\textasciicircum k}}{%
+  \begin{csbul}
+    \item \textbf{Step compounding:} $p_\tau=\prod_{t=1}^{H}p_t\approx p_{\mathrm{step}}^H$
+    \item \textbf{Demo} (\texttt{pass@k}) vs.\ \textbf{SLA consistency} (\texttt{pass\textasciicircum k}):
+      \csfm{\mathrm{pass@}k=1-(1-p_\tau)^k,\quad \mathrm{pass\textasciicircum}k=p_\tau^k=p_{\mathrm{step}}^{kH}}
+    \item \textbf{Trap ($p_{\mathrm{step}}=0.95, H=10, k=5$):} $p_\tau\approx 0.60 \Rightarrow \mathrm{pass@}5=99.0\%$ (great demo!) but $\mathrm{pass\textasciicircum}5=7.7\%$ ($>92\%$ SLA streak failure)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; LLM-AS-A-JUDGE \& HITL ALIGNMENT}{%
+  \begin{csbul}
+    \item \textbf{Symmetric slot-swapped win rate} (cancels position bias):
+      \csfm{\hat w_{A\succ B}(x)=\tfrac{1}{2}\bigl[J_\phi(y_A,y_B\mid x)+\bigl(1-J_\phi(y_B,y_A\mid x)\bigr)\bigr]}
+    \item \textbf{Cohen's $\kappa$ vs.\ HITL experts:} $\kappa=(p_o-p_e)/(1-p_e)$
+    \item \textbf{CI/CD sample power:} $N\ge\frac{(z_{1-\alpha/2}+z_{1-\beta})^2\sigma_w^2}{(\Delta w_{\min})^2}$
+    \item \textbf{Pairwise $>$ Pointwise:} cancels shared query difficulty
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; SLICING, SIMPSON'S PARADOX \& DEFERRAL}{%
+  \begin{csbul}
+    \item \textbf{Slice audit:} track $\min_{g\in\mathcal{G}_{\mathrm{slice}}}S_g(\pi)$ across cohorts
+    \item \textbf{Simpson's reversal:} $S_g(\pi_B){>}S_g(\pi_A)\,\forall g$ yet aggregate $S(\pi_B){<}S(\pi_A)$ if weights $w_g^{(A)}{\ne}w_g^{(B)}$
+    \item \textbf{Bayes HITL deferral} for tool risk $r_a$:
+      \csfm{\tau_{\mathrm{conf}}(r_a)=1-\frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}(r_a)}\quad\bigl(C_{\mathrm{err}}\gg C_{\mathrm{HITL}}\Rightarrow\tau_{\mathrm{conf}}\to 1\bigr)}
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; EVALUATOR \& GUARDRAIL STACK}{%
+  \renewcommand{\arraystretch}{1.08}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{2.95cm}@{}}
+    \textbf{\textcolor{csE}{Layer}} & \textbf{\textcolor{csE}{Latency}} & \textbf{\textcolor{csE}{Catches / Stage}}\\ \hline
+    Regex / Schema & $<1\,$ms & SQLi, PII, bad JSON (Runtime/CI)\\
+    ROUGE / BERT & $5$--$50\,$ms & surface drift vs.\ Golden Set (CI)\\
+    Slicing / Perturb & batch & subgroup regression, noise (CI/CD)\\
+    LLM/Agent Judge & $0.5$--$3\,$s & bad plan $z_t$, wrong tool $a_t$ (CD/Prod)\\
+    HITL Review UI & min--hrs & high-risk tool sign-off, Golden curation\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize\textbf{Optimistic Guardrail:} run \texttt{@input\_guardrail} in parallel with step 1.}
+
+\csbranch{6}{F}{6\;\; OPENTELEMETRY \& AGENTOPS FLYWHEEL}{%
+  \begin{minipage}[t]{0.57\linewidth}
+    \begin{csbul}
+      \item \textbf{Logs:} structured JSON events (PII-scrubbed)
+      \item \textbf{Traces:} causal span DAG $\mathcal{G}_\tau=(\mathcal{V}_{\mathrm{span}},\mathcal{E})$
+      \item \textbf{Metrics:} SRE (P99, cost) + Quality
+      \item \textbf{Flywheel:} CI Gate $\to$ Canary $\to$ Judge/HITL $\to$ Evolve $\mathcal{D}_{\mathrm{gold}}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.40\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2pt] (ci) at (0,1.8) {1.CI};
+      \node[draw=csD, fill=csD!15, rounded corners=2pt, inner sep=2pt] (ca) at (2.4,1.8) {2.Canary};
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (ju) at (2.4,0.2) {3.Judge};
+      \node[draw=csA, fill=csA!15, rounded corners=2pt, inner sep=2pt] (ev) at (0,0.2) {4.Evolve};
+      \draw[-{Stealth}, thick, csF] (ci)--(ca);
+      \draw[-{Stealth}, thick, csD] (ca)--(ju);
+      \draw[-{Stealth}, thick, csC] (ju)--(ev);
+      \draw[-{Stealth}, thick, csA] (ev)--(ci);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Score Outside-In $\cdot$ Trace Glass-Box $\cdot$ Swap Judge Slots $\cdot$ Gate Slices} \\[1pt]
+  \footnotesize\mdseries \textbf{Demos optimize $\mathrm{pass@}k$; production SLAs demand $\mathrm{pass\textasciicircum}k=p_{\mathrm{step}}^{kH}$ and OTel trace flywheels.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item unswapped LLM judges favor slot 1, verbosity \& same family
+    \item non-idempotent retries duplicate charges $\to$ idempotency keys
+    \item aggregate win rate hides slice collapse (Simpson's paradox)
+    \item sequential guardrails spike P99 $\to$ run parallel checks
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Outside-In Agent Evaluation, LLM-as-a-Judge, Observability, Guardrails \& AgentOps CI/CD}\;---\;Domain 07 $\cdot$ Production ML Systems \& AgentOps}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Trajectory horizon decay:\csfm{p_\tau=\prod_{t=1}^{H}p_t\approx p_{\mathrm{step}}^{H}}
+    \item Capability (\texttt{pass@k}) vs.\ Consistency (\texttt{pass\textasciicircum k}):\csfm{\mathrm{pass@}k=1-(1-p_\tau)^k,\qquad \mathrm{pass\textasciicircum}k=p_\tau^k=p_{\mathrm{step}}^{kH}}
+    \item Position-debiased pairwise judge estimator:\csfm{\hat w_{A\succ B}(x)=\tfrac{1}{2}\bigl[J_\phi(y_A,y_B\mid x)+\bigl(1-J_\phi(y_B,y_A\mid x)\bigr)\bigr]}
+    \item Cohen's $\kappa$, Sample Power \& HITL Deferral:\csfm{\kappa=\frac{p_o-p_e}{1-p_e},\quad N\ge\frac{(z_{1-\alpha/2}+z_{1-\beta})^2\sigma_w^2}{(\Delta w_{\min})^2},\quad \tau_{\mathrm{conf}}=1-\frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{GUARDED CANARY PROMOTION RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Sandbox Trace:} run $\pi_{\mathrm{cand}}$ on $\mathcal{D}_{\mathrm{gold}}$ with OTel spans $\to$ output $y_{\mathrm{cand}}$, trace $\tau$
+    \item \textbf{Deterministic Gate:} block on schema, regex/PII, or perturbation failure
+    \item \textbf{Judge \& Slice Gate:} require $\kappa(J_\phi,\mathrm{HITL})\ge\kappa_{\min}$, $\min_g S_g\ge\tau_{\mathrm{slice}}$, and $\bar w\ge\tau_{\mathrm{win}}$
+    \item \textbf{Canary \& Evolve:} route $1\%\to 100\%$ with parallel guardrails; on tripwire spike, rollback and add $\mathcal{G}_{\hat\tau}$ to $\mathcal{D}_{\mathrm{gold}}$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    black-box pass, slow/costly run & Glass-box trace audit on $(z_t,a_t,o_t)$\\
+    noisy 1--5 pointwise LLM scores & slot-swapped pairwise judge $\hat w_{A\succ B}$\\
+    irreversible tool (\texttt{refund}, \texttt{delete}) & $\tau_{\mathrm{conf}}\to 1$ (mandatory HITL sign-off)\\
+    write-tool network timeout & exponential backoff + idempotency key\\
+    high guardrail P99 latency & optimistic parallel \texttt{@input\_guardrail}\\
+    benchmark saturation risk & 8-gram decontamination + private $\mathcal{D}_{\mathrm{gold}}$\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{RELIABILITY \& POWER CHEAT-LINE}
+  \begin{csbul}
+    \item $p_{\mathrm{step}}=0.95, H=10 \Rightarrow \mathrm{pass@}1=60\%,\; \mathrm{pass@}5=99\%,\; \mathrm{pass\textasciicircum}5=7.7\%$
+    \item Reasoning benchmark noise floor: $\Delta w_{\min}\approx 0.25$--$1.5\%$
+    \item Error cost escalates $\sim 10\times$ per stage (CI $\ll$ Staging $\ll$ Canary $\ll$ Prod)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{HORIZON RELIABILITY DECAY: \texttt{pass@k} vs.\ \texttt{pass\textasciicircum k}}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.98\linewidth, height=4.7cm, xmin=1, xmax=15, ymin=0, ymax=1.05,
+      xlabel={Trajectory Horizon $H$ (Steps)}, ylabel={Probability}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, ytick={0,0.2,0.5,0.8,1.0}, xtick={1,3,5,7,10,13,15}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csD, very thick, domain=1:15, samples=40] {1 - (1 - (0.95^x))^5};
+      \addplot[csF, very thick, domain=1:15, samples=40] {0.95^x};
+      \addplot[csE, thick, dashed, domain=1:15, samples=40] {0.90^x};
+      \addplot[csA, very thick, domain=1:15, samples=40] {(0.95^x)^5};
+      \node[font=\tiny\bfseries, csD, anchor=north] at (axis cs:10.5,0.94) {$\mathrm{pass@}5$};
+      \node[font=\tiny\bfseries, csF, anchor=south west] at (axis cs:10.0,0.61) {$\mathrm{pass@}1$ (.95)};
+      \node[font=\tiny\bfseries, csE, anchor=north east] at (axis cs:8.8,0.37) {$\mathrm{pass@}1$ (.90)};
+      \node[font=\tiny\bfseries, csA, anchor=north east] at (axis cs:5.5,0.13) {$\mathrm{pass\textasciicircum}5$ (.95)};
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize green: $\mathrm{pass@}5$; indigo: $\mathrm{pass@}1$ ($0.95$); dashed: $\mathrm{pass@}1$ ($0.90$); crimson: $\mathrm{pass\textasciicircum}5$ ($0.95$)}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Judge biases:} position (slot 1), verbosity, and self-preference skew ratings $\to$ swap slots \& check Cohen's $\kappa$
+    \item \textbf{Demo illusion (\texttt{pass@k}):} high $\mathrm{pass@}5$ hides multi-step decay $\to$ gate CI/CD on $\mathrm{pass\textasciicircum}k$ consistency
+    \item \textbf{Harness \& token drift:} sandbox, prompt, or token budget changes swing scores $\to$ lock harness in CI
+    \item \textbf{8-gram contamination:} public leaderboards leak into pretraining $\to$ run 8-gram/50-char decontamination
+    \item \textbf{Simpson's paradox:} aggregate canary pass masks minority failures $\to$ enforce $\min_g S_g\ge\tau_{\mathrm{slice}}$
+    \item \textbf{Duplicate side effects:} retrying write tools without idempotency keys triggers double charges
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Agent Quality} \,=\, \textbf{Outside-In} (Outcome $y$ first, Glass-Box trace $(z_t,a_t,o_t)$ second).
+  Step errors compound as $p_{\mathrm{step}}^H$: never confuse $\mathrm{pass@}k$ with $\mathrm{pass\textasciicircum}k$.
+  Debias pairwise judges via slot swapping, gate every slice $\min_g S_g$, run optimistic parallel guardrails, and turn production OTel failures into Golden Set tests.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

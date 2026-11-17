@@ -1,0 +1,331 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+\begingroup
+\sloppy
+
+\monographleaf{Domain 06: Reinforcement Learning \& Alignment}{Policy Gradients, Model-Based RL, MARL \& LLM Alignment}{Policy Gradients, Actor-Critic, Model-Based RL \& MARL}{Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO/PPO \& RL-as-Inference}{Sutton \& Barto Ch.~13, Murphy RL Ch.~3, Murphy Adv. Sec.~35.3 \& 35.6, Prince Sec.~19.5--19.6, RLHF Sec.~6.2}
+
+\section{Problem Formulation \& Unified Notation}\label{sec:pg:formulation}
+
+Value-based reinforcement learning methods (such as Q-learning and DQN) derive a policy indirectly by estimating action-values and acting greedily or $\varepsilon$-greedily with respect to them. Consequently, small perturbations in estimated values can cause discontinuous jumps in the induced policy, and continuous or high-dimensional action spaces require intractable inner maximizations \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~13, p.~324} \bookcite{understandingdl_simonprince}{Sec.~19.5, p.~388}. Policy-based methods instead parameterize a stochastic policy $\pi_{\bm{\theta}}(a \mid s)$ directly with parameters $\bm{\theta} \in \R^{d_\theta}$ and optimize a scalar performance objective $J(\bm{\theta})$ via stochastic gradient ascent.
+
+Consider a Markov Decision Process (MDP) $\mathcal{M} = (\States, \Actions, \Trans, R, d_0, \gamma)$ with state space $\States$, action space $\Actions$, transition kernel $\Trans(s' \mid s, a)$, reward function $r_t = R(s_t, a_t)$, initial state distribution $d_0(s_0)$, and discount factor $\gamma \in [0, 1]$. A trajectory $\tau = (s_0, a_0, r_0, s_1, a_1, r_1, \dots, s_T)$ generated under $\pi_{\bm{\theta}}$ has probability density
+\begin{equation}\label{eq:pg:traj_prob}
+  p_{\bm{\theta}}(\tau) = d_0(s_0) \prod_{t=0}^{T-1} \pi_{\bm{\theta}}(a_t \mid s_t)\, \Trans(s_{t+1} \mid s_t, a_t).
+\end{equation}
+The discounted return from step $t$ is $G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+k}$. In the episodic setting, the performance objective is $J(\bm{\theta}) = \E_{s_0 \sim d_0}[\Vval^{\pi_{\bm{\theta}}}(s_0)] = \E_{\tau \sim p_{\bm{\theta}}}[G_0]$ \allowbreak\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~35.3.1, p.~1157}. In the continuing (average-reward) setting, $J(\bm{\theta}) = r(\pi_{\bm{\theta}}) = \lim_{h \to \infty} \frac{1}{h} \sum_{t=1}^h \E[R_t \mid S_0, A_{0:t-1} \sim \pi_{\bm{\theta}}]$ \allowbreak\bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~13.6, p.~333}.
+
+In autoregressive Large Language Model (LLM) post-training (RLHF and RL with Verifiable Rewards), a prompt $x \sim \mathcal{D}$ serves as the initial state $s_0$, and the completion $y = (a_0, \dots, a_{T-1})$ is a sequence of tokens where state $s_t = (x, a_{<t})$ evolves deterministically by concatenation, $\gamma = 1$, and a scalar reward $R(x, y)$ is typically observed only at the terminal token $T$ \bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2, p.~52--53}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\bfseries\raggedright\arraybackslash}p{2.1cm} X X X X@{}}
+\toprule
+Concept & Sutton \& Barto & Murphy (RL / Adv.) & Prince (UDL) & Lambert (RLHF) \\
+\midrule
+Policy & $\pi(a \mid s, \bm{\theta})$ & $\pi_{\bm{\theta}}(a \mid s)$ & $\pi[a_t \mid s_t, \theta]$ & $\pi_\theta(a \mid s)$ or $\pi_\theta(y \mid x)$ \\
+Critic / Value & $\hat{v}(s, \mathbf{w})$ & $V_{\mathbf{w}}(s)$ / $V_\phi(s)$ & $v[s, \phi]$ & $V_\phi(s_t)$ \\
+State Visitation & $\mu(s)$ (steady/on-policy) & $p_\pi^\gamma(s)$ (discounted) & Implicit in $\E_\tau[\cdot]$ & Rollout batch $s \sim \mathcal{D}$ \\
+Return & $G_t = \sum_{k=t+1}^T \gamma^{k-t-1} R_k$ & $G_t = \sum_{k=0}^\infty \gamma^k r_{t+k}$ & $r[\tau] = \sum_{t} r_t$ & $G_t = \sum_{k=0}^\infty \gamma^k r_{t+k}$ \\
+IS Policy Ratio & N/A (on-policy) & $\rho_t = \frac{\pi_{\bm{\theta}}(a_t \mid s_t)}{\pi_{\bm{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$ & N/A & $\rho(\theta) = \frac{\pi_\theta(a \mid s)}{\pi_{\theta_{\mathrm{old}}}(a \mid s)}$ \\
+KL Reg. & N/A & Trust-region constraint & N/A & Reward shaping or loss \\
+\bottomrule
+\end{tabularx}
+\par\medskip
+\noindent\textbf{Unified Convention:} Throughout this leaf, we adopt $\pi_{\bm{\theta}}(a \mid s)$ for the actor, $\Vval_{\bm{\phi}}(s)$ for the critic, $d^{\pi}_{\gamma}(s) = (1-\gamma)\sum_{t=0}^\infty \gamma^t \Prob(S_t = s \mid \pi)$ for the normalized discounted state visitation distribution, and $r_t(\bm{\theta}) = \frac{\pi_{\bm{\theta}}(a_t \mid s_t)}{\pi_{\bm{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$ for the importance-sampling (IS) ratio.
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}\label{sec:pg:derivations}
+
+\subsection{The Policy Gradient Theorem (Episodic \& Continuing)}
+
+A central difficulty in differentiating $J(\bm{\theta}) = \E_{s_0}[\Vval^{\pi_{\bm{\theta}}}(s_0)]$ is that $\bm{\theta}$ affects both the action selection probabilities $\pi_{\bm{\theta}}(a \mid s)$ and the state visitation distribution $d^{\pi_{\bm{\theta}}}_\gamma(s)$ through unknown environment dynamics $\Trans(s' \mid s, a)$. The Policy Gradient Theorem eliminates the derivative of the state distribution \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~13.2, p.~324--325}.
+
+\begin{coremath}[Theorem: Policy Gradient Theorem (Episodic \& Continuing)]
+For any differentiable policy $\pi_{\bm{\theta}}(a \mid s)$ in an episodic MDP (with $\gamma \in (0, 1]$) or an ergodic continuing MDP, the gradient of the performance objective $J(\bm{\theta})$ is
+\begin{equation}\label{eq:pg:pg_theorem}
+  \grad_{\bm{\theta}} J(\bm{\theta}) \propto \sum_{s \in \States} \mu(s) \sum_{a \in \Actions} \Qval^{\pi_{\bm{\theta}}}(s, a)\, \grad_{\bm{\theta}} \pi_{\bm{\theta}}(a \mid s)
+  = \E_{s \sim \mu,\, a \sim \pi_{\bm{\theta}}}\!\left[ \Qval^{\pi_{\bm{\theta}}}(s, a)\, \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a \mid s) \right],
+\end{equation}
+where $\mu(s)$ is the discounted state-visitation measure $\sum_{t=0}^\infty \gamma^t \Prob(s_0 \to s, t, \pi_{\bm{\theta}})$ (or normalized $d^{\pi_{\bm{\theta}}}_\gamma(s)$ with proportionality constant $(1-\gamma)\inv$) in the episodic case, and the stationary distribution $\mu^{\pi_{\bm{\theta}}}(s)$ in the continuing case.
+
+\medskip
+\noindent\textbf{Proof (Episodic Case via Unrolling):} Writing $\grad$ for $\grad_{\bm{\theta}}$ and omitting the subscript $\bm{\theta}$ on $\pi$ for brevity \bookcite{reinforcement_learning_introduction_richard_s_su}{p.~325} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~35.3.1, p.~1157}:
+\begin{align}
+  \grad \Vval^\pi(s) &= \grad \left[ \sum_{a} \pi(a \mid s)\, \Qval^\pi(s, a) \right] \nonumber \\
+  &= \sum_{a} \Big[ \grad\pi(a \mid s)\, \Qval^\pi(s, a) + \pi(a \mid s)\, \grad \Qval^\pi(s, a) \Big] \nonumber \\
+  &= \sum_{a} \grad\pi(a \mid s)\, \Qval^\pi(s, a) + \sum_{a} \pi(a \mid s) \grad \left[ R(s,a) + \gamma \sum_{s'} \Trans(s' \mid s, a)\, \Vval^\pi(s') \right] \nonumber \\
+  &= \sum_{a} \grad\pi(a \mid s)\, \Qval^\pi(s, a) + \gamma \sum_{a} \pi(a \mid s) \sum_{s'} \Trans(s' \mid s, a)\, \grad \Vval^\pi(s'). \label{eq:pg:unroll_step}
+\end{align}
+Notice that $\grad \Vval^\pi(s')$ on the right-hand side has the exact same form as $\grad \Vval^\pi(s)$. Repeatedly unrolling \eqref{eq:pg:unroll_step} yields
+\begin{equation}\label{eq:pg:unrolled}
+  \grad \Vval^\pi(s) = \sum_{x \in \States} \sum_{k=0}^\infty \gamma^k \Prob(s \to x, k, \pi) \sum_{a} \grad \pi(a \mid x)\, \Qval^\pi(x, a).
+\end{equation}
+Taking expectation over $s_0 \sim d_0$ and applying the log-derivative trick $\grad \pi(a \mid x) = \pi(a \mid x)\, \grad \log \pi(a \mid x)$ gives \eqref{eq:pg:pg_theorem}.
+
+\medskip
+\noindent\textbf{Continuing Case:} With $J(\bm{\theta}) = r(\pi) = \sum_s \mu(s) \sum_a \pi(a \mid s) R(s, a)$ and differential value $\Vval^\pi(s) = \sum_a \pi(a \mid s)\big(R(s,a) - r(\pi) + \sum_{s'} \Trans(s'\mid s,a)\Vval^\pi(s')\big)$, differentiating $\Vval^\pi(s)$ and summing weighted by $\mu(s)$ cancels $\sum_s \mu(s)\grad \Vval^\pi(s)$ against $\sum_{s'} \mu(s')\grad \Vval^\pi(s')$ via stationarity $\sum_s \mu(s)\sum_a \pi(a\mid s)\Trans(s'\mid s,a) = \mu(s')$, leaving $\grad r(\pi) = \sum_s \mu(s)\sum_a \grad \pi(a \mid s)\, \Qval^\pi(s, a)$ \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~13.6, p.~334--335}.
+\end{coremath}
+
+\begin{intuition}[Why $\grad_{\bm{\theta}} d^\pi(s)$ Disappears]
+Because environment dynamics $\Trans(s' \mid s, a)$ do not depend on $\bm{\theta}$, every change in future state occupancy induced by perturbing $\bm{\theta}$ propagates through $\grad \Vval^\pi(s')$. Unrolling the Bellman recursion absorbs all downstream visitation shifts into the discounted occupancy measure $\mu(s)$, so we only need on-policy samples $s \sim \mu$ and the score function $\grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a \mid s)$.
+\end{intuition}
+
+\subsection{Score-Function Gradient, REINFORCE \& Baseline Invariance}
+
+An alternative trajectory-level derivation differentiates $J(\bm{\theta}) = \int p_{\bm{\theta}}(\tau) R(\tau)\,\mathrm{d}\tau$ directly (\bookcite{understandingdl_simonprince}{Sec.~19.5.1, p.~389}; \allowbreak\bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.1, p.~54}):
+\begin{equation}\label{eq:pg:score_fn}
+  \grad_{\bm{\theta}} J(\bm{\theta}) = \E_{\tau \sim p_{\bm{\theta}}}\!\left[ R(\tau)\, \grad_{\bm{\theta}} \log p_{\bm{\theta}}(\tau) \right]
+  = \E_{\tau \sim p_{\bm{\theta}}}\!\left[ \left(\sum_{t=0}^{T-1} \gamma^t r_t\right) \sum_{t'=0}^{T-1} \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a_{t'} \mid s_{t'}) \right],
+\end{equation}
+because $\grad_{\bm{\theta}} \log d_0(s_0) = \zeros$ and $\grad_{\bm{\theta}} \log \Trans(s_{t+1} \mid s_t, a_t) = \zeros$. By causality (actions at time $t$ cannot affect rewards at $t' < t$), terms with $t' > t$ have zero expectation, reducing \eqref{eq:pg:score_fn} to the reward-to-go estimator $\E_\tau\!\left[\sum_{t=0}^{T-1} \gamma^t G_t\, \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a_t \mid s_t)\right]$, which defines the Monte Carlo \textbf{REINFORCE} update \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.1.2--3.1.3, p.~52--53}.
+
+\begin{coremath}[Theorem: Baseline Invariance \& Optimal Control Variate]
+Subtracting any state-dependent (action-independent) baseline $b(s)$ from $G_t$ or $\Qval^\pi(s, a)$ leaves the expected policy gradient strictly unbiased \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~13.4, p.~329} \bookcite{understandingdl_simonprince}{Sec.~19.5.3, p.~392}:
+\begin{align}
+  \E_{a \sim \pi_{\bm{\theta}}(\cdot \mid s)}\!\left[ b(s)\, \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a \mid s) \right]
+  &= b(s) \sum_{a \in \Actions} \pi_{\bm{\theta}}(a \mid s) \frac{\grad_{\bm{\theta}} \pi_{\bm{\theta}}(a \mid s)}{\pi_{\bm{\theta}}(a \mid s)} \nonumber \\
+  &= b(s)\, \grad_{\bm{\theta}} \sum_{a \in \Actions} \pi_{\bm{\theta}}(a \mid s) = b(s)\, \grad_{\bm{\theta}}(1) = \zeros. \label{eq:pg:baseline_zero}
+\end{align}
+Minimizing $\Var\!\left[(G_t - b(s_t))\grad_{\bm{\theta}}\log \pi_{\bm{\theta}}(a_t \mid s_t)\right]$ with respect to $b(s_t)$ yields the variance-optimal baseline \bookcite{understandingdl_simonprince}{Eq.~19.36, p.~392}:
+\begin{equation}\label{eq:pg:opt_baseline}
+  b^*(s_t) = \frac{\E_{a_t \sim \pi_{\bm{\theta}}}\!\left[ G_t\, \norm{\grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a_t \mid s_t)}_2^2 \right]}{\E_{a_t \sim \pi_{\bm{\theta}}}\!\left[ \norm{\grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a_t \mid s_t)}_2^2 \right]}.
+\end{equation}
+In practice, $b(s_t) \approx \Vval_{\bm{\phi}}(s_t)$ is used, turning the weight into an estimate of the \textbf{advantage function} $\Adv^\pi(s, a) = \Qval^\pi(s, a) - \Vval^\pi(s)$.
+\end{coremath}
+
+\subsection{Generalized Advantage Estimation ($\mathrm{GAE}(\gamma, \lambda)$)}
+
+Using the full Monte Carlo return $G_t - \Vval_{\bm{\phi}}(s_t)$ is unbiased when $\Vval_{\bm{\phi}}$ is inaccurate, but suffers high variance. Using a one-step TD residual $\delta_t^V = r_t + \gamma \Vval_{\bm{\phi}}(s_{t+1}) - \Vval_{\bm{\phi}}(s_t)$ (as in one-step A2C \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~13.5, p.~331}) has low variance but introduces bias whenever $\Vval_{\bm{\phi}} \ne \Vval^\pi$. \textbf{Generalized Advantage Estimation (GAE)} interpolates smoothly between these extremes \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.2.2, p.~57}.
+
+\begin{coremath}[Derivation of $\mathrm{GAE}(\gamma, \lambda)$]
+Define the $k$-step truncated advantage estimator $\hat{A}_t^{(k)} = G_{t:t+k} - \Vval_{\bm{\phi}}(s_t) = \sum_{l=0}^{k-1} \gamma^l \delta_{t+l}^V$, where $\delta_{t+l}^V = r_{t+l} + \gamma \Vval_{\bm{\phi}}(s_{t+l+1}) - \Vval_{\bm{\phi}}(s_{t+l})$ telescopes cleanly. Taking an exponentially weighted average with weights $(1 - \lambda)\lambda^{k-1}$ for $\lambda \in [0, 1]$ gives:
+\begin{align}
+  \hat{A}_t^{\mathrm{GAE}(\gamma, \lambda)} &= (1 - \lambda) \sum_{k=1}^\infty \lambda^{k-1} \hat{A}_t^{(k)}
+  = (1 - \lambda) \sum_{k=1}^\infty \lambda^{k-1} \sum_{l=0}^{k-1} \gamma^l \delta_{t+l}^V \nonumber \\
+  &= (1 - \lambda) \sum_{l=0}^\infty \gamma^l \delta_{t+l}^V \sum_{k=l+1}^\infty \lambda^{k-1}
+  = \sum_{l=0}^\infty (\gamma \lambda)^l \delta_{t+l}^V. \label{eq:pg:gae}
+\end{align}
+Setting $\lambda = 0$ recovers the one-step TD advantage $\delta_t^V$ (low variance, higher bias); setting $\lambda = 1$ recovers the Monte Carlo advantage $\sum_{l=0}^\infty \gamma^l \delta_{t+l}^V = G_t - \Vval_{\bm{\phi}}(s_t)$ (unbiased, higher variance). Over a finite horizon $T$, \eqref{eq:pg:gae} is computed via the backward recursion $\hat{A}_t = \delta_t^V + \gamma \lambda \hat{A}_{t+1}$ with $\hat{A}_T = 0$.
+\end{coremath}
+
+\subsection{Natural Policy Gradient, Monotonic Improvement \& TRPO/PPO}
+
+Standard gradient ascent $\bm{\theta}_{k+1} = \bm{\theta}_k + \eta \grad_{\bm{\theta}} J(\bm{\theta}_k)$ measures step size in Euclidean parameter space $\norm{\Delta \bm{\theta}}_2$, which is not invariant to reparameterization: an identical $\Delta \bm{\theta}$ can induce an arbitrarily large shift in the action distribution $\pi_{\bm{\theta}}(\cdot \mid s)$ when variance is small (\bookcite{reinforement_learning_kevin_murphy}{Sec.~3.2.4.1, p.~58--59}; \allowbreak\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~35.36, p.~1161}). \textbf{Natural Policy Gradient (NPG)} preconditions the gradient by the inverse Fisher Information Matrix (FIM)
+\begin{equation}\label{eq:pg:fim}
+  F(\bm{\theta}) = \E_{s \sim d^{\pi_{\bm{\theta}}}_\gamma,\, a \sim \pi_{\bm{\theta}}}\!\left[ \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a \mid s)\, \grad_{\bm{\theta}} \log \pi_{\bm{\theta}}(a \mid s)\T \right],
+  \qquad
+  \Delta \bm{\theta}_{\mathrm{NPG}} \propto F(\bm{\theta})\inv \grad_{\bm{\theta}} J(\bm{\theta}),
+\end{equation}
+which corresponds to steepest ascent under the local second-order KL metric
+$\E_s[\KL{\pi_{\bm{\theta}}(\cdot \mid s)}{\pi_{\bm{\theta}+\Delta\bm{\theta}}(\cdot \mid s)}]
+\approx \frac{1}{2}\Delta\bm{\theta}\T F(\bm{\theta})\Delta\bm{\theta}$.
+
+\begin{coremath}[Monotonic Policy Improvement Bound (TRPO) \& PPO Clipped Surrogate]
+Let $\pi_k = \pi_{\bm{\theta}_k}$ and let $\pi$ be a candidate policy. Using the performance difference identity $J(\pi) - J(\pi_k) = \frac{1}{1-\gamma}\E_{s \sim d^\pi_\gamma, a \sim \pi}[A^{\pi_k}(s, a)]$ and bounding the mismatch between $d^\pi_\gamma$ and $d^{\pi_k}_\gamma$ yields the monotonic improvement lower bound \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.3.1, Eq.~3.85, p.~65} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~35.3.4, Eq.~35.34, p.~1161}:
+\begin{align}
+  J(\pi) - J(\pi_k) &\ge \underbrace{\frac{1}{1-\gamma} \E_{s \sim d^{\pi_k}_\gamma,\, a \sim \pi_k}\!\left[ \frac{\pi(a \mid s)}{\pi_k(a \mid s)} A^{\pi_k}(s, a) \right]}_{L(\pi, \pi_k)} \nonumber \\
+  &\quad - \frac{2\gamma C_{\pi,\pi_k}}{(1-\gamma)^2} \E_{s \sim d^{\pi_k}_\gamma}\!\left[ D_{\mathrm{TV}}\!\left(\pi(\cdot \mid s), \pi_k(\cdot \mid s)\right) \right], \label{eq:pg:trpo_bound}
+\end{align}
+where $C_{\pi,\pi_k} = \max_s \abs{\E_{a \sim \pi}[A^{\pi_k}(s, a)]}$. Applying Pinsker's inequality $D_{\mathrm{TV}}(p, q) \le \sqrt{\frac{1}{2}\KL{q}{p}}$, \textbf{TRPO} replaces the penalty with a hard trust-region constraint:
+\begin{equation}\label{eq:pg:trpo_opt}
+  \bm{\theta}_{k+1} = \argmax_{\bm{\theta}} L(\pi_{\bm{\theta}}, \pi_k) \quad \text{s.t.} \quad \E_{s \sim d^{\pi_k}_\gamma}\!\left[\KL{\pi_k(\cdot \mid s)}{\pi_{\bm{\theta}}(\cdot \mid s)}\right] \le \delta,
+\end{equation}
+solved via conjugate gradients on $F_k \mathbf{v} = \mathbf{g}_k$ followed by backtracking line search \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.3.2, p.~65}.
+
+\textbf{Proximal Policy Optimization (PPO)} avoids second-order FIM-vector products by optimizing a first-order \textbf{clipped surrogate objective} over the importance ratio $r_t(\bm{\theta}) = \frac{\pi_{\bm{\theta}}(a_t \mid s_t)}{\pi_{\bm{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$ \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.3.3, p.~66} \bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.6, p.~61}:
+\begin{equation}\label{eq:pg:ppo_clip}
+  L^{\mathrm{CLIP}}(\bm{\theta}) = \E_t\!\left[ \min\!\Big( r_t(\bm{\theta})\hat{A}_t,\; \mathrm{clip}\big(r_t(\bm{\theta}),\, 1-\varepsilon,\, 1+\varepsilon\big)\hat{A}_t \Big) \right].
+\end{equation}
+Equivalently, $L^{\mathrm{CLIP}}(\bm{\theta}) = \E_t[\min(r_t(\bm{\theta})\hat{A}_t, g(\varepsilon, \hat{A}_t))]$, where $g(\varepsilon, A) = (1+\varepsilon)A$ for $A \ge 0$ and $(1-\varepsilon)A$ for $A < 0$. The $\min$ operator acts as a pessimistic lower bound that zeroes out the gradient $\grad_{\bm{\theta}} L^{\mathrm{CLIP}}$ whenever the policy moves too far in the direction encouraged by $\hat{A}_t$ ($r_t > 1+\varepsilon$ for $\hat{A}_t > 0$, or $r_t < 1-\varepsilon$ for $\hat{A}_t < 0$).
+\end{coremath}
+
+\subsection{Control-as-Inference \& Maximum-Entropy RL (SAC)}
+
+Policy optimization can alternatively be formulated as \textbf{variational Bayesian inference} (\bookcite{reinforement_learning_kevin_murphy}{Sec.~3.6, p.~73--79}; \allowbreak\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~35.6, p.~1177--1180}). Introduce binary optimality variables $o_t \in \{0, 1\}$ at each step with emission likelihood $p(o_t = 1 \mid s_t, a_t) = \exp\!\big(\alpha\inv r(s_t, a_t)\big)$ for temperature $\alpha > 0$ (assuming $r \le 0$ without loss of generality). Under a uniform action prior $p(a_t \mid s_t)$, the posterior over trajectories conditioned on optimality $o_{1:T} = 1$ is $p(\tau \mid o_{1:T}=1) \propto p(\tau) \exp\!\big(\alpha\inv \sum_t r(s_t, a_t)\big)$.
+
+\begin{coremath}[Variational ELBO $\iff$ Maximum-Entropy RL \& Soft Actor-Critic (SAC)]
+Approximating the posterior $p(\tau \mid o_{1:T}=1)$ with a variational trajectory distribution $q_{\bm{\theta}}(\tau) = d_0(s_0)\prod_t \pi_{\bm{\theta}}(a_t \mid s_t)\Trans(s_{t+1} \mid s_t, a_t)$ that shares the true environment dynamics $\Trans$ yields the reverse-KL Evidence Lower Bound (ELBO):
+\begin{equation}\label{eq:pg:elbo_merl}
+  -\KL{q_{\bm{\theta}}(\tau)}{p(\tau \mid o_{1:T}=1)} + \text{const}
+  = \E_{\tau \sim q_{\bm{\theta}}}\!\left[ \sum_{t=0}^{T-1} \left( \frac{1}{\alpha} r(s_t, a_t) + \Entropy\!\big(\pi_{\bm{\theta}}(\cdot \mid s_t)\big) \right) \right].
+\end{equation}
+Multiplying by $\alpha$ recovers the \textbf{Maximum-Entropy RL} objective. In \textbf{Soft Actor-Critic (SAC)} \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.6.8, p.~78--80}, two soft Q-networks $\Qval_{\mathbf{w}_1}, \Qval_{\mathbf{w}_2}$ are trained off-policy against a clipped twin target $y_t = r_t + \gamma \big(\min_{i=1,2} \Qval_{\bar{\mathbf{w}}_i}(s_{t+1}, \tilde{a}_{t+1}) - \alpha \log \pi_{\bm{\theta}}(\tilde{a}_{t+1} \mid s_{t+1})\big)$ with $\tilde{a}_{t+1} \sim \pi_{\bm{\theta}}(\cdot \mid s_{t+1})$, and the actor minimizes the KL projection onto the Boltzmann soft-Q policy via the \textbf{reparameterization trick} $a_t = f_{\bm{\theta}}(s_t, \bm{\xi}_t)$, $\bm{\xi}_t \sim \Normal(\zeros, \eye)$:
+\begin{equation}\label{eq:pg:sac_actor}
+  J_\pi(\bm{\theta}) = \E_{s_t \sim \mathcal{D},\, \bm{\xi}_t \sim \Normal}\!\left[ \alpha \log \pi_{\bm{\theta}}(f_{\bm{\theta}}(s_t, \bm{\xi}_t) \mid s_t) - \min_{i=1,2} \Qval_{\mathbf{w}_i}(s_t, f_{\bm{\theta}}(s_t, \bm{\xi}_t)) \right].
+\end{equation}
+\end{coremath}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:pg:algorithms}
+
+Modern policy-gradient systems branch into two dominant paradigms: \textbf{critic-based PPO with GAE} (Algorithm~\ref{alg:pg:ppo_gae}) for general MDPs and dense-feedback RLHF, and \textbf{critic-free Group Relative Policy Optimization (GRPO)} (Algorithm~\ref{alg:pg:grpo}) for verifiable-reward LLM reasoning (\bookcite{reinforement_learning_kevin_murphy}{Alg.~9, p.~66}; \allowbreak\bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.8, p.~66--68}).
+
+\begin{algorithm}[htbp]
+\caption{PPO-Clip with Generalized Advantage Estimation ($\mathrm{GAE}(\gamma, \lambda)$)}
+\label{alg:pg:ppo_gae}
+\KwIn{Initial actor $\bm{\theta}$, critic $\bm{\phi}$, clip $\varepsilon$, discount $\gamma$, GAE $\lambda$, epochs $M$, step sizes $\eta_\theta, \eta_\phi$}
+\For{iteration $k = 1, 2, \dots$}{
+  Set $\bm{\theta}_{\mathrm{old}} \leftarrow \bm{\theta}$ and collect trajectory batch $\{(s_t, a_t, r_t, s_{t+1})\}_{t=0}^{T-1}$ under $\pi_{\bm{\theta}_{\mathrm{old}}}$\;
+  Compute critic values $v_t = \Vval_{\bm{\phi}}(s_t)$ and set $\hat{A}_T \leftarrow 0$\;
+  \For{$t = T-1, T-2, \dots, 0$}{
+    $\delta_t \leftarrow r_t + \gamma (1 - \mathrm{done}_t)\Vval_{\bm{\phi}}(s_{t+1}) - v_t$\;
+    $\hat{A}_t \leftarrow \delta_t + \gamma \lambda (1 - \mathrm{done}_t) \hat{A}_{t+1}$; \quad $y_t \leftarrow \hat{A}_t + v_t$\;
+  }
+  Normalize $\hat{A}_t \leftarrow (\hat{A}_t - \mathrm{mean}(\hat{A})) / (\mathrm{std}(\hat{A}) + 10^{-8})$\;
+  \For{epoch $m = 1, \dots, M$}{
+    Compute ratio $r_t(\bm{\theta}) = \pi_{\bm{\theta}}(a_t \mid s_t) / \pi_{\bm{\theta}_{\mathrm{old}}}(a_t \mid s_t)$\;
+    Update $\bm{\theta} \leftarrow \bm{\theta} + \eta_\theta \grad_{\bm{\theta}} \frac{1}{T}\sum_{t=0}^{T-1} \big[ \min(r_t(\bm{\theta})\hat{A}_t,\, \mathrm{clip}(r_t(\bm{\theta}), 1-\varepsilon, 1+\varepsilon)\hat{A}_t) + c_{\mathrm{ent}} \Entropy(\pi_{\bm{\theta}}(\cdot \mid s_t)) \big]$\;
+    Update $\bm{\phi} \leftarrow \bm{\phi} - \eta_\phi \grad_{\bm{\phi}} \frac{1}{T}\sum_{t=0}^{T-1} \frac{1}{2}(\Vval_{\bm{\phi}}(s_t) - y_t)^2$\;
+  }
+}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Group Relative Policy Optimization (GRPO) for Autoregressive LLMs}
+\label{alg:pg:grpo}
+\KwIn{Initial policy $\bm{\theta}$, frozen reference $\pi_{\mathrm{ref}}$, group size $G$, clip $\varepsilon$, KL weight $\beta$, epochs $M$}
+\For{iteration $k = 1, 2, \dots$}{
+  Sample prompt batch $\{x\} \sim \mathcal{D}$ and set $\bm{\theta}_{\mathrm{old}} \leftarrow \bm{\theta}$\;
+  For each prompt $x$, sample $G$ completions $\{y_i\}_{i=1}^G \sim \pi_{\bm{\theta}_{\mathrm{old}}}(\cdot \mid x)$ and score $\{r_i\}_{i=1}^G$\;
+  Compute group-normalized advantage for all tokens $t \in \{1, \dots, \abs{y_i}\}$:
+  $A_{i,t} \leftarrow \frac{r_i - \mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G}) + 10^{-8}}$\;
+  \For{epoch $m = 1, \dots, M$}{
+    For each completion $i$ and token $t$, compute $r_{i,t}(\bm{\theta}) = \frac{\pi_{\bm{\theta}}(y_{i,t} \mid x, y_{i,<t})}{\pi_{\bm{\theta}_{\mathrm{old}}}(y_{i,t} \mid x, y_{i,<t})}$\;
+    Maximize $J_{\mathrm{GRPO}}(\bm{\theta}) = \frac{1}{G}\sum_{i=1}^G \frac{1}{\abs{y_i}}\sum_{t=1}^{\abs{y_i}} \min\!\big(r_{i,t}(\bm{\theta})A_{i,t},\, \mathrm{clip}(r_{i,t}(\bm{\theta}), 1-\varepsilon, 1+\varepsilon)A_{i,t}\big) - \beta\, \KL{\pi_{\bm{\theta}}}{\pi_{\mathrm{ref}}}$\;
+  }
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative synthesis of policy gradient, actor-critic, trust-region, and LLM alignment algorithms \bookcite{reinforement_learning_kevin_murphy}{Ch.~3} \bookcite{reinforcement_learning_from_human_feedback}{Table~3, p.~72}.}
+\label{tab:pg:comparison}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\bfseries\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{1.9cm} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{2.4cm} X@{}}
+\toprule
+Method & On/Off & Critic / Baseline & Trust-Region / IS & Primary Regime \& Trade-off \\
+\midrule
+REINFORCE & On-policy & None / MC $\Vval(s)$ & None & High variance; simple, unbiased MC baseline \\
+RLOO & On-policy & Leave-one-out mean & None & Critic-free multi-sample LLM baseline \\
+A2C + GAE & On-policy & Learned $\Vval_{\bm{\phi}}(s)$ & None (1-step/$\lambda$) & Online updates; $\lambda$ tunes bias--variance \\
+TRPO & On-policy & Learned $\Vval_{\bm{\phi}}(s)$ & Hard KL ball + FIM & Monotonic bound; costly CG Hessian \\
+PPO-Clip & Near on-policy & Learned $\Vval_{\bm{\phi}}(s)$ & Token/step ratio clip & First-order trust region; critic memory cost \\
+SAC & Off-policy & Twin Soft-$\Qval_{\mathbf{w}_{1,2}}$ & Entropy reg. + replay & Sample-efficient continuous control \\
+GRPO & Near on-policy & Group $(r_i - \mu_G)/\sigma_G$ & Token ratio clip + KL & Eliminates critic LLM; verifiable rewards \\
+GSPO / CISPO & Near on-policy & Group-relative & Seq. / IS weight clip & Fixes token-level IS variance in MoE LLMs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Classical Control vs.\ Autoregressive LLM RL]
+In classical MDPs \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~13} \bookcite{reinforement_learning_kevin_murphy}{Ch.~3}, states evolve stochastically and $\gamma < 1$ bounds horizon variance, making a learned critic $\Vval_{\bm{\phi}}(s)$ essential for per-step credit assignment via GAE. In autoregressive LLM post-training \bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.8, p.~66--68}, transitions are deterministic string concatenations with $\gamma = 1$ and sparse outcome rewards, so a critic LLM doubles memory and struggles with per-token value calibration. \textbf{GRPO} replaces $\Vval_{\bm{\phi}}$ with a Monte Carlo group baseline over $G$ completions per prompt and moves the reference KL penalty from reward shaping ($\tilde{r}_t = r_t - \beta \log \frac{\pi_{\bm{\theta}}}{\pi_{\mathrm{ref}}}$) directly into the loss. Moreover, removing $\sigma_G$ in \textbf{Dr.\ GRPO} ($\tilde{A}_i = r_i - \mu_G$) is algebraically equivalent to \textbf{RLOO} ($A_i^{\mathrm{RLOO}} = r_i - \frac{1}{G-1}\sum_{j \ne i} r_j$) up to the constant factor $\frac{G-1}{G}$ \bookcite{reinforcement_learning_from_human_feedback}{Eq.~62, p.~69}.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:pg:visuals}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.55cm and 0.5cm, >=Stealth]
+  % Panel 1: Actor-Critic + GAE
+  \node[monoBox, text width=3.7cm, minimum height=0.8cm, font=\footnotesize] (ac_actor) {\textbf{Actor} $\pi_{\bm{\theta}}(a_t \mid s_t)$};
+  \node[monoTealBox, below=of ac_actor, text width=3.7cm, minimum height=0.8cm, font=\footnotesize] (ac_critic) {\textbf{Critic} $\Vval_{\bm{\phi}}(s_t)$};
+  \node[monoIndigoBox, below=of ac_critic, text width=3.7cm, minimum height=0.8cm, font=\footnotesize] (ac_gae) {$\mathrm{GAE}(\gamma,\lambda)$: $\hat{A}_t = \sum_l (\gamma\lambda)^l \delta_{t+l}^V$};
+  \draw[->, thick, monographNavy] (ac_critic) -- (ac_gae);
+  \draw[->, thick, monographIndigo] (ac_gae.west) -- ++(-0.32,0) |- (ac_actor.west);
+  \node[above=0.18cm of ac_actor, font=\bfseries\footnotesize, color=monographNavy] {(a) Actor--Critic + GAE};
+
+  % Panel 2: PPO Clipped Surrogate
+  \node[monoBox, right=0.85cm of ac_actor, text width=3.8cm, minimum height=0.8cm, font=\footnotesize] (ppo_actor) {\textbf{Policy} $\pi_{\bm{\theta}}$ vs.\ $\pi_{\bm{\theta}_{\mathrm{old}}}$};
+  \node[monoTealBox, below=of ppo_actor, text width=3.8cm, minimum height=0.8cm, font=\footnotesize] (ppo_ratio) {Ratio $r_t(\bm{\theta}) = \frac{\pi_{\bm{\theta}}(a_t \mid s_t)}{\pi_{\bm{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$};
+  \node[monoIndigoBox, below=of ppo_ratio, text width=3.8cm, minimum height=0.8cm, font=\footnotesize] (ppo_clip) {$\min\!\big(r_t\hat{A}_t, \mathrm{clip}(r_t, 1{\pm}\varepsilon)\hat{A}_t\big)$};
+  \draw[->, thick, monographNavy] (ppo_actor) -- (ppo_ratio);
+  \draw[->, thick, monographTeal] (ppo_ratio) -- (ppo_clip);
+  \node[above=0.18cm of ppo_actor, font=\bfseries\footnotesize, color=monographNavy] {(b) PPO Trust-Region Clip};
+
+  % Panel 3: Critic-Free GRPO
+  \node[monoBox, right=0.85cm of ppo_actor, text width=4.0cm, minimum height=0.8cm, font=\footnotesize] (grpo_actor) {\textbf{LLM} $\pi_{\bm{\theta}}$ ($G$ rollouts $y_{1:G}$)};
+  \node[monoTealBox, below=of grpo_actor, text width=4.0cm, minimum height=0.8cm, font=\footnotesize] (grpo_group) {Group Norm $A_i = \frac{r_i - \mu_G}{\sigma_G}$};
+  \node[monoIndigoBox, below=of grpo_group, text width=4.0cm, minimum height=0.8cm, font=\footnotesize] (grpo_loss) {Clipped Surrogate $-\beta D_{\mathrm{KL}}(\pi_{\bm{\theta}}\|\pi_{\mathrm{ref}})$};
+  \draw[->, thick, monographNavy] (grpo_actor) -- (grpo_group);
+  \draw[->, thick, monographTeal] (grpo_group) -- (grpo_loss);
+  \node[above=0.18cm of grpo_actor, font=\bfseries\footnotesize, color=monographNavy] {(c) Critic-Free GRPO};
+\end{tikzpicture}
+\caption{Structural evolution from (a) Actor--Critic with learned value baseline $\Vval_{\bm{\phi}}$ and $\mathrm{GAE}(\gamma,\lambda)$, to (b) PPO's first-order clipped trust region over importance ratios $r_t(\bm{\theta})$, to (c) critic-free GRPO using group-normalized outcome advantages and explicit reference KL regularization.}
+\label{fig:pg:actor_critic_ppo_grpo}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.4cm},
+  width=0.45\textwidth,
+  height=5.2cm,
+  grid=major,
+  grid style={dashed, monographRule},
+  xlabel={Importance Ratio $r_t(\bm{\theta}) = \pi_{\bm{\theta}}/\pi_{\bm{\theta}_{\mathrm{old}}}$},
+  xmin=0.5, xmax=1.5,
+  xtick={0.6, 1.0, 1.4},
+  extra x ticks={0.8, 1.2},
+  extra x tick labels={$1-\varepsilon$, $1+\varepsilon$},
+  extra x tick style={tick label style={font=\scriptsize, color=monographIndigo}},
+  legend style={font=\scriptsize, at={(0.03,0.97)}, anchor=north west, draw=monographRule}
+]
+\nextgroupplot[
+  title={Positive Advantage ($\hat{A}_t = +1.0$, $\varepsilon = 0.2$)},
+  ylabel={Surrogate Objective},
+  ymin=0.45, ymax=1.55
+]
+  \addplot[domain=0.5:1.5, samples=50, dashed, thick, monographSlate] {x};
+  \addlegendentry{Unclipped $r_t \hat{A}_t$}
+  \addplot[domain=0.5:1.2, samples=30, ultra thick, monographTeal] {x};
+  \addplot[domain=1.2:1.5, samples=20, ultra thick, monographTeal, forget plot] {1.2};
+  \addlegendentry{$L^{\mathrm{CLIP}}(r_t)$}
+  \draw[dotted, thick, monographIndigo] (axis cs:1.2,0.45) -- (axis cs:1.2,1.55);
+  \node[font=\scriptsize, align=center, color=monographTeal] at (axis cs:1.35,1.03) {$\grad = 0$\\(clipped)};
+
+\nextgroupplot[
+  title={Negative Advantage ($\hat{A}_t = -1.0$, $\varepsilon = 0.2$)},
+  ymin=-1.55, ymax=-0.45,
+  legend style={font=\scriptsize, at={(0.97,0.97)}, anchor=north east, draw=monographRule}
+]
+  \addplot[domain=0.5:1.5, samples=50, dashed, thick, monographSlate] {-x};
+  \addlegendentry{Unclipped $r_t \hat{A}_t$}
+  \addplot[domain=0.5:0.8, samples=20, ultra thick, monographCrimson] {-0.8};
+  \addplot[domain=0.8:1.5, samples=30, ultra thick, monographCrimson, forget plot] {-x};
+  \addlegendentry{$L^{\mathrm{CLIP}}(r_t)$}
+  \draw[dotted, thick, monographIndigo] (axis cs:0.8,-1.55) -- (axis cs:0.8,-0.45);
+  \node[font=\scriptsize, align=center, color=monographCrimson] at (axis cs:0.65,-0.97) {$\grad = 0$\\(clipped)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{PPO clipped surrogate $L^{\mathrm{CLIP}}(r_t)$ versus unclipped $r_t \hat{A}_t$ for $\varepsilon = 0.2$. Clipping flattens the objective ($\grad_{\bm{\theta}} L^{\mathrm{CLIP}} = \zeros$) only when the policy moves past the trust-region boundary in the direction favored by $\hat{A}_t$.}
+\label{fig:pg:ppo_clip_surrogate}
+\end{figure}
+
+\monographfig[0.76\textwidth]{reinforcement_learning_introduction_richard_s_su_p352_fig1.png}{Empirical variance reduction on the short-corridor gridworld: adding a learned state-value baseline enables REINFORCE to take larger step sizes ($\alpha^\theta = 2^{-9}$) and converge markedly faster than vanilla REINFORCE \bookcite{reinforcement_learning_introduction_richard_s_su}{Fig.~13.2, p.~330}.}{fig:pg:sb_baseline}
+
+\monographfig[0.62\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p1212_fig1.png}{Probabilistic graphical model for control-as-inference: states $s_t$ and actions $a_t$ are observed/controlled while binary optimality variables $o_t$ have emission $p(o_t=1 \mid s_t, a_t) = \exp(\alpha\inv r(s_t, a_t))$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~35.11, p.~1178}.}{fig:pg:control_inference_gm}
+
+\monographfig[0.82\textwidth]{reinforcement_learning_from_human_feedback_p73_fig1.png}{GRPO architecture for autoregressive LLMs: $G$ completions are sampled per prompt, scored by a reward model or verifier, normalized within the group to form $A_i = (r_i - \mu)/\sigma$, and regularized directly by $\KL{\pi_{\bm{\theta}}}{\pi_{\mathrm{ref}}}$ in the loss \bookcite{reinforcement_learning_from_human_feedback}{Fig.~25, p.~67}.}{fig:pg:rlhf_grpo}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:pg:pitfalls}
+
+\begin{pitfall}[High-Variance Gradients Without Causality or Baselines]
+Implementing the raw trajectory score-function \eqref{eq:pg:score_fn} with total return $R(\tau)$ instead of causal reward-to-go $G_t$ injects future-past cross-terms whose expectation is zero but whose variance grows linearly with horizon $T$. Always pair causal $G_t$ with a state-dependent baseline $\Vval_{\bm{\phi}}(s_t)$ or $\mathrm{GAE}(\gamma,\lambda)$ \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.1.2--3.1.5, p.~52--54}.
+\end{pitfall}
+
+\begin{pitfall}[Token Dropping \& MoE Instability in Token-Level Clipping]
+In PPO and GRPO, whenever a token's importance ratio $r_{i,t}(\bm{\theta})$ exits $[1-\varepsilon, 1+\varepsilon]$, its gradient is zeroed out. For rare, pivotal reasoning tokens initially assigned low probability, this ``token dropping'' stalls learning; furthermore, per-token IS ratios exhibit severe variance in Mixture-of-Experts (MoE) LLMs \bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.9--6.2.10, p.~69--71}. \textbf{Remedies:} Use sequence-level importance ratios (\textbf{GSPO}), or clip the IS weights under a stop-gradient (\textbf{CISPO}) so every token retains a bounded gradient signal.
+\end{pitfall}
+
+\begin{pitfall}[GRPO Group Standard-Deviation Collapse]
+When all $G$ completions for a prompt receive identical or nearly identical rewards (e.g., all pass or all fail), $\sigma_G \to 0$, inflating $A_i = (r_i - \mu_G)/(\sigma_G + \epsilon)$ and over-weighting low-variance prompts \bookcite{reinforcement_learning_from_human_feedback}{Sec.~6.2.8, p.~67--68}. \textbf{Remedy:} Drop $\sigma_G$ normalization (\textbf{Dr.\ GRPO} / RLOO) or filter zero-variance prompt groups.
+\end{pitfall}
+
+\begin{pitfall}[Off-Policy Deadly Triad \& Soft-Q Overestimation]
+Combining off-policy replay, bootstrapping, and function approximation forms the \textbf{deadly triad} that can cause critic divergence \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~35.5.3, p.~1177}. In off-policy actor-critic methods (DDPG/TD3/SAC), single-critic maximization induces positive overestimation bias. \textbf{Remedy:} Maintain Polyak-averaged target networks $\bar{\mathbf{w}}$ and take the minimum over twin critics $\min_{i=1,2}\Qval_{\bar{\mathbf{w}}_i}$ \bookcite{reinforement_learning_kevin_murphy}{Sec.~3.6.8.3, p.~79}.
+\end{pitfall}
+
+\endgroup
+\end{document}

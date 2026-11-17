@@ -1,0 +1,144 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{Computer Vision \& Visual Geometry}{Image Formation, Lenses, Color Spaces \& Fourier Image Filtering}
+  {Invert 3D-to-2D projection, separate signal via LSI/Fourier spectra, and band-limit before sampling}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Image Formation\\ \& Fourier Vision\\ \footnotesize\mdseries Optics $\cdot$ LSI $\cdot$ Nyquist}{%
+  \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+    \draw[csDom, thick] (-1.8,0.8) -- (0,0) -- (1.8,-0.55);
+    \draw[csA, thick, dashed] (-1.8,-0.8) -- (0,0) -- (1.8,0.55);
+    \draw[very thick, csB] (0,-1.0) -- (0,-0.22) (0,0.22) -- (0,1.0);
+    \draw[very thick, csD] (1.8,-0.9) -- (1.8,0.9);
+    \node[csDom, fill=white, inner sep=1pt] at (-1.1,0.95) {$Z$};
+    \node[csD, fill=white, inner sep=1pt] at (1.8,1.1) {$f$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; PINHOLE \& THIN-LENS OPTICS $-$ 3D to 2D}{%
+  \csfm{x = f\frac{X}{Z},\quad y = f\frac{Y}{Z},\qquad \frac{1}{z_o}+\frac{1}{z_i}=\frac{1}{f}}
+  \begin{csbul}
+    \item \textbf{Aperture \& DoF:} circle of confusion $c\propto \frac{A}{z_o}|z_o-z_{\mathrm{focus}}|$, $A=f/N$
+    \item \textbf{Lambertian shading:} $L_o = \rho(\vecb x)\max(0,\vecb n\T\vecb l)E_0$ (diffuse cosine law)
+    \item \textbf{Linear camera:} raw pixel $r_k \propto \int S(\lambda)c_k(\lambda)\,\mathrm{d}\lambda$ (additive in light!)
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; COLOR \& GAMMA $-$ linear vs perceptual}{%
+  \begin{csbul}
+    \item \textbf{Trichromacy:} LMS cones $\to$ linear CIE XYZ $\to$ sRGB ($3\times 3$ matrix)
+    \item \textbf{Gamma encoding:} $I_{\mathrm{sRGB}}\approx I_{\mathrm{lin}}^{1/2.2}$ allocates bits to dark tones
+    \item \textbf{Opponent / Lab:} separates luminance ($L^*$) from chrominance ($a^*,b^*$)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; LSI FILTERING \& SEPARABILITY $-$ spatial domain}{%
+  \csfm{(I*h)[y,x]=\sum_{i,j}I[y-i,x-j]h[i,j],\quad G_\sigma(x,y)=g_\sigma(x)g_\sigma(y)}
+  \begin{csbul}
+    \item \textbf{Conv vs Corr:} CNNs compute $I\star K$ (no flip); LSI iff shift-equivariant + linear
+    \item \textbf{Separable speedup:} rank-1 $k\times k$ kernel drops $O(k^2 HW)\to O(2k HW)$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; 2D FOURIER \& CONVOLUTION THEOREM}{%
+  \csfm{\hat I[u,v]=\sum_{y,x}I[y,x]e^{-i2\pi(\frac{ux}{W}+\frac{vy}{H})},\quad \mathcal{F}\{I*h\}=\hat I\odot\hat h}
+  \begin{csbul}
+    \item \textbf{Eigenfunctions:} complex exponentials $e^{i2\pi(ux+vy)}$ diagonalize all LSI filters
+    \item \textbf{Gaussian duality:} wide spatial $\sigma$ $\Longleftrightarrow$ narrow frequency $1/(2\pi\sigma)$
+    \item \textbf{Phase vs Mag:} phase encodes edge geometry; magnitude encodes texture energy
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; DERIVATIVES \& EDGE OPERATORS}{%
+  \csfm{\nabla(G_\sigma*I)=(\nabla G_\sigma)*I,\quad \Delta I = \partial_{xx}I+\partial_{yy}I}
+  \begin{csbul}
+    \item \textbf{Regularized grad:} Derivative-of-Gaussian avoids high-frequency noise blowup
+    \item \textbf{LoG / DoG:} $\Delta G_\sigma \approx (G_{k\sigma}-G_\sigma)$ detects blobs \& zero-crossings
+    \item \textbf{Structure tensor:} $\mat J = G_\rho*(\nabla I\,\nabla I\T)$ separates corners vs edges
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; SAMPLING \& NYQUIST ANTI-ALIASING}{%
+  \csfm{|u|_{\max} \le f_{\mathrm{Nyq}} = \frac{1}{2\Delta x} \implies \text{low-pass before } \downarrow_s}
+  \begin{csbul}
+    \item \textbf{Aliasing:} frequencies above $\frac{1}{2\Delta x}$ fold back as fake Moir\'e patterns
+    \item \textbf{BlurPool fix:} apply Gaussian low-pass before `stride=2` downsampling in CNNs
+  \end{csbul}}
+
+\end{tikzpicture}
+
+% =============================================================================
+%                                 PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item \textbf{Perspective:} $x=fX/Z,\; y=fY/Z$; \textbf{Thin lens:} $z_o^{-1}+z_i^{-1}=f^{-1}$
+    \item \textbf{2D Conv Theorem:} $\mathcal{F}\{I*h\}=\hat I\odot\hat h$ ($O(N\log N)$ via FFT)
+    \item \textbf{Gaussian FT:} $\mathcal{F}\{G_\sigma(x,y)\} = e^{-2\pi^2\sigma^2(u^2+v^2)}$
+    \item \textbf{LoG:} $\Delta G_\sigma(r)=\frac{r^2-2\sigma^2}{2\pi\sigma^6}e^{-r^2/(2\sigma^2)}$
+    \item \textbf{Nyquist:} band-limit $|\hat I(u,v)|=0$ for $|u|,|v|\ge \frac{1}{2\Delta x}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{OPTICAL \& FILTERING PIPELINE RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Linearize:} invert sRGB gamma ($I_{\mathrm{lin}}=I_{\mathrm{sRGB}}^{2.2}$) before any physical math.
+    \item \textbf{Filter:} use separable $g_\sigma(x)g_\sigma(y)$ for $k\le 15$, or 2D FFT for large $k$.
+    \item \textbf{Differentiate:} convolve with $\nabla G_\sigma$ or Sobel; never take raw finite differences on noisy pixels.
+    \item \textbf{Downsample:} low-pass filter ($\sigma\ge 0.8s$) before subsampling by $s$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    fast $k\times k$ blur ($k\le 15$) & Separable 1D convs ($O(2k)$)\\
+    large kernel ($k > 25$) & 2D FFT multiply ($O(HW\log HW)$)\\
+    edge / corner detection & $\nabla G_\sigma$ + Structure Tensor $\mat J$\\
+    anti-aliased CNN pooling & Gaussian BlurPool before stride\\
+    perceptual color edit & CIE $L^*a^*b^*$ or linearized RGB\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csF}{GAUSSIAN LOW-PASS SPECTRUM \& NYQUIST CUTOFF}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=-2.5, xmax=2.5, ymin=0, ymax=1.25,
+      xlabel={Normalized Frequency $u$}, ylabel={Magnitude $|\hat{G}_\sigma(u)|$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.97,0.92)}, anchor=north east, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csB, very thick, domain=-2.5:2.5, samples=80] {exp(-1.2*x*x)};
+      \addlegendentry{Small $\sigma$ (passes high freq)}
+      \addplot[csD, very thick, domain=-2.5:2.5, samples=80] {exp(-4.5*x*x)};
+      \addlegendentry{Large $\sigma$ (anti-aliased)}
+      \draw[csA, dashed, very thick] (axis cs:1.0,0) -- (axis cs:1.0,1.05);
+      \draw[csA, dashed, very thick] (axis cs:-1.0,0) -- (axis cs:-1.0,1.05);
+      \node[font=\tiny, csA, anchor=south] at (axis cs:-1.0,1.05) {Nyquist};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{sRGB gamma trap:} blurring or blending in nonlinear sRGB darkens edges and shifts colors.
+    \item \textbf{Strided aliasing:} subsampling without prefiltering folds high frequencies into false textures and breaks shift-equivariance.
+    \item \textbf{Boundary wrap-around:} FFT convolution assumes periodic boundaries; zero-pad to $H+k-1$ for linear convolution.
+    \item \textbf{Unregularized gradients:} raw $[-1, 1]$ differences amplify sensor noise proportionally to $|u|$.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csE}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Cameras project 3D points via $x=fX/Z$ into linear sensor intensities. Every LSI filter diagonalizes in the 2D Fourier basis ($\mathcal{F}\{I*h\}=\hat I\odot\hat h$); always linearize gamma and low-pass filter before downsampling to respect the Nyquist limit.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+\end{document}

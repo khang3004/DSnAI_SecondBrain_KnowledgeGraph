@@ -1,0 +1,224 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Linear Algebra \& Calculus}{Matrix Calculus, Jacobians, Hessians \& Automatic Differentiation}
+  {Chain rule = matrix multiplication; parenthesize right-to-left (JVP) or left-to-right (VJP) to beat the curse of dimensionality}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{AutoDiff\\ \footnotesize\mdseries Jacobians $\cdot$ Trace $\cdot$ JVP/VJP}{%
+  \begin{tikzpicture}[scale=0.58]
+    \node[circle, draw=csDom, thick, fill=csDom!10, inner sep=2pt, font=\scriptsize] (x) at (0,0) {$\vecb{x}$};
+    \node[circle, draw=csF, thick, fill=csF!10, inner sep=2pt, font=\scriptsize] (h) at (2.1,0) {$\vecb{h}$};
+    \node[circle, draw=csA, thick, fill=csA!10, inner sep=2pt, font=\scriptsize] (L) at (4.2,0) {$L$};
+    \draw[-{Stealth}, very thick, csDom] (x) to[bend left=22] node[midway, above] {\tiny JVP $\jac\vecb{v}$} (h);
+    \draw[-{Stealth}, very thick, csDom] (h) to[bend left=22] node[midway, above] {\tiny $\dot{\vecb{h}}$} (L);
+    \draw[-{Stealth}, very thick, csA, dashed] (L) to[bend left=22] node[midway, below] {\tiny $\bar{\vecb{h}}$} (h);
+    \draw[-{Stealth}, very thick, csA, dashed] (h) to[bend left=22] node[midway, below] {\tiny VJP $\jac\T\vecb{u}$} (x);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; FR\'{E}CHET, JACOBIANS \& LAYOUTS}{%
+  \csfm{\vecb{f}(\vecb{x}+\vecb{h}) = \vecb{f}(\vecb{x}) + \jac_{\vecb{f}}(\vecb{x})\vecb{h} + o(\norm{\vecb{h}}_2)}
+  \begin{csbul}
+    \item \textbf{Numerator Jacobian:} $\jac_{\vecb{f}}(\vecb{x}) = \pd{\vecb{f}}{\vecb{x}\T} \in \R^{m\times n}$ ($(\jac_{\vecb{f}})_{ij} = \pd{f_i}{x_j}$)
+    \item \textbf{Shape-preserving gradient:} $\grad_{\vecb{x}} f = \jac_f(\vecb{x})\T \in \R^n$, $\grad_{\mat{X}} f \in \R^{m\times n}$
+    \item \textbf{Chain rule:} $\jac_{\vecb{g}\circ\vecb{f}}(\vecb{x}) = \jac_{\vecb{g}}(\vecb{f}(\vecb{x}))\,\jac_{\vecb{f}}(\vecb{x}) \in \R^{m\times n}$
+    \item \textbf{Scalar pullback:} $\grad_{\vecb{x}}(g\circ\vecb{f}) = \jac_{\vecb{f}}(\vecb{x})\T \grad_{\vecb{y}} g(\vecb{y}) \in \R^n$
+    \item \textbf{Kronecker vec:} $\mathrm{vec}(\mat{A}\mat{X}\mat{B}) = (\mat{B}\T\otimes\mat{A})\mathrm{vec}(\mat{X})$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; FROBENIUS TRACE TRICK ($\mathrm{d}f$)}{%
+  \csfm{\mathrm{d}f(\mat{X}) = \Tr\!\big((\grad_{\mat{X}} f)\T \mathrm{d}\mat{X}\big) = \inner{\grad_{\mat{X}} f}{\mathrm{d}\mat{X}}_F}
+  \begin{csbul}
+    \item \textbf{Recipe:} expand $\mathrm{d}f$ via product rule \& cyclic $\Tr(\mat{A}\mat{B})=\Tr(\mat{B}\mat{A})$ to isolate $\mathrm{d}\mat{X}$
+    \item $\grad_{\mat{X}}\Tr(\mat{A}\mat{X}\mat{B}) = \mat{A}\T\mat{B}\T$,\quad $\grad_{\mat{X}}(\vecb{a}\T\mat{X}\vecb{b}) = \vecb{a}\vecb{b}\T$
+    \item $\grad_{\mat{X}}\Tr(\mat{X}\T\mat{A}\mat{X}) = (\mat{A}+\mat{A}\T)\mat{X}$
+    \item $\mathrm{d}(\mat{X}\inv) = -\mat{X}\inv\mathrm{d}\mat{X}\,\mat{X}\inv \implies \grad_{\mat{X}}\log\abs{\det\mat{X}} = \mat{X}^{-\top}$
+    \item \textbf{Matmul VJP ($\mat{C}=\mat{A}\mat{B}$):} $\grad_{\mat{A}} L = \mat{G}\mat{B}\T$,\; $\grad_{\mat{B}} L = \mat{A}\T\mat{G}$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; FORWARD JVP vs.\ REVERSE VJP}{%
+  \begin{minipage}[t]{0.63\linewidth}
+    \csfm{\jac_T(\cdots(\jac_1\vecb{v})) \;\text{vs.}\; \jac_1\T(\cdots(\jac_T\T\vecb{u}))}
+    \begin{csbul}
+      \item \textbf{Forward JVP} ($\dot{\vecb{x}}=\vecb{v}$): dual numbers $x+\dot{x}\varepsilon$, $O(1)$ mem, 1 col of $\jac$ per pass
+      \item \textbf{Reverse VJP} ($\bar{\vecb{y}}=\vecb{u}$): caches tape, 1 row of $\jac$ per sweep; $O(1)$ sweeps for scalar $L$!
+      \item \textbf{Fan-out:} shared $v_q$ sums child adjoints $\bar{\vecb{x}}_q = \sum_{c\in\mathrm{Ch}(q)} (\partial_q\vecb{f}_c)\T[\bar{\vecb{x}}_c]$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.34\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \node[circle, draw=csC, thick, inner sep=1.2pt] (q) at (0,0) {$v_q$};
+      \node[circle, draw=csDom, thick, inner sep=1.2pt] (c1) at (1.8,0.75) {$v_{c_1}$};
+      \node[circle, draw=csDom, thick, inner sep=1.2pt] (c2) at (1.8,-0.75) {$v_{c_2}$};
+      \draw[->, csDom, thick] (q) -- (c1);
+      \draw[->, csDom, thick] (q) -- (c2);
+      \draw[->, csA, thick, dashed] (c1) to[bend right=22] (q);
+      \draw[->, csA, thick, dashed] (c2) to[bend left=22] (q);
+      \node[csA, align=center] at (1.0,-1.5) {$\bar{v}_q = \bar{v}_{c_1}\!+\!\bar{v}_{c_2}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; HESSIAN-VECTOR PRODUCTS \& IFT}{%
+  \begin{csbul}
+    \item \textbf{Pearlmutter HVP ($\mathcal{F}\circ\mathcal{R}$):} exact $\mat{H}\vecb{v}$ in $O(T)$ time \& memory:
+    \csfm{\hess f(\vecb{x})\vecb{v} = \grad_{\vecb{x}}\!\Big(\grad_{\vecb{x}} f(\vecb{x})\T\mathrm{stopgrad}(\vecb{v})\Big)}
+    \item \textbf{Implicit Function Theorem (IFT)} for $\vecb{g}(\vecb{x},\vecb{y}^*(\vecb{x}))=\zeros$:
+    \csfm{\jac_{\vecb{y}^*} = -(\partial_{\vecb{y}}\vecb{g})\inv\partial_{\vecb{x}}\vecb{g},\quad (\partial_{\vecb{y}}\vecb{g})\T\vecb{\lambda}=\vecb{u} \implies \grad_{\vecb{x}} L = -(\partial_{\vecb{x}}\vecb{g})\T\vecb{\lambda}}
+    \item Solves equilibrium / OptNet layers in $O(m+n)$ memory ($K$-independent)!
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COMPLEXITY \& MEMORY SCALING}{%
+  \renewcommand{\arraystretch}{0.88}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.15cm}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{1.85cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Scalar $L$}} & \textbf{\textcolor{csE}{Peak Mem}} & \textbf{\textcolor{csE}{Best Regime}}\\ \hline
+    Central FD & $O(2n_{\mathrm{in}}T)$ & $O(\text{width})$ & unit-test gradcheck\\
+    Symbolic Diff & Exp.\ swell & Exp.\ swell & tiny closed forms\\
+    Forward AD (JVP) & $O(n_{\mathrm{in}}T)$ & $O(\text{width})$ & $n_{\mathrm{out}}\gg n_{\mathrm{in}}$, HVP\\
+    Reverse AD (VJP) & $O(T)$ & $O(T)$ & $n_{\mathrm{in}}\gg n_{\mathrm{out}}$ (DL)\\
+    $\sqrt{T}$-Checkpoint & $O(T)$ ($+33\%$) & $O(\sqrt{T})$ & deep transformers\\
+    Binomial Revolve & $O(T\log T)$ & $O(\log T)$ & long RNNs / ODEs\\
+  \end{tabular}\par\vspace{0pt}
+  \scriptsize\textbf{Baur--Strassen:} 1 reverse VJP sweep $\le 3\times$ forward FLOPs.}
+
+\csbranch{6}{F}{6\;\; ML USE-CASES $-$ where you meet it}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Backpropagation:} reverse VJP on scalar loss $L(\vecb{\theta})$
+      \item \textbf{Newton-CG / Lanczos:} Krylov curvature via matrix-free HVPs
+      \item \textbf{DEQs / Neural ODEs:} constant-memory IFT adjoints
+      \item \textbf{Activation Checkpointing:} trade $+1$ forward pass for $\sqrt{L}$ memory
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \foreach \i in {0,1,2,3,4} {
+        \draw[gray!60, fill=gray!15] (\i*1.2,0) circle (0.32);
+      }
+      \draw[csF, very thick, fill=csF!25] (0,0) circle (0.36);
+      \draw[csF, very thick, fill=csF!25] (2.4,0) circle (0.36);
+      \draw[csF, very thick, fill=csF!25] (4.8,0) circle (0.36);
+      \draw[->, csF, thick] (0.4,0)--(0.8,0);
+      \draw[->, csF, thick] (1.6,0)--(2.0,0);
+      \draw[->, csF, thick] (2.8,0)--(3.2,0);
+      \draw[->, csF, thick] (4.0,0)--(4.4,0);
+      \node[csF, align=center] at (2.4,-0.95) {$\sqrt{L}$ boundary checkpoints\\recompute gray segments};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Many Inputs $\to$ 1 Loss? Sweep Right-to-Left (Reverse VJP = $O(1)$ Passes!)} \\[1pt]
+  \footnotesize\mdseries \textbf{Use $\mathrm{d}f = \Tr(\mat{G}\T\mathrm{d}\mat{X})$ so you never materialize 4th-order tensor Jacobians.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Missing \texttt{stop\_gradient}($\vecb{v}$) in HVP} leaks $\jac_{\vecb{v}}\T\grad f$ when $\vecb{v}=\vecb{v}(\vecb{x})$
+    \item \textbf{In-place tensor mutation} corrupts cached forward activations for VJP
+    \item \textbf{Float32 FD} at $\epsilon=10^{-6}$ fails from cancellation; use float64 central FD
+    \item \textbf{ReLU kinks:} $\ReLU(x)-\ReLU(-x)=x$ gives AD $0$ at $x=0$ if $\ReLU'(0)=0$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Matrix Calculus, Jacobians \& Automatic Differentiation}\;---\;Domain 01 $\cdot$ Linear Algebra \& Calculus}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Frobenius trace trick:\csfm{\mathrm{d}f = \Tr(\mat{G}\T\mathrm{d}\mat{X}) \;\Longrightarrow\; \grad_{\mat{X}} f(\mat{X}) = \mat{G}}
+    \item Linear \& quadratic matrix forms:\csfm{\grad_{\mat{X}}\Tr(\mat{A}\mat{X}\mat{B}) = \mat{A}\T\mat{B}\T,\quad \grad_{\mat{X}}\Tr(\mat{X}\T\mat{A}\mat{X}) = (\mat{A}+\mat{A}\T)\mat{X}}
+    \item Inverse \& log-determinant ($\mat{X}$ invertible):\csfm{\grad_{\mat{X}}\Tr(\mat{X}\inv\mat{A}) = -\mat{X}^{-\top}\mat{A}\T\mat{X}^{-\top},\quad \grad_{\mat{X}}\log\abs{\det\mat{X}} = \mat{X}^{-\top}}
+    \item Matmul VJP ($\mat{C}=\mat{A}\mat{B}$, $\mat{G}=\grad_{\mat{C}} L$):\csfm{\grad_{\mat{A}} L = \mat{G}\mat{B}\T,\qquad \grad_{\mat{B}} L = \mat{A}\T\mat{G}}
+    \item Implicit layer VJP ($\vecb{g}(\vecb{x},\vecb{y}^*)=\zeros$, $\vecb{u}=\grad_{\vecb{y}^*} L$):\csfm{\left(\pd{\vecb{g}}{\vecb{y}\T}\right)\T\vecb{\lambda} = \vecb{u},\qquad \grad_{\vecb{x}} L = -\left(\pd{\vecb{g}}{\vecb{x}\T}\right)\T\vecb{\lambda}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: TRACE TRICK \& REVERSE AD}
+  \textbf{Matrix Gradient via Trace Trick:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Expand $\mathrm{d}f$ via $\mathrm{d}(\mat{U}\mat{V})=(\mathrm{d}\mat{U})\mat{V}+\mat{U}(\mathrm{d}\mat{V})$ and $\mathrm{d}(\mat{X}\inv)=-\mat{X}\inv(\mathrm{d}\mat{X})\mat{X}\inv$.
+    \item Apply $\Tr(\mat{M})=\Tr(\mat{M}\T)$ and cyclic shifts $\Tr(\mat{A}\mat{B}\mat{C})=\Tr(\mat{C}\mat{A}\mat{B})$ until $\mathrm{d}f=\Tr(\mat{G}\T\mathrm{d}\mat{X})$, then read off $\grad_{\mat{X}} f = \mat{G}$.
+  \end{enumerate}
+  \vspace{1pt}
+  \textbf{Topological Reverse-Mode Tape Sweep:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Forward $t=1\dots T$: evaluate $\vecb{x}_t = f_t(\vecb{x}_{\mathrm{Pa}(t)})$, push to tape $\mathcal{T}$.
+    \item Seed $\bar{\vecb{x}}_T = \vecb{u}$ ($\bar{x}_T = 1$ for scalar loss $L$).
+    \item Reverse $t=T\dots 1$: $\bar{\vecb{x}}_q \mathrel{+}= (\partial_q f_t)\T[\bar{\vecb{x}}_t]$ for $q\in\mathrm{Pa}(t)$; free $\vecb{x}_t$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    $n_{\mathrm{in}} \gg n_{\mathrm{out}}$ (scalar loss) & Reverse-mode AD (VJP)\\
+    $n_{\mathrm{out}} \gg n_{\mathrm{in}}$ (few params) & Forward-mode AD (JVP)\\
+    need $\hess f(\vecb{x})\vecb{v}$ (Krylov/CG) & Forward-over-Reverse ($\mathcal{F}\circ\mathcal{R}$)\\
+    activation OOM at depth $L$ & $\sqrt{L}$-checkpointing or Revolve\\
+    fixed-point / convex opt layer & Implicit diff.\ (IFT adjoint solve)\\
+    verifying custom VJP kernel & Float64 central FD ($\epsilon\approx 10^{-6}$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item Full $\jac\in\R^{n_{\mathrm{out}}\times n_{\mathrm{in}}}$: JVP takes $n_{\mathrm{in}}$ passes; VJP takes $n_{\mathrm{out}}$ sweeps
+    \item Central FD optimal step: $\epsilon^*_{\mathrm{cen}} \sim \varepsilon_{\mathrm{mach}}^{1/3} \approx 6\times 10^{-6}$ (float64)
+    \item Forward FD optimal step: $\epsilon^*_{\mathrm{fwd}} \sim \varepsilon_{\mathrm{mach}}^{1/2} \approx 1.5\times 10^{-8}$ (float64)
+    \item $\sqrt{L}$-checkpointing: $O(\sqrt{L})$ memory for $+1$ forward pass
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{FD STEP-SIZE V-CURVE (TRUNCATION vs.\ ROUNDOFF)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.7cm, xmin=-16, xmax=0, ymin=-16.5, ymax=2.5,
+      xlabel={$\log_{10}\epsilon$ (step size)}, ylabel={$\log_{10}(\text{rel.\ error})$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={-16,-12,-8,-4,0}, ytick={-16,-12,-8,-4,0}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.5,0.97)}, anchor=north, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csA, thick, dashed, domain=-16:0, samples=60] {max(-16 - x, x)};
+      \addlegendentry{Forward FD $O(\epsilon + \varepsilon_{\mathrm{mach}}/\epsilon)$}
+      \addplot[csF, very thick, domain=-16:0, samples=60] {max(-16 - x, 2*x)};
+      \addlegendentry{Central FD $O(\epsilon^2 + \varepsilon_{\mathrm{mach}}/\epsilon)$}
+      \addplot[csD, very thick, dotted, domain=-16:0, samples=10] {-15.5};
+      \addlegendentry{Exact AD / Complex-step}
+      \fill[csF] (axis cs:-5.33,-10.66) circle (1.8pt);
+      \node[font=\tiny, csF, anchor=north] at (axis cs:-5.33,-11.0) {$\epsilon^*_{\mathrm{cen}}\approx 10^{-5.3}$};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Numerator vs.\ Denominator transpose bug:} mixing textbooks without checking outer dims $(n\times m)(m\times 1)=(n\times 1)$ silently transposes Jacobians
+    \item \textbf{HVP tangent leak:} computing $\grad_{\vecb{x}}(\grad f(\vecb{x})\T\vecb{v})$ when $\vecb{v}=\vecb{v}(\vecb{x})$ without \texttt{stop\_gradient}($\vecb{v}$) adds spurious $\jac_{\vecb{v}}\T\grad f$
+    \item \textbf{In-place buffer overwrite:} mutating $\vecb{x}_t$ in-place during the forward pass corrupts backward VJP adjoints $\partial f_c/\partial \vecb{x}_t$
+    \item \textbf{Subdifferential chain-rule failure:} at non-smooth kinks ($\ReLU$, $\abs{x}$), Clarke subdifferentials violate strict chain rules; use $\softplus$/$\mathrm{GELU}$ for second-order or IFT steps
+    \item \textbf{Vanishing/exploding product $\prod_{l=1}^L \jac_l$:} deep Jacobians with $\rho(\jac_l)\neq 1$ blow up or vanish exponentially; use residuals ($\eye+\jac_{\mathrm{res}}$) and norm clipping
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Derivatives are linear maps:} JVP pushes tangents forward ($\jac\vecb{v}$, good for few inputs); VJP pulls adjoints backward ($\jac\T\vecb{u}$, good for scalar losses).
+  For matrix formulas, take $\mathrm{d}f = \Tr(\mat{G}\T\mathrm{d}\mat{X})$ and read off $\grad_{\mat{X}} f = \mat{G}$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

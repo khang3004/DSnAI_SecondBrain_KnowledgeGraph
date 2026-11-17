@@ -1,0 +1,275 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 07: Agentic AI \& Production ML Systems}{Agentic Reasoning, Memory, RAG, MCP/A2A \& Workflows}{Agent Taxonomies, ReAct, Planning \& Multi-Agent Patterns}{Agent Taxonomy, ReAct Synergy, Reflection, Planning \& Multi-Agent Orchestration}{ReAct Paper, Intro to Agents, Practical Guide to Building Agents, AI Agents 2025, Jurafsky \& Martin Sec.~1.7 \& 11}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:agent:formulation}
+% =============================================================================
+
+An autonomous language-model agent is a goal-directed sequential decision-making system that couples a pretrained reasoning engine with external tools inside a bounded feedback loop. From the autoregressive NLP perspective of Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~1, Sec.~1.8, p.~24 (PDF p.~32)}, the foundational mechanism remains next-token prediction, but the generation vocabulary is extended with executable tool invocations (e.g., \texttt{Search[]}, \texttt{Calculator[]}, \texttt{Calendar[]}). Rather than updating model weights as in gradient-based fine-tuning, in-context learning and runtime orchestration steer behavior by curating the context window at every step \bookcite{introduction_agents}{p.~10}.
+
+Formally, let $\mathcal{O}$ denote the space of environment observations, $\mathcal{A}$ the space of external, environment-mutating or information-retrieving actions (tool calls, API invocations, or final-answer emission), and $\mathcal{L}$ the unbounded space of natural-language tokens. Following Yao et al.~\bookcite{react_agent}{Sec.~2, p.~3}, a ReAct agent operates over an \emph{augmented action space}:
+\begin{equation}
+  \hat{\mathcal{A}} = \mathcal{A} \cup \mathcal{L},
+  \label{eq:agent:augmented_action_space}
+\end{equation}
+where a linguistic action $\hat{a}_t \in \mathcal{L}$ (a \emph{thought} or reasoning trace) leaves the external environment state $s_t$ unchanged and yields no observation feedback, whereas an external action $a_t \in \mathcal{A}$ triggers an environment transition $s_{t+1} \sim \mathcal{P}(\cdot \mid s_t, a_t)$ and returns an observation $o_{t+1} \in \mathcal{O}$. At step $t$, the agent samples from its policy $\pi(\cdot \mid c_t)$ conditioned on the trajectory context
+\begin{equation}
+  c_t = (x,\, o_1, \hat{a}_1, a_1, o_2, \dots, o_{t-1}, \hat{a}_{t-1}, a_{t-1}, o_t),
+  \label{eq:agent:trajectory_context}
+\end{equation}
+where $x$ encodes the system constitution (persona, instructions, tool schemas, and guardrails) and initial user mission.
+
+When should a system be architected as an autonomous agent rather than a deterministic workflow? Across production engineering guides \bookcite{practical_guide_building_agents}{pp.~4--6}, an agent is warranted when a task exhibits at least one of three properties: (i)~\emph{complex, context-sensitive decision-making} (e.g., nuanced refund exceptions), (ii)~\emph{unwieldy rule maintenance} where deterministic if-then-else trees become brittle, or (iii)~\emph{heavy reliance on unstructured data} (e.g., parsing natural-language claims or web pages). Simple chatbots, single-turn classifiers, or static RAG pipelines that do not allow the LLM to control execution flow are \emph{not} agents \bookcite{practical_guide_building_agents}{p.~4}; \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~9--10}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:agent:reconciliation}
+Source texts adopt differing terminology for agency levels, loop steps, and architectural primitives across \bookcite{react_agent}{pp.~3--8}, \bookcite{introduction_agents}{pp.~10--26}, \bookcite{practical_guide_building_agents}{pp.~7--23}, and \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~11--34}. The matrix below establishes a unified mapping.
+\par\medskip
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{1.85cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+  \toprule
+  \textbf{Concept} & \textbf{ReAct Paper} & \textbf{Intro to Agents} & \textbf{Practical / 2025 Guide} \\
+  \midrule
+  Core Triad & Policy $\pi$, Action $\mathcal{A}$, Context $c_t$ & Model (Brain), Tools (Hands), Orchestration Layer & Model, Tools, Instructions (+ Memory, Guardrails, Role) \\
+  Loop Cycle & Thought ($\hat{a}_t \in \mathcal{L}$) $\to$ Act ($a_t \in \mathcal{A}$) $\to$ Obs ($o_{t+1}$) & Get Mission $\to$ Scan Scene $\to$ Think $\to$ Act $\to$ Observe \& Iterate & \texttt{Runner.run()} while-loop until exit condition \\
+  Agency Scale & Standard $\to$ CoT / Act $\to$ ReAct $\to$ ReAct+CoT-SC & Levels 0--4 (Core $\to$ Connected $\to$ Strategic $\to$ Multi-Agent $\to$ Self-Evolving) & Levels 1--5 (Responder $\to$ Router $\to$ Tool Calling $\to$ Multi-Agent $\to$ Autonomous) \\
+  Multi-Agent & Not modeled (single-agent trajectory) & Coordinator, Sequential, Iterative Refinement, HITL & Graph $G=(V,E)$: Manager (tool-call edges) vs.\ Decentralized (handoff edges) \\
+  \bottomrule
+\end{tabularx}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:agent:derivations}
+% =============================================================================
+
+\subsection{ReAct Synergy: Grounding Reasoning and Guiding Action}
+
+Isolating reasoning from acting induces complementary failure modes. Pure Chain-of-Thought (CoT) prompting operates strictly in $\mathcal{L}$, sampling a reasoning chain $(\hat{a}_1, \dots, \hat{a}_k)$ conditioned only on parametric memory; any factual error early in the chain propagates unchecked into hallucinated conclusions. Conversely, Act-only prompting operates strictly in $\mathcal{A}$, attempting to learn the direct mapping $c_t \mapsto a_t$ without intermediate verbal state tracking, which fails on long-horizon subgoal decomposition or noisy observations \bookcite{react_agent}{Sec.~2, p.~3; Sec.~4, p.~8}.
+
+\begin{coremath}[Interleaved ReAct Trajectory Factoring \& Hybrid Switching]
+In ReAct \bookcite{react_agent}{Sec.~2, p.~3}, the joint trajectory probability over $T$ reasoning-and-acting steps factorizes autoregressively across the augmented space $\hat{\mathcal{A}} = \mathcal{A} \cup \mathcal{L}$:
+\begin{equation}
+  \Prob(\tau \mid x) = \prod_{t=1}^{T} \pi(\hat{a}_t \mid c_t) \, \pi(a_t \mid c_t, \hat{a}_t) \, \mathcal{P}(o_{t+1} \mid s_t, a_t),
+  \label{eq:agent:react_factorization}
+\end{equation}
+where the context update satisfies $c_t' = (c_t, \hat{a}_t)$ after a thought and $c_{t+1} = (c_t', a_t, o_{t+1})$ after an external action. Because thoughts $\hat{a}_t \in \mathcal{L}$ incur zero environment cost, they serve as a differentiable-free working memory that (1) decomposes goals, (2) extracts salient entities from $o_t$, (3) reformulates failed queries, and (4) tracks subgoal completion.
+
+To unify internal parametric knowledge with external grounding, Yao et al.~\bookcite{react_agent}{Sec.~3.2, p.~5} introduce two bidirectional switching heuristics with Self-Consistency CoT (CoT-SC, sampling $n=21$ CoT traces at temperature $0.7$):
+\begin{align}
+  \text{ReAct} \to \text{CoT-SC}: \quad & \text{if } t > T_{\max} \text{ without } \texttt{Finish}[\cdot], \text{ back off to } \text{CoT-SC}(n), \label{eq:agent:switch_react_cot} \\
+  \text{CoT-SC} \to \text{ReAct}: \quad & \text{if } \max_{y} \sum_{i=1}^{n} \mathbb{I}[y^{(i)} = y] < \frac{n}{2}, \text{ back off to ReAct}. \label{eq:agent:switch_cot_react}
+\end{align}
+In~\eqref{eq:agent:switch_react_cot}, $T_{\max} = 7$ for HotpotQA and $T_{\max} = 5$ for FEVER (fewer than $0.84\%$ and $1.33\%$ of correct ReAct trajectories exceed these horizons, respectively). In~\eqref{eq:agent:switch_cot_react}, a sub-majority consensus signals low internal confidence, triggering external retrieval.
+\end{coremath}
+
+\begin{intuition}[Why Sparse Thoughts Beat Dense Inner Monologue]
+In embodied or long-horizon tasks such as ALFWorld (over $50$ locations and $50+$ steps), injecting dense state-feedback thoughts at every step---as in Inner Monologue (\texttt{ReAct-IM})---still underperforms sparse ReAct ($53\%$ vs.\ $71\%$ best-of-6 success rate) \bookcite{react_agent}{Sec.~4, p.~8}. Sparse thoughts allow the policy to allocate tokens selectively to high-leverage cognitive operations: commonsense location priors (e.g., desklamps reside on desks or dressers), subgoal transitions, and exception recovery, without polluting the finite context window with redundant state summaries.
+\end{intuition}
+
+\subsection{Reflection, Planning, and Multi-Agent Graph Topologies}
+
+Beyond single-trajectory ReAct, modern agentic architectures compose five canonical design patterns \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~25--30}; \bookcite{introduction_agents}{pp.~24--26}:
+\begin{enumerate}
+  \item \textbf{Reflection (Iterative Refinement):} A generator policy $\pi_{\mathrm{gen}}$ produces candidate output $y^{(k)}$, which a critic/evaluator $\pi_{\mathrm{eval}}$ scores against quality criteria $q(y^{(k)}) \in [0,1]$. If $q(y^{(k)}) < \tau$, feedback $f^{(k)}$ or a prompt enhancer updates the context for $y^{(k+1)}$ until $q \ge \tau$ or $k = K_{\max}$ \bookcite{introduction_agents}{Fig.~3, p.~25}; \bookcite{ai_agents_2025_illustrated_guidebook}{p.~26}.
+  \item \textbf{Tool Use:} Grounding $\pi$ via structured function-calling contracts (OpenAPI schemas or Model Context Protocol, MCP) to query vector stores, execute sandboxed Python/SQL, or invoke APIs \bookcite{introduction_agents}{pp.~21--22}; \bookcite{ai_agents_2025_illustrated_guidebook}{p.~27}.
+  \item \textbf{ReAct:} Interleaving reflection/thought with tool execution in a closed observation loop \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~27--29}.
+  \item \textbf{Planning:} Decomposing a mission $x$ into an explicit roadmap of subtasks $(g_1, \dots, g_m)$ before or during execution \bookcite{ai_agents_2025_illustrated_guidebook}{p.~29}; \bookcite{introduction_agents}{p.~16}.
+  \item \textbf{Multi-Agent Collaboration:} Partitioning a complex workflow across specialized agents modeled as a directed graph $G = (V, E)$ \bookcite{practical_guide_building_agents}{p.~17}.
+\end{enumerate}
+
+\begin{coremath}[Formalizing Manager vs.\ Decentralized Multi-Agent Graphs]
+Let $G = (V, E)$ be an agent orchestration graph where each vertex $v_i \in V$ is an agent tuple $(M_i, \mathcal{T}_i, I_i)$ comprising a model $M_i$, toolset $\mathcal{T}_i$, and instruction constitution $I_i$ \bookcite{practical_guide_building_agents}{pp.~7, 17}:
+\begin{itemize}
+  \item \textbf{Manager Pattern (Agents-as-Tools):} A distinguished root $v_{\mathrm{mgr}} \in V$ has directed edges $(v_{\mathrm{mgr}}, v_i) \in E$ representing synchronous tool calls $v_i.\texttt{as\_tool}()$. Control always returns to $v_{\mathrm{mgr}}$, which retains global state and synthesizes the final user response \bookcite{practical_guide_building_agents}{pp.~18--20}; \bookcite{introduction_agents}{p.~25}.
+  \item \textbf{Decentralized Pattern (Peer Handoffs):} Directed edges $(v_i, v_j) \in E$ represent one-way \emph{handoff} functions that transfer execution control and the conversation state $c_t$ from $v_i$ to $v_j$ without returning to $v_i$ \bookcite{practical_guide_building_agents}{pp.~21--23}.
+\end{itemize}
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:agent:algorithms}
+% =============================================================================
+
+{\sloppy
+Production agent runtimes implement the Model, Tools, and Orchestration triad as a bounded \texttt{while} loop with explicit exit conditions, layered guardrails, and optional reflection \bookcite{practical_guide_building_agents}{pp.~14--15, 24--31}; \bookcite{introduction_agents}{pp.~11--12}. Algorithm~\ref{alg:agent:react_loop} synthesizes the ReAct execution loop with guardrail tripwires, quality-evaluator reflection, and bounded termination.\par}
+
+\begin{algorithm}[htbp]
+\caption{Bounded ReAct Orchestration Loop with Guardrails \& Reflection}
+\label{alg:agent:react_loop}
+\KwIn{Mission $x$, system constitution $I$, tool registry $\mathcal{T}$, max turns $T_{\max}$, quality threshold $\tau$}
+\KwOut{Final response $y^*$ or escalation signal}
+Verify input guardrails $\mathcal{G}_{\mathrm{in}}(x)$ (relevance, safety, PII, regex)\;
+\lIf{tripwire triggered}{\Return \textsc{RefusalOrEscalate}(\texttt{"Input guardrail violated"})}
+Initialize context $c_1 \leftarrow (I, x, \text{LongTermMemory}.\text{fetch}(x))$, $t \leftarrow 1$\;
+\While{$t \le T_{\max}$}{
+  Sample thought $\hat{a}_t \sim \pi(\cdot \mid c_t)$ and update $c_t' \leftarrow (c_t, \hat{a}_t)$\;
+  Sample action $a_t \sim \pi(\cdot \mid c_t')$\;
+  \uIf{$a_t$ is a final-output emission or contains no tool call}{
+    Evaluate candidate $y \leftarrow a_t$ with critic $q \leftarrow \pi_{\mathrm{eval}}(y, x)$\;
+    \uIf{$q \ge \tau$ \textbf{and} output guardrails $\mathcal{G}_{\mathrm{out}}(y)$ pass}{
+      \Return $y$ \tcp*{Verified exit condition}
+    }
+    \Else{
+      Append critique $f_t$ to $c_{t+1} \leftarrow (c_t', a_t, f_t)$; $t \leftarrow t + 1$; \textbf{continue}\;
+    }
+  }
+  \ElseIf{$a_t = \texttt{ToolCall}(g, \theta)$ with $g \in \mathcal{T}$}{
+    \lIf{$\mathrm{Risk}(g) = \mathrm{High}$ \textbf{and not} $\textsc{HumanApproval}(g, \theta)$}{\Return \textsc{EscalateToHuman}($c_t', a_t$)}
+    Execute $o_{t+1} \leftarrow g(\theta)$ in sandbox; update $c_{t+1} \leftarrow (c_t', a_t, o_{t+1})$\;
+  }
+  $t \leftarrow t + 1$\;
+}
+\Return \textsc{EscalateOrBackoff}($c_{T_{\max}}$) \tcp*{Exceeds $T_{\max}$: HITL or CoT-SC backoff}
+\end{algorithm}
+
+\begin{crossbook}[Cross-Book Synthesis: Taxonomy of Agency Levels (0--4 vs.\ 1--5)]
+\label{tab:agent:taxonomy_levels}
+Both \bookcite{introduction_agents}{pp.~14--18} (Levels~0--4) and \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~31--34} (Levels~1--5) stratify systems by how much control-flow authority shifts from deterministic code to the LLM. The alignment below maps these taxonomies to concrete architectural capabilities and operational bottlenecks.
+\par\medskip
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.75cm} >{\raggedright\arraybackslash}p{2.75cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+  \toprule
+  \textbf{Intro to Agents} & \textbf{2025 Guidebook} & \textbf{Control Flow \& Capabilities} & \textbf{Primary Bottleneck} \\
+  \midrule
+  Level 0: Core Reasoning & Level 1: Basic Responder & Parametric LM only; zero tools or live state & Blind to post-training facts; hallucination \\
+  Level 1: Connected Solver & Level 2--3: Router / Tool Calling & Single-turn routing or tool invocation ($\mathcal{A}$) & Myopic on multi-step dependencies \\
+  Level 2: Strategic Solver & Planning + ReAct & Multi-step planning, context engineering, memory & Context bloat; repetitive action loops \\
+  Level 3: Collaborative MAS & Level 4: Multi-Agent & Coordinator/Manager or Decentralized handoffs & Inter-agent latency, coordination overhead \\
+  Level 4: Self-Evolving & Level 5: Autonomous & Dynamic tool/agent synthesis (\texttt{AgentCreator}) & Verification, sandboxing, security risk \\
+  \bottomrule
+\end{tabularx}
+\end{crossbook}
+
+{\sloppy
+When transitioning from Level~2 (single strategic agent) to Level~3 (multi-agent), \bookcite{practical_guide_building_agents}{p.~16} advises maximizing single-agent performance first via prompt templates and clear tool descriptions, splitting into multiple agents only when (i)~conditional branching (\texttt{if-then-else}) overwhelms a single instruction set, or (ii)~tool overlap degrades selection accuracy (some implementations handle $>15$ distinct tools while others fail with $<10$ overlapping tools).\par}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:agent:visuals}
+% =============================================================================
+
+Figure~\ref{fig:agent:react_trajectories} reproduces the seminal trajectory comparison from Yao et al.~\bookcite{react_agent}{Fig.~1, p.~2}, contrasting Standard, CoT-only, Act-only, and ReAct on HotpotQA and ALFWorld. On HotpotQA, CoT hallucinates an incorrect premise (``Apple TV''), while Act-only retrieves the right Wikipedia entities but fails to synthesize the final answer; ReAct interleaves thoughts to track search reformulations and extract ``keyboard function keys.''
+
+\monographfig[0.92\textwidth]{react_agent_p2_fig1.png}{Comparison of Standard, CoT (reason-only), Act-only, and ReAct (interleaved Thought--Action--Observation) trajectories on HotpotQA and ALFWorld \bookcite{react_agent}{Fig.~1, p.~2}.}{fig:agent:react_trajectories}
+
+To formalize how the ReAct loop sits inside production infrastructure and scales to multi-agent topologies, Figure~\ref{fig:agent:react_and_orchestration} contrasts the single-agent Model/Tools/Orchestration loop against Manager and Decentralized multi-agent graphs.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.8cm and 1.2cm]
+  % Left: Single-Agent ReAct Triad
+  \node[monoBox, minimum width=3.2cm] (orch) {\textbf{Orchestration}\\Context $c_t$, Exit, Guardrails};
+  \node[monoIndigoBox, minimum width=3.2cm, below=0.9cm of orch] (model) {\textbf{Model (Brain)}\\$\hat{a}_t \in \mathcal{L}$ (Think)};
+  \node[monoTealBox, minimum width=3.2cm, below=0.9cm of model] (tools) {\textbf{Tools (Hands)}\\$a_t \in \mathcal{A}$ (Act $\to$ Obs $o_{t+1}$)};
+
+  \draw[monoArrow] (orch.south) -- node[right, font=\scriptsize, color=monographSlate] {curate $c_t$} (model.north);
+  \draw[monoArrow] (model.south) -- node[right, font=\scriptsize, color=monographSlate] {invoke $a_t$} (tools.north);
+  \draw[monoArrow, rounded corners=4pt] (tools.west) -- ++(-0.55,0) |- node[left, pos=0.25, font=\scriptsize, color=monographTeal] {$o_{t+1}$} (orch.west);
+
+  \node[font=\small\bfseries\color{monographNavy}, above=0.3cm of orch] {Single-Agent ReAct Triad};
+
+  % Middle: Manager Pattern
+  \node[monoIndigoBox, minimum width=2.6cm, right=2.6cm of orch] (mgr) {\textbf{Manager Agent}\\Central Control};
+  \node[monoTealBox, minimum width=1.8cm, below left=1.0cm and 0.1cm of mgr] (sp1) {Specialist A};
+  \node[monoTealBox, minimum width=1.8cm, below right=1.0cm and 0.1cm of mgr] (sp2) {Specialist B};
+  \node[monoBox, minimum width=2.6cm, below=2.3cm of mgr] (synth) {Synthesize Output};
+
+  \draw[monoArrow] (mgr.south west) -- node[left, font=\scriptsize] {\texttt{tool}} (sp1.north);
+  \draw[monoArrow] (mgr.south east) -- node[right, font=\scriptsize] {\texttt{tool}} (sp2.north);
+  \draw[monoArrow, dashed] (sp1.south) -- (synth.north west);
+  \draw[monoArrow, dashed] (sp2.south) -- (synth.north east);
+
+  \node[font=\small\bfseries\color{monographNavy}, above=0.3cm of mgr] {Manager (Agents-as-Tools)};
+
+  % Right: Decentralized Pattern
+  \node[monoIndigoBox, minimum width=2.6cm, right=2.8cm of mgr] (triage) {\textbf{Triage Agent}\\Initial Entry};
+  \node[monoTealBox, minimum width=2.6cm, below=0.9cm of triage] (peer1) {\textbf{Order Agent}\\Owns User Turn};
+  \node[monoTealBox, minimum width=2.6cm, below=0.9cm of peer1] (peer2) {\textbf{Tech Support}\\Escalation Target};
+
+  \draw[monoArrow] (triage.south) -- node[right, font=\scriptsize, color=monographCrimson] {handoff($c_t$)} (peer1.north);
+  \draw[monoArrow] (peer1.south) -- node[right, font=\scriptsize, color=monographCrimson] {handoff($c_t'$)} (peer2.north);
+
+  \node[font=\small\bfseries\color{monographNavy}, above=0.3cm of triage] {Decentralized (Handoffs)};
+\end{tikzpicture}%
+}
+\caption{Unified architecture contrasting the single-agent ReAct loop ($\mathcal{L} \leftrightarrow \hat{\mathcal{A}}$) inside the Model/Tools/Orchestration triad \bookcite{introduction_agents}{pp.~19--24} with Manager (tool-call edges) and Decentralized (handoff edges) multi-agent topologies~\bookcite{practical_guide_building_agents}{pp.~17--23}.}
+\label{fig:agent:react_and_orchestration}
+\end{figure}
+
+Figure~\ref{fig:agent:react_cot_comparison} plots the empirical benchmark performance reported in \bookcite{react_agent}{Tables~1, 3, 4, pp.~5, 8}, demonstrating that neither pure reasoning (CoT) nor pure acting (Act-only) dominates across both knowledge-intensive QA/verification and long-horizon interactive decision-making; ReAct excels in interactive environments (ALFWorld, WebShop) and fact verification (FEVER), while hybridizing ReAct with CoT-SC achieves the strongest prompting performance overall.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  bar width=7.5pt,
+  width=0.95\textwidth,
+  height=6.2cm,
+  ymin=0, ymax=78,
+  ylabel={Exact Match / Accuracy / Success Rate (\%)},
+  symbolic x coords={HotpotQA (EM), FEVER (Acc), ALFWorld (SR), WebShop (SR)},
+  xtick=data,
+  x tick label style={font=\small},
+  ytick={0,20,40,60,75},
+  ymajorgrids=true,
+  grid style={dashed, monographRule},
+  legend style={at={(0.5,1.03)}, anchor=south, legend columns=5, font=\scriptsize, draw=none},
+  enlarge x limits=0.16,
+]
+  \addplot[fill=monographSlate!55, draw=monographSlate] coordinates {
+    (HotpotQA (EM), 28.7) (FEVER (Acc), 57.1) (ALFWorld (SR), 0) (WebShop (SR), 0)
+  };
+  \addplot[fill=monographIndigo!75, draw=monographIndigo] coordinates {
+    (HotpotQA (EM), 29.4) (FEVER (Acc), 56.3) (ALFWorld (SR), 0) (WebShop (SR), 0)
+  };
+  \addplot[fill=monographCrimson!75, draw=monographCrimson] coordinates {
+    (HotpotQA (EM), 25.7) (FEVER (Acc), 58.9) (ALFWorld (SR), 45.0) (WebShop (SR), 30.1)
+  };
+  \addplot[fill=monographTeal!85, draw=monographTeal] coordinates {
+    (HotpotQA (EM), 27.4) (FEVER (Acc), 60.9) (ALFWorld (SR), 71.0) (WebShop (SR), 40.0)
+  };
+  \addplot[fill=monographNavy!90, draw=monographNavy] coordinates {
+    (HotpotQA (EM), 35.1) (FEVER (Acc), 64.6) (ALFWorld (SR), 0) (WebShop (SR), 0)
+  };
+  \legend{Standard, CoT, Act-only, ReAct, ReAct+CoT-SC (best)}
+\end{axis}
+\end{tikzpicture}
+\caption{Empirical benchmark comparison from \bookcite{react_agent}{Tables~1, 3, 4, pp.~5, 8}. On ALFWorld and WebShop, Standard/CoT/CoT-SC are inapplicable (plotted as $0$) because environment interaction is mandatory; ReAct achieves $71\%$ (best-of-6) on ALFWorld vs.\ $45\%$ for Act-only and $37\%$ for BUTLER IL, and $40.0\%$ SR on WebShop vs.\ $30.1\%$ for Act-only. On HotpotQA and FEVER, hybridizing ReAct with CoT-SC ($\text{ReAct}\to\text{CoT-SC}$ $35.1\%$, $\text{CoT-SC}\to\text{ReAct}$ $64.6\%$) outperforms every standalone method.}
+\label{fig:agent:react_cot_comparison}
+\end{figure}
+
+To complement these trajectories and empirical curves, Figures~\ref{fig:agent:iterative_refinement} and~\ref{fig:agent:five_patterns} illustrate the Iterative Refinement reflection loop \bookcite{introduction_agents}{Fig.~3, p.~25} and the five canonical agentic design patterns \bookcite{ai_agents_2025_illustrated_guidebook}{p.~25}.
+
+\monographfig[0.84\textwidth]{introduction_agents_p25_fig1.png}{The Iterative Refinement pattern: a Generator loop agent emits candidate outputs evaluated by a Quality Evaluator subagent; rejected outputs trigger a Prompt Enhancer subagent to refine context \bookcite{introduction_agents}{Fig.~3, p.~25}.}{fig:agent:iterative_refinement}
+
+\monographfig[0.76\textwidth]{ai_agents_2025_illustrated_guidebook_p25_fig1.png}{Visual taxonomy of the five core agentic design patterns: Reflection, Tool Use, ReAct, Planning, and Multi-Agent collaboration \bookcite{ai_agents_2025_illustrated_guidebook}{p.~25}.}{fig:agent:five_patterns}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:agent:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[ReAct Error Taxonomy: Hallucination vs.\ Reasoning Loops \& Search Derailment]
+Human trajectory audits on HotpotQA ($200$ sampled trajectories) in \bookcite{react_agent}{Table~2, p.~6; App.~E.1, pp.~32--33} reveal a sharp structural trade-off between factuality and reasoning flexibility:
+\begin{itemize}
+  \item \textbf{CoT Hallucination ($56\%$ of CoT failures, $14\%$ false positives):} Without external grounding, CoT fabricates plausible entity attributes and dates. ReAct reduces hallucination failures to $0\%$ and false positives to $6\%$.
+  \item \textbf{Repetitive Reasoning Loops ($47\%$ of ReAct failures vs.\ $16\%$ for CoT):} Interleaving $\mathcal{L}$ and $\mathcal{A}$ constrains free-form reasoning; when stuck, ReAct can repeatedly emit identical $(\hat{a}_t, a_t)$ pairs. \emph{Remedy:} Enforce a strict step cap $T_{\max}$ (e.g., $T_{\max}=7$), detect duplicate $(a_t, o_t)$ hashes, and back off to CoT-SC or human escalation \bookcite{react_agent}{p.~5}; \bookcite{practical_guide_building_agents}{p.~31}.
+  \item \textbf{Non-Informative Search Derailment ($23\%$ of ReAct failures):} Empty or noisy tool observations derail subsequent thoughts. \emph{Remedy:} Design tools to return structured ``similar entity'' suggestions (as in Wikipedia \texttt{Search[]}) and instruct explicit query-reformulation thoughts.
+\end{itemize}
+\end{pitfall}
+
+\begin{pitfall}[Tool Overload, Model Under-Scaling, and Unbounded Cost]
+\begin{itemize}
+  \item \textbf{Small-Model Prompting Collapse:} Under few-shot prompting on HotpotQA, PaLM-8B and PaLM-62B ReAct perform \emph{worst} among all baselines because learning both $\mathcal{L}$ and $\mathcal{A}$ in-context exceeds small-model capacity; however, fine-tuning on $3{,}000$ bootstrapped trajectories reverses this completely, with fine-tuned PaLM-62B ReAct outperforming all 540B prompting baselines \bookcite{react_agent}{Sec.~3.3, Fig.~3, pp.~6--7}.
+  \item \textbf{Tool Overload \& Overlap:} Adding redundant or poorly documented tools degrades selection accuracy even below $10$ tools \bookcite{practical_guide_building_agents}{p.~16}; \bookcite{ai_agents_2025_illustrated_guidebook}{pp.~12--13}. Partition overlapping toolsets across specialized agents or expose clean schemas.
+  \item \textbf{High-Risk Irreversible Actions:} Never grant autonomous write/payment/deletion tools without layered guardrails (relevance, safety, PII, regex) and Human-in-the-Loop (HITL) approval gates triggered by action risk ratings or failure-threshold breaches \bookcite{practical_guide_building_agents}{pp.~25--31}.
+\end{itemize}
+\end{pitfall}
+
+\end{document}

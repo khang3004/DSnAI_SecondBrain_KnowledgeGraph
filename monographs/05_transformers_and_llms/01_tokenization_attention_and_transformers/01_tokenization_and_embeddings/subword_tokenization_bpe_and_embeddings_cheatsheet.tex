@@ -1,0 +1,209 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{5}{Tokenization, Attention \& Transformers}{Words, Byte-Pair Encoding (BPE), Distributional Embeddings \& Positional Encodings}
+  {Slice raw bytes into subwords $\cdot$ embed meaning as directions $\cdot$ rotate by position}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Tokens \& Vectors\\ \footnotesize\mdseries BPE $\cdot$ SGNS $\cdot$ RoPE}{%
+  \begin{tikzpicture}[scale=0.65, every node/.style={font=\tiny\sffamily}]
+    % BPE merge blocks -> vector arrow + RoPE rotation
+    \node[draw=csA, fill=csA!18, thick, rounded corners=2pt, inner sep=2.5pt] (b1) at (0,1.0) {\texttt{low}};
+    \node[draw=csA, fill=csA!18, thick, rounded corners=2pt, inner sep=2.5pt] (b2) at (1.15,1.0) {\texttt{er}};
+    \node[draw=csB, fill=csB!22, thick, rounded corners=2pt, inner sep=2.5pt] (et) at (0.58,-0.25) {$\vecb{e}_t \in \R^d$};
+    \draw[-{Stealth}, thick, csDom] (0.58,0.68)--(et.north);
+    \begin{scope}[xshift=3.25cm, yshift=0.3cm]
+      \draw[csD!40, thick] (0,0) circle (0.85);
+      \draw[-{Stealth}, thick, csE] (0,0)--(0.74,0.42) node[right] {$\vecb{q}_m$};
+      \draw[-{Stealth}, thick, csF] (0,0)--(0.22,0.82) node[above] {$\tilde{\vecb{q}}_m$};
+      \draw[-{Stealth}, csC, thick] (0.50,0.29) arc[start angle=30, end angle=75, radius=0.58];
+    \end{scope}
+    \draw[-{Stealth}, very thick, csDom] (et.east)--node[above, inner sep=1.5pt] {$\mat{R}_m$} (2.25,-0.25);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ discrete text to $\R^{N\times d}$}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\mat{X}_0 = \mat{E}_{\vecb{w}} + \mat{P}_{1:N} \in \R^{N\times d}}
+    \begin{csbul}
+      \item \textbf{Tokenizer:} lossless map $\tau:\Sigma_0^*\to\mathcal{V}^N$, $\tau\inv(\tau(s))=s$
+      \item \textbf{Lookup:} $\vecb{e}_t = \mat{E}\T\vecb{o}_t = \mat{E}_{w_t,:}\in\R^d$
+      \item \textbf{Position:} additive $\mat{P}_{1:N}$ or rotary $\mat{R}_{\Theta,t}^{d_h}$ in head
+      \item \textbf{Weight tying:} unembedding $\mat{U}=\mat{E}\T$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.62, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2.5pt] (s) at (0,2.4) {UTF-8 Bytes $\Sigma_0$};
+      \node[draw=csB, fill=csB!12, rounded corners=2pt, inner sep=2.5pt] (w) at (0,1.2) {BPE IDs $\vecb{w}\in\mathcal{V}^N$};
+      \node[draw=csF, fill=csF!12, rounded corners=2pt, inner sep=2.5pt] (x) at (0,0.0) {$\mat{E}_{\vecb{w}}+\mat{P}_{1:N}$};
+      \draw[-{Stealth}, thick, csA] (s)--(w) node[midway, right, inner sep=2pt] {$\tau$};
+      \draw[-{Stealth}, thick, csB] (w)--(x) node[midway, right, inner sep=2pt] {$\mat{E}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ Byte-Pair Encoding \& Edit Distance}{%
+  \csfm{(a^*,b^*) = \argmax_{(a,b)}\sum_{s\in\mathcal{C}_{\mathrm{pre}}} f(s)\,\mathrm{count}(ab\text{ in }s)}
+  \begin{csbul}
+    \item \textbf{Byte BPE:} $\Sigma_0=\{0,\dots,255\}$, $k$ merges $\Rightarrow |\mathcal{V}_k|=256+k$
+    \item \textbf{Encode:} merge by \emph{training rank} $\mathcal{M}$; zero \texttt{<|unk|>} tokens!
+    \item \textbf{Edit DP:} $D[i,j]=\min(D[i{-}1,j]{+}1,\,D[i,j{-}1]{+}1,\,D[i{-}1,j{-}1]{+}s)$
+    \item \textbf{Trade-off:} frequent words $\to 1$ token; rare $\to$ subwords/bytes
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; STATIC EMBEDDINGS $-$ SGNS \& Shifted PMI}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\mathcal{L}_{\mathrm{SGNS}} = -\log\sigma(\vecb{c}_{\mathrm{pos}}\T\vecb{w}) - \sum_{i=1}^k\log\sigma(-\vecb{c}_{\mathrm{neg},i}\T\vecb{w})}
+    \begin{csbul}
+      \item \textbf{Noise dist:} $P_\alpha(w)\propto \mathrm{count}(w)^{3/4}$ boosts rare words
+      \item \textbf{Levy--Goldberg:} $\vecb{w}_i\T\vecb{c}_j = \mathrm{PMI}_\alpha(i,j) - \log k$
+      \item \textbf{GloVe:} weighted LS on $\vecb{u}_j\T\vecb{v}_i + b_i + c_j \approx \log x_{ij}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.60, every node/.style={font=\tiny\sffamily}]
+      \coordinate (o) at (0,0);
+      \draw[-{Stealth}, very thick, csC] (o)--(1.9,0.55) node[right] {$\vecb{w}$};
+      \draw[-{Stealth}, thick, csD] (o)--(1.4,1.5) node[above] {$\vecb{c}_{\mathrm{pos}}$};
+      \draw[-{Stealth}, thick, csA] (o)--(1.7,-0.7) node[right] {$\vecb{c}_{\mathrm{neg}}$};
+      \draw[-{Stealth}, dashed, csD, thick] (1.65,0.65) to[bend right=20] (1.35,1.25);
+      \draw[-{Stealth}, dashed, csA, thick] (1.45,-0.55) to[bend left=20] (1.0,-1.05);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; POSITIONAL ENCODINGS $-$ Abs vs.\ Sin vs.\ RoPE}{%
+  \csfm{\tilde{\vecb{q}}_m\T\tilde{\vecb{k}}_n = (\mat{R}_{\Theta,m}^{d_h}\vecb{q}_m)\T(\mat{R}_{\Theta,n}^{d_h}\vecb{k}_n) = \vecb{q}_m\T\mat{R}_{\Theta,n-m}^{d_h}\vecb{k}_n}
+  \begin{csbul}
+    \item \textbf{Learned Abs:} $\mat{E}_{\mathrm{pos}}\in\R^{N_{\max}\times d}$ added at input; fails for $t > N_{\max}$
+    \item \textbf{Sinusoidal:} $\mathrm{PE}_{(p,2i)}=\sin(p/10000^{2i/d})$; shift $\Delta p$ = orthogonal rotation
+    \item \textbf{RoPE:} rotates $2\text{D}$ subspaces inside each head by $m\theta_i$; exact relative $n-m$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST \& COMPLEXITY $-$ scaling table}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csE}{Stage}} & \textbf{\textcolor{csE}{Time}} & \textbf{\textcolor{csE}{Params / Space}}\\ \hline
+    BPE Train / Enc & $O(k|\mathcal{C}|_{\mathrm{uniq}})$ / $O(N\log N)$ & $|\mathcal{V}|=256+k$\\
+    SGNS (Word2Vec) & $O(|\mathcal{C}|\cdot L\cdot k\cdot d)$ & $2|\mathcal{V}|d$\\
+    GloVe & $O(\mathrm{nnz}(\mat{X})\cdot d)$/ep & $2|\mathcal{V}|(d+1)$\\
+    Abs / Sin / RoPE & $O(Nd)$ & $N_{\max}d$ / $0$ / $0$\\
+  \end{tabular}\par\vspace{2pt}
+  \small Heap-indexed pair counts cut BPE merge updates to $O(\log|\mathcal{V}|)$ per hit.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ static vs.\ contextual pipelines}{%
+  \begin{csbul}
+    \item \textbf{Byte-level BPE (\texttt{tiktoken}):} multilingual \& code LLMs without OOV
+    \item \textbf{Cosine retrieval:} $\mathrm{sim}_{\cos}(\vecb{v},\vecb{w})=\hat{\vecb{v}}\T\hat{\vecb{w}} = 1-\frac{1}{2}\norm{\hat{\vecb{v}}-\hat{\vecb{w}}}_2^2$
+    \item \textbf{Sliding-window loader:} stride $s$ extracts $(\vecb{x}_{t:t+N-1},\,\vecb{x}_{t+1:t+N})$
+    \item \textbf{Long-context scaling:} RoPE base-$\theta$ (NTK / YaRN) interpolation
+    \item \textbf{Analogy geometry:} $\vecb{v}_{\text{queen}}\approx \vecb{v}_{\text{king}}-\vecb{v}_{\text{man}}+\vecb{v}_{\text{woman}}$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Compress Bytes $\cdot$ Point by Context $\cdot$ Twist by Position} \\[1pt]
+  \footnotesize\mdseries \textbf{BPE kills OOVs, SGNS factors shifted PMI, and RoPE turns offsets into rotations.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item English-biased BPE inflates non-Latin \textbf{fertility} $2\text{--}5\times$ ($O(N^2)$ cost)
+    \item raw $\vecb{v}\T\vecb{w}$ is frequency-biased; L2-normalize for cosine
+    \item unsmoothed SGNS ($\alpha=1$) starves rare words; use $\alpha=0.75$
+    \item learned $\mat{E}_{\mathrm{pos}}$ cannot extrapolate past $N_{\max}$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Words, Byte-Pair Encoding (BPE), Distributional Embeddings \& Positional Encodings}\;---\;Domain 05 $\cdot$ Tokenization, Attention \& Transformers}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item One-hot lookup:\csfm{\vecb{e}_t = \mat{E}\T\vecb{o}_t = \mat{E}_{w_t,:}\in\R^d}
+    \item Cosine similarity:\csfm{\mathrm{sim}_{\cos}(\vecb{v},\vecb{w}) = \frac{\vecb{v}\T\vecb{w}}{\norm{\vecb{v}}_2\norm{\vecb{w}}_2}}
+    \item SGNS gradients ($\sigma(z)=(1+e^{-z})\inv$):\csfm{\pd{\mathcal{L}}{\vecb{c}_{\mathrm{pos}}}=\bigl(\sigma(\vecb{c}_{\mathrm{pos}}\T\vecb{w})-1\bigr)\vecb{w},\quad \pd{\mathcal{L}}{\vecb{c}_{\mathrm{neg},i}}=\sigma(\vecb{c}_{\mathrm{neg},i}\T\vecb{w})\vecb{w}}
+    \item Shifted-PMI optimum:\csfm{\vecb{w}_i\T\vecb{c}_j = \log\frac{x_{ij}}{x_i P_\alpha(j)} - \log k = \mathrm{PMI}_\alpha(i,j)-\log k}
+    \item Sinusoidal shift \& RoPE:\csfm{\omega_i = 10000^{-2i/d},\qquad \tilde{\vecb{q}}_m\T\tilde{\vecb{k}}_n = \vecb{q}_m\T\mat{R}_{\Theta,n-m}^{d_h}\vecb{k}_n}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{BYTE-LEVEL BPE RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Regex pre-tokenize corpus $\mathcal{C}\to\{(s,f(s))\}$; split into UTF-8 bytes $\Sigma_0$.
+    \item Loop $m=1\dots k$: find most frequent adjacent pair $(a^*,b^*)$, merge $z_m=a^*b^*$, record rank $(a^*,b^*,m)$ in $\mathcal{M}$.
+    \item \textbf{Encode test string:} regex split $\to$ UTF-8 bytes $\to$ greedily merge adjacent pair with \emph{lowest} rank $r_m\in\mathcal{M}$ until no pair remains.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    multilingual / code text & byte-level BPE ($\Sigma_0=256$, no \texttt{<|unk|>})\\
+    noisy string alignment & Levenshtein edit distance DP\\
+    fast static embeddings & SGNS ($k\in[5,20]$, $\alpha=0.75$)\\
+    global co-occurrence matrix & GloVe ($x_{\max}=100$, power $0.75$)\\
+    fixed short context $\le N_{\max}$ & learned absolute $\mat{E}_{\mathrm{pos}}$\\
+    long-context LLM ($>8\text{k}$) & RoPE $\mat{R}_{\Theta,m}^{d_h}$ + base-$\theta$ scaling\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& INVARIANCE CHEAT-LINE}
+  \begin{csbul}
+    \item Vocab size after $k$ merges: $|\mathcal{V}_k| = 256 + k + |\mathcal{V}_{\mathrm{special}}|$
+    \item Orthogonal rotation preserves norm: $\norm{\mat{R}_{\Theta,m}^{d_h}\vecb{q}_m}_2 = \norm{\vecb{q}_m}_2$
+    \item Rotation composition: $(\mat{R}_{\Theta,m}^{d_h})\T\mat{R}_{\Theta,n}^{d_h} = \mat{R}_{\Theta,n-m}^{d_h}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{MULTI-SCALE SINUSOIDAL / RoPE SPECTRUM}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.2cm, xmin=0, xmax=60, ymin=-1.15, ymax=1.55,
+      xlabel={Position $p$}, ylabel={$\sin(p\cdot 10000^{-2i/d})$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, ytick={-1,0,1}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}, legend pos=north east,
+      legend columns=3, legend style={font=\tiny, fill=white, fill opacity=0.9}]
+      \addplot[csA, thick, domain=0:60, samples=180] {sin(deg(x))};
+      \addlegendentry{$i=0$ ($\omega=1$)}
+      \addplot[csE, very thick, domain=0:60, samples=120] {sin(deg(0.1*x))};
+      \addlegendentry{$i=64$ ($\omega=0.1$)}
+      \addplot[csF, ultra thick, dashed, domain=0:60, samples=80] {sin(deg(0.02*x))};
+      \addlegendentry{$i=128$ ($\omega=0.02$)}
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize High-$\omega_i$ dims resolve local order; low-$\omega_i$ dims track global range.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Fertility tax:} English-biased BPE fragments non-Latin scripts into $2\text{--}5\times$ more tokens, multiplying $O(N^2)$ attention cost.
+    \item \textbf{Apply BPE by rank, not count:} at inference, merge pairs in the exact training order $\mathcal{M}$, never by test-string frequency.
+    \item \textbf{Norm bias:} $\vecb{v}\T\vecb{w}$ favors frequent stopwords; always L2-normalize for cosine similarity.
+    \item \textbf{Negative sampling exponent:} $\alpha=1$ under-samples rare words; keep $\alpha=0.75$ in $P_\alpha(w)$ and GloVe $h(x)$.
+    \item \textbf{Position starvation:} outer rows $t\approx N_{\max}$ of learned $\mat{E}_{\mathrm{pos}}$ get few updates if training docs are short.
+    \item \textbf{RoPE acts on $\mat{Q},\mat{K}$ only:} never rotate value vectors $\mat{V}$ unless using specific relative-value variants.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{UTF-8 bytes} $\xrightarrow{\text{BPE }\mathcal{M}}$ \textbf{subword IDs} $w_t$ $\xrightarrow{\mat{E}_{w_t,:}}$ \textbf{semantic vectors} $\vecb{e}_t\in\R^d$.
+  Static Word2Vec/SGNS implicitly factors the $\log k$-shifted PMI matrix.
+  Transformers inject sequence order either by adding sinusoidal/learned $\mat{P}_{1:N}$ at the bottom or by rotating $(\vecb{q}_m,\vecb{k}_n)$ via \textbf{RoPE} inside every attention head so logits depend purely on relative distance $n-m$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

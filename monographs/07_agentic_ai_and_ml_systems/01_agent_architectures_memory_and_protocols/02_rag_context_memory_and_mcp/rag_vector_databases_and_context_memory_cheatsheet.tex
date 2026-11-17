@@ -1,0 +1,216 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Agentic Reasoning, RAG, MCP \& Workflows}{Retrieval-Augmented Generation, Vector Indexing, Context Engineering \& Agent Memory}
+  {Fuse sparse BM25 + dense HNSW via RRF, rerank top-$k$, and assemble token-budgeted context + consolidated memory}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{RAG \& Memory\\ \footnotesize\mdseries Retrieve $\cdot$ Rerank $\cdot$ Consolidate}{%
+  \begin{tikzpicture}[scale=0.60, every node/.style={font=\tiny\sffamily}]
+    \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2.5pt] (bm) at (-1.8,0.65) {BM25};
+    \node[draw=csE, fill=csE!12, rounded corners=2pt, inner sep=2.5pt] (hn) at (-1.8,-0.65) {HNSW};
+    \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2.5pt] (rrf) at (0.0,0) {RRF};
+    \node[draw=csD, fill=csD!15, rounded corners=2pt, inner sep=2.5pt] (ctx) at (1.9,0) {$C_t\le B_{\max}$};
+    \draw[-{Stealth}, thick, csA] (bm.east)--(rrf.north west);
+    \draw[-{Stealth}, thick, csE] (hn.east)--(rrf.south west);
+    \draw[-{Stealth}, thick, csC] (rrf.east)--(ctx.west);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ token-budgeted context assembly}{%
+  \csfm{C_t=\mathcal{A}(I_{\mathrm{sys}},\mathcal{T},\mathcal{R}_{\mathrm{mem}},\mathcal{K}_{\mathrm{comp}},\mathcal{R}_{\mathrm{rag}},q_t),\quad \abs{C_t}_{\mathrm{tok}}\le B_{\max}-B_{\mathrm{out}}}
+  \begin{minipage}[t]{0.61\linewidth}
+    \begin{csbul}
+      \item \textbf{RAG} $\mathcal{R}_{\mathrm{rag}}(q_t,\mathcal{C})$: external corpus chunks $d\in\mathcal{C}$
+      \item \textbf{Session} $\mathcal{K}_{\mathrm{comp}}(\mathcal{S}_t)$: compacted turn trace
+      \item \textbf{Long-term} $\mathcal{M}_t=\mathcal{M}_t^{\mathrm{decl}}\cup\mathcal{M}_t^{\mathrm{proc}}$: facts + playbooks
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{1pt}
+    \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny\sffamily}]
+      \fill[csA!25] (0,0) rectangle (4.2,0.75); \node at (2.1,0.375) {$\mathcal{R}_{\mathrm{rag}}$ ($B_{\mathrm{rag}}$)};
+      \fill[csC!25] (0,0.75) rectangle (4.2,1.50); \node at (2.1,1.125) {$\mathcal{K}_{\mathrm{comp}}$ ($B_{\mathrm{sess}}$)};
+      \fill[csD!25] (0,1.50) rectangle (4.2,2.25); \node at (2.1,1.875) {$\mathcal{R}_{\mathrm{mem}}$ ($B_{\mathrm{mem}}$)};
+      \fill[csE!25] (0,2.25) rectangle (4.2,3.00); \node at (2.1,2.625) {$I_{\mathrm{sys}}+\mathcal{T}$ ($B_{\mathrm{sys}}$)};
+      \draw[csDom, thick] (0,0) rectangle (4.2,3.00);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ Sparse vs Dense vs Late Interaction}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.60cm}>{\raggedright\arraybackslash}p{3.05cm}>{\raggedright\arraybackslash}p{2.35cm}@{}}
+    \textbf{\textcolor{csB}{Scorer}} & \textbf{\textcolor{csB}{Mechanism}} & \textbf{\textcolor{csB}{Best Role}}\\ \hline
+    Okapi BM25 & IDF $\times$ saturated TF ($k,b$) & exact IDs, code, entities\\
+    Bi-Encoder & $\inner{E_Q(q)}{E_D(d)}$ ($L_2$-norm) & fast offline ANN ($O(\log N)$)\\
+    ColBERT & $\sum_{i}\max_{j}\inner{\vecb E_{q,i}}{\vecb E_{d,j}}$ & token late interaction\\
+    Cross-Encoder & $\sigmoid(\vecb w\T\mathrm{BERT}[q;\texttt{SEP};d])$ & stage-2 top-$K$ reranker\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Hybrid RRF:} $\mathrm{RRF}(d;q)=\sum_{r\in\mathcal{R}}(\kappa+\mathrm{rank}_r(d))^{-1}$ ($\kappa=60$).}
+
+\csbranch{3}{C}{3\;\; ANN INDEXING $-$ HNSW vs IVF-PQ}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{HNSW:} multi-layer small-world graph ($p\propto e^{-l/m_L}$, degree $\le M$); beam $\mathrm{efSearch}$ in $O(M\,\mathrm{efSearch}\log N)$; $95\text{--}99\%$ Recall@10
+      \item \textbf{IVF-PQ:} $C_{\mathrm{list}}$ Voronoi cells + $S$ sub-vector PQ codes ($b_{\mathrm{bits}}$); $10\text{--}30\times$ less RAM, $80\text{--}92\%$ Recall@10
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny\sffamily}]
+      \foreach \y/\n in {2.2/L2, 1.1/L1, 0.0/L0}{
+        \draw[csC!70, thick] (-1.3,\y)--(1.3,\y) node[right, csC]{\n};
+      }
+      \fill[csA] (-0.9,2.2) circle (3pt); \fill[csA] (0.6,1.1) circle (3pt); \fill[csA] (0.9,0.0) circle (3pt);
+      \draw[-{Stealth}, csA, thick] (-0.9,2.2)--(0.6,1.1);
+      \draw[-{Stealth}, csA, thick] (0.6,1.1)--(0.9,0.0);
+      \foreach \x in {-1.0,-0.4,0.2,0.9}{\fill[csC] (\x,0) circle (2pt);}
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; MEMORY $-$ Session Compaction \& Consolidation}{%
+  \begin{csbul}
+    \item \textbf{Compaction} $\mathcal{K}_{\mathrm{comp}}(\mathcal{S}_t)$: triggers on \emph{Count} ($\abs{\mathcal{S}_t}_{\mathrm{tok}}{>}\tau_{\mathrm{tok}}$), \emph{Time} ($\Delta t_{\mathrm{idle}}$), or \emph{Event}
+    \item \textbf{Consolidation:} $\mathcal{M}_t=\mathcal{U}_{\mathrm{cons}}(\mathcal{M}_{t-1},\mathcal{E}_\theta(\mathcal{S}_t))\in\{\mathrm{Create},\mathrm{Merge},\mathrm{Delete}\}$
+    \item \textbf{Declarative vs Procedural:} facts ($\mathcal{M}^{\mathrm{decl}}$) vs tool playbooks ($\mathcal{M}^{\mathrm{proc}}$)
+    \item \textbf{Proactive vs Reactive:} callback preload vs \texttt{load\_memory} tool
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COMPLEXITY $-$ Retrieval \& Rerank Stages}{%
+  \renewcommand{\arraystretch}{1.16}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{2.50cm}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{1.15cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Query Time}} & \textbf{\textcolor{csE}{Memory}} & \textbf{\textcolor{csE}{Recall}}\\ \hline
+    BM25 Postings & $O(\abs{q}\cdot L_p)$ & sparse list & exact lex.\\
+    Flat Scan & $O(N\cdot m)$ & $O(N\cdot m)$ & $100\%$\\
+    IVF-PQ & $O(\frac{N}{C_{\mathrm{list}}}S+C_{\mathrm{list}}m)$ & $O(NSb_{\mathrm{bits}})$ & $80\text{--}92\%$\\
+    HNSW Graph & $O(M\mathrm{ef}\log N)$ & $O(N(m+M))$ & $95\text{--}99\%$\\
+    Cross-Encoder & $O(K(L_q+L_d)^2)$ & weights & highest\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; ADVANCED RAG $-$ 3-stage pipeline}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Pre-retrieval:} small-to-big chunking ($128\text{--}256$ child $\to 512\text{--}1024$ parent), query rewrite/HyDE, router
+      \item \textbf{Retrieval:} parallel BM25 + HNSW $\to$ RRF ($\kappa=60$)
+      \item \textbf{Post-retrieval:} cross-encoder rerank top-$2k\to k$ + prompt compression
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csF, fill=csF!12, rounded corners=2pt, inner sep=2.5pt] (s1) at (0,2.2) {1.\ Rewrite + Route};
+      \node[draw=csE, fill=csE!12, rounded corners=2pt, inner sep=2.5pt] (s2) at (0,0.9) {2.\ BM25+HNSW $\to$ RRF};
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2.5pt] (s3) at (0,-0.4) {3.\ Cross-Enc Rerank};
+      \draw[-{Stealth}, thick, csF] (s1)--(s2);
+      \draw[-{Stealth}, thick, csE] (s2)--(s3);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Retrieve Wide (BM25 + HNSW) $\cdot$ Rerank Sharp (Cross-Encoder)} \\[1pt]
+  \footnotesize\mdseries \textbf{Compact sessions $\mathcal{S}_t$ and consolidate memories $\mathcal{M}_t$ inside $B_{\max}$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Filter collapse:} post-filtering HNSW ($<5\%$) drops recall
+    \item \textbf{Dialogue injection:} put $\mathcal{R}_{\mathrm{mem}}$ in system, not user turns
+    \item \textbf{Chunk severance:} use $10\text{--}20\%$ overlap or parent chunks
+    \item \textbf{Lost in middle:} prune weak chunks to bound TTFT
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Retrieval-Augmented Generation, Vector Indexing, Context Engineering \& Agent Memory}\;---\;Domain 07 $\cdot$ Agentic AI \& Production ML Systems}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Okapi BM25 lexical score ($k\in[1.2,2.0]$, $b\approx 0.75$):
+      \csfm{\mathrm{BM25}(q,d)=\sum_{t\in q}\log\!\left(\frac{N}{\mathrm{df}_t}\right)\frac{\mathrm{tf}_{t,d}(k+1)}{\mathrm{tf}_{t,d}+k\bigl(1-b+b\frac{\abs{d}}{\abs{d_{\mathrm{avg}}}}\bigr)}}
+    \item Bi-Encoder vs ColBERT late-interaction MaxSim:
+      \csfm{s_{\mathrm{bi}}(q,d)=\inner{\vecb z_q}{\vecb z_d},\quad s_{\mathrm{ColBERT}}(q,d)=\sum_{i=1}^{N_q}\max_{j\le m_d}\inner{\vecb E_{q,i}}{\vecb E_{d,j}}}
+    \item Reciprocal Rank Fusion ($\kappa=60$, calibration-free):
+      \csfm{\mathrm{RRF}(d;q)=\sum_{r\in\{\mathrm{BM25},\mathrm{Dense}\}}\frac{1}{\kappa+\mathrm{rank}_r(d)}}
+    \item IR evaluation metrics ($\mathrm{MRR}$ \& $\mathrm{nDCG}@k$):
+      \csfm{\mathrm{MRR}=\frac{1}{\abs{Q}}\sum_{q\in Q}\frac{1}{\mathrm{rank}_1(q)},\quad \mathrm{nDCG}@k=\sum_{i=1}^{k}\frac{2^{\mathrm{rel}_i}-1}{\mathrm{IDCG}_k\log_2(i+1)}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{HYBRID RAG + MEMORY ASSEMBLY RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Rewrite \& Route:} expand coreferences $q'_t\leftarrow\mathrm{Rewrite}(q_t,\mathcal{S}_{t-1})$; route to VectorDB, SQL, or Web Search.
+    \item \textbf{Parallel Retrieve:} fetch top-$K$ from BM25 inverted index and HNSW graph ($E_Q(q'_t),\mathrm{efSearch}$).
+    \item \textbf{RRF + Rerank:} fuse via $\mathrm{RRF}(\kappa=60)$ to top-$2k$, then rescore with cross-encoder $s_{\mathrm{cross}}(q_t,d)$ to top-$k$.
+    \item \textbf{Compact \& Assemble:} if $\abs{\mathcal{S}_{t-1}}_{\mathrm{tok}}>\tau_{\mathrm{tok}}$, summarize older turns keeping overlap $o$; pack $C_t\le B_{\max}-B_{\mathrm{out}}$.
+    \item \textbf{Async Consolidate:} enqueue $\mathcal{M}_t\leftarrow\mathcal{U}_{\mathrm{cons}}(\mathcal{M}_{t-1},\mathcal{E}_\theta(\mathcal{S}_t))$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.15}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    SKUs, error codes, exact names & BM25 + Dense Hybrid with RRF\\
+    low-latency top-$k$ ($N\sim 10^6$) & HNSW ($M=16$, $\mathrm{efSearch}\in[64,256]$)\\
+    billion-scale vectors, tight RAM & IVF-PQ ($10\text{--}30\times$ RAM compression)\\
+    selective metadata filter ($<5\%$) & predicate-aware HNSW / tenant shards\\
+    multi-session user facts & async $\mathcal{U}_{\mathrm{cons}}$ ($\mathrm{Create}/\mathrm{Merge}/\mathrm{Delete}$)\\
+    reusable multi-step workflows & procedural memory playbooks ($\mathcal{M}^{\mathrm{proc}}$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{BUDGET \& CHUNKING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Budget sum:} $B_{\mathrm{sys}}+B_{\mathrm{mem}}+B_{\mathrm{sess}}+B_{\mathrm{rag}}+B_{\mathrm{out}}\le B_{\max}$
+    \item \textbf{Small-to-big:} index $128\text{--}256$-tok child chunks; feed $512\text{--}1024$-tok parent
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{ANN PARETO FRONTIER (Recall@10 vs QPS)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.3cm, xmode=log,
+      xmin=10, xmax=4500, ymin=0.73, ymax=1.03,
+      xlabel={Throughput (Queries/sec, log scale)}, ylabel={Recall@10},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={0.75,0.85,0.95,1.0}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.05)}, anchor=south west, font=\tiny, fill=white, fill opacity=0.85, draw=gray!40}]
+      \addplot[csE, very thick, mark=*, mark size=1.5pt] coordinates {(180,0.992)(420,0.985)(950,0.972)(1900,0.945)(3400,0.902)};
+      \addlegendentry{HNSW (efSearch 256--16)}
+      \addplot[csF, very thick, dashed, mark=square*, mark size=1.4pt] coordinates {(120,0.915)(310,0.895)(780,0.862)(1650,0.815)(3200,0.755)};
+      \addlegendentry{IVF-PQ (nprobe sweep)}
+      \addplot[csA, only marks, mark=diamond*, mark size=2.5pt] coordinates {(15,1.000)};
+      \addlegendentry{Flat Exact (15 QPS)}
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize HNSW hits $\ge 97\%$ Recall@10 at $>900$ QPS; IVF-PQ trades recall for RAM.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Chunk boundary severance:} fixed chunking without $10\text{--}20\%$ overlap cuts sentences; large chunks dilute mean-pooled embeddings
+    \item \textbf{HNSW pre/post-filter collapse:} post-filtering drops recall when selectivity is low; naive pre-filtering disconnects the HNSW graph
+    \item \textbf{Dialogue injection:} injecting $\mathcal{R}_{\mathrm{mem}}$ into user turns makes the LLM hallucinate past utterances; always inject into system instructions with provenance timestamps
+    \item \textbf{Stale memory contradictions:} append-only memory stores accumulate conflicting facts; run $\mathcal{U}_{\mathrm{cons}}$ ($\mathrm{Merge}/\mathrm{Delete}$) asynchronously
+    \item \textbf{Context saturation \& TTFT explosion:} stuffing unreranked chunks inflates prefill $O(\abs{C_t}^2)$ and buries evidence in the middle
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{BM25 catches exact tokens; Bi-Encoder HNSW catches semantics.}
+  Fuse both with calibration-free \textbf{RRF ($\kappa{=}60$)}, rescore top candidates with a \textbf{Cross-Encoder}, and pack RAG + compacted session $\mathcal{K}_{\mathrm{comp}}(\mathcal{S}_t)$ + consolidated memory $\mathcal{M}_t$ inside your token budget $B_{\max}$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,230 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Autoencoders, VAEs, Flows, EBMs \& GANs}{Autoencoders, Variational Autoencoders (VAEs), Reparameterization \& VQ-VAE}
+  {Compress $\vecb x$ to a prior-regularized latent bottleneck $\vecb z$; sample via reparameterization or discrete codebooks}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{VAEs \& VQ-VAE\\ \footnotesize\mdseries ELBO $\cdot$ Reparam $\cdot$ Codebook}{%
+  \begin{tikzpicture}[scale=0.62, every node/.style={font=\scriptsize}]
+    % Encoder trapezoid
+    \fill[csA!20, draw=csA, thick] (-2.8,0.85)--(-1.55,0.4)--(-1.55,-0.4)--(-2.8,-0.85)--cycle;
+    \node[csA, font=\tiny\bfseries] at (-2.18,0) {$q_\phi$};
+    % Bottleneck Gaussian / Codebook (auto-sizing)
+    \node[draw=csDom, very thick, fill=csDom!10, rounded corners=4pt, inner sep=2.5pt, align=center] (Z) at (0,0)
+      {\tiny\bfseries\textcolor{csDom}{$\vecb z=\vecb\mu+\vecb\sigma\odot\vecb\epsilon$}\\[-1pt]\tiny\textcolor{csF}{or $\vecb e_{k^*}$}};
+    % Decoder trapezoid
+    \fill[csD!20, draw=csD, thick] (1.55,0.4)--(2.8,0.85)--(2.8,-0.85)--(1.55,-0.4)--cycle;
+    \node[csD, font=\tiny\bfseries] at (2.18,0) {$p_\theta$};
+    \draw[-{Stealth}, thick, csA] (-1.50,0)--(Z.west);
+    \draw[-{Stealth}, thick, csD] (Z.east)--(1.50,0);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ deterministic vs.\ variational}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{p_\theta(\vecb x,\vecb z)=p(\vecb z)\,p_\theta(\vecb x\mid\vecb z)}
+    \begin{csbul}
+      \item \textbf{Linear AE} ($\mat W_2\mat W_1\vecb x$): spans exact $M$-dim \textbf{PCA} subspace
+      \item \textbf{DAE} ($\tilde{\vecb x}=\vecb x+\sigma\vecb\epsilon$): Tweedie score $r^*(\tilde{\vecb x})-\tilde{\vecb x}=\sigma^2\nabla\log p_\sigma(\tilde{\vecb x})$
+      \item \textbf{CAE:} penalizes $\lambda\norm{\mat J_e(\vecb x)}_F^2$
+      \item \textbf{VAE:} amortized $q_\phi(\vecb z\mid\vecb x)$ + prior $p(\vecb z)=\Normal(\zeros,\eye_M)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.56, every node/.style={font=\tiny}]
+      \draw[csD, very thick] (-1.5,-0.7) .. controls (-0.4,0.6) and (0.8,-0.4) .. (1.8,0.8);
+      \node[csD, anchor=north] at (1.45,0.35) {manifold};
+      \fill[csA] (0.3,1.35) circle (2.5pt) node[above right, inner sep=1.5pt] {$\tilde{\vecb x}$};
+      \fill[csB] (0.65,0.15) circle (2.5pt) node[below, inner sep=2pt] {$r^*(\tilde{\vecb x})$};
+      \draw[-{Stealth}, csA, thick] (0.3,1.35)--(0.62,0.22);
+      \node[csA, align=center, anchor=east] at (0.25,0.95) {$\sigma^2\nabla\log p_\sigma$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; ELBO $-$ likelihood lower bound \& gap}{%
+  \csfm{\mathcal L_{\mathrm{ELBO}}(\theta,\phi;\vecb x)=\underbrace{\E_{q_\phi(\vecb z\mid\vecb x)}[\log p_\theta(\vecb x\mid\vecb z)]}_{\text{Reconstruction }(-D)}-\underbrace{\KL{q_\phi(\vecb z\mid\vecb x)}{p(\vecb z)}}_{\text{Prior Matching / Rate }R}}
+  \begin{csbul}
+    \item \textbf{Exact gap:} $\log p_\theta(\vecb x)=\mathcal L_{\mathrm{ELBO}}+\KL{q_\phi(\vecb z\mid\vecb x)}{p_\theta(\vecb z\mid\vecb x)}$
+    \item \textbf{Joint KL:} $\max_{\theta,\phi}\E_{q_{\mathcal D}}[\mathcal L_{\mathrm{ELBO}}]\iff\min_{\theta,\phi}\KL{q_{\mathcal D,\phi}(\vecb x,\vecb z)}{p_\theta(\vecb x,\vecb z)}$
+    \item \textbf{Diagonal Gaussian KL} ($p(\vecb z)=\Normal(\zeros,\eye_M)$):
+      $\frac{1}{2}\sum_{j=1}^M\bigl(\mu_{\phi,j}^2+\sigma_{\phi,j}^2-1-\log\sigma_{\phi,j}^2\bigr)$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; HOW $-$ pathwise reparameterization trick}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \csfm{\vecb z=g_\phi(\vecb\epsilon,\vecb x)=\vecb\mu_\phi(\vecb x)+\vecb\sigma_\phi(\vecb x)\odot\vecb\epsilon}
+    \begin{csbul}
+      \item $\vecb\epsilon\sim\Normal(\zeros,\eye_M)$ moves randomness \emph{outside} the backprop path
+      \item \textbf{Pathwise grad:} low variance ($L=1$ sample/item suffices)
+      \item \textbf{REINFORCE} $f(\vecb z)\nabla_\phi\log q_\phi$: unbiased, huge variance
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny}]
+      \node[draw=csC, rounded corners=2pt, fill=csC!12, inner sep=2pt] (mu) at (0,1.15) {$\vecb\mu_\phi,\vecb\sigma_\phi$};
+      \node[draw=gray, circle, inner sep=1.5pt] (eps) at (2.1,1.15) {$\vecb\epsilon$};
+      \node[draw=csDom, rounded corners=2pt, fill=csDom!12, inner sep=2pt] (z) at (1.05,0) {$\vecb z$};
+      \node[draw=csA, rounded corners=2pt, fill=csA!12, inner sep=2pt] (L) at (1.05,-1.1) {$\mathcal L(\vecb x,\hat{\vecb x})$};
+      \draw[-{Stealth}, thick] (mu)--(z);
+      \draw[-{Stealth}, dashed] (eps)--(z);
+      \draw[-{Stealth}, thick] (z)--(L);
+      \draw[-{Stealth}, csA, thick, bend left=40] (L.west) to node[left, inner sep=1.5pt] {$\nabla_\phi$} (mu.west);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; $\beta$-VAE \& VQ-VAE $-$ rate vs.\ discrete codes}{%
+  \begin{csbul}
+    \item \textbf{$\beta$-VAE:} $\mathcal L_\beta=D+\beta R$ ($\beta>1$ suppresses $\mathrm{TC}(\vecb z)$, disentangles at cost of blur; $\beta\to 0$ gives noisy AE)
+    \item \textbf{VQ-VAE lookup:} $k^*=\argmin_k\norm{\vecb z_e(\vecb x)-\vecb e_k}_2$, $\;\vecb z_q(\vecb x)=\vecb e_{k^*}$
+    \item \textbf{Straight-Through (STE):} $\vecb z_q\leftarrow\vecb z_e+\operatorname{sg}[\vecb e_{k^*}-\vecb z_e]$ copies $\nabla_{\vecb z_q}\mathcal L\to\nabla_{\vecb z_e}\mathcal L$
+    \item \textbf{VQ loss:} $-\log p_\theta(\vecb x\mid\vecb z_q)+\norm{\operatorname{sg}[\vecb z_e]-\vecb e_{k^*}}_2^2+\beta_{\mathrm{com}}\norm{\vecb z_e-\operatorname{sg}[\vecb e_{k^*}]}_2^2$
+    \item \textbf{EMA codebook:} $N_k\leftarrow\gamma N_k+(1-\gamma)n_k$, $\;\vecb e_k\leftarrow\vecb m_k/N_k$ ($\gamma\approx 0.99$)
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COMPARISON $-$ model taxonomy}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{2.2cm}@{}}
+    \textbf{\textcolor{csE}{Model}} & \textbf{\textcolor{csE}{Latent $\mathcal Z$}} & \textbf{\textcolor{csE}{Sample?}} & \textbf{\textcolor{csE}{Key Trade-Off}}\\ \hline
+    Linear AE & $\R^M$ ($M<D$) & No & PCA subspace only\\
+    DAE / CAE & $\R^M$ & MCMC & Local score / tangent\\
+    VAE / $\beta$-VAE & $\Normal(\zeros,\eye_M)$ & $\vecb z\sim p(\vecb z)$ & Blurry; amort.\ gap\\
+    VQ-VAE & $[K]^{H\times W}$ & Prior fit & Sharp; needs AR prior\\
+    HVAE / DDPM & $\vecb z_{1:L}$ chain & $L$-step & Closes amort.\ gap\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; CONNECTIONS $-$ EM, information \& diffusion}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{EM vs.\ Amortized VI:} EM optimizes $q_n(\vecb z)$ per datum; VAE shares $q_\phi(\vecb z\mid\vecb x)$, leaving an \emph{amortization gap}
+      \item \textbf{Rate--Distortion:} $R=\KL{q_\phi}{p(\vecb z)}\ge I(\vecb x;\vecb z)$
+      \item \textbf{HVAE $\to$ DDPM:} DDPM is an HVAE with \emph{fixed} Gaussian encoder $q(\vecb x_{1:T}\mid\vecb x_0)$ and $\dim(\vecb z_t)=D$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \node[draw=csF, circle, inner sep=1.5pt] (zL) at (0,1.4) {$\vecb z_L$};
+      \node[draw=csF, circle, inner sep=1.5pt] (z1) at (0,0.15) {$\vecb z_1$};
+      \node[draw=csDom, circle, inner sep=1.5pt] (x) at (0,-1.1) {$\vecb x$};
+      \draw[-{Stealth}, csF, thick] (zL)--node[left, inner sep=1.5pt]{$p_\theta$}(z1);
+      \draw[-{Stealth}, csF, thick] (z1)--node[left, inner sep=1.5pt]{$p_\theta$}(x);
+      \draw[-{Stealth}, csA, dashed, bend right=42] (x) to node[right, inner sep=1.5pt]{$q_\phi$} (z1);
+      \draw[-{Stealth}, csA, dashed, bend right=42] (z1) to node[right, inner sep=1.5pt]{$q_\phi$} (zL);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Encode to a Distribution $\cdot$ Shift Randomness to $\vecb\epsilon$ $\cdot$ Balance Distortion vs.\ KL Rate}\\[1pt]
+  \footnotesize\mdseries \textbf{Reparameterization ($\vecb\mu+\vecb\sigma\odot\vecb\epsilon$) or discrete STE codebook ($\vecb e_{k^*}$) makes latent bottlenecks trainable.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Posterior collapse:} AR decoders ignore $\vecb z\to$ KL annealing / free bits
+    \item \textbf{Blurry MSE \& dead VQ codes:} $\E[\vecb x\mid\vecb z]$ blurs; use EMA + code resets
+    \item \textbf{fp16 overflow:} clamp $\log\sigma^2\in[-20,10]$ before $\exp(\cdot)$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Autoencoders, Variational Autoencoders (VAEs), Reparameterization \& VQ-VAE}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item ELBO \& Marginal Identity:
+      \csfm{\log p_\theta(\vecb x)=\mathcal L_{\mathrm{ELBO}}(\theta,\phi;\vecb x)+\KL{q_\phi(\vecb z\mid\vecb x)}{p_\theta(\vecb z\mid\vecb x)}}
+    \item Diagonal Gaussian KL ($q_\phi=\Normal(\vecb\mu_\phi,\diag(\vecb\sigma_\phi^2))$, $p=\Normal(\zeros,\eye_M)$):
+      \csfm{\KL{q_\phi}{p}=\frac{1}{2}\sum_{j=1}^M\bigl(\mu_{\phi,j}^2+\sigma_{\phi,j}^2-1-\log\sigma_{\phi,j}^2\bigr)}
+    \item Reparameterized Gradient ($g_\phi(\vecb\epsilon,\vecb x)=\vecb\mu_\phi(\vecb x)+\vecb\sigma_\phi(\vecb x)\odot\vecb\epsilon$):
+      \csfm{\nabla_\phi\E_{q_\phi}[f(\vecb z)]=\E_{\vecb\epsilon\sim\Normal(\zeros,\eye)}\!\bigl[\nabla_\phi f(g_\phi(\vecb\epsilon,\vecb x))\bigr]}
+    \item DAE Tweedie Score Identity ($\tilde{\vecb x}\sim\Normal(\vecb x,\sigma^2\eye)$):
+      \csfm{r^*(\tilde{\vecb x})-\tilde{\vecb x}=\sigma^2\nabla_{\tilde{\vecb x}}\log p_\sigma(\tilde{\vecb x})+o(\sigma^2)}
+    \item VQ-VAE Objective ($\beta_{\mathrm{com}}\approx 0.25$):
+      \csfm{\mathcal L_{\mathrm{VQ}}=-\log p_\theta(\vecb x\mid\vecb z_q)+\norm{\operatorname{sg}[\vecb z_e]-\vecb e_{k^*}}_2^2+\beta_{\mathrm{com}}\norm{\vecb z_e-\operatorname{sg}[\vecb e_{k^*}]}_2^2}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ SGVB ($\beta$-VAE) \& VQ-VAE STEP}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{VAE forward:} $(\vecb\mu,\log\vecb\sigma^2)\leftarrow e_\phi(\vecb x)$; clamp $\log\vecb\sigma^2\in[-20,10]$
+    \item \textbf{Reparameterize:} draw $\vecb\epsilon\sim\Normal(\zeros,\eye_M)$, set $\vecb z=\vecb\mu+\exp(\tfrac{1}{2}\log\vecb\sigma^2)\odot\vecb\epsilon$
+    \item \textbf{VAE loss:} $\mathcal L_\beta=-\log p_\theta(\vecb x\mid d_\theta(\vecb z))+\beta\,\KL{q_\phi}{p}$
+    \item \textbf{VQ-VAE alternative:} $k^*=\argmin_k\norm{\vecb z_e-\vecb e_k}_2$; set $\vecb z_q=\vecb z_e+\operatorname{sg}[\vecb e_{k^*}-\vecb z_e]$ and update $\vecb e_k$ via EMA ($\gamma=0.99$)
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    linear subspace compression & Linear AE / SVD (exact PCA)\\
+    smooth latent interpolation & Standard VAE ($\beta=1$)\\
+    disentangled latent axes & $\beta$-VAE ($\beta>1$) + inductive bias\\
+    discrete tokens for AR/LDM & VQ-VAE + EMA codebook + prior\\
+    local manifold score field & Denoising AE (DAE)\\
+    high-fidelity likelihood & Hierarchical VAE (NVAE) / DDPM\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{RATE--DISTORTION SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Optimality slope:} $\partial D/\partial R=-\beta$ along Pareto frontier $D(R)$
+    \item \textbf{Prior mismatch:} sampling $\vecb z\sim p(\vecb z)$ vs.\ aggregated $q_\phi(\vecb z)=\frac{1}{N}\sum_n q_\phi(\vecb z\mid\vecb x_n)$ leaves holes of size $\KL{q_\phi(\vecb z)}{p(\vecb z)}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{$\beta$-VAE RATE--DISTORTION FRONTIER $D(R)$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=0, xmax=11.5, ymin=0, ymax=9.8,
+      xlabel={Rate $R=\E[\KL{q_\phi(\vecb z\mid\vecb x)}{p(\vecb z)}]$ (nats)},
+      ylabel={Distortion $D=-\E[\log p_\theta(\vecb x\mid\vecb z)]$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csDom, very thick, domain=0:11.2, samples=80] {1.2 + 7.5*exp(-0.35*x)};
+      \addplot[csA, dashed, thick, domain=0:2.2] {8.7 - 2.625*x};
+      \addplot[csD, dashed, thick, domain=0.8:5.0] {4.06 - 1.003*(x - 2.75)};
+      \addplot[csF, dashed, thick, domain=6.0:11.2] {1.486 - 0.1*(x - 9.33)};
+      \addplot[only marks, mark=*, mark size=2pt, csA] coordinates {(0,8.7)};
+      \addplot[only marks, mark=*, mark size=2pt, csD] coordinates {(2.75,4.06)};
+      \addplot[only marks, mark=*, mark size=2pt, csF] coordinates {(9.33,1.486)};
+      \node[font=\tiny, csA, anchor=west] at (axis cs:0.3,8.8) {$\beta{=}4$: Collapse ($R{\to}0$)};
+      \node[font=\tiny, csD, anchor=south west] at (axis cs:2.9,4.2) {$\beta{=}1$: ELBO};
+      \node[font=\tiny, csF, anchor=south] at (axis cs:8.8,1.8) {$\beta{=}0.1$: Near-AE};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Posterior collapse ($\KL{q_\phi}{p}\to 0$):} powerful decoders ignore $\vecb z$; apply cyclical $\beta$-annealing ($0\to 1$), free bits $\max(\lambda,\mathrm{KL}_j)$, or skip connections
+    \item \textbf{Blurry reconstructions:} pixel-wise Gaussian MSE averages over posterior uncertainty; use perceptual/adversarial losses or latent diffusion
+    \item \textbf{Prior hole problem:} $p(\vecb z)=\Normal(\zeros,\eye)$ fails to match $q_\phi(\vecb z)$; fit a post-hoc prior (VampPrior, PixelCNN, Transformer)
+    \item \textbf{VQ codebook collapse:} dead embeddings receive zero STE gradients; use EMA cluster updates and re-seed unused codes from batch $\vecb z_e$
+    \item \textbf{Unidentifiability:} nonlinear $\beta$-VAE cannot provably disentangle without structural inductive biases
+    \item \textbf{Float16 overflow:} always clamp encoder $\log\sigma^2\in[-20,10]$ and compute KL in float32
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Deterministic AE} maps $\vecb x\to\vecb z\to\hat{\vecb x}$ (spans PCA if linear, estimates $\nabla\log p_\sigma$ if denoising) but leaves holes in $\mathcal Z$.
+  \textbf{VAE} maps $\vecb x$ to a cloud $\Normal(\vecb\mu_\phi,\vecb\sigma_\phi^2)$, pulls it toward $\Normal(\zeros,\eye)$ via KL rate $R$, and backpropagates through $\vecb z=\vecb\mu_\phi+\vecb\sigma_\phi\odot\vecb\epsilon$.
+  \textbf{VQ-VAE} snaps $\vecb z_e$ to discrete codebook vectors $\vecb e_{k^*}$ with straight-through gradients.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

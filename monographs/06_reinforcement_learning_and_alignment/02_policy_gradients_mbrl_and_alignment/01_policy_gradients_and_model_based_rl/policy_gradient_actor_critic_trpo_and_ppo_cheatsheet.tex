@@ -1,0 +1,218 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Policy Gradients, MBRL \& Alignment}{Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO/PPO \& RL-as-Inference}
+  {Push up log-probabilities weighted by advantage; clip ratio steps inside a trust region}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Policy Gradients\\ \footnotesize\mdseries GAE $\cdot$ PPO $\cdot$ GRPO}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[csD!40, fill=csD!12, thick, dashed] (0,0) ellipse (2.3 and 1.2);
+    \node[font=\tiny, csD!80!black] at (0,1.45) {$\KL{\pi_{\mathrm{old}}}{\pi_{\bm{\theta}}}\le\delta$};
+    \fill[csA] (-1.0,-0.15) circle (2.5pt) node[below, font=\scriptsize] {$\pi_{\bm{\theta}_{\mathrm{old}}}$};
+    \draw[-{Stealth}, very thick, csB] (-1.0,-0.15) -- (0.85,0.28) node[right, font=\scriptsize] {$\pi_{\bm{\theta}}$};
+    \draw[-{Stealth}, thick, csA, dotted] (-1.0,-0.15) -- (0.95,-0.40) node[below, font=\tiny] {unclipped $\grad J$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; POLICY GRADIENT THEOREM $-$ no $\grad\Trans$ needed}{%
+  \csfm{\grad_{\bm{\theta}} J(\bm{\theta}) = \E_{s\sim\mu,\,a\sim\pi_{\bm{\theta}}}\!\Big[\Adv^{\pi_{\bm{\theta}}}(s,a)\,\grad_{\bm{\theta}}\log\pi_{\bm{\theta}}(a\mid s)\Big]}
+  \begin{minipage}[t]{0.61\linewidth}
+    \begin{csbul}
+      \item \textbf{Unrolling} $\grad\Vval^\pi(s)$ absorbs state shifts into $\mu(s)$
+      \item \textbf{REINFORCE:} causal return-to-go $G_t=\sum_{k\ge 0}\gamma^k r_{t+k}$
+      \item \textbf{Baseline invariance:} $\E_{a\sim\pi}[b(s)\grad\log\pi(a\mid s)]=\zeros$
+      \item Optimal $b^*(s_t)\approx \Vval_{\bm{\phi}}(s_t) \Rightarrow \Adv^\pi=\Qval^\pi-\Vval^\pi$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[->, thick, gray] (-2,0)--(2,0) node[right]{$a$};
+      \draw[csA, very thick, samples=40, domain=-1.8:1.8] plot (\x, {1.4*exp(-(\x+0.45)^2/0.45)});
+      \draw[csD, very thick, dashed, samples=40, domain=-1.8:1.8] plot (\x, {1.4*exp(-(\x-0.55)^2/0.45)});
+      \draw[-{Stealth}, thick, csD] (1.15,0.55)--(1.15,1.55) node[above]{$\hat{A}>0$};
+      \draw[-{Stealth}, thick, csA] (-1.15,1.45)--(-1.15,0.45) node[above=18pt]{$\hat{A}<0$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; ACTOR--CRITIC \& $\mathrm{GAE}(\gamma,\lambda)$ $-$ bias vs.\ variance}{%
+  \csfm{\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)} = \sum_{l=0}^{\infty}(\gamma\lambda)^l \delta_{t+l}^V,\quad \delta_t^V = r_t + \gamma\Vval_{\bm{\phi}}(s_{t+1})-\Vval_{\bm{\phi}}(s_t)}
+  \begin{csbul}
+    \item \textbf{Backward recursion:} $\hat{A}_t = \delta_t^V + \gamma\lambda\hat{A}_{t+1}$ with $\hat{A}_T=0$
+    \item $\lambda=0 \Rightarrow \hat{A}_t=\delta_t^V$ (1-step TD: low variance, critic bias)
+    \item $\lambda=1 \Rightarrow \hat{A}_t=G_t-\Vval_{\bm{\phi}}(s_t)$ (Monte Carlo: unbiased, high variance)
+    \item Value target $y_t = \hat{A}_t + \Vval_{\bm{\phi}}(s_t)$ trains critic via MSE $\frac{1}{2}(\Vval_{\bm{\phi}}(s_t)-y_t)^2$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; NPG, TRPO \& PPO $-$ monotonic trust regions}{%
+  \csfm{L^{\mathrm{CLIP}}(\bm{\theta})=\E_t\!\Big[\min\!\big(r_t(\bm{\theta})\hat{A}_t,\,\mathrm{clip}(r_t(\bm{\theta}),1{-}\varepsilon,1{+}\varepsilon)\hat{A}_t\big)\Big]}
+  \begin{minipage}[t]{0.62\linewidth}
+    \begin{csbul}
+      \item \textbf{NPG / TRPO:} $\Delta\bm{\theta}\propto F(\bm{\theta})\inv\grad J$ s.t.\ $\E_s[\KL{\pi_k}{\pi_{\bm{\theta}}}]\le\delta$
+      \item \textbf{IS ratio:} $r_t(\bm{\theta})=\pi_{\bm{\theta}}(a_t\mid s_t)/\pi_{\bm{\theta}_{\mathrm{old}}}(a_t\mid s_t)$
+      \item \textbf{Pessimistic bound:} zeroes gradient when $r_t$ exceeds $1{\pm}\varepsilon$ in the direction favored by $\hat{A}_t$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.41, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(3.2,0) node[right]{$r_t$};
+      \draw[->, gray] (0,-1.4)--(0,1.5);
+      \draw[csC, very thick] (0.3,0.2)--(1.9,1.1)--(3.0,1.1);
+      \draw[csA, very thick] (0.3,-0.55)--(1.1,-0.55)--(2.8,-1.3);
+      \draw[dashed, gray] (1.1,-1.4)--(1.1,1.4) (1.9,-1.4)--(1.9,1.4);
+      \node[csC] at (2.45,1.42) {$\hat{A}>0$};
+      \node[csA] at (2.3,-1.52) {$\hat{A}<0$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONTROL AS INFERENCE $-$ MaxEnt RL \& SAC}{%
+  \csfm{p(o_t=1\mid s_t,a_t)=\exp(\alpha\inv r_t)\implies \max_{\pi}\E_\tau\!\left[\sum_t\big(r_t+\alpha\Entropy(\pi(\cdot\mid s_t))\big)\right]}
+  \begin{csbul}
+    \item Variational ELBO $-\KL{q_{\bm{\theta}}(\tau)}{p(\tau\mid o_{1:T}=1)}$ equals entropy-regularized return
+    \item \textbf{Soft Actor-Critic (SAC):} off-policy twin critics $\min_{i=1,2}\Qval_{\bar{\mathbf{w}}_i}(s',a') - \alpha\log\pi_{\bm{\theta}}(a'\mid s')$
+    \item \textbf{Reparameterization trick:} $a_t=f_{\bm{\theta}}(s_t,\bm{\xi}_t)$, $\bm{\xi}_t\sim\Normal(\zeros,\eye)$ propagates $\grad_a\Qval$ directly
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; CRITIC-FREE LLM RL $-$ RLOO, GRPO \& GSPO}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{A_{i,t}^{\mathrm{GRPO}} = \frac{r_i - \mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G}) + 10^{-8}}}
+    \begin{csbul}
+      \item Sample $G$ completions $\{y_i\}_{i=1}^G \sim \pi_{\bm{\theta}_{\mathrm{old}}}(\cdot\mid x)$; no critic $\Vval_{\bm{\phi}}$!
+      \item \textbf{Dr.\ GRPO} ($\tilde{A}_i=r_i-\mu_G$) $\equiv \frac{G-1}{G}A_i^{\mathrm{RLOO}}$
+      \item \textbf{GSPO / CISPO:} sequence-level IS or clipped IS weights fix token-level variance in MoE LLMs
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \node[draw=csE, fill=csE!15, rounded corners=2pt, inner sep=2pt] (x) at (0,1.2) {Prompt $x$};
+      \node[draw=csE, fill=white, rounded corners=1.5pt, inner sep=2pt] (y1) at (3.2,2.2) {$y_1\to r_1$};
+      \node[draw=csE, fill=white, rounded corners=1.5pt, inner sep=2pt] (y2) at (3.2,1.2) {$y_2\to r_2$};
+      \node[draw=csE, fill=white, rounded corners=1.5pt, inner sep=2pt] (y3) at (3.2,0.2) {$y_G\to r_G$};
+      \draw[->, csE] (x.east)--(y1.west); \draw[->, csE] (x.east)--(y2.west); \draw[->, csE] (x.east)--(y3.west);
+      \node[csE!80!black, font=\tiny\bfseries] at (1.7,-0.5) {Group norm $A_i$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; ALGORITHM COMPARISON $-$ choosing the optimizer}{%
+  \renewcommand{\arraystretch}{1.02}\scriptsize
+  \begin{tabular}{@{}>{\bfseries\raggedright\arraybackslash}p{1.68cm}>{\raggedright\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{2.12cm}@{}}
+    \textbf{\textcolor{csF}{Method}} & \textbf{\textcolor{csF}{Regime}} & \textbf{\textcolor{csF}{Baseline / Critic}} & \textbf{\textcolor{csF}{Key Trait}}\\ \hline
+    REINFORCE & On-policy & MC / $\Vval(s)$ & Unbiased; high var.\\
+    A2C + GAE & On-policy & Learned $\Vval_{\bm{\phi}}(s)$ & $\lambda\in[0,1]$ bias--var.\\
+    TRPO & On-policy & Learned $\Vval_{\bm{\phi}}(s)$ & Hard KL + CG solve\\
+    PPO-Clip & Near-on & Learned $\Vval_{\bm{\phi}}(s)$ & Ratio clip $1{\pm}\varepsilon$; $M$ ep.\\
+    SAC & Off-policy & Twin $\Qval_{\mathbf{w}_{1,2}}$ & MaxEnt + replay\\
+    GRPO & Near-on & Group $(r_i-\mu_G)/\sigma_G$ & Critic-free; $\beta\mathrm{KL}$\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Score Function $\times$ Advantage $\cdot$ Clipped inside a KL Trust Region} \\[2pt]
+  \footnotesize\mdseries \textbf{Unrolling kills $\grad\Trans$; baselines cut variance; ratio clipping prevents policy collapse.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item Full $R(\tau)$ instead of causal $G_t$ adds $\mathcal{O}(T)$ variance
+    \item Token clipping drops pivotal tokens in MoE $\to$ use GSPO/CISPO
+    \item GRPO $\sigma_G\to 0$ when all pass/fail explodes $A_i$ $\to$ Dr.\ GRPO
+    \item Single off-policy critic overestimates $\Qval$ $\to$ twin $\min\Qval_{\bar{\mathbf{w}}_i}$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO/PPO \& RL-as-Inference}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Policy Gradient Theorem:\csfm{\grad_{\bm{\theta}} J(\bm{\theta}) = \E_{s\sim\mu,\,a\sim\pi_{\bm{\theta}}}\!\big[\Qval^{\pi_{\bm{\theta}}}(s,a)\,\grad_{\bm{\theta}}\log\pi_{\bm{\theta}}(a\mid s)\big]}
+    \item Variance-Optimal Baseline:\csfm{b^*(s_t) = \frac{\E_{a_t}[G_t\norm{\grad_{\bm{\theta}}\log\pi_{\bm{\theta}}(a_t\mid s_t)}_2^2]}{\E_{a_t}[\norm{\grad_{\bm{\theta}}\log\pi_{\bm{\theta}}(a_t\mid s_t)}_2^2]}}
+    \item Generalized Advantage ($\mathrm{GAE}(\gamma,\lambda)$):\csfm{\hat{A}_t = \sum_{l=0}^{\infty}(\gamma\lambda)^l\delta_{t+l}^V,\quad \delta_t^V = r_t+\gamma\Vval_{\bm{\phi}}(s_{t+1})-\Vval_{\bm{\phi}}(s_t)}
+    \item Natural Policy Gradient \& Fisher Matrix:\csfm{F(\bm{\theta})=\E\!\big[\grad\log\pi_{\bm{\theta}}\,\grad\log\pi_{\bm{\theta}}\T\big],\quad \Delta\bm{\theta}\propto F(\bm{\theta})\inv\grad J}
+    \item PPO Clipped Surrogate:\csfm{L^{\mathrm{CLIP}}(\bm{\theta})=\E_t\!\Big[\min\!\big(r_t(\bm{\theta})\hat{A}_t,\;\mathrm{clip}(r_t(\bm{\theta}),1{-}\varepsilon,1{+}\varepsilon)\hat{A}_t\big)\Big]}
+    \item SAC Actor Objective (Reparameterized $a_t=f_{\bm{\theta}}(s_t,\bm{\xi}_t)$):\csfm{J_\pi(\bm{\theta})=\E_{s_t\sim\mathcal{D},\,\bm{\xi}_t\sim\Normal}\!\Big[\alpha\log\pi_{\bm{\theta}}(a_t\mid s_t)-\min_{i=1,2}\Qval_{\mathbf{w}_i}(s_t,a_t)\Big]}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{PPO + GAE vs.\ GRPO RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Rollout:} collect trajectories under $\pi_{\bm{\theta}_{\mathrm{old}}}$ (or $G$ completions per prompt $x$ in GRPO).
+    \item \textbf{Advantages:}
+      \emph{PPO:} backward sweep $\hat{A}_t=\delta_t^V+\gamma\lambda\hat{A}_{t+1}$, target $y_t=\hat{A}_t+\Vval_{\bm{\phi}}(s_t)$, normalize $\hat{A}_t$.
+      \emph{GRPO:} group score $A_{i,t}=(r_i-\mu_G)/(\sigma_G+10^{-8})$.
+    \item \textbf{Inner epochs ($m=1\dots M$):} compute $r_t(\bm{\theta})=\pi_{\bm{\theta}}/\pi_{\bm{\theta}_{\mathrm{old}}}$; ascend clipped surrogate $L^{\mathrm{CLIP}}$ ($-\beta\KL{\pi_{\bm{\theta}}}{\pi_{\mathrm{ref}}}$ in GRPO) and update $\bm{\phi}$ on $(\Vval_{\bm{\phi}}-y_t)^2$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    fast simulator, general MDP & PPO-Clip + $\mathrm{GAE}(\gamma,\lambda)$\\
+    expensive continuous control & SAC (off-policy replay + twin soft-$\Qval$)\\
+    LLM with verifiable outcome & GRPO or RLOO (drop the critic LLM)\\
+    MoE LLM / long CoT rollouts & GSPO / CISPO (sequence/weight IS)\\
+    strict monotonic safety req. & TRPO (hard KL ball via CG + line search)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{TRPO Improvement Lower Bound:}
+      $J(\pi)-J(\pi_k) \ge L(\pi,\pi_k) - \frac{2\gamma C_{\pi,\pi_k}}{(1-\gamma)^2}\E_{s}\!\big[D_{\mathrm{TV}}(\pi\|\pi_k)\big]$
+    \item \textbf{Pinsker + Local KL:} $D_{\mathrm{TV}}(p,q)\le\sqrt{\frac{1}{2}\KL{q}{p}}$, $\E_s[\KL{\pi_{\bm{\theta}}}{\pi_{\bm{\theta}+\Delta\bm{\theta}}}]\approx\frac{1}{2}\Delta\bm{\theta}\T F(\bm{\theta})\Delta\bm{\theta}$
+    \item \textbf{RLOO $\iff$ Dr.\ GRPO:} $r_i - \frac{1}{G}\sum_{j=1}^G r_j = \frac{G-1}{G}\big(r_i - \frac{1}{G-1}\sum_{j\ne i} r_j\big)$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{PPO CLIPPED SURROGATE GEOMETRY ($\varepsilon=0.2$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=0.55, xmax=1.45, ymin=-1.65, ymax=1.65,
+      xlabel={Importance Ratio $r_t(\bm{\theta})=\pi_{\bm{\theta}}(a_t\mid s_t)/\pi_{\bm{\theta}_{\mathrm{old}}}(a_t\mid s_t)$},
+      ylabel={$L^{\mathrm{CLIP}}(r_t)$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, xtick={0.6,0.8,1.0,1.2,1.4},
+      xticklabels={$0.6$,$1{-}\varepsilon$,$1.0$,$1{+}\varepsilon$,$1.4$},
+      ytick={-1.2,-0.8,0,0.8,1.2}, grid=both, grid style={line width=.1pt, draw=gray!25}]
+      \addplot[gray, dashed, thick, domain=0.55:1.45] {x};
+      \addplot[gray, dashed, thick, domain=0.55:1.45] {-x};
+      \addplot[csD, ultra thick, domain=0.55:1.2] {x};
+      \addplot[csD, ultra thick, domain=1.2:1.45] {1.2};
+      \addplot[csA, ultra thick, domain=0.55:0.8] {-0.8};
+      \addplot[csA, ultra thick, domain=0.8:1.45] {-x};
+      \node[font=\scriptsize\bfseries, csD, anchor=north east] at (axis cs:1.43,1.08) {$\hat{A}_t=+1$ ($\grad=0$ for $r_t>1{+}\varepsilon$)};
+      \node[font=\scriptsize\bfseries, csA, anchor=south west] at (axis cs:0.57,-0.32) {$\hat{A}_t=-1$ ($\grad=0$ for $r_t<1{-}\varepsilon$)};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing causality:} multiplying $\grad\log\pi_{\bm{\theta}}(a_t\mid s_t)$ by past rewards $r_{t'<t}$ has zero mean but adds $\mathcal{O}(T)$ variance; always use reward-to-go $G_t$.
+    \item \textbf{Unnormalized advantages:} raw $\hat{A}_t$ scales shift across training; standardize $(\hat{A}_t-\mu_{\hat{A}})/(\sigma_{\hat{A}}+10^{-8})$ per minibatch in PPO.
+    \item \textbf{GRPO $\sigma_G$ division bias:} dividing by group $\sigma_G$ upweights easy/impossible prompts where $\sigma_G\approx 0$, and normalizing by $|y_i|$ biases length; consider Dr.\ GRPO.
+    \item \textbf{Token dropping in PPO/GRPO:} once $r_{i,t}\notin[1-\varepsilon,1+\varepsilon]$, gradient vanishes; use CISPO $\mathrm{sg}(\mathrm{clip}(r_t))\hat{A}_t\log\pi_{\bm{\theta}}$ or GSPO sequence ratios.
+    \item \textbf{Critic bootstrapping without target nets:} off-policy Q-learning + neural nets diverges without Polyak targets $\bar{\mathbf{w}}$ and clipped double-Q $\min_{i=1,2}\Qval_{\bar{\mathbf{w}}_i}$.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Policy Gradient} turns RL into weighted maximum likelihood: push up $\log\pi_{\bm{\theta}}(a_t\mid s_t)$ in proportion to how much better $a_t$ was than expected ($\hat{A}_t$).
+  \textbf{GAE($\gamma,\lambda$)} blends 1-step TD and Monte Carlo returns to control variance, while \textbf{PPO} and \textbf{GRPO} clip the importance ratio $r_t(\bm{\theta})$ so multi-epoch updates never step outside the local trust region.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

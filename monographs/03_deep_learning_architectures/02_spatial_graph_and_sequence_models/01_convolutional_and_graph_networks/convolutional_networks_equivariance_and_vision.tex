@@ -1,0 +1,340 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Neural Architectures, Representations \& Regularization}{Convolutional, Graph, Recurrent \& State-Space Architectures}{Convolutional Networks \& Graph Neural Networks}{Convolutional Neural Networks, Translation Equivariance \& Vision Backbones}{\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9}, \bookcite{deep_learning_foundations_concepts}{Ch.~10}, \bookcite{understandingdl_simonprince}{Ch.~10}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14}}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:cnn:formulation}
+
+Convolutional neural networks (CNNs) are specialized architectures for data defined on regular discrete lattices, such as 1D temporal signals ($x \in \R^{C_{\mathrm{in}} \times N}$) and 2D spatial images ($\mat{X} \in \R^{C_{\mathrm{in}} \times H \times W}$) \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, PDF p.~345}. Unlike dense multilayer perceptrons (MLPs), which assign an independent weight to every input--output pair and scale quadratically as $O((C_{\mathrm{in}} H W)^2)$ \bookcite{understandingdl_simonprince}{Ch.~10, p.~175}, convolutional layers exploit three structural inductive biases: \emph{sparse local connectivity}, \emph{spatial parameter sharing}, and \emph{translation equivariance} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, PDF pp.~350--354}, \bookcite{deep_learning_foundations_concepts}{Ch.~10, p.~306}.
+
+Let $\mat{X} \in \R^{C_{\mathrm{in}} \times H \times W}$ denote an input feature tensor with $C_{\mathrm{in}}$ channels, height $H$, and width $W$, and let $\mat{W} \in \R^{C_{\mathrm{out}} \times C_{\mathrm{in}} \times k_h \times k_w}$ denote a bank of $C_{\mathrm{out}}$ learnable kernels of spatial extent $k_h \times k_w$ with bias $\vecb{b} \in \R^{C_{\mathrm{out}}}$. Under symmetric zero-padding $(p_h, p_w)$, stride $(s_h, s_w)$, and dilation rate $(d_h, d_w)$, the output feature map $\mat{Z} \in \R^{C_{\mathrm{out}} \times H_{\mathrm{out}} \times W_{\mathrm{out}}}$ has spatial dimensions \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14, Eq.~(14.10), PDF p.~502}:
+\begin{equation}
+\label{eq:cnn:output_shape}
+H_{\mathrm{out}} = \left\lfloor \frac{H + 2p_h - d_h(k_h - 1) - 1}{s_h} \right\rfloor + 1, \qquad
+W_{\mathrm{out}} = \left\lfloor \frac{W + 2p_w - d_w(k_w - 1) - 1}{s_w} \right\rfloor + 1.
+\end{equation}
+Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields \emph{same} convolution ($H_{\mathrm{out}} = H$), whereas $p_h = 0$ yields \emph{valid} convolution ($H_{\mathrm{out}} = H - k_h + 1$) \bookcite{understandingdl_simonprince}{Ch.~10, p.~178}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14, PDF p.~501}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{box:cnn:notation}
+Because CNN literature bridges signal processing, numerical linear algebra, and deep learning, the four primary sources use distinct symbols and conventions for the same underlying tensor operations.
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Source Textbook} & \textbf{Unified Tensor Symbols, Conv vs.\ Cross-Corr.\ \& Upsampling} \\
+\midrule
+Goodfellow et al. &
+Uses $I, K, S$ (PDF p.~347) and $*$ for both conv and cross-corr., noting DL omits kernel flip (Eq.~9.6); upsampling via transposed conv / unpooling \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9}. \\
+\addlinespace[3pt]
+Bishop \& Bishop &
+Uses $\vecb{x}, \vecb{w}, z$ (p.~306) with unflipped weighted sum; calls upsampling ``fractionally strided'' or transpose conv (p.~334) \bookcite{deep_learning_foundations_concepts}{Ch.~10}. \\
+\addlinespace[3pt]
+Prince &
+Uses $\vecb{x}, \mat{\Omega}, \vecb{h}$ with channels $C_i, C_o$ (pp.~179, 188); unflipped sum (Eq.~10.4); transposed conv $\mat{W}\T$ and max unpooling (Fig.~10.12--13) \bookcite{understandingdl_simonprince}{Ch.~10}. \\
+\addlinespace[3pt]
+Murphy &
+Uses $\mat{X}, \mat{W}, \mat{Z}$ with channels $C, D$ (PDF pp.~500, 518); distinguishes $\circledast$ (flipped) vs.\ $*$ (cross-corr.), adopts unflipped; warns ``deconvolution'' is a misnomer (PDF p.~517) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14}. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:cnn:derivations}
+
+\subsection{Cross-Correlation, Convolution, and Toeplitz Factorization}
+
+\begin{coremath}[Discrete Cross-Correlation vs.\ Convolution \& Toeplitz Linear Operator]
+\label{box:cnn:toeplitz}
+In pure mathematics and signal processing, discrete 2D convolution flips the kernel along both spatial axes to preserve commutativity:
+\begin{equation}
+\label{eq:cnn:true_conv}
+(\mat{X} *_{\mathrm{flip}} \mat{W})[i, j] = \sum_{u=0}^{k_h - 1} \sum_{v=0}^{k_w - 1} \mat{X}[i - u, j - v]\, \mat{W}[u, v].
+\end{equation}
+Deep learning frameworks instead implement \emph{discrete cross-correlation} (omitting the flip), which is equivalent up to a learned re-indexing of $\mat{W}$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, PDF p.~348}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14, PDF p.~499}:
+\begin{equation}
+\label{eq:cnn:xcorr_2d}
+\mat{Z}[d, i, j] = b_d + \sum_{c=0}^{C_{\mathrm{in}}-1} \sum_{u=0}^{k_h - 1} \sum_{v=0}^{k_w - 1} \mat{X}[c, s_h i + d_h u - p_h,\; s_w j + d_w v - p_w]\, \mat{W}[d, c, u, v],
+\end{equation}
+where out-of-bounds indices evaluate to zero under zero-padding.
+
+\textbf{Toeplitz Matrix Equivalence.} Because \eqref{eq:cnn:xcorr_2d} is linear in $\mat{X}$ (ignoring bias), flattening $\mat{X} \in \R^{H \times W}$ into $\vecb{x} = \mathrm{vec}(\mat{X}) \in \R^{HW}$ expresses single-channel 2D convolution as matrix--vector multiplication $\vecb{z} = \mat{C}_{\mat{W}} \vecb{x}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(14.8), PDF p.~501}, \bookcite{understandingdl_simonprince}{Fig.~10.4, p.~180}. In 1D (valid, stride $1$, kernel $\vecb{w} = [w_0, \dots, w_{k-1}]\T$), $\mat{C}_{\vecb{w}} \in \R^{(N - k + 1) \times N}$ is a banded \emph{Toeplitz matrix} whose entries satisfy $(\mat{C}_{\vecb{w}})_{i, j} = w_{j - i}$ for $0 \le j - i < k$ and $0$ otherwise:
+\begin{equation}
+\label{eq:cnn:toeplitz_matrix}
+\mat{C}_{\vecb{w}} =
+\begin{bmatrix}
+w_0 & w_1 & \cdots & w_{k-1} & 0 & \cdots & 0 \\
+0 & w_0 & w_1 & \cdots & w_{k-1} & \ddots & \vdots \\
+\vdots & \ddots & \ddots & \ddots & & \ddots & 0 \\
+0 & \cdots & 0 & w_0 & w_1 & \cdots & w_{k-1}
+\end{bmatrix}.
+\end{equation}
+In 2D, $\mat{C}_{\mat{W}}$ is a \emph{doubly block Toeplitz matrix} (or doubly block circulant under periodic boundary conditions) \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, PDF p.~348}. Consequently, backpropagation through a convolutional layer is simply multiplication by $\mat{C}_{\mat{W}}\T$, which corresponds to a \emph{transposed convolution} \bookcite{probabilisticml_kevinmurphy_introduction}{PDF p.~517}, \bookcite{understandingdl_simonprince}{Fig.~10.13, p.~187}. Parameter storage drops from $H W H_{\mathrm{out}} W_{\mathrm{out}}$ (dense MLP) to $k_h k_w$ per channel pair.
+\end{coremath}
+
+\monographfig[0.80\textwidth]{understandingdl_simonprince_p180_fig1.png}{Sparse Toeplitz connectivity in 1D convolutional layers versus dense fully connected layers \bookcite{understandingdl_simonprince}{Ch.~10, Fig.~10.4, p.~180}. Panels (a)--(b) show a dense MLP weight matrix; (c)--(d) show a stride-1 convolution with banded, tied weights; (e)--(f) show a stride-2 convolution reducing spatial resolution by half.}{fig:cnn:toeplitz}
+
+\subsection{Translation Equivariance and Pooling Local Invariance}
+
+\begin{coremath}[Translation Equivariance Theorem \& Pooling Invariance]
+\label{box:cnn:equivariance}
+Let $T_{\Delta}$ be a spatial translation operator on $\Z^2$ defined by $(T_{\Delta} \mat{X})[c, y, x] = \mat{X}[c, y - \Delta_y, x - \Delta_x]$ for integer shift $\Delta = (\Delta_y, \Delta_x) \in \Z^2$ (assuming infinite support or circular padding). Let $\mathcal{F}_{\mat{W}}(\mat{X}) = \mat{X} * \mat{W}$ denote a stride-$1$ cross-correlation layer. Then $\mathcal{F}_{\mat{W}}$ is \emph{translation equivariant}:
+\begin{equation}
+\label{eq:cnn:equivariance}
+\mathcal{F}_{\mat{W}}(T_{\Delta} \mat{X}) = T_{\Delta} \mathcal{F}_{\mat{W}}(\mat{X}).
+\end{equation}
+\emph{Proof.} Evaluating the left-hand side at output coordinate $(i, j)$ for channel $d$:
+\begin{align*}
+\big(\mathcal{F}_{\mat{W}}(T_{\Delta}\mat{X})\big)[d, i, j]
+&= \sum_{c, u, v} (T_{\Delta}\mat{X})[c, i + u, j + v]\, \mat{W}[d, c, u, v] \\
+&= \sum_{c, u, v} \mat{X}[c, (i - \Delta_y) + u, (j - \Delta_x) + v]\, \mat{W}[d, c, u, v] \\
+&= \big(\mathcal{F}_{\mat{W}}(\mat{X})\big)[d, i - \Delta_y, j - \Delta_x] = \big(T_{\Delta}\mathcal{F}_{\mat{W}}(\mat{X})\big)[d, i, j]. \quad \blacksquare
+\end{align*}
+Pointwise nonlinearities $\sigma(\cdot)$ (e.g., ReLU) commute with $T_{\Delta}$, so any composition of stride-$1$ convolutions and pointwise activations preserves exact translation equivariance \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, PDF pp.~353--354}, \bookcite{understandingdl_simonprince}{Ch.~10, Eq.~(10.2), p.~176}.
+
+\textbf{Local Invariance via Pooling.} A spatial pooling operator $P_k$ (e.g., max pooling $\max_{(u,v) \in \mathcal{N}_k(i,j)} \mat{H}[c, u, v]$ or average pooling) over a $k \times k$ neighborhood introduces \emph{approximate local translation invariance}: if an activation peak lies strictly inside the interior of $\mathcal{N}_k(i, j)$, small shifts $\delta$ keep the maximum unchanged, yielding $P_k(T_{\delta}\mat{H}) \approx P_k(\mat{H})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, Fig.~9.8, PDF p.~358}. Global average pooling (GAP) over the entire spatial domain $(H, W)$ achieves exact global translation invariance (up to boundary effects) for image-level classification \bookcite{understandingdl_simonprince}{Ch.~10, Eq.~(10.1), p.~176}.
+\end{coremath}
+
+\begin{intuition}[Convolution and Pooling as Infinitely Strong Priors]
+\label{box:cnn:prior}
+From a Bayesian perspective, a convolutional layer is equivalent to a fully connected layer equipped with an \emph{infinitely strong prior} over its weight matrix: all weights outside the local $k_h \times k_w$ receptive field have zero variance around zero, and weights at identical relative offsets across spatial locations are constrained to be equal with probability $1$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9, Sec.~9.4, PDF p.~360}. Similarly, pooling imposes an infinitely strong prior that features must be invariant to small local translations. When the data respects spatial locality and stationarity (natural images, spectrograms), these priors dramatically reduce sample complexity; when absolute pixel coordinates carry semantic meaning (e.g., aligned facial landmarks or CoordConv tasks), global weight sharing must be relaxed or augmented with positional encodings.
+\end{intuition}
+
+\subsection{Receptive Field Growth, Dilated Convolutions, and Depthwise Factorization}
+
+\begin{coremath}[Receptive Field Recursion \& Depthwise-Separable Efficiency Ratio]
+\label{box:cnn:rf_separable}
+Consider a chain of $L$ convolutional or pooling layers, where layer $l \in \{1, \dots, L\}$ has kernel size $k_l$, stride $s_l$, and dilation rate $d_l$. The effective kernel span of layer $l$ is $k_l^{\mathrm{eff}} = d_l(k_l - 1) + 1$. Let $J_l = \prod_{i=1}^{l} s_i$ (with $J_0 = 1$) denote the cumulative stride (jump) at layer $l$. The theoretical receptive field size $R_l$ in the input image satisfied by a unit at layer $l$ obeys the exact linear recurrence \bookcite{understandingdl_simonprince}{Ch.~10, Fig.~10.6, p.~182}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14, PDF p.~516}:
+\begin{equation}
+\label{eq:cnn:rf_recursion}
+R_l = R_{l-1} + (k_l^{\mathrm{eff}} - 1) J_{l-1} = 1 + \sum_{l'=1}^{l} d_{l'}(k_{l'} - 1) \prod_{i=1}^{l'-1} s_i, \qquad R_0 = 1.
+\end{equation}
+Thus, stacking $m$ stride-$1$ layers of $3 \times 3$ kernels ($d_l = 1$) grows the receptive field linearly as $R_m = 2m + 1$ while requiring $m(9 C^2)$ parameters---whereas a single $(2m+1)\times(2m+1)$ kernel requires $(2m+1)^2 C^2$ parameters (e.g., two $3\times 3$ layers match a $5\times 5$ receptive field with $18 C^2$ vs.\ $25 C^2$ weights, a $28\%$ reduction, plus an extra nonlinearity). Exponentially increasing dilation $d_l = 2^{l-1}$ with $s_l = 1$ achieves exponential receptive field growth $R_L = 2^{L+1} - 1$ without losing spatial resolution \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~14.4.1, PDF p.~516}.
+
+\textbf{Depthwise-Separable Convolution.} Standard 2D convolution couples spatial filtering and cross-channel mixing into a single $k \times k \times C_{\mathrm{in}} \times C_{\mathrm{out}}$ tensor. Depthwise-separable convolution \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~14.4.3, Eq.~(14.26), PDF p.~518} factorizes this into:
+\begin{enumerate}
+  \item \emph{Depthwise spatial filtering}: one $k \times k$ filter per input channel, $\hat{\mat{Z}}[c, i, j] = \sum_{u,v} \mat{X}[c, i+u, j+v]\, \mat{W}_{\mathrm{dw}}[c, u, v]$ ($k^2 C_{\mathrm{in}}$ parameters).
+  \item \emph{Pointwise $1 \times 1$ channel projection}: $\mat{Z}[d, i, j] = b_d + \sum_{c=0}^{C_{\mathrm{in}}-1} \hat{\mat{Z}}[c, i, j]\, \mat{W}_{\mathrm{pw}}[d, c]$ ($C_{\mathrm{in}} C_{\mathrm{out}}$ parameters) \bookcite{understandingdl_simonprince}{Sec.~10.4.3, p.~188}.
+\end{enumerate}
+For an output spatial grid of $H_{\mathrm{out}} \times W_{\mathrm{out}}$, the parameter and multiply--accumulate (MAC) reduction ratio relative to standard convolution is identical:
+\begin{equation}
+\label{eq:cnn:ds_ratio}
+\frac{\mathrm{Params}_{\mathrm{DS}}}{\mathrm{Params}_{\mathrm{Std}}}
+= \frac{\mathrm{MACs}_{\mathrm{DS}}}{\mathrm{MACs}_{\mathrm{Std}}}
+= \frac{k^2 C_{\mathrm{in}} + C_{\mathrm{in}} C_{\mathrm{out}}}{k^2 C_{\mathrm{in}} C_{\mathrm{out}}}
+= \frac{1}{C_{\mathrm{out}}} + \frac{1}{k^2}.
+\end{equation}
+For $k = 3$ and $C_{\mathrm{out}} = 256$, this reduces compute and parameters by $\approx 8.7\times$ ($11.5\%$ of standard cost).
+\end{coremath}
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_introduction_p516_fig1.png}{Dilated (à trous) $3 \times 3$ convolution with dilation rates $d \in \{1, 2, 3\}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~14, Fig.~14.23, PDF p.~516}. Inserting $d - 1$ zeros between kernel taps expands the effective receptive field from $3 \times 3$ to $5 \times 5$ ($d=2$) and $7 \times 7$ ($d=3$) with zero additional parameters.}{fig:cnn:dilated}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:cnn:algorithms}
+
+{\sloppy Modern GPU and TPU kernels avoid nested spatial loops by lowering 2D convolution into dense General Matrix Multiplication (GEMM) via \texttt{im2col} (image-to-column) \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~9}, or by executing factorized depthwise-separable passes \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~14.4.3, PDF p.~518}. Algorithm~\ref{alg:cnn:ds_im2col} formalizes both mechanisms.\par}
+
+\begin{algorithm}[htbp]
+\caption{Im2Col GEMM Lowering vs.\ Depthwise-Separable 2D Convolution}
+\label{alg:cnn:ds_im2col}
+\KwIn{Input $\mat{X} \in \R^{C_{\mathrm{in}} \times H \times W}$, kernel size $k$, stride $s$, padding $p$, mode $\in \{\textsc{Std}, \textsc{DS}\}$.}
+\KwOut{Output feature map $\mat{Z} \in \R^{C_{\mathrm{out}} \times H_{\mathrm{out}} \times W_{\mathrm{out}}}$.}
+Compute $H_{\mathrm{out}}, W_{\mathrm{out}}$ via \eqref{eq:cnn:output_shape} with $d_h = d_w = 1$\;
+\eIf{mode = \textsc{Std}}{
+  \tcp{Standard Convolution via Im2Col GEMM Lowering}
+  Construct patch matrix $\mat{M}_{\mathrm{col}} \in \R^{(C_{\mathrm{in}} k^2) \times (H_{\mathrm{out}} W_{\mathrm{out}})}$ by extracting each $C_{\mathrm{in}} \times k \times k$ receptive field as a column\;
+  Reshape kernel bank $\mat{W} \in \R^{C_{\mathrm{out}} \times C_{\mathrm{in}} \times k \times k}$ into $\mat{W}_{\mathrm{row}} \in \R^{C_{\mathrm{out}} \times (C_{\mathrm{in}} k^2)}$\;
+  Execute dense BLAS GEMM: $\mat{Z}_{\mathrm{flat}} \leftarrow \mat{W}_{\mathrm{row}} \mat{M}_{\mathrm{col}} + \vecb{b} \ones\T$\;
+  Reshape $\mat{Z}_{\mathrm{flat}} \in \R^{C_{\mathrm{out}} \times (H_{\mathrm{out}} W_{\mathrm{out}})}$ to $\mat{Z} \in \R^{C_{\mathrm{out}} \times H_{\mathrm{out}} \times W_{\mathrm{out}}}$\;
+}{
+  \tcp{Depthwise-Separable Factorization}
+  \For{$c \leftarrow 0$ \KwTo $C_{\mathrm{in}} - 1$}{
+    Compute spatial slice $\hat{\mat{Z}}[c, i, j] \leftarrow \sum_{u,v=0}^{k-1} \mat{X}[c, si + u - p, sj + v - p]\, \mat{W}_{\mathrm{dw}}[c, u, v]$\;
+  }
+  Flatten spatial axes of $\hat{\mat{Z}}$ to $\hat{\mat{Z}}_{\mathrm{flat}} \in \R^{C_{\mathrm{in}} \times (H_{\mathrm{out}} W_{\mathrm{out}})}$\;
+  Execute $1 \times 1$ pointwise GEMM: $\mat{Z}_{\mathrm{flat}} \leftarrow \mat{W}_{\mathrm{pw}} \hat{\mat{Z}}_{\mathrm{flat}} + \vecb{b} \ones\T$ where $\mat{W}_{\mathrm{pw}} \in \R^{C_{\mathrm{out}} \times C_{\mathrm{in}}}$\;
+  Reshape $\mat{Z}_{\mathrm{flat}}$ to $\mat{Z} \in \R^{C_{\mathrm{out}} \times H_{\mathrm{out}} \times W_{\mathrm{out}}}$\;
+}
+\Return{$\mat{Z}$}\;
+\end{algorithm}
+
+Table~\ref{tab:cnn:ops_compare} summarizes the parameter complexity, arithmetic intensity, receptive-field contribution, and primary failure modes across convolutional operators.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Computational and structural comparison of 2D convolutional operators ($k \times k$ kernel, $C_{\mathrm{in}} \to C_{\mathrm{out}}$ channels, output size $H_{\mathrm{out}} \times W_{\mathrm{out}}$).}
+\label{tab:cnn:ops_compare}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Operator} & \textbf{Parameters} & \textbf{MACs ($\times H_{\mathrm{out}} W_{\mathrm{out}}$)} & \textbf{Primary Role \& Failure Mode} \\
+\midrule
+Standard $k \times k$ & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ & General feature extractor; quadratic scaling in $k$ and $C$. \\
+Stacked $2 \times (3 \times 3)$ & $18 C^2$ ($C_{\mathrm{in}}=C_{\mathrm{out}}=C$) & $18 C^2$ & Matches $5 \times 5$ RF ($25 C^2$) with $28\%$ fewer params + extra ReLU. \\
+Pointwise $1 \times 1$ & $C_{\mathrm{in}} C_{\mathrm{out}}$ & $C_{\mathrm{in}} C_{\mathrm{out}}$ & Channel bottleneck/expansion; zero spatial mixing. \\
+Dilated ($d > 1$) & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ & Exponential RF growth; gridding artifacts if $d$ shares factors. \\
+Depthwise-Separable & $C_{\mathrm{in}}(k^2 + C_{\mathrm{out}})$ & $C_{\mathrm{in}}(k^2 + C_{\mathrm{out}})$ & Edge/mobile backbones; lower arithmetic intensity on GPUs. \\
+Transposed ($s > 1$) & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ & $k^2 C_{\mathrm{in}} C_{\mathrm{out}}$ (at $H_{\mathrm{in}} W_{\mathrm{in}}$) & Learnable upsampling; checkerboard artifacts if $k \bmod s \neq 0$. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Vision Backbone Evolution (AlexNet/VGG $\to$ ResNet $\to$ U-Net)]
+\label{box:cnn:backbones}
+Across \bookcite{understandingdl_simonprince}{Sec.~10.5, pp.~188--191}, \bookcite{deep_learning_foundations_concepts}{Sec.~10.2.8 \& 10.5.4, pp.~315--336}, and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~14.3, pp.~509--515}, modern vision architectures evolved through three structural transitions:
+\begin{enumerate}
+  \item \textbf{AlexNet (2012) $\to$ VGG (2014)}: AlexNet demonstrated ImageNet scalability using large $11 \times 11$ and $5 \times 5$ kernels with ReLU and max pooling, whereas VGG standardized homogeneous stacks of $3 \times 3$ stride-$1$ convolutions interleaved with $2 \times 2$ pooling, proving that depth with small kernels outperforms shallow wide kernels.
+  \item \textbf{GoogLeNet / ResNet (2015)}: To scale beyond $\sim 20$ layers without degradation or excessive FLOPs, GoogLeNet introduced $1 \times 1$ dimensionality-reduction bottlenecks, and ResNet introduced additive residual skip connections $\mat{H}_{l+1} = \mat{H}_l + \mathcal{F}(\mat{H}_l)$ (with $1 \times 1$ projection shortcuts when channel dimensions change) \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~14.20, PDF p.~513}. Bottleneck blocks ($1\times 1$ compress $\to 3\times 3$ spatial $\to 1\times 1$ expand) preserve representational capacity while slashing $3\times 3$ FLOPs.
+  \item \textbf{FCN $\to$ U-Net (2015)}: Classification backbones discard spatial coordinates via repeated striding. For dense pixel-level semantic segmentation, U-Net \bookcite{deep_learning_foundations_concepts}{Fig.~10.31, p.~335} pairs a contracting encoder with a symmetric expanding decoder, concatenating high-resolution encoder feature maps directly into decoder stages via skip connections to recover fine boundary localization.
+\end{enumerate}
+\end{crossbook}
+
+\monographfig[0.82\textwidth]{deep_learning_foundations_concepts_p335_fig2.png}{The U-Net encoder--decoder architecture for semantic segmentation \bookcite{deep_learning_foundations_concepts}{Ch.~10, Fig.~10.31, p.~335}. Contracting encoder blocks (red) extract semantic context at coarser resolutions, while skip concatenations (horizontal arrows) inject high-resolution spatial features into the expanding decoder (blue).}{fig:cnn:unet}
+
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:cnn:visuals}
+
+Figure~\ref{fig:cnn:tikz_factorization} illustrates the structural contrast between standard 2D convolution, depthwise-separable factorization, and ResNet bottleneck/U-Net multi-scale skip topologies. Figure~\ref{fig:cnn:pgfplots_rf_eff} quantifies the receptive field growth dynamics \eqref{eq:cnn:rf_recursion} and the depthwise-separable parameter/compute efficiency ratio \eqref{eq:cnn:ds_ratio}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\scriptsize\sffamily}
+]
+  % --- Panel A: Standard vs Depthwise-Separable ---
+  \node[font=\footnotesize\sffamily\bfseries, text=monographNavy] (titleA) at (0, 2.85) {(a) Standard vs.\ Depthwise-Separable Factorization};
+
+  \node[monoBox, minimum width=2.0cm, minimum height=0.85cm, align=center] (inA) at (-5.3, 1.35) {Input $\mat{X}$\\$C_{\mathrm{in}} \times H \times W$};
+  \node[monoIndigoBox, minimum width=2.8cm, minimum height=0.85cm, align=center] (stdconv) at (0.0, 2.05) {Standard Conv\\$k\times k \times C_{\mathrm{in}} \times C_{\mathrm{out}}$};
+  \node[monoTealBox, minimum width=2.3cm, minimum height=0.8cm, align=center] (dwconv) at (-1.55, 0.65) {Depthwise\\$k\times k \times 1$ ($\times C_{\mathrm{in}}$)};
+  \node[monoTealBox, minimum width=2.4cm, minimum height=0.8cm, align=center] (pwconv) at (1.65, 0.65) {Pointwise\\$1\times 1 \times C_{\mathrm{in}} \times C_{\mathrm{out}}$};
+  \node[monoBox, minimum width=2.1cm, minimum height=0.85cm, align=center] (outA) at (5.3, 1.35) {Output $\mat{Z}$\\$C_{\mathrm{out}} \times H' \times W'$};
+
+  \draw[monoArrow] (inA.north east) -- (stdconv.west);
+  \draw[monoArrow] (stdconv.east) -- (outA.north west);
+  \draw[monoArrow] (inA.south east) -- (dwconv.west);
+  \draw[monoArrow] (dwconv.east) -- (pwconv.west);
+  \draw[monoArrow] (pwconv.east) -- (outA.south west);
+
+  % --- Panel B: ResNet Bottleneck ---
+  \node[font=\footnotesize\sffamily\bfseries, text=monographNavy] (titleB) at (0, -0.45) {(b) ResNet Bottleneck Block with Identity / $1\times 1$ Projection Skip};
+
+  \node[monoBox, minimum width=1.45cm, minimum height=0.72cm, align=center] (resIn) at (-5.6, -2.35) {$\mat{H}_l$\\($C$ ch.)};
+  \node[monoIndigoBox, minimum width=1.65cm, minimum height=0.72cm, align=center] (b1) at (-3.35, -2.35) {$1\times 1$ Conv\\$C \to C/4$};
+  \node[monoIndigoBox, minimum width=1.75cm, minimum height=0.72cm, align=center] (b2) at (-1.0, -2.35) {$3\times 3$ Conv\\$C/4 \to C/4$};
+  \node[monoIndigoBox, minimum width=1.65cm, minimum height=0.72cm, align=center] (b3) at (1.35, -2.35) {$1\times 1$ Conv\\$C/4 \to C$};
+  \node[draw=monographTeal, fill=monographTealBg, circle, inner sep=2.5pt, font=\footnotesize\bfseries] (add) at (3.25, -2.35) {$+$};
+  \node[monoTealBox, minimum width=1.55cm, minimum height=0.72cm, align=center] (resOut) at (5.25, -2.35) {$\mat{H}_{l+1}$\\(ReLU)};
+
+  \draw[monoArrow] (resIn) -- (b1);
+  \draw[monoArrow] (b1) -- (b2);
+  \draw[monoArrow] (b2) -- (b3);
+  \draw[monoArrow] (b3) -- (add);
+  \draw[monoArrow] (add) -- (resOut);
+  \draw[monoArrow, draw=monographTeal, rounded corners=4pt] (resIn.north) -- ++(0, 0.55) -| (add.north) node[pos=0.25, above, font=\scriptsize, text=monographTeal] {Identity / $1\times 1$ Skip};
+\end{tikzpicture}
+\caption{Factorized and residual convolutional motifs: (a) replacing coupled $k \times k \times C_{\mathrm{in}} \times C_{\mathrm{out}}$ filters with depthwise spatial filtering plus $1 \times 1$ pointwise mixing; (b) ResNet bottleneck block compressing channels by $4\times$ before spatial $3 \times 3$ filtering while preserving gradient flow via the identity skip.}
+\label{fig:cnn:tikz_factorization}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\linewidth,
+    height=5.2cm,
+    xlabel={Network Depth $l$ (layers)},
+    ylabel={Receptive Field $R_l$ (pixels)},
+    title={\small\bfseries (a) Receptive Field Growth ($3\times 3$)},
+    xmin=1, xmax=10,
+    ymin=0, ymax=150,
+    xtick={1,2,4,6,8,10},
+    grid=both,
+    grid style={monographRule, opacity=0.35},
+    legend pos=north west,
+    legend style={font=\scriptsize, draw=none, fill=white, fill opacity=0.85},
+    tick label style={font=\scriptsize},
+    label style={font=\footnotesize}
+  ]
+    \addplot[color=monographNavy, thick, mark=*, mark size=1.5pt, domain=1:10, samples=10] {2*x + 1};
+    \addlegendentry{Stride $1$, $d=1$ ($2l+1$)}
+    \addplot[color=monographTeal, thick, dashed, mark=square*, mark size=1.5pt] coordinates {
+      (1,3) (2,5) (3,9) (4,13) (5,21) (6,29) (7,45) (8,61) (9,93) (10,125)
+    };
+    \addlegendentry{Stride $2$ every 2nd layer}
+    \addplot[color=monographCrimson, thick, mark=triangle*, mark size=1.8pt] coordinates {
+      (1,3) (2,7) (3,15) (4,31) (5,63) (6,127)
+    };
+    \addlegendentry{Dilated $d_l = 2^{l-1}$ ($2^{l+1}-1$)}
+  \end{axis}
+\end{tikzpicture}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    width=\linewidth,
+    height=5.2cm,
+    xlabel={Output Channels $C_{\mathrm{out}}$},
+    ylabel={Relative Cost ($\mathrm{DS} / \mathrm{Std}$)},
+    title={\small\bfseries (b) Depthwise-Separable Efficiency},
+    xmin=16, xmax=512,
+    ymin=0, ymax=0.35,
+    xmode=log,
+    log basis x=2,
+    xtick={16,32,64,128,256,512},
+    xticklabels={16,32,64,128,256,512},
+    grid=both,
+    grid style={monographRule, opacity=0.35},
+    legend pos=north east,
+    legend style={font=\scriptsize, draw=none, fill=white, fill opacity=0.85},
+    tick label style={font=\scriptsize},
+    label style={font=\footnotesize}
+  ]
+    \addplot[color=monographNavy, thick, mark=*, mark size=1.3pt] coordinates {
+      (16, 0.1736) (32, 0.1424) (64, 0.1267) (128, 0.1189) (256, 0.1150) (512, 0.1131)
+    };
+    \addlegendentry{$k=3$ (limit $0.111$)}
+    \addplot[color=monographTeal, thick, dashed, mark=square*, mark size=1.3pt] coordinates {
+      (16, 0.1025) (32, 0.0713) (64, 0.0556) (128, 0.0478) (256, 0.0439) (512, 0.0420)
+    };
+    \addlegendentry{$k=5$ (limit $0.040$)}
+    \addplot[color=monographIndigo, thick, dotted, mark=triangle*, mark size=1.5pt] coordinates {
+      (16, 0.0829) (32, 0.0517) (64, 0.0360) (128, 0.0282) (256, 0.0243) (512, 0.0224)
+    };
+    \addlegendentry{$k=7$ (limit $0.020$)}
+  \end{axis}
+\end{tikzpicture}
+\end{minipage}
+\caption{Quantitative scaling of CNN operators: (a) theoretical receptive field $R_l$ across depth $l$ under standard stride-$1$, periodic striding, and exponential dilation \eqref{eq:cnn:rf_recursion}; (b) parameter and MAC ratio $\frac{1}{C_{\mathrm{out}}} + \frac{1}{k^2}$ of depthwise-separable vs.\ standard convolution \eqref{eq:cnn:ds_ratio}.}
+\label{fig:cnn:pgfplots_rf_eff}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:cnn:pitfalls}
+
+\begin{pitfall}[Stride-Induced Aliasing Breaking Shift-Invariance]
+\label{box:cnn:aliasing}
+\textbf{Failure Mode.} Standard strided convolutions and pooling layers ($s \ge 2$) sub-sample feature maps without an anti-aliasing low-pass filter. By the Nyquist--Shannon sampling theorem, high-frequency spatial components fold into low frequencies, destroying exact translation equivariance: a $1$-pixel input shift can produce markedly different output activations and class predictions.
+\textbf{Remedy.} Apply a spatial low-pass blur kernel (e.g., $[1, 2, 1]/4$ or $[1, 4, 6, 4, 1]/16$ separable Gaussian) immediately before sub-sampling (BlurPool), or use stride-$1$ pooling followed by anti-aliased downsampling.
+\end{pitfall}
+
+\begin{pitfall}[Transposed Convolution Checkerboard Artifacts]
+\label{box:cnn:checkerboard}
+\textbf{Failure Mode.} In transposed convolution with stride $s > 1$ and kernel size $k$, each input pixel stamps a $k \times k$ kernel onto the output grid at spacing $s$ \bookcite{deep_learning_foundations_concepts}{Fig.~10.30, p.~335}, \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~14.24, PDF p.~517}. Whenever $k$ is not divisible by $s$ ($k \bmod s \neq 0$, e.g., $k=3, s=2$), adjacent output pixels receive unequal numbers of overlapping kernel stamps, creating periodic high-frequency ``checkerboard'' grid artifacts in generated or segmented images.
+\textbf{Remedy.} Either choose $k$ divisible by $s$ (e.g., $k=4, s=2$), or replace transposed convolution with parameter-free bilinear/nearest-neighbor upsampling followed by a standard stride-$1$ $3 \times 3$ convolution (resize-convolution).
+\end{pitfall}
+
+\begin{pitfall}[Theoretical vs.\ Effective Receptive Field (ERF) Decay]
+\label{box:cnn:erf}
+\textbf{Failure Mode.} Although \eqref{eq:cnn:rf_recursion} predicts a uniform $R_l \times R_l$ support, gradient sensitivity $\partial \mat{Z}_L[0,0] / \partial \mat{X}[u,v]$ is heavily concentrated at the center. Under random or typical learned weights, the effective receptive field (ERF) follows a 2D Gaussian profile whose standard deviation grows only as $O(\sqrt{L})$ rather than $O(L)$, leaving peripheral boundary pixels in $R_l$ nearly ignored.
+\textbf{Remedy.} Use residual skip connections (which preserve shorter paths), dilated convolutions ($d_l > 1$) in later stages, or hybridize deep CNN stages with global self-attention blocks when long-range spatial context is critical.
+\end{pitfall}
+
+\end{document}

@@ -1,0 +1,392 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Latent Variables, Graphical Models, VI \& MCMC Sampling}{PCA, Factor Analysis, Mixture Models \& EM}{PCA, Gaussian Mixture Models \& the Expectation-Maximization Algorithm}{\bookcite{mathematics_machine_learning_orienly}{Ch. 10--11}, \bookcite{deep_learning_foundations_concepts}{Ch. 15--16}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20--21}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 21--22}}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:em:formulation}
+
+Unsupervised representation learning and density estimation address two dual questions for an unlabeled dataset $\mathcal{D} = \{\vecb{x}_n\}_{n=1}^N$ with $\vecb{x}_n \in \R^D$: (i) what low-dimensional continuous latent coordinates $\vecb{z}_n \in \R^M$ ($M < D$) best preserve geometric structure, and (ii) what discrete latent cluster assignments $z_n \in \{1,\dots,K\}$ best explain multimodal density? Stacking observations row-wise yields the data matrix $\mat{X} = [\vecb{x}_1, \dots, \vecb{x}_N]\T \in \R^{N \times D}$ with sample mean $\bar{\vecb{x}} = \frac{1}{N}\sum_{n=1}^N \vecb{x}_n$, centered matrix $\tilde{\mat{X}} = \mat{X} - \ones \bar{\vecb{x}}\T$, and empirical covariance
+\begin{equation}
+  \mat{S} = \frac{1}{N}\tilde{\mat{X}}\T\tilde{\mat{X}} = \frac{1}{N}\sum_{n=1}^N (\vecb{x}_n - \bar{\vecb{x}})(\vecb{x}_n - \bar{\vecb{x}})\T = \mat{U}\mat{\Lambda}\mat{U}\T \in \R^{D \times D},
+  \label{eq:em:sample_cov}
+\end{equation}
+where $\mat{U} = [\vecb{u}_1, \dots, \vecb{u}_D] \in \R^{D \times D}$ is orthogonal ($\mat{U}\T\mat{U} = \eye_D$) and $\mat{\Lambda} = \diag(\lambda_1, \dots, \lambda_D)$ orders eigenvalues $\lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_D \ge 0$ \bookcite{mathematics_machine_learning_orienly}{Ch. 10, PDF p. 327}\bookcite{deep_learning_foundations_concepts}{Ch. 16, p. 512}. In probabilistic latent-variable models, observed data $\mat{X}$ are coupled to unobserved variables $\mat{Z}$ via a joint distribution $p(\mat{X}, \mat{Z} \mid \vecb{\theta})$, and parameter estimation seeks $\argmax_{\vecb{\theta}} \log p(\mat{X} \mid \vecb{\theta}) = \argmax_{\vecb{\theta}} \log \int p(\mat{X}, \mat{Z} \mid \vecb{\theta})\,\mathrm{d}\mat{Z}$ (with summation replacing integration for discrete $\mat{Z}$).
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:em:notation}
+Source texts differ in latent-dimension symbols, loading-matrix letters, data orientation, and responsibility notation. We standardize on row-major $\mat{X} \in \R^{N \times D}$, latent dimension $M$, and $K$ mixture components:
+\vspace{4pt}
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{@{}lccccX@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified} & \textbf{Deisenroth} & \textbf{Bishop} & \textbf{Murphy} & \textbf{Tiep Vu / Notes} \\
+\midrule
+Latent dim. & $M$ & $M$ & $M$ & $L$ & $K$ (PCA) vs. $K$ clusters \\
+Data matrix & $\mat{X} \in \R^{N \times D}$ & $\{\vecb{x}_n\}$ & $\mat{X} \in \R^{N \times D}$ & $\mat{X} \in \R^{N \times D}$ & $\mat{X} \in \R^{D \times N}$ (col-major) \\
+Basis / Loadings & $\mat{B}, \mat{W} \in \R^{D \times M}$ & $\mat{B}$ & $\mat{U}_M, \mat{W}$ & $\mat{U}_L, \mat{W}$ & $\mat{U}_K \in \R^{D \times K}$ \\
+Covariance & $\mat{S}$ & $\mat{S}$ & $\mat{S}$ & $\hat{\mat{\Sigma}}$ & $\mat{S} = \frac{1}{N}\bar{\mat{X}}\bar{\mat{X}}\T$ \\
+Responsibility & $r_{nk}$ & $r_{nk}$ & $\gamma(z_{nk})$ & $r_{nk}$ & Posterior $p(z_n{=}k \mid \vecb{x}_n)$ \\
+Noise cov. & $\sigma^2\eye_D$, $\mat{\Psi}$ & $\sigma^2\eye_D$ & $\sigma^2\eye_D$, $\mat{\Psi}$ & $\sigma^2\eye_D$, $\mat{\Psi}$ & Isotropic (PPCA) vs. diag. (FA) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:em:derivations}
+
+\subsection{Equivalence of Maximum-Variance, Minimum-Error, and SVD PCA}
+\label{subsec:em:pca}
+
+Principal Component Analysis (PCA) admits two distinct geometric derivations---maximizing projected variance \bookcite{mathematics_machine_learning_orienly}{Ch. 10.2, PDF p. 327} and minimizing orthogonal reconstruction error \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.1.2, PDF p. 689}---that yield identical principal subspaces and coincide with the truncated Singular Value Decomposition (SVD).
+
+\begin{coremath}[Equivalence of Maximum-Variance and Minimum-Reconstruction PCA]
+\label{thm:em:pca_equiv}
+Assume centered data $\tilde{\mat{x}}_n = \vecb{x}_n - \bar{\vecb{x}}$ with covariance $\mat{S} = \frac{1}{N}\sum_{n=1}^N \tilde{\vecb{x}}_n\tilde{\vecb{x}}_n\T$.
+\begin{enumerate}
+  \item \textbf{Maximum-Variance Formulation:} Seeking a unit direction $\vecb{b}_1 \in \R^D$ ($\norm{\vecb{b}_1}_2 = 1$) maximizing projected variance $V_1 = \frac{1}{N}\sum_{n=1}^N (\vecb{b}_1\T \tilde{\vecb{x}}_n)^2 = \vecb{b}_1\T \mat{S} \vecb{b}_1$ leads to the Lagrangian $\mathcal{L}(\vecb{b}_1, \lambda_1) = \vecb{b}_1\T \mat{S} \vecb{b}_1 + \lambda_1(1 - \vecb{b}_1\T \vecb{b}_1)$. Setting $\grad_{\vecb{b}_1}\mathcal{L} = \zeros$ gives
+  \begin{equation}
+    \mat{S}\vecb{b}_1 = \lambda_1 \vecb{b}_1, \qquad V_1 = \vecb{b}_1\T \mat{S} \vecb{b}_1 = \lambda_1.
+    \label{eq:em:pca_eig}
+  \end{equation}
+  By induction with orthogonality constraints $\vecb{b}_m\T \vecb{b}_j = 0$ ($j < m$), the $M$-dimensional variance-maximizing basis is $\mat{B} = \mat{U}_M = [\vecb{u}_1, \dots, \vecb{u}_M] \in \R^{D \times M}$ spanning the top-$M$ eigenspace of $\mat{S}$, capturing total variance $\sum_{m=1}^M \lambda_m$ \bookcite{mathematics_machine_learning_orienly}{Ch. 10.2, PDF p. 328}.
+
+  \item \textbf{Minimum-Reconstruction Formulation:} Seeking an orthonormal basis $\mat{B} \in \R^{D \times M}$ ($\mat{B}\T\mat{B} = \eye_M$) and latent codes $\{\vecb{z}_n\}_{n=1}^N \subset \R^M$ minimizing mean squared error
+  \begin{equation}
+    J_M(\mat{B}, \mat{Z}) = \frac{1}{N}\sum_{n=1}^N \norm{\tilde{\vecb{x}}_n - \mat{B}\vecb{z}_n}_2^2 = \frac{1}{N}\norm{\tilde{\mat{X}} - \mat{Z}\mat{B}\T}_F^2,
+    \label{eq:em:pca_recon}
+  \end{equation}
+  differentiating with respect to $\vecb{z}_n$ gives $\pd{J_M}{\vecb{z}_n} = -\frac{2}{N}\mat{B}\T(\tilde{\vecb{x}}_n - \mat{B}\vecb{z}_n) = \zeros \implies \vecb{z}_n^\star = \mat{B}\T\tilde{\vecb{x}}_n$ (since $\mat{B}\T\mat{B} = \eye_M$). Substituting $\hat{\vecb{x}}_n = \mat{B}\mat{B}\T\tilde{\vecb{x}}_n$ back into \eqref{eq:em:pca_recon} via the Pythagorean theorem yields
+  \begin{equation}
+    J_M(\mat{B}) = \frac{1}{N}\sum_{n=1}^N \tilde{\vecb{x}}_n\T(\eye_D - \mat{B}\mat{B}\T)\tilde{\vecb{x}}_n = \Tr(\mat{S}) - \Tr(\mat{B}\T\mat{S}\mat{B}) = \sum_{i=M+1}^D \lambda_i,
+    \label{eq:em:pca_resid}
+  \end{equation}
+  which is minimized identically at $\mat{B} = \mat{U}_M$ \bookcite{deep_learning_foundations_concepts}{Ch. 16.1.2, p. 513}\bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.1.2, PDF p. 690}.
+
+  \item \textbf{SVD Equivalence:} Let $\tilde{\mat{X}} = \mat{U}_X \mat{\Sigma}_X \mat{V}_X\T$ be the thin SVD. Then $\mat{S} = \frac{1}{N}\tilde{\mat{X}}\T\tilde{\mat{X}} = \mat{V}_X \left(\frac{1}{N}\mat{\Sigma}_X^2\right) \mat{V}_X\T$. Hence the right singular vectors $\mat{V}_{X,1:M}$ equal $\mat{U}_M$, the eigenvalues satisfy $\lambda_k = \sigma_k^2 / N$, the scores are $\mat{Z} = \tilde{\mat{X}}\mat{V}_{X,1:M} = \mat{U}_{X,1:M}\mat{\Sigma}_{X,1:M}$, and $\hat{\mat{X}} = \mat{U}_{X,1:M}\mat{\Sigma}_{X,1:M}\mat{V}_{X,1:M}\T$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.1.3, PDF p. 693}\bookcite{machine_learning_co_ban_tiep_vu}{Ch. 21, PDF p. 271}.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Unsupervised Variance (PCA) vs. Supervised Discriminability (Fisher LDA)]
+\label{rem:em:pca_vs_lda}
+PCA maximizes total marginal variance $\vecb{b}\T\mat{S}\vecb{b}$ without class labels. When between-class separation lies along a low-variance direction while within-class noise dominates the leading principal axis, PCA merges classes upon projection. Fisher's Linear Discriminant Analysis (LDA) instead maximizes the Rayleigh quotient $J(\vecb{w}) = \frac{\vecb{w}\T \mat{S}_B \vecb{w}}{\vecb{w}\T \mat{S}_W \vecb{w}}$ (between-class scatter over within-class scatter), trading total variance for class separability \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 22, PDF p. 280--282}\bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 9.2, PDF p. 359}.
+\end{intuition}
+
+\subsection{Probabilistic PCA, Factor Analysis, and the $\sigma^2 \to 0$ Limit}
+\label{subsec:em:ppca}
+
+Conventional PCA lacks a likelihood function, cannot generate samples, and assigns zero reconstruction error anywhere inside the principal subspace regardless of distance from the training manifold \bookcite{deep_learning_foundations_concepts}{Ch. 16.2, p. 520}. Probabilistic PCA (PPCA) and Factor Analysis (FA) resolve this via a linear-Gaussian latent-variable model.
+
+\begin{coremath}[PPCA Marginal, Woodbury Posterior, MLE, and Zero-Noise PCA Limit]
+\label{thm:em:ppca}
+Define the generative process $\vecb{z}_n \sim \Normal(\zeros, \eye_M)$ and $\vecb{x}_n \mid \vecb{z}_n \sim \Normal(\mat{W}\vecb{z}_n + \vecb{\mu}, \mat{\Psi})$, where $\mat{W} \in \R^{D \times M}$ is the factor loading matrix. Setting $\mat{\Psi} = \diag(\psi_1,\dots,\psi_D)$ gives \textbf{Factor Analysis}; restricting $\mat{\Psi} = \sigma^2 \eye_D$ gives \textbf{Probabilistic PCA} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.3.2, PDF p. 978}.
+\begin{enumerate}
+  \item \textbf{Marginal \& Posterior:} Integrating out $\vecb{z}_n$ yields $p(\vecb{x}_n) = \Normal(\vecb{x}_n \mid \vecb{\mu}, \mat{C})$ with $\mat{C} = \mat{W}\mat{W}\T + \sigma^2 \eye_D$. Applying the Woodbury matrix identity reduces $\mat{C}\inv$ from $\mathcal{O}(D^3)$ to $\mathcal{O}(M^3)$:
+  \begin{equation}
+    \mat{C}\inv = \sigma^{-2}\eye_D - \sigma^{-2}\mat{W}\mat{M}\inv\mat{W}\T, \qquad \mat{M} = \mat{W}\T\mat{W} + \sigma^2\eye_M \in \R^{M \times M},
+    \label{eq:em:ppca_woodbury}
+  \end{equation}
+  and Bayes' rule for linear-Gaussian models yields the exact latent posterior \bookcite{deep_learning_foundations_concepts}{Ch. 16.2.2, p. 523}:
+  \begin{equation}
+    p(\vecb{z}_n \mid \vecb{x}_n) = \Normal\big(\vecb{z}_n \,\big|\, \mat{M}\inv\mat{W}\T(\vecb{x}_n - \vecb{\mu}),\; \sigma^2\mat{M}\inv\big).
+    \label{eq:em:ppca_post}
+  \end{equation}
+  \item \textbf{Closed-Form MLE (Tipping--Bishop):} Maximizing $\log p(\mat{X} \mid \vecb{\mu}, \mat{W}, \sigma^2) = -\frac{N}{2}\big[D\log(2\pi) + \log\abs{\mat{C}} + \Tr(\mat{C}\inv\mat{S})\big]$ yields $\hat{\vecb{\mu}}_{\mathrm{ML}} = \bar{\vecb{x}}$ and stationary points \bookcite{deep_learning_foundations_concepts}{Ch. 16.2.3, p. 524}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.3.2, PDF p. 979}:
+  \begin{equation}
+    \mat{W}_{\mathrm{ML}} = \mat{U}_M(\mat{\Lambda}_M - \sigma^2\eye_M)^{1/2}\mat{R}, \qquad \sigma^2_{\mathrm{ML}} = \frac{1}{D - M}\sum_{i=M+1}^D \lambda_i,
+    \label{eq:em:ppca_mle}
+  \end{equation}
+  where $\mat{R} \in \R^{M \times M}$ is any orthogonal matrix ($\mat{R}\mat{R}\T = \eye_M$). All other eigenvector subsets are saddle points.
+  \item \textbf{Isotropic Limit $\sigma^2 \to 0$:} As $\sigma^2 \to 0$, $\mat{W}_{\mathrm{ML}} \to \mat{U}_M \mat{\Lambda}_M^{1/2}\mat{R}$, the marginal covariance becomes the rank-$M$ approximation $\mat{C} \to \mat{U}_M\mat{\Lambda}_M\mat{U}_M\T = \mat{S}_M$, and the posterior covariance $\sigma^2\mat{M}\inv \to \zeros$ collapses onto a point mass at the orthogonal projection $\E[\vecb{z}_n \mid \vecb{x}_n] \to (\mat{W}\T\mat{W})\inv\mat{W}\T(\vecb{x}_n - \bar{\vecb{x}})$, recovering standard PCA \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.3.2.2, PDF p. 979}.
+\end{enumerate}
+\end{coremath}
+
+\subsection{Gaussian Mixture Models, Non-Convexity, and $K$-Means as Hard EM}
+\label{subsec:em:gmm_kmeans}
+
+{\emergencystretch=3em
+A $K$-component Gaussian Mixture Model (GMM) introduces a discrete latent indicator $z_n \in \{1,\dots,K\}$ with prior $\pi_k = p(z_n=k)$ ($\sum_{k=1}^K \pi_k = 1$, $\pi_k \ge 0$) and component likelihood $p(\vecb{x}_n \mid z_n=k) = \Normal(\vecb{x}_n \mid \vecb{\mu}_k, \mat{\Sigma}_k)$. Marginalizing $z_n$ yields the incomplete-data log-likelihood \bookcite{mathematics_machine_learning_orienly}{Ch. 11.1, PDF p. 355} and \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.2.1, PDF p. 964}:
+\par}
+\begin{equation}
+  \log p(\mat{X} \mid \vecb{\theta}) = \sum_{n=1}^N \log \left(\sum_{k=1}^K \pi_k \Normal(\vecb{x}_n \mid \vecb{\mu}_k, \mat{\Sigma}_k)\right), \qquad \vecb{\theta} = \{\pi_k, \vecb{\mu}_k, \mat{\Sigma}_k\}_{k=1}^K.
+  \label{eq:em:gmm_ll}
+\end{equation}
+Because the logarithm sits outside the sum over $k$, \eqref{eq:em:gmm_ll} is non-convex and admits no closed-form global maximizer. By Bayes' rule, the posterior responsibility of component $k$ for observation $\vecb{x}_n$ is
+\begin{equation}
+  r_{nk} := p(z_n = k \mid \vecb{x}_n, \vecb{\theta}) = \frac{\pi_k \Normal(\vecb{x}_n \mid \vecb{\mu}_k, \mat{\Sigma}_k)}{\sum_{j=1}^K \pi_j \Normal(\vecb{x}_n \mid \vecb{\mu}_j, \mat{\Sigma}_j)}.
+  \label{eq:em:resp}
+\end{equation}
+Restricting $\mat{\Sigma}_k = \epsilon \eye_D$ and $\pi_k = 1/K$ for all $k$, the exponent in $\Normal(\vecb{x}_n \mid \vecb{\mu}_k, \epsilon\eye_D)$ scales as $-\frac{1}{2\epsilon}\norm{\vecb{x}_n - \vecb{\mu}_k}_2^2$. In the zero-variance limit $\epsilon \to 0^+$, the softmax in \eqref{eq:em:resp} sharpens to a hard indicator $r_{nk} \to \mathbb{I}\big[k = \argmin_j \norm{\vecb{x}_n - \vecb{\mu}_j}_2^2\big]$, and the expected complete-data log-likelihood reduces to minimizing the $K$-means distortion $J = \sum_{n=1}^N \sum_{k=1}^K r_{nk} \norm{\vecb{x}_n - \vecb{\mu}_k}_2^2$ \bookcite{deep_learning_foundations_concepts}{Ch. 15.3.2, p. 495}. Thus $K$-means is precisely the hard-assignment limit of GMM-EM.
+
+\subsection{General EM Algorithm: ELBO Decomposition \& Monotone Ascent}
+\label{subsec:em:elbo}
+
+The Expectation-Maximization (EM) algorithm maximizes $\log p(\mat{X} \mid \vecb{\theta})$ iteratively by constructing and maximizing a tight variational lower bound (ELBO) \bookcite{deep_learning_foundations_concepts}{Ch. 15.4, pp. 500--503}\bookcite{mathematics_machine_learning_orienly}{Ch. 11.3, PDF p. 366}.
+
+\begin{coremath}[ELBO Decomposition and Monotonic Log-Likelihood Ascent]
+\label{thm:em:elbo_ascent}
+For any variational distribution $q(\mat{Z})$ over the latent variables $\mat{Z}$, the marginal log-likelihood decomposes identically as
+\begin{equation}
+  \log p(\mat{X} \mid \vecb{\theta}) = \mathcal{L}(q, \vecb{\theta}) + \KL{q(\mat{Z})}{p(\mat{Z} \mid \mat{X}, \vecb{\theta})},
+  \label{eq:em:elbo_decomp}
+\end{equation}
+where the Evidence Lower Bound (ELBO) $\mathcal{L}(q, \vecb{\theta})$ and Kullback--Leibler divergence are
+\begin{align}
+  \mathcal{L}(q, \vecb{\theta}) &= \sum_{\mat{Z}} q(\mat{Z}) \log \frac{p(\mat{X}, \mat{Z} \mid \vecb{\theta})}{q(\mat{Z})} = \E_{q(\mat{Z})}[\log p(\mat{X}, \mat{Z} \mid \vecb{\theta})] + \Entropy(q), \label{eq:em:elbo_def} \\
+  \KL{q(\mat{Z})}{p(\mat{Z} \mid \mat{X}, \vecb{\theta})} &= -\sum_{\mat{Z}} q(\mat{Z}) \log \frac{p(\mat{Z} \mid \mat{X}, \vecb{\theta})}{q(\mat{Z})} \ge 0, \label{eq:em:kl_def}
+\end{align}
+(with $\sum_{\mat{Z}}$ replaced by $\int \mathrm{d}\mat{Z}$ for continuous $\mat{Z}$). Non-negativity of KL divergence implies $\log p(\mat{X} \mid \vecb{\theta}) \ge \mathcal{L}(q, \vecb{\theta})$ for all $q$ and $\vecb{\theta}$ (equivalently by Jensen's inequality). Alternating two coordinate-ascent steps from iterate $\vecb{\theta}^{(t)}$:
+\begin{itemize}
+  \item \textbf{E-step:} Hold $\vecb{\theta}^{(t)}$ fixed and maximize $\mathcal{L}(q, \vecb{\theta}^{(t)})$ over $q$. Since $\log p(\mat{X} \mid \vecb{\theta}^{(t)})$ is independent of $q$, maximizing $\mathcal{L}$ minimizes $\KL{q(\mat{Z})}{p(\mat{Z} \mid \mat{X}, \vecb{\theta}^{(t)})}$ to zero at
+  \begin{equation}
+    q^{(t+1)}(\mat{Z}) = p(\mat{Z} \mid \mat{X}, \vecb{\theta}^{(t)}), \qquad \mathcal{L}(q^{(t+1)}, \vecb{\theta}^{(t)}) = \log p(\mat{X} \mid \vecb{\theta}^{(t)}).
+    \label{eq:em:estep_general}
+  \end{equation}
+  \item \textbf{M-step:} Hold $q^{(t+1)}$ fixed and maximize $\mathcal{L}(q^{(t+1)}, \vecb{\theta})$ over $\vecb{\theta}$. Dropping the entropy term $\Entropy(q^{(t+1)})$ (independent of $\vecb{\theta}$) reduces this to maximizing the expected complete-data log-likelihood $Q(\vecb{\theta}; \vecb{\theta}^{(t)})$:
+  \begin{equation}
+    \vecb{\theta}^{(t+1)} = \argmax_{\vecb{\theta}} Q(\vecb{\theta}; \vecb{\theta}^{(t)}), \qquad Q(\vecb{\theta}; \vecb{\theta}^{(t)}) := \E_{p(\mat{Z} \mid \mat{X}, \vecb{\theta}^{(t)})}[\log p(\mat{X}, \mat{Z} \mid \vecb{\theta})].
+    \label{eq:em:mstep_general}
+  \end{equation}
+\end{itemize}
+\textbf{Proof of Monotonic Ascent:} Combining \eqref{eq:em:elbo_decomp}, \eqref{eq:em:estep_general}, and \eqref{eq:em:mstep_general} gives
+\begin{align}
+  \log p(\mat{X} \mid \vecb{\theta}^{(t+1)}) &= \mathcal{L}(q^{(t+1)}, \vecb{\theta}^{(t+1)}) + \underbrace{\KL{q^{(t+1)}}{p(\cdot \mid \mat{X}, \vecb{\theta}^{(t+1)})}}_{\ge\, 0} \nonumber \\
+  &\ge \mathcal{L}(q^{(t+1)}, \vecb{\theta}^{(t+1)}) \ge \mathcal{L}(q^{(t+1)}, \vecb{\theta}^{(t)}) = \log p(\mat{X} \mid \vecb{\theta}^{(t)}).
+  \label{eq:em:monotone_chain}
+\end{align}
+Moreover, at $\vecb{\theta} = \vecb{\theta}^{(t)}$, $\mathcal{L}(q^{(t+1)}, \vecb{\theta})$ makes tangential contact with $\log p(\mat{X} \mid \vecb{\theta})$ (matching both value and gradient) \bookcite{deep_learning_foundations_concepts}{Ch. 15.4.1, p. 502}.
+\end{coremath}
+
+\subsection{Closed-Form E/M Updates for GMM, PPCA/FA, and Kernel PCA}
+\label{subsec:em:closed_forms}
+
+{\sloppy
+\paragraph{GMM EM Updates.} For i.i.d.\ data, $Q(\vecb{\theta};\vecb{\theta}^{(t)}) = \sum_{n=1}^N \sum_{k=1}^K r_{nk}^{(t)} \big[\log \pi_k + \log \Normal(\vecb{x}_n \mid \vecb{\mu}_k, \mat{\Sigma}_k)\big]$. Differentiating and applying a Lagrange multiplier for $\sum_k \pi_k = 1$ yields \bookcite{mathematics_machine_learning_orienly}{Ch. 11.3, PDF p. 367} and \bookcite{deep_learning_foundations_concepts}{Ch. 15.3.1, p. 494}:
+\par}
+\begin{align}
+  N_k &= \sum_{n=1}^N r_{nk}^{(t)}, & \vecb{\mu}_k^{(t+1)} &= \frac{1}{N_k}\sum_{n=1}^N r_{nk}^{(t)} \vecb{x}_n, \nonumber \\
+  \mat{\Sigma}_k^{(t+1)} &= \frac{1}{N_k}\sum_{n=1}^N r_{nk}^{(t)}(\vecb{x}_n - \vecb{\mu}_k^{(t+1)})(\vecb{x}_n - \vecb{\mu}_k^{(t+1)})\T, & \pi_k^{(t+1)} &= \frac{N_k}{N}.
+  \label{eq:em:gmm_mstep}
+\end{align}
+
+\paragraph{PPCA \& EM-PCA Updates.} For PPCA, the E-step computes the posterior moments from \eqref{eq:em:ppca_post}:
+\begin{equation}
+  \E[\vecb{z}_n] = \mat{M}\inv\mat{W}\T(\vecb{x}_n - \bar{\vecb{x}}), \qquad \E[\vecb{z}_n\vecb{z}_n\T] = \sigma^2\mat{M}\inv + \E[\vecb{z}_n]\E[\vecb{z}_n]\T,
+  \label{eq:em:ppca_estep}
+\end{equation}
+and the M-step updates $\mat{W}_{\mathrm{new}}$ and $\sigma^2_{\mathrm{new}}$ in $\mathcal{O}(NDM)$ time without forming the $D\times D$ covariance matrix \bookcite{deep_learning_foundations_concepts}{Ch. 16.3.1, pp. 532--533}:
+\begin{align}
+  \mat{W}_{\mathrm{new}} &= \left(\sum_{n=1}^N (\vecb{x}_n - \bar{\vecb{x}})\E[\vecb{z}_n]\T\right)\left(\sum_{n=1}^N \E[\vecb{z}_n\vecb{z}_n\T]\right)\inv, \label{eq:em:ppca_mstep} \\
+  \sigma^2_{\mathrm{new}} &= \frac{1}{ND}\sum_{n=1}^N \Big\{\norm{\vecb{x}_n - \bar{\vecb{x}}}_2^2 - 2\E[\vecb{z}_n]\T\mat{W}_{\mathrm{new}}\T(\vecb{x}_n - \bar{\vecb{x}}) + \Tr\big(\E[\vecb{z}_n\vecb{z}_n\T]\mat{W}_{\mathrm{new}}\T\mat{W}_{\mathrm{new}}\big)\Big\}. \nonumber
+\end{align}
+In the zero-noise limit $\sigma^2 \to 0$, \eqref{eq:em:ppca_estep} and \eqref{eq:em:ppca_mstep} reduce to Roweis's \textbf{EM-PCA} algorithm; collecting $\E[\vecb{z}_n]$ into $\mat{\Omega} \in \R^{M \times N}$ gives \bookcite{deep_learning_foundations_concepts}{Ch. 16.3.2, p. 534}:
+\begin{equation}
+  \text{E-step: } \mat{\Omega} = (\mat{W}\T\mat{W})\inv\mat{W}\T\tilde{\mat{X}}\T, \qquad \text{M-step: } \mat{W}_{\mathrm{new}} = \tilde{\mat{X}}\T\mat{\Omega}\T(\mat{\Omega}\mat{\Omega}\T)\inv.
+  \label{eq:em:empca}
+\end{equation}
+
+{\sloppy
+\paragraph{Dual Gram Trick \& Kernel PCA.} When $N \ll D$, forming $\mat{S} \in \R^{D \times D}$ costs $\mathcal{O}(ND^2)$ and eigendecomposition costs $\mathcal{O}(D^3)$. Solving the $N \times N$ Gram eigenproblem $\frac{1}{N}\tilde{\mat{X}}\tilde{\mat{X}}\T \vecb{v}_i = \lambda_i \vecb{v}_i$ ($\norm{\vecb{v}_i}_2 = 1$) instead yields unit eigenvectors of $\mat{S}$ via $\vecb{u}_i = (N\lambda_i)^{-1/2}\tilde{\mat{X}}\T\vecb{v}_i$ in $\mathcal{O}(N^3)$ time \bookcite{deep_learning_foundations_concepts}{Ch. 16.1.5, p. 519} and \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.1.3.2, PDF p. 693}. Replacing inner products $\inner{\vecb{x}_i}{\vecb{x}_j}$ with a positive-definite kernel $k(\vecb{x}_i, \vecb{x}_j) = \inner{\phi(\vecb{x}_i)}{\phi(\vecb{x}_j)}_{\Hilbert}$ defines \textbf{Kernel PCA} \bookcite{mathematics_machine_learning_orienly}{Ch. 10.8, PDF p. 353}: centering $\mat{K}_{ij} = k(\vecb{x}_i, \vecb{x}_j)$ via $\tilde{\mat{K}} = \mat{H}\mat{K}\mat{H}$ ($\mat{H} = \eye_N - \frac{1}{N}\ones\ones\T$), we solve $\tilde{\mat{K}}\vecb{\alpha}_m = N\lambda_m \vecb{\alpha}_m$ with $\norm{\vecb{\alpha}_m}_2^2 = \frac{1}{N\lambda_m}$ and project $\vecb{x}$ via $z_m(\vecb{x}) = \sum_{n=1}^N \alpha_{mn}\tilde{k}(\vecb{x}_n, \vecb{x})$.
+\par}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:em:algorithms}
+
+{\sloppy
+Practical GMM-EM combines three safeguards against numerical underflow, poor local optima, and covariance collapse: log-sum-exp stabilization of responsibilities \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.2.5, PDF p. 973}, $k$-means++ seeding \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 21.3.4, PDF p. 755}, and diagonal covariance regularization $\epsilon\eye_D$.
+\par}
+
+\begin{algorithm}[htbp]
+\caption{Log-Sum-Exp Stabilized EM for Gaussian Mixture Models}
+\label{alg:em:gmm}
+\KwIn{Data $\mat{X} = \{\vecb{x}_n\}_{n=1}^N \subset \R^D$, components $K$, floor $\epsilon > 0$, tolerance $\tau > 0$}
+\KwOut{Parameters $\vecb{\theta} = \{\pi_k, \vecb{\mu}_k, \mat{\Sigma}_k\}_{k=1}^K$ and responsibilities $\{r_{nk}\}$}
+Initialize $\{\vecb{\mu}_k^{(0)}\}_{k=1}^K$ via $k$-means++; set $\pi_k^{(0)} \leftarrow 1/K$, $\mat{\Sigma}_k^{(0)} \leftarrow \Cov(\mat{X}) + \epsilon\eye_D$\;
+$t \leftarrow 0$, $\ell^{(0)} \leftarrow -\infty$\;
+\Repeat{$\abs{\ell^{(t)} - \ell^{(t-1)}} < \tau$}{
+  \textbf{E-step (Log-Sum-Exp):} For each $n \in \{1,\dots,N\}$ and $k \in \{1,\dots,K\}$\;
+  \quad $\beta_{nk} \leftarrow \log \pi_k^{(t)} + \log \Normal(\vecb{x}_n \mid \vecb{\mu}_k^{(t)}, \mat{\Sigma}_k^{(t)})$\;
+  \quad $m_n \leftarrow \max_j \beta_{nj}$, \quad $\log Z_n \leftarrow m_n + \log \sum_{j=1}^K \exp(\beta_{nj} - m_n)$\;
+  \quad $r_{nk} \leftarrow \exp(\beta_{nk} - \log Z_n)$\;
+  $\ell^{(t+1)} \leftarrow \sum_{n=1}^N \log Z_n$\;
+  \textbf{M-step:} For each $k \in \{1,\dots,K\}$\;
+  \quad $N_k \leftarrow \sum_{n=1}^N r_{nk}$, \quad $\pi_k^{(t+1)} \leftarrow N_k / N$\;
+  \quad $\vecb{\mu}_k^{(t+1)} \leftarrow \frac{1}{N_k}\sum_{n=1}^N r_{nk}\vecb{x}_n$\;
+  \quad $\mat{\Sigma}_k^{(t+1)} \leftarrow \frac{1}{N_k}\sum_{n=1}^N r_{nk}(\vecb{x}_n - \vecb{\mu}_k^{(t+1)})(\vecb{x}_n - \vecb{\mu}_k^{(t+1)})\T + \epsilon\eye_D$\;
+  $t \leftarrow t + 1$\;
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Computational complexity and structural comparison across dimensionality reduction and mixture models ($N$: samples, $D$: ambient dim., $M$: latent dim., $K$: clusters, $T$: EM/iter steps).}
+\label{tab:em:complexity}
+\small
+\begin{tabularx}{\textwidth}{@{}lcccX@{}}
+\toprule
+\textbf{Method} & \textbf{Time Complexity} & \textbf{Space} & \textbf{Latent / Noise} & \textbf{Key Trade-off} \\
+\midrule
+PCA (Cov. Eig) & $\mathcal{O}(ND^2 + D^3)$ & $\mathcal{O}(D^2)$ & Deterministic / None & Exact global optimum; infeasible for huge $D$ \\
+PCA (Dual Gram) & $\mathcal{O}(N^2 D + N^3)$ & $\mathcal{O}(N^2)$ & Deterministic / None & Optimal when $N \ll D$; enables Kernel PCA \\
+Randomized SVD & $\mathcal{O}(NDM + M^3)$ & $\mathcal{O}(NM + DM)$ & Deterministic / None & Fast top-$M$ subspace approximation \\
+EM-PCA / PPCA & $\mathcal{O}(T N D M)$ & $\mathcal{O}(NM + DM)$ & Cont. / Isotropic $\sigma^2\eye$ & Streaming-friendly; handles missing data \\
+Factor Analysis & $\mathcal{O}(T(NDM + M^3))$ & $\mathcal{O}(NM + DM)$ & Cont. / Diagonal $\mat{\Psi}$ & Scale-invariant; no closed-form MLE \\
+$K$-Means & $\mathcal{O}(T N K D)$ & $\mathcal{O}(NK + KD)$ & Hard discrete / $\epsilon{\to}0$ & Fast spherical clusters; no density \\
+GMM (Full EM) & $\mathcal{O}(T N K D^2)$ & $\mathcal{O}(NK + KD^2)$ & Soft discrete / Full $\mat{\Sigma}_k$ & Multimodal density; singularity risk \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Deterministic Subspaces vs. Generative Latent Models]
+Deisenroth et al.\ \bookcite{mathematics_machine_learning_orienly}{Ch. 10--11} and Bishop \& Bishop \bookcite{deep_learning_foundations_concepts}{Ch. 15--16} emphasize that moving from deterministic PCA/$K$-means to PPCA/GMMs replaces hard geometric objectives with proper likelihoods $p(\vecb{x} \mid \vecb{\theta})$. Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20--21}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28} unifies both under a single shallow latent-factor taxonomy ($p(\vecb{z}) \to p(\vecb{x}\mid\vecb{z})$), where $K$-means, GMMs, PCA, PPCA, FA, and ICA differ solely by whether $\vecb{z}$ is discrete or continuous and whether $p(\vecb{z})$ and $p(\vecb{x}\mid\vecb{z})$ are Gaussian, isotropic, or non-Gaussian.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:em:visuals}
+
+Figure~\ref{fig:em:pgm} contrasts the directed graphical models of PPCA/Factor Analysis and Gaussian Mixture Models in plate notation. Figure~\ref{fig:em:elbo_tikz} illustrates the two-stage variational EM geometry in parameter and distribution space, while Figure~\ref{fig:em:pgfplots} plots the tangential lower-bound climb alongside a PCA variance-retained scree diagnostic.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.35cm, >=stealth]
+  % Left: PPCA / FA
+  \node[font=\small\bfseries, text=monographNavy] (titleL) at (0, 2.3) {PPCA / Factor Analysis};
+  \node[circle, draw=monographTeal, fill=monographTealBg, thick, minimum size=0.85cm] (zL) at (0, 1.1) {$\vecb{z}_n$};
+  \node[circle, draw=monographNavy, fill=monographNavyBg, thick, minimum size=0.85cm, below=0.9cm of zL] (xL) {$\vecb{x}_n$};
+  \node[font=\small] (WL) at (-1.85, -0.55) {$\mat{W}, \vecb{\mu}$};
+  \node[font=\small] (sigL) at (2.05, -0.55) {$\sigma^2\eye$ / $\mat{\Psi}$};
+  \draw[monoArrow] (zL) -- (xL);
+  \draw[monoArrow] (WL) -- (xL);
+  \draw[monoArrow] (sigL) -- (xL);
+  \draw[rounded corners=4pt, dashed, monographSlate] (-0.95, -1.35) rectangle (0.95, 1.75);
+  \node[font=\scriptsize, text=monographSlate] at (0.72, -1.16) {$N$};
+
+  % Right: GMM
+  \node[font=\small\bfseries, text=monographNavy] (titleR) at (6.8, 2.3) {Gaussian Mixture Model};
+  \node[circle, draw=monographIndigo, fill=monographIndigoBg, thick, minimum size=0.85cm] (zR) at (6.8, 1.1) {$z_n$};
+  \node[circle, draw=monographNavy, fill=monographNavyBg, thick, minimum size=0.85cm, below=0.9cm of zR] (xR) {$\vecb{x}_n$};
+  \node[font=\small] (piR) at (4.95, 1.1) {$\vecb{\pi}$};
+  \node[font=\small] (thetaR) at (8.95, -0.55) {$\{\vecb{\mu}_k, \mat{\Sigma}_k\}_{k=1}^K$};
+  \draw[monoArrow] (piR) -- (zR);
+  \draw[monoArrow] (zR) -- (xR);
+  \draw[monoArrow] (thetaR) -- (xR);
+  \draw[rounded corners=4pt, dashed, monographSlate] (5.85, -1.35) rectangle (7.75, 1.75);
+  \node[font=\scriptsize, text=monographSlate] at (7.52, -1.16) {$N$};
+\end{tikzpicture}
+\caption{Directed graphical models in plate notation: PPCA/Factor Analysis (left, continuous Gaussian latent $\vecb{z}_n \in \R^M$) versus GMM (right, discrete categorical latent $z_n \in \{1,\dots,K\}$).}
+\label{fig:em:pgm}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.6cm, >=stealth]
+  \node[monoBox, text width=4.6cm, align=center] (init) {\textbf{Current Iterate} $\vecb{\theta}^{(t)}$\\[-1pt] {\scriptsize $\log p(\mat{X}\mid\vecb{\theta}^{(t)}) = \mathcal{L}(q^{(t)},\vecb{\theta}^{(t)}) + \mathrm{KL}_t$}};
+  \node[monoTealBox, text width=4.8cm, align=center, right=1.8cm of init] (estep) {\textbf{E-Step: Tighten ELBO}\\[-1pt] {\scriptsize $q^{(t+1)}(\mat{Z}) \leftarrow p(\mat{Z}\mid\mat{X},\vecb{\theta}^{(t)})$}\\ {\scriptsize $\KL{q^{(t+1)}}{p(\cdot\mid\mat{X},\vecb{\theta}^{(t)})} = 0$}};
+  \node[monoIndigoBox, text width=4.8cm, align=center, below=1.1cm of estep] (mstep) {\textbf{M-Step: Ascend Lower Bound}\\[-1pt] {\scriptsize $\vecb{\theta}^{(t+1)} \leftarrow \argmax_{\vecb{\theta}} Q(\vecb{\theta};\vecb{\theta}^{(t)})$}\\ {\scriptsize $\mathcal{L}(q^{(t+1)},\vecb{\theta}^{(t+1)}) \ge \mathcal{L}(q^{(t+1)},\vecb{\theta}^{(t)})$}};
+  \node[monoBox, text width=4.6cm, align=center, left=1.8cm of mstep] (next) {\textbf{Monotone Guarantee}\\[-1pt] {\scriptsize $\log p(\mat{X}\mid\vecb{\theta}^{(t+1)}) \ge \log p(\mat{X}\mid\vecb{\theta}^{(t)})$}\\ {\scriptsize New KL gap $\ge 0$ reopened}};
+
+  \draw[monoArrow] (init) -- node[above, font=\scriptsize, text=monographSlate] {fix $\vecb{\theta}^{(t)}$} (estep);
+  \draw[monoArrow] (estep) -- node[right, font=\scriptsize, text=monographSlate] {fix $q^{(t+1)}$} (mstep);
+  \draw[monoArrow] (mstep) -- node[above, font=\scriptsize, text=monographSlate] {$\mathrm{KL}\ge 0$} (next);
+  \draw[monoArrow] (next) -- node[left, font=\scriptsize, text=monographSlate] {iterate} (init);
+\end{tikzpicture}
+\caption{Two-stage coordinate-ascent cycle of the EM algorithm: the E-step collapses the KL gap to achieve tangential contact, and the M-step raises the surrogate $Q(\vecb{\theta};\vecb{\theta}^{(t)})$.}
+\label{fig:em:elbo_tikz}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  % Left panel: EM tangential lower bound
+  \begin{axis}[
+    width=0.47\textwidth, height=5.4cm,
+    at={(0,0)},
+    xlabel={Parameter $\theta$},
+    ylabel={Log-Likelihood / ELBO},
+    xmin=0, xmax=5, ymin=-5.5, ymax=0.8,
+    xtick={1.1, 2.55, 3.65},
+    xticklabels={$\theta^{(t)}$, $\theta^{(t+1)}$, $\theta^\star$},
+    ytick=\empty,
+    grid=major, grid style={dashed, gray!25},
+    legend pos=south east, legend style={font=\scriptsize, draw=monographRule}
+  ]
+    % True log-likelihood (non-concave multimodal-like smooth curve)
+    \addplot[monographNavy, very thick, domain=0.2:4.8, samples=80] {-0.38*(x-3.65)^2 + 0.12*sin(deg(2.4*x)) - 0.1};
+    \addlegendentry{$\log p(\mat{X}\mid\theta)$}
+    % Tangent ELBO at theta_t = 1.1: f(1.1) = -0.38*(2.55)^2 + 0.12*sin(deg(2.64)) - 0.1 = -2.471 + 0.058 - 0.1 = -2.513
+    % f'(1.1) = -0.76*(1.1-3.65) + 0.12*2.4*cos(deg(2.64)) = 1.938 - 0.252 = 1.686
+    % Surrogate g1(x) = -2.513 + 1.686*(x-1.1) - 0.58*(x-1.1)^2 -> max at x = 1.1 + 1.686/1.16 = 2.553
+    \addplot[monographTeal, thick, dashed, domain=0.2:4.1, samples=60] {-2.513 + 1.686*(x-1.1) - 0.58*(x-1.1)^2};
+    \addlegendentry{$\mathcal{L}(q^{(t+1)},\theta)$}
+    % Tangent ELBO at theta_{t+1} = 2.553: f(2.553) = -0.38*(-1.097)^2 + 0.12*sin(deg(6.127)) - 0.1 = -0.457 - 0.019 - 0.1 = -0.576
+    % f'(2.553) = -0.76*(-1.097) + 0.288*cos(deg(6.127)) = 0.834 + 0.284 = 1.118
+    % Surrogate g2(x) = -0.576 + 1.118*(x-2.553) - 0.52*(x-2.553)^2 -> max at 2.553 + 1.075 = 3.628
+    \addplot[monographIndigo, thick, dotted, domain=1.1:4.8, samples=60] {-0.576 + 1.118*(x-2.553) - 0.52*(x-2.553)^2};
+    \addlegendentry{$\mathcal{L}(q^{(t+2)},\theta)$}
+    \addplot[only marks, mark=*, mark size=2pt, monographCrimson] coordinates {(1.1, -2.513) (2.553, -0.576)};
+    \draw[dashed, monographCrimson] (axis cs:2.553, -1.287) -- (axis cs:2.553, -0.576);
+  \end{axis}
+
+  % Right panel: Scree plot & cumulative variance
+  \begin{axis}[
+    width=0.47\textwidth, height=5.4cm,
+    at={(0.52\textwidth,0)},
+    xlabel={Principal Component Index $m$},
+    ylabel={Variance Ratio},
+    xmin=1, xmax=10, ymin=0, ymax=1.08,
+    xtick={1,2,3,4,5,6,7,8,9,10},
+    grid=major, grid style={dashed, gray!25},
+    legend style={at={(0.97,0.52)}, anchor=east, font=\scriptsize, draw=monographRule}
+  ]
+    \addplot[monographTeal, very thick, mark=square*, mark size=1.8pt] coordinates {
+      (1, 0.42) (2, 0.24) (3, 0.14) (4, 0.08) (5, 0.05) (6, 0.03) (7, 0.02) (8, 0.01) (9, 0.006) (10, 0.004)
+    };
+    \addlegendentry{Scree $\lambda_m / \sum \lambda_j$}
+    \addplot[monographNavy, very thick, mark=*, mark size=1.8pt] coordinates {
+      (1, 0.42) (2, 0.66) (3, 0.80) (4, 0.88) (5, 0.93) (6, 0.96) (7, 0.98) (8, 0.99) (9, 0.996) (10, 1.00)
+    };
+    \addlegendentry{Cumulative $\sum_{j=1}^m \lambda_j / \sum \lambda_j$}
+    \draw[dashed, monographCrimson] (axis cs:1, 0.90) -- (axis cs:10, 0.90);
+  \end{axis}
+\end{tikzpicture}
+\caption{Left: Tangential EM lower-bound climb---each E-step matches $\log p(\mat{X}\mid\theta)$ at the current iterate, and each M-step maximizes the concave surrogate. Right: Scree eigenvalue decay and cumulative variance retained (90\% threshold dashed).}
+\label{fig:em:pgfplots}
+\end{figure}
+
+Figure~\ref{fig:em:gmm_oldfaithful} demonstrates GMM-EM on the Old Faithful dataset, showing soft responsibilities converging to bimodal elliptical contours, while Figure~\ref{fig:em:empca_rod} illustrates the zero-noise EM-PCA alternating orthogonal projection and subspace re-estimation.
+
+\monographfig[0.78\textwidth]{deep_learning_foundations_concepts_p488_fig1.png}{EM algorithm applied to a two-component GMM on the rescaled Old Faithful dataset across iterations $L=1,2,5,20$, showing soft responsibility coloring and 1-std covariance ellipses \bookcite{deep_learning_foundations_concepts}{Ch. 15.2, Fig. 15.7, p. 488}.}{fig:em:gmm_oldfaithful}
+
+\monographfig[0.78\textwidth]{deep_learning_foundations_concepts_p535_fig1.png}{Geometric progression of EM-PCA ($\sigma^2 \to 0$ limit): alternating orthogonal projections of data points onto the current principal subspace (E-step) and least-squares subspace updates (M-step) \bookcite{deep_learning_foundations_concepts}{Ch. 16.3.2, Fig. 16.10, p. 535}.}{fig:em:empca_rod}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:em:pitfalls}
+
+\begin{pitfall}[GMM MLE Covariance Collapse Singularity ($\det\mat{\Sigma}_k \to 0$)]
+\label{pit:em:singularity}
+In unconstrained maximum likelihood estimation for a GMM with $K \ge 2$, if component $k$ centers on a single data point ($\vecb{\mu}_k = \vecb{x}_n$) with variance $\sigma_k^2 \to 0$, its density scales as $(2\pi \sigma_k^2)^{-D/2} \to +\infty$ while remaining components assign finite density to the remaining $N-1$ points \bookcite{deep_learning_foundations_concepts}{Ch. 15.2.2, p. 485} (Figure~\ref{fig:em:gmm_singularity}). \textbf{Remedy:} Add diagonal regularization $\mat{\Sigma}_k \leftarrow \mat{\Sigma}_k + \epsilon\eye_D$ ($\epsilon \approx 10^{-6}$) in every M-step, place a conjugate Normal-Inverse-Wishart prior (MAP-EM), or re-initialize collapsing components whose $N_k$ or $\det(\mat{\Sigma}_k)$ drops below threshold.
+\end{pitfall}
+
+\monographfig[0.58\textwidth]{deep_learning_foundations_concepts_p485_fig1.png}{Pathological MLE singularity in a two-component GMM: one Gaussian collapses onto a single observation ($\sigma_k \to 0$), driving the log-likelihood to $+\infty$ \bookcite{deep_learning_foundations_concepts}{Ch. 15.2.2, Fig. 15.6, p. 485}.}{fig:em:gmm_singularity}
+
+\begin{pitfall}[Non-Convexity, Local Optima, and $k$-Means++ Initialization]
+\label{pit:em:local_optima}
+Both $K$-means and GMM-EM optimize non-convex objectives and converge only to local optima or saddle points. Uniformly random initialization frequently traps EM in poor partitions. \textbf{Remedy:} Initialize centers sequentially via $k$-means++ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 21.3.4, PDF p. 755}, sampling $\vecb{\mu}_t = \vecb{x}_n$ with probability proportional to $D_{t-1}(\vecb{x}_n) = \min_{j < t}\norm{\vecb{x}_n - \vecb{\mu}_j}_2^2$, which guarantees an $\mathcal{O}(\log K)$-competitive distortion bound, and select the highest log-likelihood across multiple restarts.
+\end{pitfall}
+
+\begin{pitfall}[Identifiability: Label Switching ($K!$) and Rotational Ambiguity ($\mat{W}\mat{R}$)]
+\label{pit:em:identifiability}
+\begin{itemize}
+  \item \textbf{Label Switching:} Any $K$-component mixture has $K!$ parameter permutations yielding identical marginal densities $p(\vecb{x}\mid\vecb{\theta})$, complicating Bayesian posterior averaging \bookcite{deep_learning_foundations_concepts}{Ch. 15.2.2, p. 485}.
+  \item \textbf{Rotational Ambiguity:} In PPCA and Factor Analysis, $\mat{W}' = \mat{W}\mat{R}$ for any orthogonal $\mat{R} \in \mathrm{O}(M)$ produces the exact same marginal covariance $\mat{W}\mat{R}\mat{R}\T\mat{W}\T + \mat{\Psi} = \mat{W}\mat{W}\T + \mat{\Psi}$, leaving $M(M-1)/2$ unidentifiable degrees of freedom \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.2.4, PDF p. 702}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 28.3.1, PDF p. 978}. \textbf{Remedy:} Fix the gauge via lower-triangular $\mat{W}$ with $w_{kk} > 0$, sparsity-inducing priors, varimax rotations, or non-Gaussian latent priors (ICA).
+\end{itemize}
+\end{pitfall}
+
+\begin{pitfall}[Scale Sensitivity and Rank Deficiency ($N < D$) in PCA]
+\label{pit:em:scale_rank}
+PCA on the raw covariance matrix $\mat{S}$ is not scale-invariant: a feature measured in millimeters rather than meters dominates $\lambda_1$ purely due to unit scaling \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 20.1.3.1, PDF p. 692}. Standardize features to zero mean and unit variance (correlation PCA) whenever units are incommensurate. Furthermore, when $N < D$, $\rank(\mat{S}) \le N - 1$ and at least $D - N + 1$ eigenvalues vanish; use the $\mathcal{O}(N^3)$ dual Gram matrix or truncated SVD instead of $\mathcal{O}(D^3)$ covariance eigendecomposition \bookcite{deep_learning_foundations_concepts}{Ch. 16.1.5, p. 518}.
+\end{pitfall}
+
+\end{document}

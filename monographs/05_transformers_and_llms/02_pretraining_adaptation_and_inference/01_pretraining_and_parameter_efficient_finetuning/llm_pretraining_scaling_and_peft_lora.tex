@@ -1,0 +1,321 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 05: Transformers \& Large Language Models}{LLM Pretraining, Adaptation, Prompting \& Efficient Inference}{Pretraining, Scaling Laws \& Parameter-Efficient Fine-Tuning}{Self-Supervised Pretraining, Scaling Laws, Instruction Fine-Tuning \& LoRA/QLoRA}{Foundations of LLMs Ch.~1--2, Raschka Ch.~5, 7 \& App.~E, LLM Engineer's Handbook Ch.~5, Jurafsky \& Martin Ch.~3 \& 8, RLHF Ch.~4}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:pretrain:formulation}
+
+Modern large language models (LLMs) are trained through a two-stage paradigm: (1)~\emph{self-supervised pretraining} on trillions of unlabeled tokens to acquire broad linguistic and world knowledge, followed by (2)~\emph{supervised fine-tuning} (SFT) and \emph{parameter-efficient fine-tuning} (PEFT) to align next-token continuation behavior with structured instruction following \bookcite{foundations_large_language_models}{Ch.~1--2, pp.~7--65} and \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, pp.~33--38}.
+
+Let $\mathcal{V}$ denote a discrete token vocabulary of size $\abs{\mathcal{V}}$, and let $\mathcal{D} = \{\vecb{x}^{(k)}\}_{k=1}^{M}$ denote a pretraining corpus where each sequence $\vecb{x} = (x_0, x_1, \dots, x_m) \in \mathcal{V}^{m+1}$ is modeled by a neural network with parameters $\theta \in \R^N$. In autoregressive \emph{Causal Language Modeling} (CLM), the joint probability factorizes via the chain rule as
+\begin{equation}
+  \Prob_\theta(\vecb{x}) = \prod_{i=0}^{m-1} \Prob_\theta(x_{i+1} \mid x_0, \dots, x_i).
+  \label{eq:pretrain:clm_factorization}
+\end{equation}
+In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}_{\text{SFT}} = \{(\vecb{c}^{(k)}, \vecb{y}^{(k)})\}_{k=1}^{M_{\text{SFT}}}$ formatted via a chat template (e.g., ChatML or Alpaca), where $\vecb{c}$ is the prompt/context prefix and $\vecb{y}$ is the target assistant response \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~208--209} \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, pp.~33--35}. Rather than updating all $N$ parameters of every linear projection $\mat{W}_0 \in \R^{d_{\text{out}} \times d_{\text{in}}}$, Low-Rank Adaptation (LoRA) freezes $\mat{W}_0$ (or its 4-bit NormalFloat quantized counterpart $\tilde{\mat{W}}_0$ in QLoRA) and optimizes a low-rank residual $\Delta \mat{W} = \frac{\alpha}{r}\mat{B}\mat{A}$ with $r \ll \min(d_{\text{in}}, d_{\text{out}})$ \bookcite{build_large_language_model_from_scratch}{App.~E, pp.~777--795} \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~213--215}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The five primary sources adopt distinct indexing conventions, logarithm bases, and matrix orientations across pretraining, scaling laws, and LoRA. Table~\ref{tab:pretrain:notation} establishes a unified notation used throughout this monograph.
+\par\medskip
+\noindent
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{3.9cm} @{}}
+\toprule
+Concept & Source Conventions & Unified Monograph Notation \\
+\midrule
+Token Sequence & $x_0, \dots, x_m$ \bookcite{foundations_large_language_models}{Ch.~1, p.~7}; $w_1, \dots, w_N$ \bookcite{speech_language_processing_aug26}{Ch.~3, p.~76}; \texttt{inputs}/\texttt{targets} (Raschka) & $\vecb{x} = (x_0, \dots, x_m) \in \mathcal{V}^{m+1}$ \\
+Perplexity Base & $\text{PPL}(W) = 2^{H(p,m)}$ (base 2) \bookcite{speech_language_processing_aug26}{Ch.~3, p.~88} vs.\ $\exp(\mathcal{L}_{\text{CE}})$ (base $e$) \bookcite{build_large_language_model_from_scratch}{Ch.~5, p.~348} & $\text{PPL}(\vecb{x}) = \exp(\mathcal{L}_{\text{CE}})$ (nats) \\
+Scaling Law & $L(N,D) = aN^b + cD^d + \epsilon_\infty$ ($b,d < 0$) \bookcite{foundations_large_language_models}{Ch.~2, p.~65} & $L(N,D) = E + A N^{-\alpha} + B D^{-\beta}$ ($\alpha,\beta > 0$) \\
+LoRA Orientation & Row-vector $\vecb{x}\mat{A}\mat{B}$ with $\mat{A}\in\R^{d_{\text{in}}\times r}$ \bookcite{build_large_language_model_from_scratch}{App.~E, p.~792} vs.\ column-vector \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~214} & Column-vector $\vecb{h} = \mat{W}_0\vecb{x} + \frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}$, $\mat{A}\in\R^{r\times d_{\text{in}}}$, $\mat{B}\in\R^{d_{\text{out}}\times r}$ \\
+Prompt Masking & \texttt{ignore\_index=-100} \bookcite{build_large_language_model_from_scratch}{Ch.~7, p.~539}; user-turn vs.\ final-turn \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, p.~37} & Binary mask $m_i \in \{0,1\}$ (target $-100$ when $m_i = 0$) \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Reconciliation of symbols and conventions across mapped textbooks.}
+\label{tab:pretrain:notation}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:pretrain:derivations}
+
+\subsection{Information-Theoretic Bridge: Cross-Entropy, Perplexity, and Pretraining Objectives}
+\label{sec:pretrain:objectives}
+
+\begin{coremath}[Causal LM Cross-Entropy, Maximum Likelihood, and Perplexity]
+Let $p^{\text{gold}}_{i+1} \in \{0,1\}^{\abs{\mathcal{V}}}$ denote the one-hot indicator of the ground-truth next token $x_{i+1}$, and let $p_{\theta, i+1} = \softmax(\vecb{z}_{i}) \in \Simplex^{\abs{\mathcal{V}}-1}$ denote the decoder's predicted probability distribution given prefix $x_{\le i} = (x_0, \dots, x_i)$. The sequence cross-entropy loss is \bookcite{foundations_large_language_models}{Ch.~1, pp.~7--8} \bookcite{build_large_language_model_from_scratch}{Ch.~5, pp.~334--348}
+\begin{equation}
+  \mathcal{L}_{\text{CE}}(\theta; \vecb{x})
+  = \frac{1}{m}\sum_{i=0}^{m-1} H\!\left(p^{\text{gold}}_{i+1},\, p_{\theta, i+1}\right)
+  = -\frac{1}{m}\sum_{i=0}^{m-1} \log \Prob_\theta(x_{i+1} \mid x_0, \dots, x_i).
+  \label{eq:pretrain:ce_loss}
+\end{equation}
+Minimizing $\sum_{\vecb{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \vecb{x})$ is algebraically identical to Maximum Likelihood Estimation (MLE):
+\begin{equation}
+  \hat{\theta}_{\text{MLE}}
+  = \argmin_\theta \sum_{\vecb{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \vecb{x})
+  = \argmax_\theta \sum_{\vecb{x}\in\mathcal{D}} \sum_{i=0}^{m-1} \log \Prob_\theta(x_{i+1} \mid x_0, \dots, x_i).
+  \label{eq:pretrain:mle}
+\end{equation}
+By the Shannon--McMillan--Breiman theorem for a stationary ergodic language process $p$, the empirical cross-entropy rate of a model $m = \Prob_\theta$ converges to $H(p, m) = -\lim_{n\to\infty} \frac{1}{n}\log m(w_1\dots w_n) \ge H(p)$ \bookcite{speech_language_processing_aug26}{Ch.~3, p.~87}. Exponentiating Eq.~\eqref{eq:pretrain:ce_loss} yields \emph{perplexity} (PPL), the length-normalized inverse probability of the sequence \bookcite{speech_language_processing_aug26}{Ch.~3, p.~76} \bookcite{build_large_language_model_from_scratch}{Ch.~5, p.~348}:
+\begin{equation}
+  \text{PPL}_\theta(\vecb{x})
+  = \exp\!\big(\mathcal{L}_{\text{CE}}(\theta; \vecb{x})\big)
+  = \left(\prod_{i=0}^{m-1} \Prob_\theta(x_{i+1} \mid x_0, \dots, x_i)\right)^{-\frac{1}{m}}.
+  \label{eq:pretrain:ppl}
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Perplexity as Effective Vocabulary Branching Factor]
+If a model assigns uniform probability $1/K$ to $K$ plausible next tokens at every step, then $\Prob_\theta(x_{i+1}\mid x_{\le i}) = 1/K$ and $\text{PPL}_\theta(\vecb{x}) = (K^{-m})^{-1/m} = K$. Thus, perplexity measures the \emph{weighted average branching factor} of the model's uncertainty \bookcite{speech_language_processing_aug26}{Ch.~3, p.~77}. At initialization over a GPT-2 vocabulary of $\abs{\mathcal{V}} = 50{,}257$, $\mathcal{L}_{\text{CE}} \approx \ln(50{,}257) \approx 10.82$ nats, giving $\text{PPL} \approx 48{,}726$; the untrained model is effectively guessing uniformly across nearly the entire vocabulary \bookcite{build_large_language_model_from_scratch}{Ch.~5, p.~348}.
+\end{intuition}
+
+Beyond autoregressive CLM, self-supervised pretraining encompasses \emph{Masked Language Modeling} (MLM) for bidirectional encoders (e.g., BERT) and \emph{Permuted/Denoising} objectives for encoder--decoder models (e.g., T5, BART) \bookcite{foundations_large_language_models}{Ch.~1, pp.~9--21}. In MLM, a random subset $\mathcal{M} \subset \{0, \dots, m\}$ (typically $15\%$ of tokens) is corrupted into $\tilde{\vecb{x}}$ (80\% \texttt{[MASK]}, 10\% random, 10\% unchanged) and reconstructed using full bidirectional context:
+\begin{equation}
+  \mathcal{L}_{\text{MLM}}(\theta; \vecb{x})
+  = -\frac{1}{\abs{\mathcal{M}}} \sum_{i \in \mathcal{M}} \log \Prob_\theta(x_i \mid \tilde{\vecb{x}}).
+  \label{eq:pretrain:mlm}
+\end{equation}
+As illustrated in Figure~\ref{fig:pretrain:clm_mlm_plm}, CLM enforces a lower-triangular causal attention mask so each token attends strictly to its prefix, whereas MLM permits unmasked bidirectional attention across all tokens at the cost of a pretrain--finetune discrepancy from \texttt{[MASK]} tokens during downstream adaptation \bookcite{foundations_large_language_models}{Ch.~1, pp.~13--20}.
+
+\monographfig[0.72\textwidth]{foundations_large_language_models_p20_fig1.png}{Self-attention visibility masks comparing Causal Language Modeling (lower-triangular prefix conditioning), Masked Language Modeling (bidirectional conditioning over corrupted positions), and Permuted Language Modeling \bookcite{foundations_large_language_models}{Ch.~1, Fig.~1.3, p.~13 (PDF p.~20)}.}{fig:pretrain:clm_mlm_plm}
+
+\subsection{Compute-Optimal Scaling Laws: Kaplan vs.\ Chinchilla}
+\label{sec:pretrain:scaling}
+
+Empirical scaling laws relate test cross-entropy loss $L(N, D)$ to non-embedding parameter count $N$, training token count $D$, and compute budget $C \approx 6ND$ FLOPs (accounting for one forward pass of $2ND$ FLOPs and one backward pass of $4ND$ FLOPs) \bookcite{foundations_large_language_models}{Ch.~2, pp.~63--65}.
+
+\begin{coremath}[Lagrangian Derivation of the Chinchilla Compute-Optimal Frontier]
+Following Hoffmann et al.\ (2022) as presented in \bookcite{foundations_large_language_models}{Ch.~2, p.~65}, test loss decomposes into an irreducible entropy floor $E$ plus power-law capacity and data terms:
+\begin{equation}
+  L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},
+  \label{eq:pretrain:chinchilla_loss}
+\end{equation}
+with empirically fitted constants $E = 1.69$, $A = 406.4$, $\alpha = 0.34$, $B = 410.7$, and $\beta = 0.28$. Given a fixed compute budget $C = 6ND$, we minimize $L(N,D)$ via the Lagrangian
+\begin{equation}
+  \Lambda(N, D, \lambda) = E + A N^{-\alpha} + B D^{-\beta} + \lambda\,(6ND - C).
+  \label{eq:pretrain:lagrangian}
+\end{equation}
+Setting $\pd{\Lambda}{N} = 0$ and $\pd{\Lambda}{D} = 0$ yields $-\alpha A N^{-\alpha-1} + 6\lambda D = 0$ and $-\beta B D^{-\beta-1} + 6\lambda N = 0$. Multiplying the first by $N$ and the second by $D$ equates both to $6\lambda ND = \lambda C$:
+\begin{equation}
+  \alpha A N^{-\alpha} = \beta B D^{-\beta}.
+  \label{eq:pretrain:balance}
+\end{equation}
+Substituting $D = C/(6N)$ into Eq.~\eqref{eq:pretrain:balance} gives the closed-form compute-optimal allocation:
+\begin{equation}
+  N^*(C) = G \left(\frac{C}{6}\right)^{a}, \qquad
+  D^*(C) = G^{-1} \left(\frac{C}{6}\right)^{b},
+  \label{eq:pretrain:optimal_alloc}
+\end{equation}
+where $G = \left(\frac{\alpha A}{\beta B}\right)^{\frac{1}{\alpha+\beta}}$, $a = \frac{\beta}{\alpha+\beta} \approx 0.452$, and $b = \frac{\alpha}{\alpha+\beta} \approx 0.548$ (yielding the symmetric Chinchilla rule-of-thumb $N^* \propto C^{0.5}$, $D^* \propto C^{0.5}$, or $\approx 20$ tokens per parameter).
+\end{coremath}
+
+In contrast, Kaplan et al.\ (2020) held learning-rate schedules fixed across token horizons and inferred $N^* \propto C^{0.73}$ and $D^* \propto C^{0.27}$, which led early LLMs (e.g., GPT-3 175B on 300B tokens) to be severely undertrained in tokens \bookcite{foundations_large_language_models}{Ch.~2, pp.~64--65}. Figure~\ref{fig:pretrain:chinchilla_scaling} plots the Chinchilla loss surface and isoFLOP frontier.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.84\textwidth,
+      height=6.2cm,
+      xmode=log,
+      xlabel={Model Parameters $N$ (log scale)},
+      ylabel={Test Cross-Entropy Loss $L(N, D)$},
+      xmin=1e7, xmax=3e11,
+      ymin=1.75, ymax=3.15,
+      grid=both,
+      grid style={dashed, monographRule!60},
+      legend pos=north east,
+      legend style={font=\footnotesize, fill=white, fill opacity=0.9, draw=monographRule},
+      tick label style={font=\footnotesize},
+      label style={font=\small\bfseries, color=monographNavy}
+    ]
+      % IsoFLOP curves: L(N, C/(6N)) = 1.69 + 406.4*N^(-0.34) + 410.7*(C/(6*N))^(-0.28)
+      \addplot[domain=1e7:2e11, samples=120, thick, monographSlate!75, densely dashed]
+        {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e19/(6*x))^(-0.28))};
+      \addlegendentry{$C = 10^{19}$ FLOPs}
+
+      \addplot[domain=1e7:2e11, samples=120, thick, monographIndigo]
+        {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e20/(6*x))^(-0.28))};
+      \addlegendentry{$C = 10^{20}$ FLOPs}
+
+      \addplot[domain=1e7:2e11, samples=120, thick, monographTeal]
+        {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e21/(6*x))^(-0.28))};
+      \addlegendentry{$C = 10^{21}$ FLOPs}
+
+      \addplot[domain=1e7:2e11, samples=120, very thick, monographNavy]
+        {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e22/(6*x))^(-0.28))};
+      \addlegendentry{$C = 10^{22}$ FLOPs}
+
+      % Compute-optimal frontier points (minimizing each isoFLOP curve)
+      % N*(C) = (0.34*406.4 / (0.28*410.7))^(1/0.62) * (C/6)^(0.28/0.62) = 1.3216 * (C/6)^0.4516
+      \addplot[only marks, mark=*, mark size=2.4pt, monographCrimson] coordinates {
+        (5.53e8,  2.393)
+        (1.56e9,  2.212)
+        (4.42e9,  2.078)
+        (1.25e10, 1.979)
+      };
+      \addlegendentry{Compute-Optimal $(N^*, D^*)$}
+
+      % Connect frontier
+      \addplot[thick, monographCrimson, dotted, forget plot] coordinates {
+        (5.53e8,  2.393)
+        (1.56e9,  2.212)
+        (4.42e9,  2.078)
+        (1.25e10, 1.979)
+      };
+
+      \node[font=\scriptsize\sffamily, color=monographTeal, anchor=west] at (axis cs:1.4e7, 1.92) {Overtrained ($D \gg D^*$)};
+      \node[font=\scriptsize\sffamily, color=monographCrimson, anchor=east] at (axis cs:2.4e11, 1.92) {Undertrained ($N \gg N^*$)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{IsoFLOP test loss curves $L(N, C/(6N))$ under the Chinchilla parametric law \bookcite{foundations_large_language_models}{Ch.~2, Eq.~(2.39), p.~65}. Left of the crimson compute-optimal frontier ($N < N^*$), models are capacity-bottlenecked (overtrained in tokens, favored for inference-heavy deployment); right of the frontier ($N > N^*$), models are data-starved (undertrained).}
+  \label{fig:pretrain:chinchilla_scaling}
+\end{figure}
+
+\subsection{Low-Rank Adaptation (LoRA) and 4-Bit NormalFloat Quantization (QLoRA)}
+\label{sec:pretrain:lora_qlora}
+
+Full fine-tuning of an LLM updates all $N$ weights, requiring FP32 master weights, gradients, and AdamW first/second moments ($\approx 16$~bytes/parameter, or $112\text{ GB}$ for a 7B model before activations) \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~211--212}. LoRA exploits the empirical observation that task-specific weight updates $\Delta \mat{W}$ exhibit low intrinsic rank, as detailed in \bookcite{build_large_language_model_from_scratch}{App.~E, pp.~776--779}.
+
+\begin{coremath}[LoRA Forward Pass, Zero-Perturbation Initialization, and Gradient Flow]
+For any linear layer $\vecb{h}_0 = \mat{W}_0 \vecb{x}$ with frozen pretrained matrix $\mat{W}_0 \in \R^{d_{\text{out}} \times d_{\text{in}}}$, LoRA introduces trainable low-rank factors $\mat{A} \in \R^{r \times d_{\text{in}}}$ and $\mat{B} \in \R^{d_{\text{out}} \times r}$ with $r \ll \min(d_{\text{in}}, d_{\text{out}})$ and scaling hyperparameter $\alpha > 0$:
+\begin{equation}
+  \vecb{h} = \mat{W}_0 \vecb{x} + \frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}.
+  \label{eq:pretrain:lora_forward}
+\end{equation}
+At initialization ($t=0$), $\mat{A}$ is sampled from $\mathcal{N}(0, \sigma^2)$ (or Kaiming uniform) while $\mat{B} = \mat{0}$, guaranteeing $\Delta \mat{W}_0 = \frac{\alpha}{r}\mat{B}\mat{A} = \mat{0}$ so the adapted model reproduces the pretrained outputs identically before step~1 \bookcite{build_large_language_model_from_scratch}{App.~E, pp.~792--795}; see also \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~214}. Differentiating the loss $\mathcal{L}$ with respect to $(\mat{A}, \mat{B})$ yields
+\begin{equation}
+  \pd{\mathcal{L}}{\mat{B}} = \frac{\alpha}{r} \left(\pd{\mathcal{L}}{\vecb{h}}\right) (\mat{A}\vecb{x})\T, \qquad
+  \pd{\mathcal{L}}{\mat{A}} = \frac{\alpha}{r} \mat{B}\T \left(\pd{\mathcal{L}}{\vecb{h}}\right) \vecb{x}\T.
+  \label{eq:pretrain:lora_grads}
+\end{equation}
+Because $\mat{A} \neq \mat{0}$, $\pd{\mathcal{L}}{\mat{B}} \neq \mat{0}$ at $t=0$, allowing $\mat{B}$ to move off zero on the first optimizer step and subsequently backpropagate non-zero gradients into $\mat{A}$. Trainable parameters per adapted matrix drop from $d_{\text{out}} d_{\text{in}}$ to $r(d_{\text{in}} + d_{\text{out}})$---for example, targeting all linear projections of Llama~3~8B with $r=16$ requires only $42\text{M}$ trainable parameters ($0.5196\%$ of $8\text{B}$) \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~215}. At inference, $\mat{W}_{\text{eff}} = \mat{W}_0 + \frac{\alpha}{r}\mat{B}\mat{A}$ merges into a single matrix with zero added latency \bookcite{build_large_language_model_from_scratch}{App.~E, p.~779}.
+\end{coremath}
+
+QLoRA extends LoRA by compressing the frozen base weights $\mat{W}_0$ into 4-bit \emph{NormalFloat} (NF4), an information-theoretically optimal quantile data type for zero-mean normally distributed pretrained weights \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~215}. To eliminate the $0.5\text{ bits/param}$ overhead of FP32 blockwise quantization scales, QLoRA applies \emph{double quantization} (quantizing the first-level scaling constants to FP8) and pairs this with \emph{paged AdamW 8-bit} optimizers that offload optimizer state spikes to CPU RAM via unified memory. During forward/backward passes, NF4 blocks are dequantized on the fly to BF16 to compute $\tilde{\mat{W}}_0\vecb{x}$ alongside the BF16 LoRA branch $\frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}$, cutting 7B fine-tuning memory from $15.6\text{ GB}$ (LoRA) to $9.3\text{ GB}$ (QLoRA) at a $\sim 30\%$ throughput cost \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~215}. Figure~\ref{fig:pretrain:sft_lora_qlora_arch} contrasts Full Fine-Tuning, LoRA, and QLoRA at the module level, while Figure~\ref{fig:pretrain:lora_qlora_tikz} details the joint QLoRA forward/backward dataflow and SFT loss-masking pipeline.
+
+\monographfig[0.86\textwidth]{llm_engineer_s_handbook_p240_fig1.png}{Module-level comparison of Full Fine-Tuning (all FP16 weights updated), LoRA (frozen FP16 base $\mat{W}$ plus trainable low-rank adapters $\mat{A}, \mat{B}$), and QLoRA (frozen 4-bit NF4 quantized $\tilde{\mat{W}}$ plus BF16 adapters) \bookcite{llm_engineer_s_handbook}{Ch.~5, Fig.~5.9, p.~211 (PDF p.~240)}.}{fig:pretrain:sft_lora_qlora_arch}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=0.95cm and 1.15cm, >=Stealth]
+    % Left: SFT Instruction Loss Masking Pipeline
+    \node[monoBox, minimum width=3.1cm] (chat) {\textbf{Chat Template}\\{\scriptsize \texttt{<|im\_start|>user/asst}}};
+    \node[monoIndigoBox, below=0.8cm of chat, minimum width=3.1cm] (mask) {\textbf{Target Masking}\\{\scriptsize Prompt/user $\to -100$}\\{\scriptsize Assistant $\to x_{i+1}$}};
+    \node[monoTealBox, below=0.8cm of mask, minimum width=3.1cm] (pack) {\textbf{Sequence Packing}\\{\scriptsize Block-diagonal mask}};
+
+    \draw[monoArrow] (chat) -- (mask);
+    \draw[monoArrow] (mask) -- (pack);
+
+    % Center: Input x
+    \node[monoBox, right=1.35cm of mask, minimum width=1.6cm] (xin) {$\vecb{x} \in \R^{d_{\text{in}}}$};
+    \draw[monoArrow] (pack.east) -- ++(0.45,0) |- (xin.west);
+
+    % Upper branch: Frozen NF4 base
+    \node[monoWarnBox, above right=0.55cm and 1.05cm of xin, minimum width=3.4cm] (nf4) {\textbf{Frozen NF4 Base $\tilde{\mat{W}}_0$}\\{\scriptsize Double-quantized 4-bit}\\{\scriptsize On-the-fly BF16 dequant}};
+
+    % Lower branch: Trainable LoRA
+    \node[monoTealBox, below right=0.55cm and 1.05cm of xin, minimum width=3.4cm] (lora) {\textbf{Trainable LoRA Bypass}\\{\scriptsize $\mat{A}\sim\mathcal{N}(0,\sigma^2)$, $\mat{B}=\mat{0}$}\\{\scriptsize $\frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}$ (BF16, AdamW-8bit)}};
+
+    % Sum node
+    \node[circle, draw=monographNavy, fill=monographNavyBg, thick, inner sep=2.5pt, right=4.95cm of xin] (sum) {$+$};
+    \node[monoIndigoBox, right=0.75cm of sum, minimum width=1.8cm] (hout) {$\vecb{h} \in \R^{d_{\text{out}}}$};
+
+    \draw[monoArrow] (xin.east) -- ++(0.35,0) |- (nf4.west);
+    \draw[monoArrow] (xin.east) -- ++(0.35,0) |- (lora.west);
+    \draw[monoArrow] (nf4.east) -| (sum.north);
+    \draw[monoArrow] (lora.east) -| (sum.south);
+    \draw[monoArrow] (sum) -- (hout);
+
+    % Gradient feedback dashed arrow
+    \draw[->, dashed, thick, monographCrimson] (hout.south) -- ++(0,-2.35) -| (lora.south)
+      node[pos=0.28, below, font=\scriptsize\sffamily, color=monographCrimson] {Masked $\grad_{\mat{A},\mat{B}}\mathcal{L}_{\text{SFT}}$ (no $\grad_{\tilde{\mat{W}}_0}$)};
+  \end{tikzpicture}
+  \caption{Unified SFT loss-masking and QLoRA computation graph. Prompt and user-turn tokens are masked with $-100$ before sequence packing, while forward/backward passes dequantize $\tilde{\mat{W}}_0$ to BF16 and restrict optimizer states solely to $(\mat{A}, \mat{B})$.}
+  \label{fig:pretrain:lora_qlora_tikz}
+\end{figure}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:pretrain:algorithms}
+
+\subsection{Instruction-Masked SFT with QLoRA and Gradient Checkpointing}
+\label{sec:pretrain:sft_algo}
+
+In instruction fine-tuning, raw JSONL pairs (Alpaca, ShareGPT, or OpenAI schemas) are serialized via a chat template with explicit role delimiters (e.g., \texttt{<|im\_start|>system}, \texttt{user}, \texttt{assistant}, \texttt{<|im\_end|>}) \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~208--209}. To prevent the model from wasting capacity memorizing user prompts, target tokens corresponding to system and user turns are replaced with PyTorch's \texttt{ignore\_index=-100} (Figure~\ref{fig:pretrain:alpaca_masking}), restricting the cross-entropy gradient to assistant response tokens \bookcite{build_large_language_model_from_scratch}{Ch.~7, pp.~539--540} \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, p.~37}.
+
+\monographfig[0.80\textwidth]{build_large_language_model_from_scratch_p539_fig1.png}{Alpaca-style instruction loss masking: input tokens are fed intact to the model, while instruction/prompt positions in the target tensor are replaced by $-100$ so cross-entropy is evaluated solely on the response and \texttt{<|endoftext|>} token \bookcite{build_large_language_model_from_scratch}{Ch.~7, Fig.~7.13, p.~539}.}{fig:pretrain:alpaca_masking}
+
+Algorithm~\ref{alg:pretrain:qlora_sft} unifies instruction masking, sequence packing with block-diagonal attention masks, NF4 dequantization, and gradient checkpointing (trading $\sim 1$ extra forward pass per checkpointed block for $O(\sqrt{L})$ activation memory) \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~215--219}.
+
+\begin{algorithm}[htbp]
+\caption{Instruction-Masked SFT with QLoRA \& Gradient Checkpointing}
+\label{alg:pretrain:qlora_sft}
+\KwIn{Pretrained weights $\mat{W}_0$, SFT dataset $\mathcal{D}_{\text{SFT}}$, rank $r$, scale $\alpha$, learning rate $\eta$}
+\KwOut{Trained LoRA adapter weights $\{(\mat{A}_\ell, \mat{B}_\ell)\}_{\ell=1}^L$}
+Quantize base linear layers $\mat{W}_0 \to \tilde{\mat{W}}_0$ in 4-bit NF4 with double-quantized FP8 scales\;
+\For{each target linear module $\ell \in \{Q, K, V, O, \text{MLP}\}$}{
+  Initialize $\mat{A}_\ell \sim \mathcal{N}(0, \sigma^2)$ (BF16), $\mat{B}_\ell \leftarrow \mat{0}$ (BF16); freeze $\tilde{\mat{W}}_{0,\ell}$\;
+}
+Format $\mathcal{D}_{\text{SFT}}$ with chat template; set target $y_t \leftarrow -100$ on prompt/user tokens\;
+Pack short sequences up to $L_{\max}$ with block-diagonal causal attention masks\;
+\For{step $= 1, \dots, T$}{
+  Sample packed minibatch $(\mat{X}, \mat{Y})$\;
+  \For{layer $\ell = 1, \dots, L$ \tcp*{Forward pass with activation checkpointing}}{
+    Dequantize $\tilde{\mat{W}}_{0,\ell} \to \mat{W}_{0,\ell}^{\text{BF16}}$ on-the-fly; compute $\mat{H}_\ell = \mat{W}_{0,\ell}^{\text{BF16}}\mat{X}_\ell + \frac{\alpha}{r}\mat{B}_\ell\mat{A}_\ell\mat{X}_\ell$\;
+    Discard intermediate intra-block activations; retain block boundary checkpoints only\;
+  }
+  Compute masked loss $\mathcal{L}_{\text{SFT}} = -\frac{1}{\sum_t \mathbb{I}[y_t \neq -100]} \sum_{t: y_t \neq -100} \log \Prob(y_t \mid x_{\le t})$\;
+  Recompute intra-block activations during backward pass; accumulate $\grad_{\mat{A}_\ell, \mat{B}_\ell}\mathcal{L}_{\text{SFT}}$\;
+  Update $\{(\mat{A}_\ell, \mat{B}_\ell)\}$ via Paged AdamW 8-bit with cosine warmup/decay schedule\;
+}
+\end{algorithm}
+
+\subsection{Distributed Pretraining Parallelism \& Memory Complexity}
+\label{sec:pretrain:complexity}
+
+At pretraining scale, single-GPU memory cannot hold model states or activations. Three orthogonal parallelism axes---Data Parallelism (DP), Tensor Parallelism (TP), and Pipeline Parallelism (PP)---alongside ZeRO optimizer-state sharding and QLoRA govern system memory \bookcite{foundations_large_language_models}{Ch.~2, pp.~60--63} \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~211--215}, as summarized in Table~\ref{tab:pretrain:complexity}.
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+Training Regime & Memory / Param & 7B VRAM & Communication / Compute Trade-off \\
+\midrule
+Full FT (FP32 AdamW) & $16\text{ B}$ ($4\text{W}+4\text{G}+8\text{Opt}$) & $\sim 112\text{ GB}$ (+act.) & Zero recompute; prohibitive single-GPU footprint \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~212} \\
+DP / ZeRO-3 ($P$ GPUs) & $16/P\text{ B}$ (sharded) & $\sim 14\text{ GB}$ ($P=8$) & All-gather / reduce-scatter overhead per layer \bookcite{foundations_large_language_models}{Ch.~2, p.~61} \\
+LoRA (FP16 + AdamW) & $2\text{ B} + O(r/d)$ & $14\text{--}15.6\text{ GB}$ & Non-destructive; multi-tenant adapter swapping \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~215} \\
+QLoRA (NF4 + Paged 8b) & $\sim 0.5\text{ B} + O(r/d)$ & $9.1\text{--}9.3\text{ GB}$ & $\sim 30\%$ slower due to on-the-fly NF4 dequantization \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~215} \\
+\bottomrule
+\end{tabularx}
+\caption{Memory footprint and systems trade-offs across pretraining and fine-tuning regimes.}
+\label{tab:pretrain:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Prompt Masking, Learning Rates, and Sequence Packing]
+Comparing post-training recipes reveals three critical design choices:
+\begin{enumerate}
+  \item \textbf{Prompt Masking vs.\ Full-Sequence Loss}: Lambert distinguishes \emph{user-turn masking} (training on all assistant turns) from \emph{final-turn masking} (masking all prior context) \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, p.~37}. Conversely, Raschka notes empirical findings (Shi et al., 2024) where omitting the $-100$ mask can aid short-instruction tasks, making masking an empirical hyperparameter \bookcite{build_large_language_model_from_scratch}{Ch.~7, p.~540}.
+  \item \textbf{Learning-Rate Scaling}: Because SFT operates on smaller datasets with a strong pretrained initialization, \bookcite{reinforcement_learning_from_human_feedback}{Ch.~4, p.~37} recommends an SFT peak learning rate $10\times$--$100\times$ lower than pretraining (e.g., OLMo~2 drops from $3\times 10^{-4}$ in pretraining to $1\times 10^{-5}$ in SFT), whereas sequence packing increases effective tokens per batch and permits $5\text{--}8\times 10^{-5}$.
+  \item \textbf{LoRA Hyperparameters}: \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~214} recommends targeting all attention ($Q, K, V, O$) and MLP linear layers with $\alpha = 2r$ (e.g., $r=16, \alpha=32$) and weight decay $0.01$ over $1\text{--}5$ epochs.
+\end{enumerate}
+\end{crossbook}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:pretrain:pitfalls}
+
+\begin{pitfall}[Rank Collapse, Over-Scaling ($\alpha/r$), and Catastrophic Forgetting]
+Setting $\alpha/r \gg 2$ amplifies the low-rank update $\frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}$ relative to $\mat{W}_0\vecb{x}$, destabilizing early SFT steps and inducing catastrophic forgetting of pretraining capabilities \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~212--214}. Conversely, setting $r$ too small on heterogeneous multi-domain corpora starves adapter capacity. \textbf{Remedy}: Fix $\alpha = 2r$ (or use rank-stabilized $\alpha/\sqrt{r}$ scaling) and sweep $r \in \{8, 16, 32, 64\}$ with LoRA dropout $0.05$--$0.1$ on held-out validation loss.
+\end{pitfall}
+
+\begin{pitfall}[Non-Associativity of Distributed Low-Precision Reductions]
+In distributed mixed-precision (FP16/BF16/FP8) pretraining, floating-point addition is non-associative: $(a+b)+c \neq a+(b+c)$. Accumulating gradients across $P$ workers in different reduction orders introduces numerical divergence, overflow, and underflow across nodes \bookcite{foundations_large_language_models}{Ch.~2, p.~63}. \textbf{Remedy}: Maintain FP32 master weights and gradient accumulation buffers, use BF16 (wider dynamic range than FP16) for forward/backward activations, and apply gradient norm clipping \bookcite{build_large_language_model_from_scratch}{Ch.~5, p.~364}.
+\end{pitfall}
+
+\begin{pitfall}[Cross-Sample Attention Leakage in Packing and Template Mismatch]
+Concatenating multiple short instructions into a single $L_{\max}$ row without resetting causal attention masks causes later samples to attend to earlier unrelated samples, corrupting gradients \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~218}. Similarly, fine-tuning an already instruct-tuned model with a mismatched chat template degrades formatting compliance \bookcite{llm_engineer_s_handbook}{Ch.~5, p.~209}. \textbf{Remedy}: Enforce block-diagonal causal masks and reset rotary position IDs at each packed sample boundary; always match the base/instruct model's exact tokenizer chat template.
+\end{pitfall}
+
+\begin{pitfall}[Undertrained Scaling Regimes and Benchmark Contamination]
+Allocating compute to oversized $N$ with insufficient $D$ ($N \gg N^*$) leaves the model on the suboptimal right branch of Figure~\ref{fig:pretrain:chinchilla_scaling} \bookcite{foundations_large_language_models}{Ch.~2, p.~65}. In SFT, failing to deduplicate and decontaminate synthetic/web instruction data against evaluation benchmarks inflates apparent generalization \bookcite{llm_engineer_s_handbook}{Ch.~5, pp.~213--214}. \textbf{Remedy}: Size pretraining runs via $N^* \approx (C/6)^{0.5}$ (or overtrain $D \gg D^*$ when inference cost dominates) and run MinHash/exact-substring decontamination before SFT.
+\end{pitfall}
+
+\end{document}

@@ -1,0 +1,218 @@
+{
+  "main": {
+    "id": "550a25dd8b63e8f2",
+    "type": "split",
+    "children": [
+      {
+        "id": "611a0cbb2c94a9d1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fe639ea49e8d9585",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b25bb0fc49fd3866",
+    "type": "split",
+    "children": [
+      {
+        "id": "a198ef084a9a7408",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "27087bde6e9e7679",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "3eefedbc89cf97bb",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "3c877c87c85f72b1",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "07b0128e98a1eca7",
+    "type": "split",
+    "children": [
+      {
+        "id": "51642b6769c1f814",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e3c077e61b682b9f",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "bcc3b91879e4e827",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "34cd682c5661b2ff",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "e93241fb4eb9d7f1",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "bb9ab4485a503319",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "fe639ea49e8d9585",
+  "lastOpenFiles": [
+    "00_MOC/PT 07 - Recommender Systems, Collaborative Filtering & Neural Ranking.md",
+    "00_MOC/PT 03 - Computer Vision, Image Formation & 3D Scene Understanding.md",
+    "00_MOC/ST 07 - Deep CTR Models, Two-Tower Retrieval & Production Ranking Pipelines.md",
+    "00_MOC/ST 07 - Collaborative Filtering, Matrix Factorization & Implicit Feedback Ranking.md",
+    "00_MOC/ST 03 - Object Detection, Segmentation & Vision-Language Understanding.md",
+    "00_MOC/ST 03 - Image Formation, Fourier Filtering, Pyramids & 3D Geometry.md",
+    "03_Sources/Source - Antonio Torralba, Phillip Isola, and William Freeman.md",
+    "03_Sources/Source - Dive into Deep Learning.md",
+    "02_Concepts/NDCG, MAP & Calibration.md",
+    "02_Concepts/Two-Tower Retrieval & Multi-Stage Ranking.md",
+    "02_Concepts/Factorization Machines & DeepFM.md",
+    "02_Concepts/Bayesian Personalized Ranking (BPR).md",
+    "02_Concepts/AutoRec.md",
+    "02_Concepts/Matrix Factorization (ALS & SGD).md",
+    "02_Concepts/Collaborative Filtering (User-Item).md",
+    "02_Concepts/CLIP & Vision-Language Alignment.md",
+    "02_Concepts/Semantic & Instance Segmentation (FCN, U-Net & SAM).md",
+    "02_Concepts/IoU, Anchor Boxes & NMS.md",
+    "02_Concepts/Radiance Fields (NeRF & 3DGS).md",
+    "02_Concepts/Optical Flow (Lucas-Kanade & Horn-Schunck).md",
+    "02_Concepts/Gaussian & Laplacian Pyramids.md",
+    "02_Concepts/Image Filtering & 2D Fourier Transform.md",
+    "02_Concepts/Pinhole & Thin-Lens Optics.md",
+    "02_Concepts/AgentOps & pass^k Reliability.md",
+    "02_Concepts/Distribution Shift & Drift.md",
+    "02_Concepts/FTI Architecture & Leakage Prevention.md",
+    "02_Concepts/Icon\r",
+    "04_Cheatsheets/Icon\r",
+    "03_Sources/Icon\r",
+    "00_MOC/Icon\r",
+    "01_Monographs/Icon\r"
+  ]
+}

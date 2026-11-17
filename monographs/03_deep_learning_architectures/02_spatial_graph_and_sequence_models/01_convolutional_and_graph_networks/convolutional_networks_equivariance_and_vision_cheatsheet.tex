@@ -1,0 +1,201 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{CNNs, GNNs, RNNs \& State-Space Models}{Convolutional Networks, Translation Equivariance, Receptive Fields \& Vision}
+  {Local Toeplitz weight sharing + translation equivariance = shift the input $\Leftrightarrow$ shift the feature map}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{CNN \& Vision\\ \footnotesize\mdseries Toeplitz $\cdot$ Equivariance $\cdot$ RF}{%
+  \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+    \draw[step=0.45cm, gray!55, thin] (0,0) grid (1.8,1.8);
+    \draw[csA, very thick, fill=csA!20, fill opacity=0.7] (0.45,0.45) rectangle (1.8,1.8);
+    \draw[step=0.45cm, gray!55, thin] (3.3,0.22) grid (4.65,1.57);
+    \fill[csF!75] (3.75,0.67) rectangle (4.2,1.12);
+    \draw[csA!60, dashed, thin] (1.8,1.8) -- (3.97,0.9);
+    \draw[csA!60, dashed, thin] (1.8,0.45) -- (3.97,0.9);
+    \draw[-{Stealth}, thick, csDom] (2.0,0.9) -- node[above, fill=white, inner sep=1pt] {$*\,\mat W$} (3.1,0.9);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Cross-Correlation \& Toeplitz Form}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{H_{\mathrm{out}}=\bigl\lfloor(H+2p-d(k-1)-1)/s\bigr\rfloor+1}
+    \begin{csbul}
+      \item \textbf{DL ``Conv'' = Cross-Correlation} (no flip):
+        weight $\mat X[c,si{+}du{-}p,sj{+}dv{-}p]$ by $\mat W[d,c,u,v]$
+      \item \textbf{Linear operator:} $\vecb z=\mat C_{\mat W}\vecb x$ (banded \textbf{Toeplitz} in 1D, doubly block Toeplitz in 2D); backprop is $\mat C_{\mat W}\T$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.36, every node/.style={font=\tiny}]
+      \draw[gray] (0,0) rectangle (3.0,2.4);
+      \foreach \i in {0,1,2} {
+        \fill[csA!75] (\i*0.6, 1.8-\i*0.6) rectangle (\i*0.6+1.5, 2.3-\i*0.6);
+      }
+      \node[below] at (1.5,-0.2) {Banded Toeplitz $\mat C_{\vecb w}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; EQUIVARIANCE vs.\ POOLING INVARIANCE}{%
+  \begin{csbul}
+    \item \textbf{Translation Equivariance ($s=1$):} $\mathcal{F}_{\mat W}(T_\Delta\mat X)=T_\Delta\mathcal{F}_{\mat W}(\mat X)$; shifting input by $\Delta$ shifts features by $\Delta$
+    \item \textbf{Pooling Local Invariance:} max/avg pooling $P_k(T_\delta\mat H)\approx P_k(\mat H)$ absorbs small shifts $\delta$; Global Average Pooling (GAP) gives global shift invariance
+    \item \textbf{Bayesian View:} CNN = MLP with an \emph{infinitely strong prior} (zero weights outside $k\times k$, tied weights across space)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; RECEPTIVE FIELD \& DEPTHWISE-SEPARABLE}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{R_l = R_{l-1} + d_l(k_l-1)\prod_{i=1}^{l-1}s_i}
+    \begin{csbul}
+      \item Base $R_0=1$; $m$ stride-1 $3\times 3$: $R_m=2m+1$ ($18C^2$ vs.\ $25C^2$ for $5\times 5$)
+      \item Exponential dilation $d_l=2^{l-1}\Rightarrow R_L=2^{L+1}-1$
+      \item \textbf{Depthwise-Sep.\ ratio:} $\frac{1}{C_{\mathrm{out}}}+\frac{1}{k^2}$ ($\approx 8.7\times$ cheaper for $k=3,C_{\mathrm{out}}=256$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.34, every node/.style={font=\tiny}]
+      \draw[step=0.5cm, gray!50] (0,0) grid (2.5,2.5);
+      \foreach \x in {0,1,2} \foreach \y in {0,1,2}
+        \fill[csC!85] (\x*1.0,\y*1.0) rectangle (\x*1.0+0.5,\y*1.0+0.5);
+      \node[below] at (1.25,-0.1) {Dilated $3\times 3$ ($d{=}2$)};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; VISION BACKBONES $-$ VGG $\to$ ResNet $\to$ U-Net}{%
+  \begin{csbul}
+    \item \textbf{AlexNet $\to$ VGG:} replaced $11\times 11, 5\times 5$ kernels with homogeneous stacks of $3\times 3$ convs + $2\times 2$ pooling
+    \item \textbf{GoogLeNet / ResNet Bottleneck:} $1\times 1$ compress ($C\to C/4$) $\to$ $3\times 3$ spatial $\to$ $1\times 1$ expand ($C/4\to C$) + identity skip $\mat H_{l+1}=\mat H_l+\mathcal{F}(\mat H_l)$
+    \item \textbf{FCN $\to$ U-Net:} symmetric encoder--decoder with multi-scale skip concatenations to preserve sharp segmentation boundaries
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Operator Complexity ($k\times k,\; C_{\mathrm{in}}\to C_{\mathrm{out}}$)}{%
+  \renewcommand{\arraystretch}{1.10}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.25cm}>{\raggedright\arraybackslash}p{2.25cm}>{\raggedright\arraybackslash}p{2.9cm}@{}}
+    \textbf{\textcolor{csE}{Operator}} & \textbf{\textcolor{csE}{Params}} & \textbf{\textcolor{csE}{Role / Trade-off}}\\ \hline
+    Standard $k\times k$ & $k^2 C_{\mathrm{in}}C_{\mathrm{out}}$ & full spatial + channel mixing\\
+    Pointwise $1\times 1$ & $C_{\mathrm{in}}C_{\mathrm{out}}$ & channel projection, no spatial RF\\
+    Depthwise-Sep. & $C_{\mathrm{in}}(k^2+C_{\mathrm{out}})$ & $\frac{1}{C_{\mathrm{out}}}+\frac{1}{k^2}$ cost; mobile backbones\\
+    Transposed ($s>1$) & $k^2 C_{\mathrm{in}}C_{\mathrm{out}}$ & learnable upsampling ($\mat C_{\mat W}\T$)\\
+  \end{tabular}\par\vspace{1pt}
+  \scriptsize\textbf{Im2Col GEMM:} lowers $C_{\mathrm{in}}\times k\times k$ patches to $\mat M_{\mathrm{col}}$ for dense BLAS $\mat W_{\mathrm{row}}\mat M_{\mathrm{col}}$.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Dense \& Mobile Vision}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Classification:} ResNet / ConvNeXt + GAP readout
+      \item \textbf{Semantic Segmentation:} U-Net encoder--decoder skip concat + dilated ASPP heads
+      \item \textbf{Edge / Mobile Vision:} MobileNet depthwise-separable inverted bottlenecks
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csA, very thick] (0,2.0) -- (0.8,0.4) -- (1.8,0.4) -- (2.6,2.0);
+      \draw[-{Stealth}, dashed, csF, thick] (0.2,1.6) -- (2.4,1.6);
+      \draw[-{Stealth}, dashed, csF, thick] (0.5,1.0) -- (2.1,1.0);
+      \node[below] at (1.3,0.3) {U-Net skip concat};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Share Weights Locally $\cdot$ Commute with Shifts $\cdot$ Factorize Space \& Channels} \\[1pt]
+  \footnotesize\mdseries \textbf{3$\times$3 stacks + dilation grow $R_l$ fast; depthwise + $1\times 1$ cuts FLOPs by $k^2$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Stride aliasing ($s\ge 2$):} breaks shift equivariance (fix: BlurPool)
+    \item \textbf{Checkerboards:} transposed conv $k\bmod s\neq 0$ (use resize + $3\times 3$)
+    \item \textbf{Gaussian ERF:} grows as $O(\sqrt{L})$; add skips or dilation
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Convolutional Networks, Translation Equivariance, Receptive Fields \& Vision}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Spatial Output Shape:\csfm{H_{\mathrm{out}}=\left\lfloor\frac{H+2p_h-d_h(k_h-1)-1}{s_h}\right\rfloor+1}
+    \item 2D Cross-Correlation:\csfm{\mat Z[d,i,j]=b_d+\sum_{c,u,v}\mat X[c,s_hi{+}d_hu{-}p_h,\,s_wj{+}d_wv{-}p_w]\,\mat W[d,c,u,v]}
+    \item Translation Equivariance ($s=1$):\csfm{\mathcal{F}_{\mat W}(T_\Delta\mat X)=T_\Delta\mathcal{F}_{\mat W}(\mat X)}
+    \item Receptive Field Recurrence ($J_{l-1}=\prod_{i<l}s_i$):\csfm{R_l=R_{l-1}+d_l(k_l-1)J_{l-1}=1+\sum_{l'=1}^l d_{l'}(k_{l'}-1)\prod_{i=1}^{l'-1}s_i}
+    \item Depthwise-Separable Cost Ratio:\csfm{\frac{\mathrm{Params}_{\mathrm{DS}}}{\mathrm{Params}_{\mathrm{Std}}}=\frac{\mathrm{MACs}_{\mathrm{DS}}}{\mathrm{MACs}_{\mathrm{Std}}}=\frac{k^2C_{\mathrm{in}}+C_{\mathrm{in}}C_{\mathrm{out}}}{k^2C_{\mathrm{in}}C_{\mathrm{out}}}=\frac{1}{C_{\mathrm{out}}}+\frac{1}{k^2}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: IM2COL GEMM vs.\ DEPTHWISE-SEPARABLE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Im2Col (Standard):} extract each $C_{\mathrm{in}}\times k\times k$ patch into column matrix $\mat M_{\mathrm{col}}\in\R^{(C_{\mathrm{in}}k^2)\times(H_{\mathrm{out}}W_{\mathrm{out}})}$; multiply by reshaped weights $\mat W_{\mathrm{row}}\in\R^{C_{\mathrm{out}}\times(C_{\mathrm{in}}k^2)}$.
+    \item \textbf{Depthwise step:} apply one spatial $k\times k$ filter per input channel ($k^2 C_{\mathrm{in}}$ params).
+    \item \textbf{Pointwise step:} apply $1\times 1$ conv across channels ($C_{\mathrm{in}}C_{\mathrm{out}}$ params) via dense GEMM.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    keep $H_{\mathrm{out}}=H$ ($s=1,d=1$) & \emph{same} padding $p=(k-1)/2$ (odd $k$)\\
+    large $5\times 5$ or $7\times 7$ kernel & replace with $2\times$ or $3\times$ stacked $3\times 3$\\
+    dense prediction / large RF & dilated conv $d_l=2^{l-1}$ (no resolution loss)\\
+    mobile / edge latency budget & depthwise-separable ($3\times 3$ DW + $1\times 1$ PW)\\
+    upsampling with checkerboards & bilinear resize + stride-1 $3\times 3$ conv\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& BACKBONE CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Two $3\times 3$ vs.\ one $5\times 5$:} same $5\times 5$ RF, $18C^2$ vs.\ $25C^2$ params ($-28\%$) + extra ReLU
+    \item \textbf{ResNet Bottleneck:} $1\times 1$ ($C\!\to\! C/4$) $\to 3\times 3 \to 1\times 1$ ($C/4\!\to\! C$) cuts $3\times 3$ cost by $16\times$
+    \item \textbf{ERF vs.\ theoretical RF:} effective sensitivity scales as $O(\sqrt{L})$ Gaussian around center
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{RECEPTIVE FIELD GROWTH $R_l$ ($3\times 3$ Kernels)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, xmin=1, xmax=7, ymin=0, ymax=135,
+      xlabel={Layer Depth $l$}, ylabel={Receptive Field $R_l$ (px)},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,2,3,4,5,6,7}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north west, legend style={font=\tiny, draw=none, fill=white, fill opacity=0.85}]
+      \addplot[csF, very thick, mark=*, mark size=1.4pt] coordinates {(1,3)(2,5)(3,7)(4,9)(5,11)(6,13)(7,15)};
+      \addlegendentry{Stride $1, d=1$ ($2l{+}1$)}
+      \addplot[csD, very thick, dashed, mark=square*, mark size=1.4pt] coordinates {(1,3)(2,5)(3,9)(4,13)(5,21)(6,29)(7,45)};
+      \addlegendentry{Stride $2$ every 2nd}
+      \addplot[csA, very thick, mark=triangle*, mark size=1.6pt] coordinates {(1,3)(2,7)(3,15)(4,31)(5,63)(6,127)};
+      \addlegendentry{Dilated $d_l=2^{l-1}$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Strided aliasing:} $s\ge 2$ violates Nyquist--Shannon when high frequencies are present, breaking shift invariance
+    \item \textbf{Transposed conv checkerboards:} uneven kernel overlap when $k\bmod s\neq 0$ (e.g., $k=3, s=2$)
+    \item \textbf{Dilated gridding artifact:} stacking identical dilation rates leaves blind checkerboard holes in the input
+    \item \textbf{Coord-sensitive tasks:} pure CNN + GAP discards absolute $(x,y)$ coordinates (concat CoordConv channels if position matters)
+    \item \textbf{Im2Col memory blow-up:} materializing $\mat M_{\mathrm{col}}$ duplicates input pixels $k^2$ times in RAM
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  A \textbf{CNN layer} is a doubly block-Toeplitz linear map that shares a $k\times k$ kernel across space so translations commute: $\mathcal{F}(T_\Delta\mat X)=T_\Delta\mathcal{F}(\mat X)$.
+  Stacking $3\times 3$ filters with striding or dilation grows the receptive field $R_l$, while \textbf{depthwise-separable} ($3\times 3\text{ DW}+1\times 1\text{ PW}$) and \textbf{ResNet/U-Net skips} scale vision backbones efficiently.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

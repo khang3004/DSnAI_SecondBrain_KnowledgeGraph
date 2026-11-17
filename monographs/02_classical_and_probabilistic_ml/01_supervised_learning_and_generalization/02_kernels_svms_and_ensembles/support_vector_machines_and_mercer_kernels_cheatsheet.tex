@@ -1,0 +1,219 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Supervised Learning \& Generalization}{Hard/Soft-Margin SVMs, Lagrange Duality, KKT \& Mercer Kernels}
+  {Maximize the margin $2/\norm{\vecb w}_2$, sparsify via KKT on the hinge corner, and lift inner products into RKHS $\Hilbert_k$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{SVM \& RKHS\\ \footnotesize\mdseries Margin $\cdot$ KKT $\cdot$ Kernel Trick}{%
+  \begin{tikzpicture}[scale=0.55]
+    \fill[csE!15, rotate=-25] (-1.6,-0.45) rectangle (1.6,0.45);
+    \draw[csDom, very thick, rotate=-25] (-1.6,0)--(1.6,0);
+    \draw[csD, dashed, thick, rotate=-25] (-1.6,0.45)--(1.6,0.45);
+    \draw[csA, dashed, thick, rotate=-25] (-1.6,-0.45)--(1.6,-0.45);
+    \draw[<->, thick, csB, rotate=-25] (-1.1,-0.45)--(-1.1,0.45) node[midway, left, font=\tiny] {$\frac{2}{\norm{\vecb w}_2}$};
+    % SVs on margin
+    \fill[csD] (0.55,0.18) circle (2.8pt); \draw[csDom, thick] (0.55,0.18) circle (4.5pt);
+    \fill[csA] (-0.55,-0.18) circle (2.8pt); \draw[csDom, thick] (-0.55,-0.18) circle (4.5pt);
+    \fill[csD] (1.1,0.85) circle (2.5pt);
+    \fill[csA] (-1.1,-0.85) circle (2.5pt);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Hard/Soft Margin \& Hinge Loss}{%
+  \csfm{\min_{\vecb w,b,\vecb\xi}\;\frac{1}{2}\norm{\vecb w}_2^2+C\sum_{i=1}^N\xi_i\quad\text{s.t.}\;\;y_i(\inner{\vecb w}{\vecb x_i}+b)\ge 1-\xi_i,\;\xi_i\ge 0}
+  \begin{csbul}
+    \item \textbf{Signed dist.:} $r_i=\frac{\inner{\vecb w}{\vecb x_i}+b}{\norm{\vecb w}_2}$;\; slab width $= \frac{2}{\norm{\vecb w}_2}$
+    \item \textbf{Hinge ERM} ($\lambda=\frac{1}{2C}$): $\min_{\vecb w,b}\frac{1}{2C}\norm{\vecb w}_2^2+\sum_i\max(0,1-y_if(\vecb x_i))$
+    \item \textbf{$\nu$-SVM:} $\nu\in(0,1]$ bounds margin errors \& SV fraction
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; WOLFE DUAL QP \& KKT 3-REGIME PARTITION}{%
+  \csfm{\max_{\vecb\alpha\in[0,C]^N}\sum_{i=1}^N\alpha_i-\frac{1}{2}\sum_{i,j=1}^N\alpha_i\alpha_jy_iy_jk(\vecb x_i,\vecb x_j)\;\;\text{s.t.}\;\sum_{i=1}^N\alpha_iy_i=0}
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{3.55cm}@{}}
+    \textbf{\textcolor{csB}{Multiplier}} & \textbf{\textcolor{csB}{Margin / Slack}} & \textbf{\textcolor{csB}{Geometric Role}}\\ \hline
+    $\alpha_i=0$ & $y_if(\vecb x_i)\ge 1,\,\xi_i^*=0$ & Non-SV (outside slab, ignored)\\
+    $0<\alpha_i<C$ & $y_if(\vecb x_i)=1,\,\xi_i^*=0$ & \textbf{Free SV} ($\mathcal M$): on $\pm 1$, fixes $b^*$\\
+    $\alpha_i=C$ & $y_if(\vecb x_i)=1-\xi_i^*$ & \textbf{Bounded SV}: inside slab ($\xi_i^*>1$ err)\\
+  \end{tabular}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREMS $-$ Mercer \& Representer}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Mercer PSD:} $k(\vecb x,\vecb x')=\inner{\phi(\vecb x)}{\phi(\vecb x')}_{\Hilbert_k}$ iff Gram $\mat K\succeq\zeros$ ($\vecb c\T\mat K\vecb c\ge 0$)
+      \item \textbf{Spectral:} $k(\vecb x,\vecb x')=\sum_{m=1}^\infty\lambda_m\psi_m(\vecb x)\psi_m(\vecb x')$
+      \item \textbf{Representer Theorem:} $\min_{f\in\Hilbert_k}\sum_i\ell(y_i,f(\vecb x_i))+\Omega(\norm{f}_{\Hilbert_k})$ has exact finite-span solution:
+    \end{csbul}
+    \csfm{f^*(\vecb x)=\sum_{i\in\mathcal S}\alpha_iy_i\,k(\vecb x_i,\vecb x)+b^*}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[csA, thick] (0,0) circle (0.65);
+      \fill[csD] (0,0) circle (2pt); \fill[csD] (0.2,0.2) circle (2pt);
+      \fill[csA] (0.85,0.6) circle (2pt); \fill[csA] (-0.8,-0.5) circle (2pt);
+      \node at (0,-1.1) {Input $\mathcal X$};
+      \draw[-{Stealth}, thick, csDom] (1.05,0)--(1.85,0) node[midway, above] {$\phi$};
+      \begin{scope}[xshift=3.1cm]
+        \draw[csDom, very thick] (-0.9,-0.6)--(0.9,0.6);
+        \fill[csD] (-0.4,0.5) circle (2.2pt); \fill[csD] (0.1,0.7) circle (2.2pt);
+        \fill[csA] (0.4,-0.5) circle (2.2pt); \fill[csA] (-0.1,-0.7) circle (2.2pt);
+        \node at (0,-1.1) {RKHS $\Hilbert_k$};
+      \end{scope}
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Hulls, KRR \& Surrogate Losses}{%
+  \begin{csbul}
+    \item \textbf{Dual Convex Hulls:} hard-margin SVM finds closest points between class convex hulls; $C<\infty$ shrinks them to \emph{reduced convex hulls}
+    \item \textbf{SVM vs KRR:} Kernel Ridge $(\mat K+\lambda\eye_N)\inv\vecb y$ is closed-form but \emph{dense} ($\alpha_i\ne 0$); SVM hinge flat region ($t\ge 1$) gives \emph{sparse} support vectors
+    \item \textbf{Standard Mercer Kernels:} Linear $\inner{\vecb x}{\vecb x'}$; Poly $(\inner{\vecb x}{\vecb x'}+c_0)^d$; Gaussian RBF $\exp(-\gamma\norm{\vecb x-\vecb x'}_2^2)$ with $\gamma=(2\ell^2)^{-1}$ ($\dim\Hilbert_k=\infty$)
+    \item \textbf{Template Matching:} RBF SVM places local bumps of width $\ell$ at SVs
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ SMO vs Primal vs Interior-Point}{%
+  \renewcommand{\arraystretch}{1.18}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{1.8cm}@{}}
+    \textbf{\textcolor{csE}{Solver}} & \textbf{\textcolor{csE}{Train Time}} & \textbf{\textcolor{csE}{Test}} & \textbf{\textcolor{csE}{Sparsity}}\\ \hline
+    Primal SGD (Linear) & $\mathcal O(TND)$ & $\mathcal O(D)$ & Dense $\vecb w$\\
+    Dual QP (Dense $\mat K$) & $\mathcal O(N^3)$ / $\mathcal O(N^2)$ & $\mathcal O(N_{\mathrm{sv}}D)$ & Sparse $\vecb\alpha$\\
+    Platt SMO (LIBSVM) & $\mathcal O(N_{\mathrm{sv}}N)$--$\mathcal O(N^2)$ & $\mathcal O(N_{\mathrm{sv}}D)$ & Sparse $\vecb\alpha$\\
+    Kernel Ridge (KRR) & $\mathcal O(N^3)$ / $\mathcal O(N^2)$ & $\mathcal O(ND)$ & Dense $\vecb\alpha$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Large $N\gg 10^5$:} use linear primal SGD or Random Fourier Features / Nystr\"om.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Tuning $(C,\gamma)$ Geometry}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{High-$D$ text/genomics:} Linear SVM ($C$ tuned, fast $\mathcal O(D)$ inference)
+      \item \textbf{Medium-$N$ nonlinear boundaries:} RBF SVM with log-grid $(C,\gamma)$ CV
+      \item \textbf{Small $\gamma, C$:} smooth global boundary; \textbf{Large $\gamma, C$:} tight islands around SVs ($N_{\mathrm{sv}}/N\to 1$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[gray!50, ->] (-0.8,0)--(2.6,0) node[right] {$t=yf$};
+      \draw[gray!50, ->] (0,-0.2)--(0,2.2) node[above] {$\ell(t)$};
+      \draw[gray, dashed] (-0.8,1)--(0,1)--(0,0)--(2.4,0);
+      \draw[csA, very thick] (-0.7,1.7)--(1.0,0)--(2.4,0);
+      \draw[csE, thick, domain=-0.7:2.3, samples=25] plot (\x, {ln(1+exp(-\x))/ln(2)});
+      \fill[csDom] (1.0,0) circle (2.5pt) node[below] {$t=1$ kink};
+      \node[csA] at (1.5,1.5) {Hinge};
+      \node[csE] at (1.6,0.85) {Logit};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Primal $\min\frac{1}{2}\norm{\vecb w}_2^2+C\sum\xi_i$ $\iff$ Dual Inner Products $\inner{\vecb x_i}{\vecb x_j}\mapsto k(\vecb x_i,\vecb x_j)$}\\[2pt]
+  \footnotesize\mdseries \textbf{Points with $y_if(\vecb x_i)>1$ sit on the flat zero-loss shelf $\Rightarrow$ $\alpha_i=0$ (sparse support vectors!).}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Unscaled features:} $\norm{\vecb x-\vecb x'}_2^2$ is scale-sensitive $\to$ standardize inside CV folds
+    \item \textbf{Indefinite kernels ($\tanh$):} $\lambda_{\min}(\mat K)<0$ breaks dual concavity \& stalls SMO
+    \item \textbf{Uncalibrated $f(\vecb x)$:} not log-odds $\to$ fit CV Platt scaling
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Support Vector Machines, Margin Duality \& Mercer Kernel Methods}\;---\;Domain 02 $\cdot$ Supervised Learning \& Generalization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Primal Weight \& Support Expansion:\csfm{\vecb w^*=\sum_{i\in\mathcal S}\alpha_iy_i\phi(\vecb x_i),\quad f(\vecb x)=\sum_{i\in\mathcal S}\alpha_iy_ik(\vecb x_i,\vecb x)+b^*}
+    \item KKT Complementary Slackness:\csfm{\alpha_i\big[y_if(\vecb x_i)-1+\xi_i^*\big]=0,\qquad (C-\alpha_i)\xi_i^*=0}
+    \item Numerically Stable Bias Recovery ($\mathcal M=\{m:0<\alpha_m<C\}$):\csfm{b^*=\frac{1}{|\mathcal M|}\sum_{m\in\mathcal M}\!\left(y_m-\sum_{i\in\mathcal S}\alpha_iy_ik(\vecb x_i,\vecb x_m)\right)}
+    \item Gaussian RBF \& Polynomial Kernels:\csfm{k_{\mathrm{RBF}}(\vecb x,\vecb x')=\exp\!\big(-\gamma\norm{\vecb x-\vecb x'}_2^2\big),\;\; k_{\mathrm{poly}}=(\inner{\vecb x}{\vecb x'}+c_0)^d}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{PLATT SMO 2-VARIABLE UPDATE RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Pick KKT-violating $\alpha_i$, then $\alpha_j$ maximizing $|E_i-E_j|$ ($E_k=f(\vecb x_k)-y_k$)
+    \item Box bounds preserving $\alpha_iy_i+\alpha_jy_j=\mathrm{const}$:
+      $y_i\ne y_j\Rightarrow L=\max(0,\alpha_j-\alpha_i),\,H=\min(C,C+\alpha_j-\alpha_i)$;
+      $y_i=y_j\Rightarrow L=\max(0,\alpha_i+\alpha_j-C),\,H=\min(C,\alpha_i+\alpha_j)$
+    \item Curvature $\eta=k_{ii}+k_{jj}-2k_{ij}>0$: clip $\alpha_j^{\mathrm{new}}=\mathrm{clip}(\alpha_j+\frac{y_j(E_i-E_j)}{\eta},L,H)$
+    \item Back-substitute $\alpha_i^{\mathrm{new}}=\alpha_i+y_iy_j(\alpha_j-\alpha_j^{\mathrm{new}})$ and update $b, E_k$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    $D\gg N$ (text, sparse bag-of-words) & Linear SVM (primal SGD / dual CD)\\
+    $N\le 5\times 10^4$, nonlinear boundary & RBF SVM via SMO + log-grid $(C,\gamma)$\\
+    $N>10^5$, nonlinear boundary & Random Fourier Features / Nystr\"om\\
+    need calibrated probabilities $p(y\mid\vecb x)$ & Logistic Reg.\ or SVM + CV Platt scaling\\
+    smooth regression with fast solve & Kernel Ridge (dense) or $\epsilon$-SVR (sparse)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{HYPERPARAMETER $(C,\gamma)$ CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Large $C$ ($\lambda=\frac{1}{2C}\downarrow$):} narrow margin, penalizes slack heavily $\to$ higher variance
+    \item \textbf{Small $C$ ($\lambda\uparrow$):} wide margin, allows slack $\xi_i>0$ $\to$ smoother boundary
+    \item \textbf{Large $\gamma=(2\ell^2)^{-1}$:} spiky local RBF bumps, $N_{\mathrm{sv}}/N\to 1$ (memorization)
+    \item \textbf{Small $\gamma$:} flat wide RBF kernels, approaches linear classifier
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{SURROGATE LOSSES \& KKT SPARSITY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=-1.8, xmax=2.3, ymin=-0.1, ymax=3.4,
+      xlabel={Functional Margin $t=y f(\vecb x)$}, ylabel={Loss $\ell(t)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north east, legend style={font=\tiny, draw=none, fill=white, fill opacity=0.85}]
+      \addplot[gray, densely dashed, thick, domain=-1.8:0] {1};
+      \addplot[gray, densely dashed, thick, domain=0:2.3, forget plot] {0};
+      \addplot[gray, densely dashed, thick, forget plot] coordinates {(0,0)(0,1)};
+      \addlegendentry{0--1 Loss}
+      \addplot[csA, very thick, domain=-1.8:1.0] {1-x};
+      \addplot[csA, very thick, domain=1.0:2.3, forget plot] {0};
+      \addlegendentry{Hinge $\max(0,1-t)$}
+      \addplot[csB, thick, domain=-0.85:1.0] {(1-x)^2};
+      \addplot[csB, thick, domain=1.0:2.3, forget plot] {0};
+      \addlegendentry{Sq.\ Hinge}
+      \addplot[csE, thick, domain=-1.8:2.3, samples=50] {ln(1+exp(-x))/ln(2)};
+      \addlegendentry{Logit $\log_2(1+e^{-t})$}
+      \node[font=\tiny, csA, anchor=south west] at (axis cs:1.02,0.12) {$\alpha_i=0$ ($t>1$)};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Quadratic $\mathcal O(N^2)$ Gram matrix bottleneck:} materializing $\mat K\in\R^{N\times N}$ at $N=10^5$ takes $80\text{ GB}$ RAM; use cached SMO or primal linear/RFF approximations
+    \item \textbf{Skipping feature standardization:} a single high-variance coordinate dominates $\norm{\vecb x-\vecb x'}_2^2$, collapsing RBF similarities to $0$
+    \item \textbf{Recovering $b^*$ from a single support vector:} numerical roundoff in $\alpha_i$ corrupts single-point $b^*$; always average over all free support vectors $0<\alpha_m<C$
+    \item \textbf{Fitting Platt scaling on the training set:} SVMs push training points to $|f(\vecb x_i)|\ge 1$, biasing in-sample sigmoid fits; calibrate strictly out-of-fold
+    \item \textbf{Using non-Mercer similarity matrices:} if $\lambda_{\min}(\mat K)<0$, the dual QP is non-concave and unbounded
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{SVM} finds the thickest separating slab of width $2/\norm{\vecb w}_2$.
+  Passing to the \textbf{Wolfe dual} replaces $\vecb w$ with $\sum_{i\in\mathcal S}\alpha_iy_i\vecb x_i$, where \textbf{KKT complementary slackness} zeroes out every safe point ($y_if(\vecb x_i)>1\Rightarrow\alpha_i=0$).
+  Replacing $\inner{\vecb x_i}{\vecb x_j}$ with a PSD \textbf{Mercer kernel} $k(\vecb x_i,\vecb x_j)$ computes this maximum-margin hyperplane in an infinite-dimensional RKHS $\Hilbert_k$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,387 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Linear Models, Generalization, Kernels \& Ensembles}{Kernel Methods, Support Vector Machines \& Tree Ensembles}{Support Vector Machines, Margin Duality \& Mercer Kernel Methods}{\bookcite{mathematics_machine_learning_orienly}{Ch. 12, pp. 372--392}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 17, pp. 567--595}, \bookcite{machine_learning_co_ban_tiep_vu}{Part VIII, pp. 329--378}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.7.2, pp. 141--143}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+% =============================================================================
+
+Consider a binary classification dataset $\mathcal{D} = \{(\vecb{x}_i, y_i)\}_{i=1}^N$ with inputs $\vecb{x}_i \in \mathcal{X} \subseteq \R^D$ and bipolar class labels $y_i \in \{-1, +1\}$. A linear discriminant partitions $\R^D$ via an affine hyperplane $\mathcal{P} = \{\vecb{x} \in \R^D : f(\vecb{x}) = 0\}$, where the decision function is parameterized by a normal vector $\vecb{w} \in \R^D$ and scalar offset (bias) $b \in \R$:
+\begin{equation}
+  f(\vecb{x}) = \inner{\vecb{w}}{\vecb{x}} + b, \qquad \hat{y}(\vecb{x}) = \sign\!\big(f(\vecb{x})\big).
+  \label{eq:svm:linear_discriminant}
+\end{equation}
+{\sloppy\emergencystretch=4em
+Unlike probabilistic classifiers that model $p(y \mid \vecb{x})$ directly, the Support Vector Machine (SVM) maximizes the geometric separation between classes, yielding a sparse dual governed by inner products $\inner{\vecb{x}_i}{\vecb{x}_j}$ \bookcite{mathematics_machine_learning_orienly}{Sec. 12.1, p. 372} and \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.7.2, p. 141}. Replacing Euclidean inner products with positive-definite Mercer kernels $k(\vecb{x}_i, \vecb{x}_j) = \inner{\phi(\vecb{x}_i)}{\phi(\vecb{x}_j)}_{\Hilbert_k}$ lifts this linear maximum-margin geometry into an implicit Reproducing Kernel Hilbert Space (RKHS) $\Hilbert_k$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.1, p. 567}.\par}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\small
+\begin{tabularx}{\textwidth}{@{}p{2.7cm}p{2.3cm}p{2.6cm}p{2.5cm}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Deisenroth et al.} & \textbf{Murphy} & \textbf{Tiep Vu} & \textbf{Unified Monograph Convention} \\
+\midrule
+Class label & $y_n \in \{-1, +1\}$ & $\tilde{y}_n \in \{-1, +1\}$ & $y_n \in \{-1, +1\}$ & $y_i \in \{-1, +1\}$ \\
+Affine offset & $b$ & $w_0$ & $b$ & $b \in \R$ \\
+Dual multiplier & $\alpha_n \ge 0$ & $\alpha_n \ge 0$ & $\lambda_n \ge 0$ & $\alpha_i \in [0, C]$ \\
+Slack multiplier & $\gamma_n \ge 0$ & $\mu_n \ge 0$ & $\mu_n \ge 0$ & $\gamma_i \ge 0$ \\
+Regularization & $C$ (slack weight) & $C$ or $\lambda = (2C)^{-1}$ & $C$ (slack weight) & $C > 0$; $\lambda = (2C)^{-1}$ in ERM \\
+Feature map & $\phi(\vecb{x})$ & $\phi(\vecb{x})$ & $\Phi(\vecb{x})$ & $\phi : \mathcal{X} \to \Hilbert_k$ \\
+Kernel function & $k(\vecb{x}_i, \vecb{x}_j)$ & $K(\vecb{x}, \vecb{x}')$ & $k(\vecb{x}, \vecb{z})$ & $k(\vecb{x}, \vecb{x}')$; Gram matrix $\mat{K}$ \\
+\bottomrule
+\end{tabularx}
+\vspace{4pt}\par
+\footnotesize
+\textbf{Pedagogical Synthesis:} \bookcite{mathematics_machine_learning_orienly}{Ch. 12, pp. 372--392} unifies the geometric margin, hinge-loss ERM, convex-hull duality, and standard quadratic programming (QP) matrix forms. \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 17, pp. 567--595} embeds SVMs inside Mercer kernel theory, comparing them with Gaussian Processes, Kernel Ridge Regression (KRR), and $\nu$-SVMs. \bookcite{machine_learning_co_ban_tiep_vu}{Part VIII, pp. 329--378} provides step-by-step algebraic KKT and subgradient derivations, while \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.7.2, pp. 141--143} frames the kernel trick as template matching and contrasts its $\mathcal{O}(N^2)$ scaling against learned deep representations.
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+% =============================================================================
+
+\subsection{Hard-Margin \& Soft-Margin Primal Formulations}
+
+\begin{coremath}[Hard-Margin Primal \& Canonical Hyperplane Normalization]
+Let $\mathcal{D}$ be linearly separable. For any point $\vecb{x}_i$, its orthogonal projection $\vecb{x}_{\perp}$ onto $\mathcal{P} = \{\vecb{x} : \inner{\vecb{w}}{\vecb{x}} + b = 0\}$ satisfies $\vecb{x}_i = \vecb{x}_{\perp} + r_i \frac{\vecb{w}}{\norm{\vecb{w}}_2}$, where the signed distance is $r_i = \frac{\inner{\vecb{w}}{\vecb{x}_i} + b}{\norm{\vecb{w}}_2}$ \bookcite{mathematics_machine_learning_orienly}{Sec. 12.2.1, p. 375} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 26.2, p. 330}. Because $y_i$ matches the sign of $f(\vecb{x}_i)$ for correctly classified points, the geometric margin is
+\begin{equation}
+  \rho(\vecb{w}, b) = \min_{i=1,\dots,N} \frac{y_i (\inner{\vecb{w}}{\vecb{x}_i} + b)}{\norm{\vecb{w}}_2}.
+  \label{eq:svm:geom_margin}
+\end{equation}
+Since $(\vecb{w}, b)$ and $(\kappa\vecb{w}, \kappa b)$ ($\kappa > 0$) define the identical hyperplane, we fix the scale by requiring the closest training points to satisfy $\min_i y_i(\inner{\vecb{w}}{\vecb{x}_i} + b) = 1$. Maximizing $\rho = 1/\norm{\vecb{w}}_2$ is then equivalent to the strictly convex quadratic program:
+\begin{equation}
+  \min_{\vecb{w}, b} \; \frac{1}{2}\norm{\vecb{w}}_2^2 \qquad \text{subject to} \quad y_i(\inner{\vecb{w}}{\vecb{x}_i} + b) \ge 1, \quad \forall i \in \{1,\dots,N\}.
+  \label{eq:svm:hard_primal}
+\end{equation}
+The slab between the two canonical margin hyperplanes $\inner{\vecb{w}}{\vecb{x}} + b = \pm 1$ has total width $2 / \norm{\vecb{w}}_2$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.1, p. 585}.
+\end{coremath}
+
+When $\mathcal{D}$ is non-separable or contains label noise, \eqref{eq:svm:hard_primal} is infeasible. Introducing non-negative slack variables $\xi_i \ge 0$ relaxes the margin constraint to $y_i(\inner{\vecb{w}}{\vecb{x}_i} + b) \ge 1 - \xi_i$, yielding the $C$-SVM soft-margin primal \bookcite{mathematics_machine_learning_orienly}{Sec. 12.2.4, p. 379} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 27.2, p. 340}:
+\begin{equation}
+  \min_{\vecb{w}, b, \vecb{\xi}} \; \frac{1}{2}\norm{\vecb{w}}_2^2 + C \sum_{i=1}^N \xi_i
+  \qquad \text{subject to} \quad y_i(\inner{\vecb{w}}{\vecb{x}_i} + b) \ge 1 - \xi_i, \;\; \xi_i \ge 0.
+  \label{eq:svm:soft_primal}
+\end{equation}
+
+\begin{coremath}[Hinge Loss Equivalence \& $\nu$-SVM Parameterization]
+For fixed $(\vecb{w}, b)$, minimizing \eqref{eq:svm:soft_primal} over $\xi_i$ sets $\xi_i^* = \max\big(0, 1 - y_i(\inner{\vecb{w}}{\vecb{x}_i} + b)\big)$. Substituting $\xi_i^*$ eliminates the constraints and reveals that soft-margin SVM is $\ell_2$-regularized empirical risk minimization under the \textbf{hinge loss} $\ell_{\mathrm{hinge}}(t) = \max(0, 1 - t)$ with $t = y_i f(\vecb{x}_i)$ \bookcite{mathematics_machine_learning_orienly}{Sec. 12.2.5, p. 381} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.6, p. 591}:
+\begin{equation}
+  \min_{\vecb{w}, b} \; \frac{1}{2C}\norm{\vecb{w}}_2^2 + \sum_{i=1}^N \max\!\big(0, 1 - y_i(\inner{\vecb{w}}{\vecb{x}_i} + b)\big).
+  \label{eq:svm:hinge_erm}
+\end{equation}
+Because $\xi_i > 1$ whenever $y_i f(\vecb{x}_i) < 0$, $\sum_{i=1}^N \xi_i$ is a convex upper bound on the number of training misclassifications. An alternative parameterization, the $\nu$-SVM ($\nu \in (0, 1]$), replaces $C$ by optimizing $\frac{1}{2}\norm{\vecb{w}}_2^2 - \nu \rho + \frac{1}{N}\sum_{i=1}^N \xi_i$ subject to $y_i f(\vecb{x}_i) \ge \rho - \xi_i$, where $\nu$ simultaneously upper-bounds the fraction of margin errors and lower-bounds the fraction of support vectors \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.3, p. 590}.
+\end{coremath}
+
+\subsection{Wolfe Lagrangian Dual \& KKT Complementary Slackness}
+
+\begin{coremath}[Primal-to-Wolfe Dual Derivation \& KKT Classification]
+Introducing Lagrange multipliers $\alpha_i \ge 0$ for the margin constraints and $\gamma_i \ge 0$ for $\xi_i \ge 0$, the Lagrangian of \eqref{eq:svm:soft_primal} is \bookcite{mathematics_machine_learning_orienly}{Sec. 12.3.1, p. 383}:
+\begin{equation}
+  \mathcal{L}(\vecb{w}, b, \vecb{\xi}, \vecb{\alpha}, \vecb{\gamma}) = \frac{1}{2}\norm{\vecb{w}}_2^2 + C\sum_{i=1}^N \xi_i - \sum_{i=1}^N \alpha_i \big[y_i(\inner{\vecb{w}}{\vecb{x}_i} + b) - 1 + \xi_i\big] - \sum_{i=1}^N \gamma_i \xi_i.
+  \label{eq:svm:lagrangian}
+\end{equation}
+Since \eqref{eq:svm:soft_primal} is convex with affine constraints, Slater's condition holds (take $\vecb{w} = \zeros, b = 0, \xi_i = 2$), guaranteeing strong duality. Setting primal gradients to zero gives the stationarity conditions:
+\begin{align}
+  \grad_{\vecb{w}} \mathcal{L} = \zeros &\implies \vecb{w}^* = \sum_{i=1}^N \alpha_i y_i \vecb{x}_i, \label{eq:svm:kkt_w} \\
+  \pd{\mathcal{L}}{b} = 0 &\implies \sum_{i=1}^N \alpha_i y_i = 0, \label{eq:svm:kkt_b} \\
+  \pd{\mathcal{L}}{\xi_i} = 0 &\implies C - \alpha_i - \gamma_i = 0 \implies 0 \le \alpha_i \le C \quad (\text{since } \gamma_i \ge 0). \label{eq:svm:kkt_xi}
+\end{align}
+Substituting \eqref{eq:svm:kkt_w}--\eqref{eq:svm:kkt_xi} back into \eqref{eq:svm:lagrangian} eliminates all primal variables and yields the \textbf{Wolfe dual QP} \bookcite{mathematics_machine_learning_orienly}{Eq. (12.41), p. 385} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 27.3, p. 343}:
+\begin{equation}
+  \max_{\vecb{\alpha} \in [0, C]^N} \; \sum_{i=1}^N \alpha_i - \frac{1}{2} \sum_{i=1}^N \sum_{j=1}^N \alpha_i \alpha_j y_i y_j \inner{\vecb{x}_i}{\vecb{x}_j}
+  \qquad \text{subject to} \quad \sum_{i=1}^N \alpha_i y_i = 0.
+  \label{eq:svm:dual_qp}
+\end{equation}
+At optimality, the Karush--Kuhn--Tucker (KKT) complementary slackness conditions require
+\begin{equation}
+  \alpha_i \big[y_i(\inner{\vecb{w}^*}{\vecb{x}_i} + b^*) - 1 + \xi_i^*\big] = 0, \qquad (C - \alpha_i)\xi_i^* = 0.
+  \label{eq:svm:kkt_cs}
+\end{equation}
+These partition the dataset into three disjoint regimes \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.3, p. 589} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 27.3, p. 344}:
+\begin{enumerate}
+  \item $\alpha_i = 0$ (\textbf{Non-support vectors}): $\gamma_i = C > 0 \implies \xi_i^* = 0$ and $y_i f(\vecb{x}_i) \ge 1$. These points lie strictly outside or on the safe margin and do not enter $\vecb{w}^*$.
+  \item $0 < \alpha_i < C$ (\textbf{Free / unbounded support vectors}, index set $\mathcal{M}$): $\gamma_i > 0 \implies \xi_i^* = 0$, and $\alpha_i > 0 \implies y_i f(\vecb{x}_i) = 1$. They lie \emph{exactly} on the margin hyperplanes and determine the optimal bias via averaging for numerical stability:
+  \begin{equation}
+    b^* = \frac{1}{\abs{\mathcal{M}}} \sum_{m \in \mathcal{M}} \left( y_m - \sum_{i \in \mathcal{S}} \alpha_i y_i \inner{\vecb{x}_i}{\vecb{x}_m} \right), \qquad \mathcal{S} = \{i : \alpha_i > 0\}.
+    \label{eq:svm:bias_recovery}
+  \end{equation}
+  \item $\alpha_i = C$ (\textbf{Bounded support vectors}): $\gamma_i = 0$, permitting $\xi_i^* \ge 0$ and $y_i f(\vecb{x}_i) = 1 - \xi_i^* \le 1$. Points with $0 < \xi_i^* \le 1$ fall inside the margin yet remain correctly classified; points with $\xi_i^* > 1$ are misclassified.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Dual Convex Hulls \& Reduced Hulls]
+Geometrically, the hard-margin dual minimizes $\frac{1}{2}\norm{\sum_{y_i=+1}\alpha_i \vecb{x}_i - \sum_{y_j=-1}\alpha_j \vecb{x}_j}_2^2$ subject to $\sum_{y_i=+1}\alpha_i = \sum_{y_j=-1}\alpha_j = \text{const}$, which is equivalent to finding the closest pair of points between the convex hulls of the positive and negative classes \bookcite{mathematics_machine_learning_orienly}{Sec. 12.3.2, p. 386}. Bounding $\alpha_i \le C$ in the soft-margin dual shrinks each convex hull to a \emph{reduced convex hull}, preventing outlier points from dominating the separating hyperplane.
+\end{intuition}
+
+\subsection{Mercer's Theorem, RKHS \& The Representer Theorem}
+
+Because \eqref{eq:svm:dual_qp} and \eqref{eq:svm:bias_recovery} depend on inputs solely through pairwise inner products $\inner{\vecb{x}_i}{\vecb{x}_j}$, replacing $\vecb{x}_i \mapsto \phi(\vecb{x}_i) \in \Hilbert_k$ allows us to evaluate $k(\vecb{x}_i, \vecb{x}_j) = \inner{\phi(\vecb{x}_i)}{\phi(\vecb{x}_j)}_{\Hilbert_k}$ directly without ever instantiating $\phi(\vecb{x}_i)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.4, p. 590} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 28.2, p. 358}.
+
+\begin{coremath}[Mercer's Theorem \& Positive-Semidefinite Gram Matrices]
+A symmetric function $k : \mathcal{X} \times \mathcal{X} \to \R$ is a valid \textbf{Mercer kernel} (positive-definite kernel) if and only if for every finite set $\{\vecb{x}_1, \dots, \vecb{x}_N\} \subset \mathcal{X}$, the $N \times N$ Gram matrix $\mat{K}$ with entries $K_{ij} = k(\vecb{x}_i, \vecb{x}_j)$ is symmetric positive semidefinite (PSD):
+\begin{equation}
+  \vecb{c}\T \mat{K} \vecb{c} = \sum_{i=1}^N \sum_{j=1}^N c_i c_j k(\vecb{x}_i, \vecb{x}_j) \ge 0 \qquad \forall \vecb{c} \in \R^N.
+  \label{eq:svm:mercer_psd}
+\end{equation}
+On a compact domain $\mathcal{X}$ with finite measure $\mu$, Mercer's theorem guarantees a spectral expansion $k(\vecb{x}, \vecb{x}') = \sum_{m=1}^\infty \lambda_m \psi_m(\vecb{x}) \psi_m(\vecb{x}')$ with eigenvalues $\lambda_m \ge 0$ and orthonormal eigenfunctions $\{\psi_m\}$, inducing the explicit feature map $\phi(\vecb{x}) = (\sqrt{\lambda_m}\psi_m(\vecb{x}))_{m=1}^\infty \in \ell_2$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.1.1, p. 568}. Crucially, PSDness of $\mat{K}$ implies $\mat{Y}\mat{K}\mat{Y}$ (with $\mat{Y} = \diag(\vecb{y})$) is PSD, ensuring the dual QP \eqref{eq:svm:dual_qp} is concave in $\vecb{\alpha}$ and globally solvable \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 28.3.1, p. 359}.
+\end{coremath}
+
+Canonical Mercer kernels include the polynomial kernel $k(\vecb{x}, \vecb{x}') = (\inner{\vecb{x}}{\vecb{x}'} + c_0)^d$ ($c_0 \ge 0, d \in \N$) and the Gaussian Radial Basis Function (RBF) / squared-exponential kernel:
+\begin{equation}
+  k_{\mathrm{RBF}}(\vecb{x}, \vecb{x}') = \exp\!\left(-\frac{\norm{\vecb{x} - \vecb{x}'}_2^2}{2\ell^2}\right) = \exp\!\left(-\gamma \norm{\vecb{x} - \vecb{x}'}_2^2\right), \qquad \gamma = \frac{1}{2\ell^2},
+  \label{eq:svm:rbf_kernel}
+\end{equation}
+whose implicit feature space is infinite-dimensional \bookcite{probabilisticml_kevinmurphy_introduction}{Eq. (17.3), p. 568} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq. (5.84), p. 142}.
+
+\begin{coremath}[The Representer Theorem (Sch\"olkopf--Herbrich--Smola)]
+Let $\Hilbert_k$ be the unique RKHS associated with Mercer kernel $k$ satisfying the reproducing property $\inner{f}{k(\cdot, \vecb{x})}_{\Hilbert_k} = f(\vecb{x})$ for all $f \in \Hilbert_k$ \bookcite{mathematics_machine_learning_orienly}{Sec. 12.4, p. 389}. Consider any regularized empirical risk functional with strictly increasing penalty $\Omega : [0, \infty) \to \R$:
+\begin{equation}
+  \min_{f \in \Hilbert_k} \; J(f) = \sum_{i=1}^N \ell\big(y_i, f(\vecb{x}_i)\big) + \Omega\!\left(\norm{f}_{\Hilbert_k}\right).
+  \label{eq:svm:representer_obj}
+\end{equation}
+Decompose $f = f_{\parallel} + f_{\perp}$, where $f_{\parallel} \in \spn\{k(\cdot, \vecb{x}_1), \dots, k(\cdot, \vecb{x}_N)\}$ and $f_{\perp} \perp f_{\parallel}$ in $\Hilbert_k$. By the reproducing property,
+\begin{equation}
+  f(\vecb{x}_i) = \inner{f_{\parallel} + f_{\perp}}{k(\cdot, \vecb{x}_i)}_{\Hilbert_k} = \inner{f_{\parallel}}{k(\cdot, \vecb{x}_i)}_{\Hilbert_k} = f_{\parallel}(\vecb{x}_i),
+\end{equation}
+so the empirical loss is invariant to $f_{\perp}$. Meanwhile, $\norm{f}_{\Hilbert_k}^2 = \norm{f_{\parallel}}_{\Hilbert_k}^2 + \norm{f_{\perp}}_{\Hilbert_k}^2 \ge \norm{f_{\parallel}}_{\Hilbert_k}^2$, with strict inequality whenever $f_{\perp} \ne 0$. Hence any minimizer $f^*$ of \eqref{eq:svm:representer_obj} lies strictly in the finite-dimensional span of the training kernels:
+\begin{equation}
+  f^*(\vecb{x}) = \sum_{i=1}^N \beta_i k(\vecb{x}_i, \vecb{x}), \qquad \beta_i \in \R.
+  \label{eq:svm:representer_sol}
+\end{equation}
+For the SVM, $\beta_i = \alpha_i y_i$ and KKT sparsity zeroes out all $\alpha_i$ outside the support set $\mathcal{S}$.
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+% =============================================================================
+
+Solving the dual QP \eqref{eq:svm:dual_qp} via generic interior-point methods requires storing the dense $N \times N$ matrix $\mat{Y}\mat{K}\mat{Y}$ in $\mathcal{O}(N^2)$ memory and $\mathcal{O}(N^3)$ time \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.4, p. 590}. Because the linear equality constraint $\sum_{i=1}^N \alpha_i y_i = 0$ prevents updating a single $\alpha_i$ independently, Platt's \textbf{Sequential Minimal Optimization (SMO)} decomposes the QP into analytical two-variable subproblems $(\alpha_i, \alpha_j)$ that preserve $\alpha_i y_i + \alpha_j y_j = \text{const}$ \bookcite{mathematics_machine_learning_orienly}{Sec. 12.5, p. 392}.
+
+\begin{algorithm}[htbp]
+\caption{Sequential Minimal Optimization (SMO) Two-Variable Dual Solver}
+\label{alg:svm:smo}
+\KwIn{Dataset $\{(\vecb{x}_i, y_i)\}_{i=1}^N$, Mercer kernel $k(\cdot,\cdot)$, box bound $C > 0$, tolerance $\varepsilon > 0$.}
+\KwOut{Dual multipliers $\vecb{\alpha} \in [0, C]^N$, bias $b \in \R$.}
+Initialize $\vecb{\alpha} \leftarrow \zeros$, $b \leftarrow 0$, error cache $E_i \leftarrow -y_i$ for all $i$\;
+\While{any $(\vecb{x}_i, \alpha_i)$ violates KKT conditions within $\varepsilon$}{
+  Select first multiplier $i$ violating KKT (prioritizing $0 < \alpha_i < C$)\;
+  Select second multiplier $j \ne i$ maximizing $\abs{E_i - E_j}$\;
+  Compute box bounds $[L, H]$ for $\alpha_j^{\mathrm{new}}$ preserving $\alpha_i y_i + \alpha_j y_j = \text{const}$:
+  \[
+    L = \begin{cases} \max(0, \alpha_j - \alpha_i) & y_i \ne y_j \\ \max(0, \alpha_i + \alpha_j - C) & y_i = y_j \end{cases}, \qquad
+    H = \begin{cases} \min(C, C + \alpha_j - \alpha_i) & y_i \ne y_j \\ \min(C, \alpha_i + \alpha_j) & y_i = y_j \end{cases};
+  \]
+  Compute curvature $\eta \leftarrow k(\vecb{x}_i, \vecb{x}_i) + k(\vecb{x}_j, \vecb{x}_j) - 2k(\vecb{x}_i, \vecb{x}_j)$\;
+  \If{$\eta > 0$}{
+    $\alpha_j^{\mathrm{unc}} \leftarrow \alpha_j + \frac{y_j (E_i - E_j)}{\eta}$\;
+    $\alpha_j^{\mathrm{new}} \leftarrow \min\big(H, \max(L, \alpha_j^{\mathrm{unc}})\big)$\;
+    $\alpha_i^{\mathrm{new}} \leftarrow \alpha_i + y_i y_j (\alpha_j - \alpha_j^{\mathrm{new}})$\;
+    Update $b$ via KKT margin condition on $(i, j)$ and refresh error cache $E_k = f(\vecb{x}_k) - y_k$\;
+  }
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Computational Complexity \& Structural Comparison Across Kernel and Linear Solvers}
+\label{tab:svm:complexity}
+\small
+\begin{tabularx}{\textwidth}{@{}lccccX@{}}
+\toprule
+\textbf{Method} & \textbf{Train Time} & \textbf{Memory} & \textbf{Inference} & \textbf{Sparsity} & \textbf{Primary Regime} \\
+\midrule
+Primal Subgradient (Linear) & $\mathcal{O}(T N D)$ & $\mathcal{O}(D)$ & $\mathcal{O}(D)$ & Dense $\vecb{w}$ & Large $N$, linear $k$ \\
+Dual Interior-Point QP & $\mathcal{O}(N^3)$ & $\mathcal{O}(N^2)$ & $\mathcal{O}(N_{\mathrm{sv}} D)$ & Sparse $\vecb{\alpha}$ & Small $N$ ($N \lesssim 5\times 10^3$) \\
+SMO Decomposition (LIBSVM) & $\mathcal{O}(N_{\mathrm{sv}} N)$--$\mathcal{O}(N^2)$ & $\mathcal{O}(N_{\mathrm{cache}})$ & $\mathcal{O}(N_{\mathrm{sv}} D)$ & Sparse $\vecb{\alpha}$ & Medium $N$, nonlinear $k$ \\
+Kernel Ridge Regression & $\mathcal{O}(N^3)$ & $\mathcal{O}(N^2)$ & $\mathcal{O}(N D)$ & Dense $\vecb{\alpha}$ & Closed-form regression \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Kernel Ridge Regression vs. SVM vs. Deep Feature Learning]
+\begin{itemize}
+  \item \textbf{KRR vs. SVM Sparsity} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.9--17.3.10, pp. 594--595}: Kernel Ridge Regression solves $\vecb{\alpha} = (\mat{K} + \lambda \eye_N)^{-1}\vecb{y}$ in closed form, but the squared loss produces a completely \emph{dense} $\vecb{\alpha}$ requiring $\mathcal{O}(N)$ kernel evaluations at test time. Replacing squared loss with hinge loss (classification) or $\epsilon$-insensitive loss (SVR) introduces a flat zero-gradient region that induces exact KKT sparsity ($\alpha_i = 0$ for well-classified points).
+  \item \textbf{Generic Kernels vs. Learned Representations} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.7.2, pp. 142--143}: An RBF kernel SVM behaves like smooth template matching over training exemplars. When the target function varies rapidly across high-dimensional manifolds (e.g., natural images), local Euclidean similarity struggles to generalize without exponentially many templates, motivating deep neural networks that learn task-adaptive feature maps $\phi_{\theta}(\vecb{x})$ directly.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+% =============================================================================
+
+Figure~\ref{fig:svm:primal_rkhs} illustrates the geometric duality between the input-space soft-margin slab and its kernel-induced linear separation in $\Hilbert_k$, while Figure~\ref{fig:svm:losses_and_complexity} contrasts the hinge loss against alternative classification surrogates and plots the RBF bandwidth--regularization trade-off.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.90, every node/.style={font=\small}]
+  % Left panel: Input space (Non-separable / Soft Margin)
+  \begin{scope}[shift={(0,0)}]
+    \draw[thick, monographNavy, fill=monographCodeBg, rounded corners=4pt] (-0.3,-0.4) rectangle (5.7,4.7);
+    \node[anchor=north west, font=\footnotesize\bfseries, text=monographNavy] at (-0.1,4.55) {Input Space $\mathcal{X} \subseteq \R^2$ (Soft Margin)};
+
+    % Margin slab
+    \fill[monographTeal!12] (0.3,2.9) -- (4.3,0.4) -- (4.7,1.0) -- (0.7,3.5) -- cycle;
+    % Separating hyperplane w^T x + b = 0
+    \draw[very thick, monographNavy] (0.5,3.2) -- (4.5,0.7) node[right, font=\scriptsize, text=monographNavy] {$f(\vecb{x})=0$};
+    % +1 and -1 margin boundaries
+    \draw[dashed, thick, monographTeal] (0.7,3.5) -- (4.7,1.0) node[right, font=\scriptsize, text=monographTeal] {$+1$};
+    \draw[dashed, thick, monographCrimson] (0.3,2.9) -- (4.3,0.4) node[right, font=\scriptsize, text=monographCrimson] {$-1$};
+
+    % Normal vector w
+    \draw[->, thick, monographIndigo] (2.1,2.2) -- (2.65,3.08) node[above right, font=\scriptsize, text=monographIndigo] {$\vecb{w}$};
+    % Margin width annotation
+    \draw[<->, thick, monographSlate] (1.0,2.46) -- (1.4,3.08) node[midway, left, font=\scriptsize, text=monographSlate] {$\frac{2}{\norm{\vecb{w}}_2}$};
+
+    % Positive points (+)
+    \fill[monographTeal] (3.7,3.4) circle (2.6pt);
+    \fill[monographTeal] (4.3,2.6) circle (2.6pt);
+    \fill[monographTeal] (2.2,3.7) circle (2.6pt);
+    % Free SV (+) on +1 line
+    \fill[monographTeal] (2.7,2.25) circle (2.6pt);
+    \draw[thick, monographNavy] (2.7,2.25) circle (4.5pt);
+    % Bounded SV (+) violating margin (slack xi_i)
+    \fill[monographTeal] (1.85,1.8) circle (2.6pt);
+    \draw[thick, monographCrimson] (1.85,1.8) circle (4.5pt);
+    \draw[->, thick, monographCrimson] (1.85,1.8) -- (2.25,2.45) node[midway, left, font=\scriptsize, text=monographCrimson] {$\xi_i$};
+
+    % Negative points (-)
+    \fill[monographCrimson] (0.9,0.9) circle (2.6pt);
+    \fill[monographCrimson] (1.7,0.4) circle (2.6pt);
+    \fill[monographCrimson] (3.0,0.3) circle (2.6pt);
+    % Free SV (-) on -1 line
+    \fill[monographCrimson] (2.3,1.65) circle (2.6pt);
+    \draw[thick, monographNavy] (2.3,1.65) circle (4.5pt);
+  \end{scope}
+
+  % Kernel map arrow
+  \draw[->, very thick, monographIndigo, >=stealth] (5.9,2.15) -- (7.3,2.15)
+    node[midway, above, font=\footnotesize\bfseries, text=monographIndigo] {$\phi(\vecb{x})$}
+    node[midway, below, font=\scriptsize, text=monographSlate] {$k(\vecb{x},\vecb{x}')$};
+
+  % Right panel: RKHS Feature Space (Linearly Separable)
+  \begin{scope}[shift={(7.5,0)}]
+    \draw[thick, monographIndigo, fill=monographNavyBg, rounded corners=4pt] (-0.3,-0.4) rectangle (5.7,4.7);
+    \node[anchor=north west, font=\footnotesize\bfseries, text=monographIndigo] at (-0.1,4.55) {RKHS $\Hilbert_k$ (Linearly Separable)};
+
+    % Separable slab
+    \fill[monographIndigo!10] (0.4,1.5) -- (5.0,3.0) -- (5.0,3.8) -- (0.4,2.3) -- cycle;
+    \draw[very thick, monographNavy] (0.4,1.9) -- (5.0,3.4);
+    \node[anchor=south east, font=\scriptsize, text=monographNavy] at (5.35,3.45) {$\inner{\vecb{w}}{\phi}=0$};
+    \draw[dashed, thick, monographTeal] (0.4,2.3) -- (5.0,3.8);
+    \draw[dashed, thick, monographCrimson] (0.4,1.5) -- (5.0,3.0);
+
+    % Positive points
+    \fill[monographTeal] (1.3,3.5) circle (2.6pt);
+    \fill[monographTeal] (2.7,3.8) circle (2.6pt);
+    \fill[monographTeal] (1.9,2.8) circle (2.6pt);
+    \draw[thick, monographNavy] (1.9,2.8) circle (4.5pt);
+
+    % Negative points
+    \fill[monographCrimson] (2.5,1.1) circle (2.6pt);
+    \fill[monographCrimson] (4.0,1.3) circle (2.6pt);
+    \fill[monographCrimson] (3.4,2.48) circle (2.6pt);
+    \draw[thick, monographNavy] (3.4,2.48) circle (4.5pt);
+
+    \node[font=\scriptsize, text=monographSlate, align=center] at (2.7,0.35) {Representer: $\vecb{w}^* = \sum_{i \in \mathcal{S}} \alpha_i y_i \phi(\vecb{x}_i)$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Geometric duality of the soft-margin hyperplane in input space $\mathcal{X}$ (with free support vectors on $\pm 1$ and bounded support vectors incurring slack $\xi_i > 0$) lifted via $\phi(\vecb{x})$ into an RKHS $\Hilbert_k$ where classes become linearly separable.}
+\label{fig:svm:primal_rkhs}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+  \begin{axis}[
+    name=lossplot,
+    width=0.47\textwidth,
+    height=5.2cm,
+    xlabel={Margin $t = y f(\vecb{x})$},
+    ylabel={Loss $\ell(t)$},
+    xmin=-2.0, xmax=2.5,
+    ymin=-0.1, ymax=3.8,
+    grid=major,
+    grid style={monographRule!50},
+    legend pos=north east,
+    legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9},
+    title={\footnotesize (a) Convex Surrogates vs.\ 0--1 Loss}
+  ]
+    % 0-1 loss
+    \addplot[thick, monographSlate, densely dashed, domain=-2.0:0] {1};
+    \addplot[thick, monographSlate, densely dashed, domain=0:2.5, forget plot] {0};
+    \addplot[thick, monographSlate, densely dashed, forget plot] coordinates {(0,0) (0,1)};
+    \addlegendentry{0--1 Loss}
+
+    % Hinge loss: max(0, 1-t)
+    \addplot[very thick, monographNavy, domain=-2.0:1.0] {1 - x};
+    \addplot[very thick, monographNavy, domain=1.0:2.5, forget plot] {0};
+    \addlegendentry{Hinge $\max(0, 1-t)$}
+
+    % Squared hinge: max(0, 1-t)^2
+    \addplot[thick, monographCrimson, domain=-1.0:1.0] {(1 - x)^2};
+    \addplot[thick, monographCrimson, domain=1.0:2.5, forget plot] {0};
+    \addlegendentry{Sq.\ Hinge $\max(0, 1-t)^2$}
+
+    % Logistic log2(1 + exp(-t))
+    \addplot[thick, monographTeal, domain=-2.0:2.5, samples=60] {ln(1 + exp(-x))/ln(2)};
+    \addlegendentry{Logistic $\log_2(1+e^{-t})$}
+  \end{axis}
+
+  \begin{axis}[
+    at={(lossplot.east)}, anchor=west, xshift=1.4cm,
+    width=0.47\textwidth,
+    height=5.2cm,
+    xmode=log,
+    xlabel={RBF Bandwidth Precision $\gamma = (2\ell^2)^{-1}$},
+    ylabel={Normalized Metric},
+    xmin=1e-3, xmax=1e2,
+    ymin=0.0, ymax=1.05,
+    grid=major,
+    grid style={monographRule!50},
+    legend pos=south east,
+    legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9},
+    title={\footnotesize (b) Kernel Complexity vs.\ SV Fraction}
+  ]
+    % Support vector fraction increases toward 1 as gamma grows (local templates)
+    \addplot[very thick, monographIndigo, domain=1e-3:1e2, samples=60] {0.15 + 0.85*(x/(x + 0.8))};
+    \addlegendentry{SV Fraction $N_{\mathrm{sv}}/N$}
+
+    % Effective margin smoothness / bias error decreases then overfits
+    \addplot[thick, monographCrimson, domain=1e-3:1e2, samples=60] {0.42*exp(-0.5*x) + 0.08 + 0.35*(x/(x + 6.0))};
+    \addlegendentry{CV 0--1 Error}
+  \end{axis}
+\end{tikzpicture}
+\caption{(a) Comparison of 0--1 loss, hinge loss, squared hinge loss, and scaled logistic log-loss; only hinge-based losses vanish identically for $t \ge 1$, producing sparse support sets. (b) Increasing RBF precision $\gamma$ shrinks the template radius $\ell$, driving $N_{\mathrm{sv}}/N \to 1$ and creating a U-shaped generalization curve.}
+\label{fig:svm:losses_and_complexity}
+\end{figure}
+
+{\sloppy\emergencystretch=4em
+The extracted source diagrams below reinforce three geometric diagnostics from Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3, pp. 586--593}: Figure~\ref{fig:svm:murphy_geom} visualizes the orthogonal projection $r = f(\vecb{x})/\norm{\vecb{w}}_2$ and slack regimes ($\xi = 0$, $0 < \xi < 1$, $\xi > 1$); Figure~\ref{fig:svm:murphy_scaling} demonstrates how unscaled features distort the Euclidean margin; and Figure~\ref{fig:svm:murphy_rbf_grid} illustrates the joint $(C, \gamma)$ regularization surface on non-linearly separable moons data.\par}
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p616_fig1.png}{Geometric interpretation of the linear decision boundary $f(\vecb{x}) = \vecb{w}\T\vecb{x} + w_0$ with orthogonal distance $r = f(\vecb{x})/\norm{\vecb{w}}$ (left) and soft-margin slack regimes $\xi = 0$, $\xi < 1$, and $\xi > 1$ (right). Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 17.13, p. 586}.}{fig:svm:murphy_geom}
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p617_fig1.png}{Sensitivity of the $\ell_2$ margin to feature scaling: when $x_1$ spans $[0, 80]$ and $x_2$ spans $[0, 6]$, the unscaled SVM ignores $x_2$ (left), whereas standardization restores the balanced maximum-margin separator (right). Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 17.14, p. 587}.}{fig:svm:murphy_scaling}
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p623_fig1.png}{Joint effect of RBF precision $\gamma = (2\sigma^2)^{-1}$ and slack penalty $C$ on the two-moons dataset: small $\gamma$ underfits, while large $\gamma$ with large $C$ forms tight local islands around individual support vectors. Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 17.17, p. 593}.}{fig:svm:murphy_rbf_grid}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+% =============================================================================
+
+\begin{pitfall}[Quadratic Memory \& $\mathcal{O}(N^3)$ / $\mathcal{O}(N_{\mathrm{sv}} N)$ Scaling Bottleneck]
+Standard dual QP and SMO solvers scale between $\mathcal{O}(N_{\mathrm{sv}} N)$ and $\mathcal{O}(N^3)$ in training time and require $\mathcal{O}(N^2)$ memory if the full Gram matrix $\mat{K}$ is materialized \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.4, p. 590} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec. 5.7.2, p. 143}. When $N \gg 10^5$, kernel SVMs become computationally prohibitive. \textbf{Remedy:} For linear kernels, optimize the unconstrained primal \eqref{eq:svm:hinge_erm} directly via stochastic subgradient descent (e.g., Pegasos) or dual coordinate descent in $\mathcal{O}(ND)$; for nonlinear kernels, approximate $\mat{K}$ via low-rank Nystr\"om landmarks or Random Fourier Features.
+\end{pitfall}
+
+\begin{pitfall}[Unscaled Features \& RBF Bandwidth Collapse]
+Both the primal regularizer $\norm{\vecb{w}}_2^2$ and stationary kernels $k(\vecb{x}, \vecb{x}') = \exp(-\gamma \norm{\vecb{x} - \vecb{x}'}_2^2)$ assume isotropic Euclidean geometry. If one feature has variance $10^4\times$ larger than others, it dominates $\norm{\vecb{x} - \vecb{x}'}_2^2$, forcing $\gamma$ to either collapse all kernel similarities to $0$ or ignore informative low-variance coordinates (Figure~\ref{fig:svm:murphy_scaling}). \textbf{Remedy:} Always standardize features to zero mean and unit variance (or $[0, 1]$ range) on the training fold before fitting, and tune $(C, \gamma)$ jointly on a logarithmic grid \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.8, p. 593}.
+\end{pitfall}
+
+\begin{pitfall}[Non-PSD (Indefinite) Kernels \& Non-Convex Duals]
+Using a similarity function that violates Mercer's condition \eqref{eq:svm:mercer_psd}---such as the hyperbolic tangent (sigmoid) kernel $k(\vecb{x}, \vecb{x}') = \tanh(\kappa \inner{\vecb{x}}{\vecb{x}'} + c_0)$ for certain $(\kappa, c_0)$---produces a Gram matrix $\mat{K}$ with negative eigenvalues \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 28.3.1, p. 359}. Consequently, the dual objective \eqref{eq:svm:dual_qp} ceases to be concave, strong duality fails, and SMO may stall or diverge. \textbf{Remedy:} Restrict to proven Mercer kernels (Linear, Polynomial with $c_0 \ge 0$, RBF, Mat\'ern) or verify $\lambda_{\min}(\mat{K}) \ge -\epsilon_{\mathrm{mach}}$.
+\end{pitfall}
+
+\begin{pitfall}[Uncalibrated Margins vs. Platt Scaling]
+The raw SVM margin $f(\vecb{x})$ is an uncalibrated geometric score, not a log-odds ratio $\log \frac{p(y=1\mid\vecb{x})}{p(y=-1\mid\vecb{x})}$, and often exhibits severe distortion even when the decision boundary is Bayes-optimal \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 17.3.5, p. 591}. Applying Platt scaling $p(y=1 \mid \vecb{x}) = \sigma(a f(\vecb{x}) + b)$ directly on the training set causes severe overfitting because training margins are biased away from $[-1, 1]$. \textbf{Remedy:} Fit $(a, b)$ via maximum likelihood exclusively on a held-out validation set or via out-of-fold cross-validation.
+\end{pitfall}
+
+\end{document}

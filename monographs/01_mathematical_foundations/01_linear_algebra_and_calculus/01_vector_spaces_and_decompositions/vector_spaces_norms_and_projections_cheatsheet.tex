@@ -1,0 +1,231 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Linear Algebra \& Calculus}{Vector Spaces, Norms, Inner Products \& Orthogonal Projections}
+  {Every vector splits into an in-subspace shadow $\hat{\vecb{b}}$ and a perpendicular residual $\vecb{e}\perp W$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Projections\\ \footnotesize\mdseries Spaces $\cdot$ Norms $\cdot$ Least Squares}{%
+  \begin{tikzpicture}[scale=0.62]
+    \fill[csDom!10, draw=csDom, thick] (-0.3,-0.65) -- (3.3,-0.65) -- (3.9,0.55) -- (0.3,0.55) -- cycle;
+    \node[font=\tiny\bfseries, csDom] at (3.05,-0.42) {$W$};
+    \coordinate (O) at (0.35,0);
+    \coordinate (P) at (2.15,0.1);
+    \coordinate (Y) at (2.15,1.85);
+    \draw[csA, thick] (1.92,0.09) -- (1.92,0.32) -- (2.15,0.33);
+    \draw[-{Stealth}, very thick, csD] (O) -- (P) node[midway, below] {\scriptsize $\hat{\vecb{b}}\!=\!\mat P_W\vecb{b}$};
+    \draw[-{Stealth}, very thick, csDom] (O) -- (Y) node[midway, above left] {\scriptsize $\vecb{b}$};
+    \draw[-{Stealth}, very thick, csA, dashed] (P) -- (Y) node[midway, right] {\scriptsize $\vecb{e}\perp W$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; FOUR FUNDAMENTAL SUBSPACES}{%
+  \begin{minipage}[t]{0.55\linewidth}
+    \csfm{\R^n = \mathrm{Row}(\mat{A}) \oplus \nullsp(\mat{A})}
+    \csfm{\R^m = \colsp(\mat{A}) \oplus \nullsp(\mat{A}\T)}
+    \begin{csbul}
+      \item $\dim\colsp(\mat{A}) = \dim\mathrm{Row}(\mat{A}) = r$
+      \item \textbf{Rank--Nullity:} $r + \dim\nullsp(\mat{A}) = n$
+      \item $\mathrm{Row}(\mat{A})^\perp = \nullsp(\mat{A})$ in $\R^n$
+      \item $\colsp(\mat{A})^\perp = \nullsp(\mat{A}\T)$ in $\R^m$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.42\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.46, every node/.style={font=\tiny}]
+      \draw[csD, thick, fill=csD!10] (0,1.3) rectangle (2.6,2.6) node[midway, align=center] {$\mathrm{Row}(\mat A)$\\$r$};
+      \draw[csA, thick, fill=csA!10] (0,0) rectangle (2.6,1.3) node[midway, align=center] {$\nullsp(\mat A)$\\$n-r$};
+      \draw[csE, thick, fill=csE!10] (4.3,1.3) rectangle (6.9,2.6) node[midway, align=center] {$\colsp(\mat A)$\\$r$};
+      \draw[csC, thick, fill=csC!10] (4.3,0) rectangle (6.9,1.3) node[midway, align=center] {$\nullsp(\mat A\T)$\\$m-r$};
+      \draw[<->, very thick, csDom] (2.7,1.95) -- (4.2,1.95) node[midway, above] {$\mat A,\mat A\pinv$};
+      \node[csA, font=\tiny\bfseries] at (3.45,0.65) {$\perp$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; NORMS \& SPD INNER PRODUCTS}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\inner{\vecb{x}}{\vecb{y}}_{\mat{M}} = \vecb{x}\T\mat{M}\vecb{y}\;(\mat{M}\succ\zeros)}
+    \begin{csbul}
+      \item $\ell_p$: $(\sum_i\abs{x_i}^p)^{1/p}$, $\ell_\infty$: $\max_i\abs{x_i}$
+      \item \textbf{Chain:} $\norm{\vecb{x}}_\infty\le\norm{\vecb{x}}_2\le\norm{\vecb{x}}_1\le\sqrt{n}\norm{\vecb{x}}_2$
+      \item \textbf{CS:} $\abs{\inner{\vecb{u}}{\vecb{v}}}\le\norm{\vecb{u}}\norm{\vecb{v}}$
+      \item \textbf{Pythagoras:} $\vecb{u}\perp\vecb{v}\!\iff\!\norm{\vecb{u}+\vecb{v}}^2\!=\!\norm{\vecb{u}}^2+\norm{\vecb{v}}^2$
+      \item \textbf{Matrix:} $\norm{\mat{A}}_2=\sigma_1$, $\norm{\mat{A}}_F=\sqrt{\Tr(\mat{A}\T\mat{A})}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.82, every node/.style={font=\tiny}]
+      \draw[gray!50, thin] (-1.2,0)--(1.2,0) (0,-1.2)--(0,1.2);
+      \draw[csF, thick] (-1,-1) rectangle (1,1);
+      \draw[csDom, very thick] (0,0) circle (1);
+      \draw[csA, very thick] (1,0)--(0,1)--(-1,0)--(0,-1)--cycle;
+      \node[csA] at (0,-1.38) {$\ell_1$ (diamond) $\subset \ell_2 \subset \ell_\infty$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; ORTHOGONAL PROJECTOR ALGEBRA}{%
+  \csfm{\mat{P}_W = \mat{B}(\mat{B}\T\mat{B})\inv\mat{B}\T = \mat{Q}\mat{Q}\T \quad (\mat{Q}\T\mat{Q}=\eye_r)}
+  \begin{csbul}
+    \item \textbf{Best $\ell_2$ approx:} $\hat{\vecb{y}} = \mat{P}_W\vecb{y} = \argmin_{\vecb{v}\in W}\norm{\vecb{y}-\vecb{v}}_2$
+    \item \textbf{Characterization:} $\mat{P}$ is an orthogonal projector $\iff \mat{P}^2=\mat{P}$ and $\mat{P}\T=\mat{P}$
+    \item \textbf{Complement:} $\mat{P}_{W^\perp} = \eye_m - \mat{P}_W$, with $\vecb{y} - \hat{\vecb{y}} \in W^\perp$
+    \item \textbf{Spectrum:} eigenvalues $\in\set{0,1}$, $\rank(\mat{P}_W)=\Tr(\mat{P}_W)=r$, $\norm{\mat{P}_W}_2=1$
+    \item \textbf{Affine shift:} for $L = \vecb{x}_0 + U$, $\pi_L(\vecb{x}) = \vecb{x}_0 + \mat{P}_U(\vecb{x}-\vecb{x}_0)$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; LEAST SQUARES, MIN-NORM \& $\mat{A}\pinv$}{%
+  \begin{csbul}
+    \item \textbf{Normal equations ($m\ge n$):} $\mat{A}\T\mat{A}\hat{\vecb{x}} = \mat{A}\T\vecb{b} \iff \vecb{b}-\mat{A}\hat{\vecb{x}}\perp\colsp(\mat{A})$
+    \item \textbf{Full column rank ($r=n$):} $\hat{\vecb{x}}_{\mathrm{LS}} = (\mat{A}\T\mat{A})\inv\mat{A}\T\vecb{b}$
+    \item \textbf{Underdetermined min-norm ($r=m<n$):} $\hat{\vecb{x}}_{\mathrm{LN}} = \mat{A}\T(\mat{A}\mat{A}\T)\inv\vecb{b}\in\mathrm{Row}(\mat{A})$
+    \item \textbf{Moore--Penrose $\mat{A}\pinv$:} $\mat{A}\pinv = \mat{V}_r\mat{\Sigma}_r\inv\mat{U}_r\T = \lim_{\alpha\searrow 0}(\mat{A}\T\mat{A}+\alpha\eye)\inv\mat{A}\T$
+    \item \textbf{Master property:} $\hat{\vecb{x}}^* = \mat{A}\pinv\vecb{b}$ minimizes $\norm{\vecb{x}}_2$ among all $\argmin_{\vecb{x}}\norm{\mat{A}\vecb{x}-\vecb{b}}_2$
+    \item \textbf{Subspace projectors:} $\mat{A}\mat{A}\pinv = \mat{P}_{\colsp(\mat{A})}$, $\mat{A}\pinv\mat{A} = \mat{P}_{\mathrm{Row}(\mat{A})}$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; SOLVERS \& ORTHOGONALIZATION COST}{%
+  \renewcommand{\arraystretch}{1.1}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.05cm}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{2.0cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{FLOPs}} & \textbf{\textcolor{csE}{$\norm{\hat{\mat Q}\T\hat{\mat Q}-\eye}_2$}} & \textbf{\textcolor{csE}{Stability}}\\ \hline
+    Normal + Chol & $mn^2+\tfrac{1}{3}n^3$ & N/A & $\mathcal{O}(\epsilon\kappa^2)$ (fragile)\\
+    Classical GS & $2mn^2$ & $\mathcal{O}(\epsilon\kappa^2)$ & loses $\perp$\\
+    Modified GS & $2mn^2$ & $\mathcal{O}(\epsilon\kappa)$ & good if $\mat Q$ needed\\
+    Householder QR & $2mn^2-\tfrac{2}{3}n^3$ & $\mathcal{O}(\epsilon)$ & tall full-rank gold\\
+    Thin SVD ($\mat A\pinv$) & $2mn^2+11n^3$ & $\mathcal{O}(\epsilon)$ & rank-def.\ gold\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize\textbf{QR Solve:} $\mat{A}=\hat{\mat{Q}}\hat{\mat{R}} \implies \hat{\mat{R}}\hat{\vecb{x}} = \hat{\mat{Q}}\T\vecb{b}$ via $\mathcal{O}(n^2)$ back-sub.}
+
+\csbranch{6}{F}{6\;\; ML USE-CASES $-$ where you meet it}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Linear / Ridge Regression:} $\ell_2$ empirical risk minimization
+      \item \textbf{PCA Autoencoding:} $\mat{r}(\vecb{x}) = \mat{D}\mat{D}\T\vecb{x}$ onto top-$\ell$ eigenvectors
+      \item \textbf{Weighted Least Squares:} SPD metric $\mat{M}=\diag(\sigma_i^{-2})$
+      \item \textbf{Lasso ($\ell_1$) Sparsity:} diamond corners hit coordinate axes
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[gray!50] (-1.2,0)--(2.2,0) (0,-1.2)--(0,2.0);
+      \draw[csA, very thick, fill=csA!12] (1,0)--(0,1)--(-1,0)--(0,-1)--cycle;
+      \draw[csF, thick, rotate around={-25:(1.3,1.2)}] (1.3,1.2) ellipse (1.15 and 0.45);
+      \draw[csF, thick, rotate around={-25:(1.3,1.2)}] (1.3,1.2) ellipse (1.82 and 0.72);
+      \fill[csA] (0,1) circle (2.8pt) node[above left] {$\hat{\vecb{x}}_{\ell_1}$};
+      \node[csF] at (0.6,-1.45) {contours hit $\ell_1$ corner};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Closest Point $\iff$ Perpendicular Residual ($\vecb{b}-\mat{A}\hat{\vecb{x}} \perp \colsp(\mat{A})$)} \\[1pt]
+  \footnotesize\mdseries \textbf{Orthogonalize with QR/SVD so you never square $\kappa_2(\mat{A})$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item forming $\mat{A}\T\mat{A}$ \textbf{squares} $\kappa_2$: $\kappa_2(\mat{A}\T\mat{A}) = \kappa_2(\mat{A})^2$
+    \item tall $\hat{\mat{Q}}$ has $\hat{\mat{Q}}\T\hat{\mat{Q}}=\eye_n$, \textbf{not} $\hat{\mat{Q}}\hat{\mat{Q}}\T=\eye_m$ ($=\mat{P}_W$)
+    \item Classical GS loses $\perp$ in float; use MGS or Householder
+    \item ``$\ell_0$ norm'' $\sum_i\mathbb{I}(x_i\neq 0)$ violates homogeneity $\norm{\alpha\vecb{x}}=\abs{\alpha}\norm{\vecb{x}}$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Vector Spaces, Norms, Orthogonality \& Least-Squares Projections}\;---\;Domain 01 $\cdot$ Linear Algebra \& Calculus}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Orthogonal projector onto $W=\colsp(\mat{B})$:\csfm{\mat{P}_W = \mat{B}(\mat{B}\T\mat{B})\inv\mat{B}\T = \mat{Q}\mat{Q}\T}
+    \item Normal equations \& QR least squares:\csfm{\mat{A}\T\mat{A}\hat{\vecb{x}} = \mat{A}\T\vecb{b} \;\Longleftrightarrow\; \hat{\mat{R}}\hat{\vecb{x}} = \hat{\mat{Q}}\T\vecb{b}}
+    \item Underdetermined minimum-norm ($r=m<n$):\csfm{\hat{\vecb{x}}_{\mathrm{LN}} = \mat{A}\T(\mat{A}\mat{A}\T)\inv\vecb{b}}
+    \item Moore--Penrose pseudoinverse:\csfm{\mat{A}\pinv = \mat{V}_r\mat{\Sigma}_r\inv\mat{U}_r\T = \sum_{k=1}^r \frac{1}{\sigma_k}\vecb{v}_k\vecb{u}_k\T}
+    \item SPD Weighted projector ($\inner{\vecb{u}}{\vecb{v}}_{\mat{M}}=\vecb{u}\T\mat{M}\vecb{v}$):\csfm{\mat{P}_{\mat{M}} = \mat{A}(\mat{A}\T\mat{M}\mat{A})\inv\mat{A}\T\mat{M}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: HOUSEHOLDER QR vs.\ MGS}
+  \textbf{Modified Gram--Schmidt (MGS):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Set $\vecb{v}_j \gets \vecb{a}_j$ for $j=1,\dots,n$.
+    \item For $k=1,\dots,n$: $R_{kk}=\norm{\vecb{v}_k}_2$, $\vecb{q}_k=\vecb{v}_k/R_{kk}$.
+    \item Immediately update remaining $j>k$: $R_{kj}=\vecb{q}_k\T\vecb{v}_j$, $\vecb{v}_j \gets \vecb{v}_j - R_{kj}\vecb{q}_k$.
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Householder Reflection QR Solve:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item For $k=1,\dots,n$, take subcolumn $\vecb{z}=\mat{R}_{k:m,k}$, set $v_1 = z_1 + \sign(z_1)\norm{\vecb{z}}_2$ (avoids cancellation).
+    \item Reflect $\mat{H}_k = \eye - \beta\vecb{v}\vecb{v}\T$ ($\beta=2/\norm{\vecb{v}}_2^2$) on $\mat{R}$ and $\vecb{b}$.
+    \item Solve triangular $\hat{\mat{R}}\hat{\vecb{x}} = (\hat{\mat{Q}}\T\vecb{b})_{1:n}$ by back-substitution.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    tall full-rank $m\gg n$ & Householder QR ($\hat{\mat{R}}\hat{\vecb{x}}=\hat{\mat{Q}}\T\vecb{b}$)\\
+    well-conditioned SPD & Normal eq.\ + Cholesky ($\mat{L}\mat{L}\T$)\\
+    rank-deficient / collinear & Thin SVD ($\mat{A}\pinv\vecb{b}$) or Ridge $+\lambda\eye$\\
+    need explicit ONB $\hat{\mat{Q}}$ & Householder or MGS (never CGS)\\
+    huge sparse $m,n\gg 10^4$ & Conjugate Gradient / LSQR\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item $\norm{\vecb{x}}_\infty \le \norm{\vecb{x}}_2 \le \norm{\vecb{x}}_1 \le \sqrt{n}\norm{\vecb{x}}_2 \le n\norm{\vecb{x}}_\infty$
+    \item $\norm{\mat{A}}_2 = \sigma_{\max}(\mat{A}) \le \norm{\mat{A}}_F = (\sum_{k=1}^r\sigma_k^2)^{1/2} \le \sqrt{r}\norm{\mat{A}}_2$
+    \item $\kappa_2(\mat{A}) = \sigma_{\max}/\sigma_{\min}$,\quad $\kappa_2(\mat{A}\T\mat{A}) = \kappa_2(\mat{A})^2$
+    \item Pythagoras error: $\norm{\vecb{b}-\mat{A}\vecb{x}}_2^2 = \norm{\vecb{b}-\mat{A}\hat{\vecb{x}}}_2^2 + \norm{\mat{A}(\hat{\vecb{x}}-\vecb{x})}_2^2$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CONDITION SQUARING \& $\ell_p$ GEOMETRY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, xmin=0, xmax=16, ymin=-16, ymax=9,
+      xlabel={$\log_{10}\kappa_2(\mat{A})$}, ylabel={$\log_{10}(\text{relative error})$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,4,8,12,16}, ytick={-16,-12,-8,-4,0,4,8}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.03,0.92)}, anchor=north west, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csA, very thick, domain=0:8, samples=30] {-16 + 2*x};
+      \addlegendentry{Normal Eq.\ / CGS $\mathcal{O}(\epsilon_{\mathrm{mach}}\kappa^2)$}
+      \addplot[csA, very thick, dashed, domain=8:16, samples=10] {0};
+      \addplot[csF, very thick, domain=0:16, samples=30] {-16 + x};
+      \addlegendentry{Householder QR / SVD $\mathcal{O}(\epsilon_{\mathrm{mach}}\kappa)$}
+      \draw[csA, dotted, thick] (axis cs:8,-16) -- (axis cs:8,0);
+      \node[font=\tiny, csA, anchor=south west] at (axis cs:8.3,-14.5) {Cholesky fails ($\kappa\approx 10^8$)};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{L\"auchli catastrophic squaring:} for $\varepsilon = 10^{-8}$, $\mathrm{fl}(1+\varepsilon^2)=1$ makes $\mat{A}\T\mat{A}$ singular in float64 while Householder QR/SVD succeed up to $\kappa_2\approx 10^{16}$
+    \item \textbf{Never invert matrices explicitly:} replace $(\mat{A}\T\mat{A})\inv\mat{A}\T\vecb{b}$ or $\mat{R}\inv$ with triangular solves (\texttt{scipy.linalg.lstsq})
+    \item \textbf{Oblique vs.\ orthogonal projector:} $\mat{P}^2=\mat{P}$ alone does \emph{not} minimize $\ell_2$ distance; symmetry $\mat{P}\T=\mat{P}$ is mandatory
+    \item \textbf{Tiny singular values $\sigma_k\approx 0$:} $\mat{A}\pinv$ amplifies measurement noise by $1/\sigma_k$; truncate below $\tau = \max(m,n)\epsilon_{\mathrm{mach}}\sigma_1$ or add Tikhonov ridge $\alpha\eye$
+    \item \textbf{Non-Euclidean inner product $\mat{M}\succ\zeros$:} standard $\mat{A}(\mat{A}\T\mat{A})\inv\mat{A}\T$ is not $\mat{M}$-orthogonal; must insert $\mat{M}$ into normal equations $\mat{A}\T\mat{M}\mat{A}\hat{\vecb{x}}=\mat{A}\T\mat{M}\vecb{b}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Split space at right angles:} $\mat{A}$ maps $\mathrm{Row}(\mat{A})$ bijectively onto $\colsp(\mat{A})$ and crushes $\nullsp(\mat{A})$ to $\zeros$.
+  When $\mat{A}\vecb{x}=\vecb{b}$ has no exact solution, drop a perpendicular $\hat{\vecb{b}}=\mat{P}_{\colsp(\mat{A})}\vecb{b}$ so the residual $\vecb{e}=\vecb{b}-\hat{\vecb{b}}$ lies in $\nullsp(\mat{A}\T)$, and solve via \textbf{QR} or \textbf{SVD}.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

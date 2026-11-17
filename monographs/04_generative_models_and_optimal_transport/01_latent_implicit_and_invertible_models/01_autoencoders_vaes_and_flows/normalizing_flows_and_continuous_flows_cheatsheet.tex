@@ -1,0 +1,211 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Autoencoders, VAEs, Flows, EBMs \& GANs}{Change-of-Variables, Coupling/Autoregressive Normalizing Flows \& Neural ODEs}
+  {Push a base Gaussian through invertible maps or ODE vector fields; track exact density via Jacobian log-determinants or traces}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Normalizing Flows\\ \footnotesize\mdseries Bijection $\cdot$ Jacobian $\cdot$ CNF}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize}]
+    % Base Gaussian circle + grid
+    \draw[csE, thick, fill=csE!12] (-1.9,0) circle (0.85);
+    \draw[csE, thin] (-2.75,0)--(-1.05,0) (-1.9,-0.85)--(-1.9,0.85);
+    \node[csE, font=\tiny\bfseries] at (-1.9,-1.18) {$p_Z(\vecb z)$};
+    % Arrows f and f^{-1}
+    \draw[-{Stealth}, thick, csDom] (-0.85,0.22)--(0.75,0.22) node[midway, above, font=\tiny] {$\vecb x=f_\theta(\vecb z)$};
+    \draw[{Stealth}-, thick, csA] (-0.85,-0.22)--(0.75,-0.22) node[midway, below, font=\tiny] {$\vecb z=f_\theta\inv(\vecb x)$};
+    % Bimodal warped target
+    \draw[csDom, very thick, fill=csDom!12] plot[smooth cycle, tension=0.8] coordinates {(1.3,0.65) (2.0,0.25) (2.6,0.75) (2.7,-0.55) (1.9,-0.2) (1.2,-0.65)};
+    \node[csDom, font=\tiny\bfseries] at (1.95,-1.18) {$p_X(\vecb x)$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ exact change of variables}{%
+  \csfm{\log p_X(\vecb x)=\log p_Z\!\bigl(f_\theta\inv(\vecb x)\bigr)+\log\abs{\det\jac_{f_\theta\inv}(\vecb x)}}
+  \begin{csbul}
+    \item \textbf{Inverse Jacobian identity:} $\log\abs{\det\jac_{f_\theta\inv}(\vecb x)}=-\log\abs{\det\jac_{f_\theta}(\vecb z)}$
+    \item \textbf{$L$-layer composition} ($f=f_L\circ\dots\circ f_1$, $\vecb h_0=\vecb z$, $\vecb h_L=\vecb x$):
+      \csfm{\log p_X(\vecb x)=\log p_Z(\vecb z)-\sum_{k=1}^L\log\abs{\det\jac_{f_k}(\vecb h_{k-1})}}
+    \item \textbf{Volume conservation:} expansion ($\abs{\det\jac_f}>1$) dilutes $p_X$; compression ($\abs{\det\jac_f}<1$) concentrates $p_X$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; COUPLING \& GLOW $-$ $O(1)$ both ways}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\vecb x_A=\vecb z_A,\quad \vecb x_B=e^{\vecb s(\vecb z_A)}\odot\vecb z_B+\vecb t(\vecb z_A)}
+    \begin{csbul}
+      \item \textbf{Inverse:} $\vecb z_B=e^{-\vecb s(\vecb x_A)}\odot(\vecb x_B-\vecb t(\vecb x_A))$
+      \item $\vecb s,\vecb t$ can be \textbf{any} neural net (never inverted!)
+      \item \textbf{Log-det:} $\sum_{j=1}^{D-d}s_j(\vecb z_A)$ in $O(D)$
+      \item \textbf{Glow $1{\times}1$ conv:} $\mat W=\mat P\mat L(\mat U+\diag(\vecb s))$, $\log\abs{\det}=HW\sum_c\log\abs{s_c}$ in $O(C)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.56, every node/.style={font=\tiny}]
+      \draw[csB, thick, fill=csB!8] (0,0) rectangle (3.2,2.4);
+      \draw[csB, dashed] (1.6,0)--(1.6,2.4) (0,1.2)--(3.2,1.2);
+      \node at (0.8,1.8) {$\eye_d$};
+      \node at (2.4,1.8) {$\zeros$};
+      \node at (0.8,0.6) {$\pd{\vecb x_B}{\vecb z_A}$};
+      \node[csA, font=\tiny\bfseries] at (2.4,0.6) {$\diag(e^{\vecb s})$};
+      \node[font=\tiny] at (1.6,-0.4) {Block-triangular $\jac_f$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; AUTOREGRESSIVE $-$ MAF vs.\ IAF duality}{%
+  \csfm{\text{\textbf{MAF}: }x_i=z_i e^{\alpha_i(\vecb x_{1:i-1})}+\mu_i(\vecb x_{1:i-1})\quad\text{\textbf{IAF}: }x_i=z_i e^{\alpha_i(\vecb z_{1:i-1})}+\mu_i(\vecb z_{1:i-1})}
+  \begin{csbul}
+    \item Lower-triangular $\jac_f\implies\log\abs{\det\jac_f}=\sum_{i=1}^D\alpha_i$ in $O(D)$
+    \item \textbf{MAF (MADE):} $O(1)$ parallel density $\vecb x\to\vecb z$ (\textbf{fast MLE}); $O(D)$ sequential sampling $\vecb z\to\vecb x$
+    \item \textbf{IAF:} $O(1)$ parallel sampling $\vecb z\to\vecb x$ (\textbf{fast VI / distillation}); $O(D)$ sequential density $\vecb x\to\vecb z$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; NEURAL ODEs \& CNFs $-$ continuous limit}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\dd{\vecb z(t)}{t}=\vecb v_\theta(\vecb z(t),t),\quad \dd{}{t}\log p_t(\vecb z_t)=-\grad_{\vecb z}\cdot\vecb v_\theta}
+    \begin{csbul}
+      \item \textbf{Exact log-density:} $\log p_X(\vecb x)=\log p_Z(\vecb z_0)-\int_0^T\Tr(\jac_{\vecb v_\theta})\,\mathrm{d}t$
+      \item \textbf{FFJORD Hutchinson trace:} $\Tr(\jac_{\vecb v_\theta})=\E_{\vecb\epsilon}[\vecb\epsilon\T\jac_{\vecb v_\theta}\vecb\epsilon]$ in $O(D)$ via 1 VJP
+      \item \textbf{Adjoint ODE:} $\dd{\vecb a}{t}=-\vecb a\T\jac_{\vecb v_\theta}$, $O(1)$ memory
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[-{Stealth}, csD, thick] (0,1.2) .. controls (1.1,1.5) and (1.8,0.8) .. (2.8,1.3);
+      \draw[-{Stealth}, csD, thick] (0,0.4) .. controls (1.1,0.5) and (1.8,0.1) .. (2.8,0.3);
+      \draw[-{Stealth}, csD, thick] (0,-0.4) .. controls (1.1,-0.3) and (1.8,-0.8) .. (2.8,-0.7);
+      \fill[csE] (0,0.4) circle (2.5pt) node[left] {$\vecb z(0)$};
+      \fill[csDom] (2.8,0.3) circle (2.5pt) node[right] {$\vecb x$};
+      \node[csA] at (1.4,-1.25) {non-crossing $\Psi_{0\to t}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; COST $-$ flow architecture comparison}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{2.25cm}@{}}
+    \textbf{\textcolor{csE}{Family}} & \textbf{\textcolor{csE}{Sample}} & \textbf{\textcolor{csE}{Density}} & \textbf{\textcolor{csE}{Log-Det Cost}}\\ \hline
+    RealNVP / Glow & $O(1)$ pass & $O(1)$ pass & $O(D)+O(C)$ LU\\
+    MAF & $O(D)$ seq. & $O(1)$ pass & $O(D)$ triangular\\
+    IAF & $O(1)$ pass & $O(D)$ seq. & $O(D)$ triangular\\
+    iResNet & $O(K)$ fix-pt & $O(1)$ pass & Power series ($\mathrm{Lip}<1$)\\
+    FFJORD (CNF) & $O(\text{NFE})$ & $O(\text{NFE})$ & $O(D)$/NFE (Hutch.)\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Multiscale squeeze:} trades $2{\times}2$ space for $4{\times}$ channels; factors out $\frac{1}{2}$ dims.}
+
+\csbranch{6}{F}{6\;\; CONNECTIONS $-$ physics, KL \& flow matching}{%
+  \begin{csbul}
+    \item \textbf{Continuity Equation:} $\partial_t p_t+\grad\cdot(p_t\vecb v_\theta)=0$ (zero-diffusion $g(t)=0$ limit of Fokker--Planck PDE $\implies$ Diffusion PF-ODE)
+    \item \textbf{Forward KL (MLE):} $\min\KL{p_{\mathrm{data}}}{p_\theta}$ needs fast $\vecb x\to\vecb z$ (RealNVP/MAF)
+    \item \textbf{Reverse KL (VI/Distill):} $\min\KL{p_\theta}{q}$ needs fast $\vecb z\to\vecb x$ (IAF)
+    \item \textbf{Flow Matching:} regresses $\vecb v_\theta(\vecb z_t,t)$ directly without training ODE solves!
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Warp Base Noise $\cdot$ Track Local Volume Stretch $\cdot$ Never Lose Invertibility}\\[1pt]
+  \footnotesize\mdseries \textbf{Triangular Jacobians (discrete) or divergence traces $-\nabla\cdot\vecb v_\theta$ (continuous) turn $O(D^3)$ determinants into $O(D)$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Pixel spike:} $\{0..255\}^D$ drives $\log p_X\to+\infty\to$ dequantize $\vecb u\in[0,1)^D$
+    \item \textbf{Scale overflow:} clamp $s_j=\alpha\tanh(\tilde s_j)$ + ActNorm before $\exp(s_j)$
+    \item \textbf{OOD \& stiff CNFs:} mis-scores OOD; regularize $\norm{\vecb v_\theta}_2^2$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Change-of-Variables, Coupling/Autoregressive Normalizing Flows \& Neural ODEs}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Discrete Change-of-Variables ($g_\theta=f_\theta\inv$):
+      \csfm{\log p_X(\vecb x)=\log p_Z(g_\theta(\vecb x))+\log\abs{\det\jac_{g_\theta}(\vecb x)}}
+    \item RealNVP Affine Coupling ($\vecb z=(\vecb z_A,\vecb z_B)$):
+      \csfm{\vecb x_A=\vecb z_A,\;\vecb x_B=e^{\vecb s(\vecb z_A)}\odot\vecb z_B+\vecb t(\vecb z_A),\;\log\abs{\det\jac_f}=\sum_{j=1}^{D-d}s_j(\vecb z_A)}
+    \item Glow $1\times 1$ LU Invertible Convolution ($\mat W\in\R^{C\times C}$):
+      \csfm{\mat W=\mat P\mat L(\mat U+\diag(\vecb s)),\quad \log\abs{\det\jac}=HW\sum_{c=1}^C\log\abs{s_c}}
+    \item Instantaneous Change of Variables \& Continuity PDE:
+      \csfm{\dd{}{t}\log p_t(\vecb z_t)=-\grad_{\vecb z}\cdot\vecb v_\theta(\vecb z_t,t),\quad \partial_t p_t+\grad\cdot(p_t\vecb v_\theta)=0}
+    \item Hutchinson Unbiased Trace Estimator ($\E[\vecb\epsilon]=\zeros,\Cov(\vecb\epsilon)=\eye$):
+      \csfm{\Tr(\jac_{\vecb v_\theta})=\E_{\vecb\epsilon}\!\bigl[\vecb\epsilon\T\jac_{\vecb v_\theta}(\vecb z,t)\vecb\epsilon\bigr]}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ FFJORD CNF TRAINING STEP}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Dequantize} discrete inputs $\vecb x\leftarrow\vecb x+\vecb u$, $\vecb u\sim\Uniform([0,1)^D)$
+    \item \textbf{Sample probe} $\vecb\epsilon\sim\Normal(\zeros,\eye_D)$ (or Rademacher $\{\pm 1\}^D$)
+    \item \textbf{Integrate backward} $t:T\to 0$ from $[\vecb x,0]$ with augmented ODE $[\vecb v_\theta,\;-\vecb\epsilon\T\jac_{\vecb v_\theta}\vecb\epsilon]$ to get $[\vecb z(0),\Delta\ell]$
+    \item \textbf{Evaluate NLL} $-\log p_Z(\vecb z(0))+\Delta\ell$; solve adjoint ODE for $\nabla_\theta\mathcal L$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    both fast MLE \& fast sampling & Coupling flow (RealNVP / Glow)\\
+    tabular density estimation only & MAF (1-pass MLE, slow sample)\\
+    VAE posterior / student distill & IAF (1-pass sample, reverse KL)\\
+    unconstrained equivariant net & FFJORD CNF + Hutchinson trace\\
+    stiff CNF with high NFE & RNODE kinetic reg.\ or Flow Matching\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{JACOBIAN SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item Dense $\det\jac$: $O(D^3)$ $\;\to\;$ Triangular / Coupling: $O(D)$
+    \item Exact $\Tr(\jac_{\vecb v_\theta})$: $D$ VJPs ($O(D^2)$) $\;\to\;$ Hutchinson: $1$ VJP ($O(D)$)
+    \item Backprop through ODE solver: $O(\text{NFE})$ RAM $\;\to\;$ Adjoint: $O(1)$ RAM
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{1D DENSITY WARPING ($x=z+0.45\sin(1.8z)$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=-3.1, xmax=3.1, ymin=0, ymax=2.75,
+      xlabel={$z$ or $x$}, ylabel={Density / Stretch $\abs{f'(z)}$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csE, thick, dashed, domain=-3.1:3.1, samples=100] {exp(-0.5*x^2)/sqrt(2*pi)};
+      \addplot[csDom, very thick, domain=-3.1:3.1, samples=140]
+        ({x + 0.45*sin(deg(1.8*x))}, {(exp(-0.5*x^2)/sqrt(2*pi)) / (1 + 0.81*cos(deg(1.8*x)))});
+      \addplot[csA, thick, dotted, domain=-3.1:3.1, samples=100] {1 + 0.81*cos(deg(1.8*x))};
+      \node[font=\tiny, csDom, anchor=west, fill=white, inner sep=1pt] at (axis cs:1.25,1.85) {$p_X(x)=p_Z(z)/\abs{f'(z)}$};
+      \node[font=\tiny, csA, anchor=south, fill=white, inner sep=1pt] at (axis cs:0,1.92) {Stretch $f'>1\Rightarrow$ valley};
+      \node[font=\tiny, csE, anchor=east, fill=white, inner sep=1pt] at (axis cs:-1.6,0.55) {$p_Z(z)$};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing dequantization:} fitting continuous $p_X(\vecb x)$ to discrete pixels $\{0..255\}^D$ collapses density onto Dirac spikes ($\log p_X\to+\infty$); always apply uniform or variational dequantization
+    \item \textbf{Floating-point non-invertibility:} large $\vecb s(\vecb z_A)$ causes $\exp(\vecb s)$ overflow/underflow so $f_\theta\inv(f_\theta(\vecb z))\ne\vecb z$; bound scale via $\tanh$ or $\sigmoid$
+    \item \textbf{Forgotten channel mixing:} a single coupling layer leaves $\vecb z_A$ untouched; always alternate splits or insert $1\times 1$ LU convolutions
+    \item \textbf{Topological obstruction:} diffeomorphisms preserve homotopy; splitting 1 Gaussian into disconnected modes causes $\norm{\jac_f}$ to explode in bridges
+    \item \textbf{OOD likelihood paradox:} smooth backgrounds yield huge $\log\abs{\det\jac_{f\inv}}$; use typicality or likelihood ratios for OOD detection
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Normalizing flows} turn a simple Gaussian $\vecb z\sim\Normal(\zeros,\eye_D)$ into complex data $\vecb x=f_\theta(\vecb z)$ via bijections.
+  Conservation of probability scales density inversely with volume stretch: $p_X(\vecb x)=p_Z(\vecb z)/\abs{\det\jac_{f_\theta}(\vecb z)}$.
+  Coupling/autoregressive layers make $\jac_{f_\theta}$ triangular, while Neural ODEs replace determinants with the divergence integral $-\int_0^T\nabla\cdot\vecb v_\theta\,\mathrm{d}t$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

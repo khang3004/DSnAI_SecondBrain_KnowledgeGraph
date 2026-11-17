@@ -1,0 +1,233 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Probability \& Information Theory}{Monge-Kantorovich Optimal Transport, Wasserstein Distance \& Sinkhorn}
+  {Compare distributions horizontally along ground metrics; regularize with entropy to scale in $O(n^2)$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Optimal\\ Transport\\ \footnotesize\mdseries Monge $\cdot$ $W_p$ $\cdot$ Sinkhorn}{%
+  \begin{tikzpicture}[scale=0.45]
+    \fill[csA!25] (-1.8,0) -- plot[smooth, domain=-1.8:-0.6, samples=25] (\x, {1.2*exp(-4*(\x+1.2)^2)}) -- (-0.6,0) -- cycle;
+    \draw[csA, very thick, smooth, domain=-1.8:-0.6, samples=25] plot (\x, {1.2*exp(-4*(\x+1.2)^2)});
+    \fill[csF!25] (0.4,0) -- plot[smooth, domain=0.4:1.9, samples=30] (\x, {0.85*exp(-5*(\x-0.95)^2)+0.95*exp(-5*(\x-1.5)^2)}) -- (1.9,0) -- cycle;
+    \draw[csF, very thick, smooth, domain=0.4:1.9, samples=30] plot (\x, {0.85*exp(-5*(\x-0.95)^2)+0.95*exp(-5*(\x-1.5)^2)});
+    \draw[-{Stealth}, csB, very thick] (-1.1,0.8) .. controls (-0.2,1.25) and (0.3,1.15) .. (0.9,0.75);
+    \draw[-{Stealth}, csD, very thick] (-1.0,0.45) .. controls (-0.1,0.75) and (0.4,0.8) .. (1.45,0.85);
+    \node[font=\tiny, csA] at (-1.2,-0.25) {$\mu$};
+    \node[font=\tiny, csF] at (1.2,-0.25) {$\nu$};
+    \node[font=\tiny\bfseries, csDom] at (0,1.25) {$\pi\in\Pi(\mu,\nu)$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; MONGE vs.\ KANTOROVICH $-$ maps vs.\ plans}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\mathrm{OT}_c(\mu,\nu)=\inf_{\pi\in\Pi(\mu,\nu)}\int c(\vecb x,\vecb y)\,\mathrm{d}\pi}
+    \begin{csbul}
+      \item \textbf{Monge:} $\inf_{T_\sharp\mu=\nu}\int c\,\mathrm{d}\mu$; non-convex, no mass split
+      \item \textbf{Kantorovich:} $\Pi(\vecb a,\vecb b)=\{\mat\pi\ge\zeros:\mat\pi\ones=\vecb a,\,\mat\pi\T\ones=\vecb b\}$
+      \item \textbf{Birkhoff--vN:} $\vecb a=\vecb b=\tfrac1n\ones_n \implies$ extreme pts $\tfrac1n\mat P_\sigma$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \foreach \y/\n in {2.6/1, 1.4/2, 0.2/3} {
+        \fill[csA] (0,\y) circle (3pt);
+        \fill[csF] (3.4,\y) circle (3pt);
+      }
+      \draw[-{Stealth}, csDom, very thick] (0.15,2.6) -- (3.25,2.6);
+      \draw[-{Stealth}, csB, thick] (0.15,1.4) -- (3.25,2.5);
+      \draw[-{Stealth}, csB, thick] (0.15,1.4) -- (3.25,0.3);
+      \draw[-{Stealth}, csDom, very thick] (0.15,0.2) -- (3.25,1.4);
+      \node[csA] at (0,-0.45) {$\vecb a$};
+      \node[csF] at (3.4,-0.45) {$\vecb b$};
+      \node[csB] at (1.7,-0.45) {split $\pi_{ij}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; DUALITY \& WASSERSTEIN-$p$ $-$ $c$-transforms}{%
+  \csfm{\mathrm{OT}_c(\mu,\nu)=\sup_{f(\vecb x)+g(\vecb y)\le c}\E_\mu[f]+\E_\nu[g]=\sup_{f\in\mathcal F_c}\E_\mu[f]+\E_\nu[f^c]}
+  \begin{csbul}
+    \item \textbf{$c$-transform:} $f^c(\vecb y)=\inf_{\vecb x}[c(\vecb x,\vecb y)-f(\vecb x)]$, $f^{c\bar cc}=f^c$
+    \item \textbf{Wasserstein-$p$:} $\Wass[p]{\mu}{\nu}=(\inf_{\pi\in\Pi}\int d(\vecb x,\vecb y)^p\,\mathrm{d}\pi)^{1/p}$ (metric)
+    \item \textbf{KR ($p=1$):} $\Wass[1]{\mu}{\nu}=\sup_{\norm{f}_{\mathrm{Lip}}\le 1}(\E_\mu[f]-\E_\nu[f])$ ($f^d=-f$)
+    \item \textbf{1D quantile:} $\Wass[p]{\mu}{\nu}=\norm{F_\mu^{-1}-F_\nu^{-1}}_{L^p}$, $T^\star=F_\nu^{-1}\circ F_\mu$
+    \item \textbf{Bures $W_2^2$:} $\norm{\vecb m_1-\vecb m_2}_2^2+\mathcal B^2(\mat\Sigma_1,\mat\Sigma_2)$ ($\mathcal B^2=\Tr(\mat\Sigma_1+\mat\Sigma_2-2(\mat\Sigma_1^{1/2}\mat\Sigma_2\mat\Sigma_1^{1/2})^{1/2})$)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; BRENIER \& DYNAMIC OT $-$ convex potentials}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{T^\star(\vecb x)=\nabla u(\vecb x),\quad u(\vecb x)=\tfrac12\norm{\vecb x}_2^2-f^\star(\vecb x)\;\text{convex}}
+    \begin{csbul}
+      \item \textbf{Monge--Amp\`ere}: $p_{\mathrm{tgt}}(\nabla u(\vecb x))\det\nabla^2 u(\vecb x)=p_{\mathrm{src}}(\vecb x)$
+      \item \textbf{McCann geodesic}: $T_t^\star(\vecb x)=(1-t)\vecb x+t\nabla u(\vecb x)$
+      \item \textbf{Benamou--Brenier}: $\Wass[2]{p_0}{p_1}^2=\inf_{p_t,\vecb v_t}\int_0^1\E_{p_t}[\norm{\vecb v_t}_2^2]\,\mathrm{d}t$ s.t.\ $\partial_t p_t+\nabla\cdot(p_t\vecb v_t)=0$ ($\vecb v_t=\nabla\varphi_t$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csA, very thick] (0,0.2) -- (0,3.2) node[above] {$t=0$};
+      \draw[csF, very thick] (4.0,0.2) -- (4.0,3.2) node[above] {$t=1$};
+      \draw[-{Stealth}, csC, very thick] (0,2.8) -- (4.0,3.0);
+      \draw[-{Stealth}, csC, very thick] (0,1.7) -- (4.0,2.0);
+      \draw[-{Stealth}, csC, very thick] (0,0.6) -- (4.0,0.9);
+      \draw[csA, dashed, thick] (0,1.7) .. controls (1.3,2.5) and (2.7,1.1) .. (4.0,2.0);
+      \node[csC] at (2.0,0.15) {$\varepsilon=0$ straight};
+      \node[csA] at (2.0,2.45) {$\mathrm{SB}_\varepsilon$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; ENTROPIC OT \& SINKHORN $-$ matrix scaling}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mathrm{EOT}_\varepsilon(\mu,\nu)=\inf_{\pi\in\Pi(\mu,\nu)}\inner{c}{\pi}+\varepsilon\,\KL{\pi}{\mu\otimes\nu}}
+    \begin{csbul}
+      \item \textbf{Gibbs plan}: $\mat\pi_\varepsilon^\star=\diag(e^{\vecb f^\star/\varepsilon})\mat K\diag(e^{\vecb g^\star/\varepsilon})$, $K_{ij}=e^{-C_{ij}/\varepsilon}$
+      \item \textbf{Limits}: $\varepsilon\to 0^+\Rightarrow\mathrm{OT}_c$; $\varepsilon\to\infty\Rightarrow\mu\otimes\nu$
+      \item \textbf{Schr\"odinger Bridge}: $\mathrm{SB}_\varepsilon=\min_P\KL{P}{R^\varepsilon}\equiv\mathrm{EOT}_\varepsilon$
+      \item \textbf{Sinkhorn Div.:} $S_\varepsilon(\mu,\nu)=\mathrm{EOT}_\varepsilon(\mu,\nu)-\tfrac12\mathrm{EOT}_{\mu\mu}-\tfrac12\mathrm{EOT}_{\nu\nu}$ ($S_\varepsilon(\mu,\mu)=0$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.35, every node/.style={font=\tiny}]
+      \fill[csD!12] (0.5,0.4) -- (0.1,2.2) -- (1.6,3.4) -- (3.8,3.1) -- (4.2,1.2) -- (2.8,0.2) -- cycle;
+      \draw[csDom, thick] (0.5,0.4) -- (0.1,2.2) -- (1.6,3.4) -- (3.8,3.1) -- (4.2,1.2) -- (2.8,0.2) -- cycle;
+      \fill[csA] (0.5,0.4) circle (3.5pt) node[below right] {$\mat\pi_0^\star$ (LP)};
+      \fill[csF] (2.9,2.2) circle (3.5pt) node[above] {$\vecb a\vecb b\T$};
+      \draw[-{Stealth}, csD, very thick] (0.55,0.45) .. controls (1.3,1.6) and (2.1,2.0) .. (2.8,2.18);
+      \fill[csD] (1.6,1.55) circle (3pt) node[right] {$\mat\pi_\varepsilon^\star$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; SOLVERS \& COMPLEXITY $-$ scaling trade-offs}{%
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{2.2cm}@{}}
+    \textbf{\textcolor{csE}{Solver}} & \textbf{\textcolor{csE}{Time Complexity}} & \textbf{\textcolor{csE}{Sample Rate}}\\ \hline
+    1D Sort ($d=1$) & $O(n\log n)$ & $O(N^{-1/2})$\\
+    Hungarian / LP & $O(n^3)$ / $O(n^3\ln n)$ & $O(N^{-1/d})$\\
+    Sinkhorn + Round & $O(n^2\norm{\mat C}_\infty^2\ln n/\epsilon^2)$ & $O(N^{-1/2}\varepsilon^{-d/2})$\\
+    Minibatch \texttt{m-OT} & $O(km^2)$ ($k$ batches) & \texttt{m-POT} fix\\
+    Sliced $\mathrm{SW}_p$ & $O(Ln\log n)$ ($L$ slices) & $O(N^{-1/2})$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Sinkhorn}: $O(nm)$ GPU matvec/step; \textbf{Altschuler rounding} projects $\tilde{\mat\pi}$ onto $\Pi(\vecb a,\vecb b)$ in $O(nm)$.}
+
+\csbranch{6}{F}{6\;\; GENERATIVE ML \& FLOWS $-$ where OT rules}{%
+  \begin{csbul}
+    \item \textbf{Disjoint manifolds}: $\Wass[1]{\delta_0}{\delta_\theta}=\abs{\theta}$ gives clean gradients where $\KL{\delta_0}{\delta_\theta}=+\infty$ and $\nabla_\theta\JS{\delta_0}{\delta_\theta}=\vecb 0$
+    \item \textbf{WGAN-GP / Spectral Norm}: approximates $W_1$ dual via $1$-Lipschitz critic $D_\phi$
+    \item \textbf{Neural Brenier maps}: parameterize convex $u_\theta$ via Input-Convex Neural Nets (ICNNs)
+    \item \textbf{Flow Matching}: straight paths $\Psi_t=(1-t)\vecb x_0+t\vecb x_1$ upper-bound $W_2^2$; pair with \texttt{m-OT} couplings
+    \item \textbf{Diffusion PF-ODE}: solves a one-sided Schr\"odinger half-bridge ($\ne$ exact $W_2$ map if Hessians don't commute)
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{$f$-divergences compare vertically (ratios) $\cdot$ Optimal Transport moves mass horizontally (metrics)}\\[1pt]
+  \footnotesize\mdseries \textbf{Entropic $\varepsilon\,\KL{\pi}{\mu\otimes\nu}$ turns $O(n^3)$ LP corners into $O(n^2)$ differentiable Sinkhorn scaling.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Kernel underflow:} $K_{ij}=e^{-C_{ij}/\varepsilon}\to 0$ for small $\varepsilon$; update $(f,g)$ via $\mathrm{LSE}$
+    \item \textbf{Self-bias $\mathrm{EOT}_\varepsilon(\mu,\mu)>0$:} shrinks barycenters; use debiased $S_\varepsilon(\mu,\nu)$
+    \item \textbf{Minibatch \texttt{m-OT}:} random batches force cross-mode edges; use \texttt{m-POT}
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Monge-Kantorovich Optimal Transport, Wasserstein Metrics \& Sinkhorn Scaling}\;---\;Domain 01 $\cdot$ Probability \& Information Theory}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Kantorovich Primal--Dual \& $c$-Transform ($f^c(\vecb y)=\inf_{\vecb x}[c(\vecb x,\vecb y)-f(\vecb x)]$):
+      \csfm{\mathrm{OT}_c(\mu,\nu)=\min_{\pi\in\Pi(\mu,\nu)}\inner{c}{\pi}=\sup_{f(\vecb x)+g(\vecb y)\le c(\vecb x,\vecb y)}\E_\mu[f]+\E_\nu[g]}
+    \item Wasserstein-$1$ (KR Dual) \& Bures--Wasserstein-$2$ (Gaussians):
+      \csfm{\Wass[1]{\mu}{\nu}=\sup_{\norm{f}_{\mathrm{Lip}}\le 1}(\E_\mu[f]-\E_\nu[f]),\quad \Wass[2]{\Normal_1}{\Normal_2}^2=\norm{\vecb m_1-\vecb m_2}_2^2+\mathcal B^2(\mat\Sigma_1,\mat\Sigma_2)}
+    \item Brenier Map \& Benamou--Brenier Action ($c=\frac12\norm{\vecb x-\vecb y}_2^2$, $\partial_t p_t+\nabla\cdot(p_t\vecb v_t)=0$):
+      \csfm{T^\star(\vecb x)=\nabla u(\vecb x),\qquad \Wass[2]{p_0}{p_1}^2=\inf_{(p_t,\vecb v_t)}\int_0^1\E_{p_t}[\norm{\vecb v_t}_2^2]\,\mathrm{d}t}
+    \item Entropic OT Dual \& Debiased Sinkhorn Divergence ($K_{ij}=e^{-C_{ij}/\varepsilon}$, $\pi_{\varepsilon,ij}^\star=e^{(f_i^\star+g_j^\star-C_{ij})/\varepsilon}$):
+      \csfm{\mathrm{EOT}_\varepsilon(\vecb a,\vecb b)=\max_{\vecb f,\vecb g}\vecb f\T\vecb a+\vecb g\T\vecb b-\varepsilon(e^{\vecb f/\varepsilon})\T\mat K e^{\vecb g/\varepsilon}+\mathrm{const}}
+      \csfm{S_\varepsilon(\mu,\nu)=\mathrm{EOT}_\varepsilon(\mu,\nu)-\tfrac12\mathrm{EOT}_\varepsilon(\mu,\mu)-\tfrac12\mathrm{EOT}_\varepsilon(\nu,\nu)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{LOG-STABILIZED SINKHORN + ROUNDING RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Init $\vecb f^{(0)}=\zeros_n$, $\vecb g^{(0)}=\zeros_m$; $\mathrm{LSE}_j(z_{ij})=m_i+\ln\sum_j e^{z_{ij}-m_i}$.
+    \item Row/Col: $f_i\leftarrow\varepsilon\ln a_i-\varepsilon\,\mathrm{LSE}_j((g_j\!-\!C_{ij})/\varepsilon)$, $g_j\leftarrow\varepsilon\ln b_j-\varepsilon\,\mathrm{LSE}_i((f_i\!-\!C_{ij})/\varepsilon)$.
+    \item Iterate until $\norm{\tilde{\mat\pi}\ones-\vecb a}_1+\norm{\tilde{\mat\pi}\T\ones-\vecb b}_1\le\delta$ with $\tilde\pi_{ij}=e^{(f_i+g_j-C_{ij})/\varepsilon}$.
+    \item Round $\tilde{\mat\pi}\to\bar{\mat\pi}\in\Pi(\vecb a,\vecb b)$ via row/col clip + rank-$1$ fix $\vecb e_r\vecb e_c\T/\norm{\vecb e_r}_1$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    1D empirical samples ($d=1$) & Quantile sort $O(n\log n)$\\
+    small clouds ($n\lesssim 10^3$), exact plan & Network Simplex / Hungarian LP\\
+    medium clouds, GPU differentiable & Log-domain Sinkhorn + debiased $S_\varepsilon$\\
+    high dimension $d\gg 1$, fast metric & Sliced Wasserstein $\mathrm{SW}_p$ ($O(Ln\log n)$)\\
+    huge dataset ($n\ge 10^5$), outliers & Minibatch Partial OT (\texttt{m-POT})\\
+    continuous generative flow & OT-coupled Flow Matching or ICNN\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& INTERPOLATION CHEAT-LINE}
+  \begin{csbul}
+    \item Sinkhorn $\epsilon$-accuracy: pick $\varepsilon=\frac{\epsilon}{4\ln n}\implies O(n^2\norm{\mat C}_\infty^2\ln n/\epsilon^2)$ ops
+    \item $S_\varepsilon$ limits: $S_\varepsilon(\mu,\nu)\to\mathrm{OT}_c$ ($\varepsilon\to 0^+$) and $S_\varepsilon\to\frac12\norm{\mu-\nu}_{-c}^2$ ($\mathrm{MMD}^2$, $\varepsilon\to\infty$)
+    \item Sample rates: $W_p$ is $O(N^{-1/d})$; $S_\varepsilon$ and $\mathrm{SW}_p$ restore $O(N^{-1/2})$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{DISJOINT DIRACS $\delta_0$ vs.\ $\delta_\theta$ \& SINKHORN $\varepsilon$-BIAS}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.4cm, xmin=0.05, xmax=10.0, ymin=0.0, ymax=1.7,
+      xmode=log, xlabel={Entropic regularization $\varepsilon$ (log scale)}, ylabel={Cost / Divergence},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0.05,0.2,1,5}, xticklabels={$0.05$,$0.2$,$1$,$5$}, ytick={0,0.25,0.5,1.0,1.5},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, draw=none, fill=white, fill opacity=0.85, at={(0.03,0.97)}, anchor=north west}]
+      \addplot[csA, very thick, domain=0.05:10.0, samples=80] {0.5 + x*(ln(2) - ln(1 + exp(-2/x)))};
+      \addlegendentry{$\mathrm{EOT}_\varepsilon(\mu,\nu)$ (biased)}
+      \addplot[csF, very thick, domain=0.05:10.0, samples=80]
+        {0.5 + x*(ln(2) - ln(1 + exp(-2/x))) - 0.5*x*(2*ln(2) - ln(1 + exp(-4/x)) - ln(1 + exp(-1/x)))};
+      \addlegendentry{Debiased $S_\varepsilon(\mu,\nu)$}
+      \addplot[csB, dashed, thick, domain=0.05:10.0, samples=80]
+        {0.5*x*(2*ln(2) - ln(1 + exp(-4/x)) - ln(1 + exp(-1/x)))};
+      \addlegendentry{Self-bias $\frac12(\mathrm{EOT}_{\mu\mu}+\mathrm{EOT}_{\nu\nu})$}
+      \addplot[csDom, dotted, thick, domain=0.05:10.0] {0.5};
+      \node[font=\tiny, csDom, anchor=north east] at (axis cs:9.5,0.46) {$\mathrm{OT}(\mu,\nu)=0.5$};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Multiplicative Sinkhorn underflow}: $\mat K=e^{-\mat C/\varepsilon}$ underflows float32 once $C_{ij}/\varepsilon\gtrsim 88$. Normalize $\mat C$ by $\mathrm{median}(\mat C)$, run log-domain $\mathrm{LSE}$ updates, and use $\varepsilon$-scaling warm starts.
+    \item \textbf{Un-debiased $\mathrm{EOT}_\varepsilon$ shrinks modes}: Because $\mathrm{EOT}_\varepsilon(\mu,\mu)>0$, minimizing $\mu\mapsto\mathrm{EOT}_\varepsilon(\mu,\nu)$ collapses $\mu$ toward the mean of $\nu$. Always subtract self-terms via $S_\varepsilon(\mu,\nu)$.
+    \item \textbf{Unbalanced mass \& minibatch distortion}: Standard OT fails if $\sum a_i\ne\sum b_j$ or outliers exist, and random minibatches (\texttt{m-OT}) force cross-cluster edges; use Partial/Unbalanced OT (\texttt{m-POT}).
+    \item \textbf{WGAN clipping \& Flow non-optimality}: Weight clipping causes critic collapse (use spectral norm + GP), and standard diffusion PF-ODEs / Reflow do not guarantee the exact $W_2$ Brenier map $\nabla u$.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Kantorovich} relaxes deterministic Monge maps $T_\sharp\mu=\nu$ into convex couplings $\pi\in\Pi(\mu,\nu)$, whose dual potentials give $1$-Lipschitz $W_1$ critics and convex Brenier maps $T^\star=\nabla u$ for $W_2^2$.
+  \textbf{Entropic regularization} $\varepsilon\,\KL{\pi}{\mu\otimes\nu}$ equates static OT to Schr\"odinger Bridges and enables $O(n^2)$ log-domain Sinkhorn scaling; debiasing ($S_\varepsilon$) removes self-entropy bias across all $\varepsilon$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

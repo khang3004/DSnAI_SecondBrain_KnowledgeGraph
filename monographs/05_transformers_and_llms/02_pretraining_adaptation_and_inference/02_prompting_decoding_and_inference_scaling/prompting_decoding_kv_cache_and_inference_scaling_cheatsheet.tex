@@ -1,0 +1,212 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{5}{LLM Pretraining, PEFT \& Inference}{Prompt Engineering, Decoding Strategies, KV Caching \& Test-Time Scaling}
+  {Condition in-context $\cdot$ truncate the unreliable tail $\cdot$ cache KV blocks $\cdot$ verify draft/reasoning rollouts}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Decode \& Scale\\ \footnotesize\mdseries Top-$p$ $\cdot$ KV Cache $\cdot$ RLVR}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny\sffamily}]
+    % KV Cache blocks + Nucleus bars + Speculative verify
+    \fill[csE!25, draw=csE, thick] (0,0) rectangle (1.3,1.2);
+    \draw[csE, thin] (0,0.4)--(1.3,0.4) (0,0.8)--(1.3,0.8);
+    \node at (0.65,1.45) {KV Cache};
+    \draw[-{Stealth}, thick, csDom] (1.45,0.6)--(2.15,0.6);
+    % Nucleus bars
+    \begin{scope}[xshift=2.3cm, yshift=-0.1cm]
+      \fill[csA!80] (0,0) rectangle (0.3,1.3);
+      \fill[csA!70] (0.4,0) rectangle (0.7,0.95);
+      \fill[csA!55] (0.8,0) rectangle (1.1,0.55);
+      \fill[gray!35] (1.2,0) rectangle (1.5,0.22);
+      \fill[gray!25] (1.6,0) rectangle (1.9,0.10);
+      \draw[csC, very thick, dashed] (1.15,-0.1)--(1.15,1.45) node[above] {top-$p$};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; IN-CONTEXT LEARNING \& CIRCUITS}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\Pr(\vecb{y}_{\mathrm{ans}}\mid\vecb{x}) = \sum_{\vecb{z}}\Pr(\vecb{y}_{\mathrm{ans}}\mid\vecb{x},\vecb{z})\Pr(\vecb{z}\mid\vecb{x})}
+    \begin{csbul}
+      \item \textbf{Few-shot ICL:} adapts in forward pass ($\Delta\theta=\zeros$)
+      \item \textbf{CoT / ToT:} serial compute on thoughts $\vecb{z}$
+      \item \textbf{Logit Lens:} decode layer-$l$ $\softmax(\mat{W}_o\T\vecb{h}_t^{(l)})$
+      \item \textbf{Induction heads:} $A\,B\dots A\to B$ (match + copy)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.54, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csA, fill=csA!15, rounded corners=2pt, inner sep=2pt] (a1) at (0,1.6) {$A$};
+      \node[draw=csB, fill=csB!15, rounded corners=2pt, inner sep=2pt] (b1) at (1.1,1.6) {$B$};
+      \node at (2.0,1.6) {$\cdots$};
+      \node[draw=csA, fill=csA!15, rounded corners=2pt, inner sep=2pt] (a2) at (2.9,1.6) {$A$};
+      \node[draw=csD, fill=csD!20, rounded corners=2pt, inner sep=2pt] (b2) at (2.9,0.15) {$\hat{B}$};
+      \draw[-{Stealth}, csE, thick, bend right=35] (a2.north) to node[above, inner sep=1pt] {match} (a1.north);
+      \draw[-{Stealth}, csB, thick] (b1)--(b2) node[midway, below left, inner sep=1pt] {copy};
+      \draw[-{Stealth}, csA, thick] (a2)--(b2);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; DECODING $-$ Temp $\tau$, Top-$k$ \& Nucleus Top-$p$}{%
+  \csfm{p_\tau(w_j) = \frac{\exp(u_j/\tau)}{\sum_v \exp(u_v/\tau)},\qquad m^* = \min\Bigl\{m : \sum_{r=1}^m p_\tau(w_{(r)}) \ge p\Bigr\}}
+  \begin{csbul}
+    \item \textbf{Limits:} $\tau\to 0^+$ recovers greedy $\argmax$; $\tau\to\infty$ is uniform $1/|\mathcal{V}|$
+    \item \textbf{Beam search ($K$):} keeps top-$K$ prefixes; good for MT, dull/repetitive in chat
+    \item \textbf{Top-$k$ vs.\ Top-$p$:} fixed $k$ leaks tail tokens when peaked; nucleus $p$ adapts $|\mathcal{V}_p|$ dynamically to local entropy
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; KV CACHE $-$ Prefill vs.\ Decode \& PagedAttention}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{M_{\mathrm{KV}} = 2\,b\,s\,n_{\mathrm{layers}}\,n_{\mathrm{kv}}\,d_h\,p_{\mathrm{bytes}}}
+    \begin{csbul}
+      \item \textbf{Prefill ($m$ tokens):} parallel GEMMs, \emph{compute-bound} (sets TTFT)
+      \item \textbf{Decode ($1$ token):} arithmetic intensity $\mathcal{I}\sim O(b)$, \emph{HBM-BW-bound} (sets ITL)
+      \item \textbf{GQA / MQA:} shrinks $M_{\mathrm{KV}}$ by $n_q/n_{\mathrm{kv}}$
+      \item \textbf{PagedAttention:} non-contiguous KV blocks $\Rightarrow 0\%$ external waste
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{3pt}
+    \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (pre) at (0,2.3) {Prefill: $O(m^2)$ GEMM};
+      \node[draw=csE, fill=csE!15, rounded corners=2pt, inner sep=2pt] (kv) at (0,1.15) {Paged KV Cache};
+      \node[draw=csA, fill=csA!15, rounded corners=2pt, inner sep=2pt] (dec) at (0,0.0) {Decode: $O(s)$ BW-bound};
+      \draw[-{Stealth}, thick] (pre)--(kv);
+      \draw[-{Stealth}, thick] (kv)--(dec);
+      \draw[-{Stealth}, dashed, csE] (dec.east) -- ++(0.35,0) |- (kv.east);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; SPECULATIVE DECODING $-$ Lossless Rejection}{%
+  \csfm{\text{Accept }\hat{y}\sim q\text{ w.p. }\min\!\left(1,\frac{p(\hat{y})}{q(\hat{y})}\right);\quad p_{\mathrm{res}}(y) = \frac{\max(0,p(y)-q(y))}{1-\sum_v\min(p(v),q(v))}}
+  \begin{csbul}
+    \item \textbf{Draft--Verify:} small $q$ drafts $\tau$ tokens; target $p$ scores all $\tau{+}1$ in \textbf{1 parallel pass}
+    \item \textbf{Exact identity:} $\min(p,q) + \max(0,p-q) = p(y)\implies$ \textbf{100\% lossless}!
+    \item \textbf{Acceptance rate:} $\alpha = \sum_v \min(p(v),q(v))$; yields up to $\tau+1$ tokens/step
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; SERVING COMPLEXITY \& BOTTLENECKS}{%
+  \renewcommand{\arraystretch}{1.10}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csE}{Mechanism}} & \textbf{\textcolor{csE}{Step Cost}} & \textbf{\textcolor{csE}{Bottleneck / Gain}}\\ \hline
+    Prefill ($m$ tok) & $O(m^2 d + m d^2)$ & Compute-bound (TTFT)\\
+    Naive Decode & $O(s^2 d + s d^2)$ & $O(n^3)$ total (unusable)\\
+    KV-Cached Decode & $O(sd + d^2)$ & HBM bandwidth (ITL)\\
+    Speculative ($\tau$) & $O(\tau C_q + C_p)$ & $2\text{--}3\times$ lossless speedup\\
+    Continuous Batch & Iteration-level & Immediate EOS slot reuse\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize \textbf{Chunked prefill:} splits long prompts to prevent ITL stalls.}
+
+\csbranch{6}{F}{6\;\; TEST-TIME SCALING $-$ Best-of-$N$, PRM \& RLVR}{%
+  \begin{csbul}
+    \item \textbf{Parallel scaling:} Best-of-$N$ with verifier $V(\vecb{x},\vecb{y}^{(m)})$ or majority vote
+    \item \textbf{Process Reward Model (PRM):} scores intermediate steps $V(\vecb{x},\vecb{a}_{\le i})$ for MCTS/beam search (beats terminal ORM)
+    \item \textbf{RLVR (Verifiable Rewards):} binary $r\in\{0,\gamma\}$ (math/code tests) elicits native long CoT, backtracking \& self-verification
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Prefill Computes $\cdot$ Decode Streams KV $\cdot$ Verifiers Turn FLOPs into Reasoning} \\[1pt]
+  \footnotesize\mdseries \textbf{Top-$p$ trims the tail, GQA+Paging tames VRAM, and $\min(p,q)+\max(0,p-q)=p$ decodes losslessly.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item $\tau\to 0^+$ overflows $\exp(u_j/\tau)$ in FP16 $\Rightarrow$ branch $\tau=0$ to $\argmax$
+    \item contiguous $s_{\max}$ KV allocation wastes $60\text{--}80\%$ VRAM
+    \item top-$p$ must always keep $w_{(1)}$ when $p_{(1)} > p$ to avoid $\emptyset$
+    \item unconstrained RLVR/PRM risks \textbf{overthinking} / hacking
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Prompt Engineering, Decoding Strategies, KV Caching \& Test-Time Scaling}\;---\;Domain 05 $\cdot$ LLM Pretraining, PEFT \& Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Autoregressive Chain Rule \& Logits:\csfm{\log\Pr_\theta(\vecb{y}\mid\vecb{x}) = \sum_{i=1}^n \log\softmax(\mat{W}_o\T\vecb{h}_{m+i})_{y_i}}
+    \item Top-$p$ (Nucleus) Support:\csfm{\mathcal{V}_p = \{w_{(1)},\dots,w_{(m^*)}\},\quad m^* = \min\Bigl\{m:\sum_{r=1}^m p_\tau(w_{(r)})\ge p\Bigr\}}
+    \item KV Cache Footprint ($s = m + n$):\csfm{M_{\mathrm{KV}} = 2 \cdot b \cdot s \cdot n_{\mathrm{layers}} \cdot n_{\mathrm{kv}} \cdot d_h \cdot p_{\mathrm{bytes}}}
+    \item Lossless Speculative Decomposition:\csfm{\Pr(Y=y) = \underbrace{q(y)\min\!\Bigl(1,\frac{p(y)}{q(y)}\Bigr)}_{\text{accept}} + \underbrace{\max(0,p(y)-q(y))}_{\text{reject \& resample}} = p(y)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{SPECULATIVE DECODING RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Draft $\tau$ tokens $\hat{y}_{1:\tau} \sim q(\cdot)$ autoregressively with small model.
+    \item Run target model $p(\cdot)$ in \textbf{1 parallel forward pass} on prefix $+ \hat{y}_{1:\tau}$ to get $\tau{+}1$ distributions.
+    \item Loop $t=1\dots\tau$: draw $r_t\sim\Uniform(0,1)$; if $r_t > p(\hat{y}_t)/q(\hat{y}_t)$, reject $\hat{y}_{\ge t}$, sample $\bar{y}_t \sim p_{\mathrm{res}}$, and break.
+    \item If all $\tau$ accepted, sample bonus token $\bar{y}_{\tau+1}\sim p_{\tau+1}$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    deterministic exact facts/code & Greedy ($\tau=0$) or low $\tau\le 0.2$\\
+    open-ended creative text & $\tau\in[0.7,1.0]$ + Top-$p$ ($p\approx 0.9$)\\
+    128k context on 1 GPU & GQA-8/MQA + FP8/INT8 KV cache\\
+    high-concurrency serving & PagedAttention + continuous batching\\
+    $2\text{--}3\times$ lower decode ITL & Speculative decoding (aligned draft $q$)\\
+    hard math / code reasoning & RLVR long CoT + PRM Best-of-$N$\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{70B KV-CACHE SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item 70B ($L=80, d_h=128$, FP16, $b=1$): $40\text{ MiB/1k tok/KV-head}$
+    \item At $s=128\text{k}$: MHA ($n_{\mathrm{kv}}=64$) $= \mathbf{320\text{ GiB}}$; GQA-8 $= \mathbf{40\text{ GiB}}$; MQA $= \mathbf{5\text{ GiB}}$
+    \item Decode arithmetic intensity: $\mathcal{I}_{\mathrm{decode}} \approx 2b/p_{\mathrm{bytes}} \ll 200\text{ FLOPs/B}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{TEST-TIME COMPUTE SCALING REGIMES}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.2cm, xmode=log, log basis x={2},
+      xmin=1, xmax=256, ymin=32, ymax=96,
+      xlabel={Test-Time Compute Budget $N$ (samples / CoT scale)}, ylabel={Pass@1 Accuracy (\%)},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,4,16,64,256}, xticklabels={1,4,16,64,256},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=south east, legend style={font=\tiny, fill=white, fill opacity=0.9}]
+      \addplot[csE, thick, mark=triangle*, mark size=1.5pt] coordinates {(1,38)(2,44)(4,51)(8,56)(16,60)(32,62.5)(64,64)(128,64.8)(256,65.2)};
+      \addlegendentry{Majority Vote}
+      \addplot[csF, very thick, mark=*, mark size=1.4pt] coordinates {(1,38)(2,47)(4,56)(8,64)(16,70)(32,75)(64,79)(128,82)(256,84.5)};
+      \addlegendentry{Best-of-$N$ + PRM}
+      \addplot[csA, very thick, mark=square*, mark size=1.4pt] coordinates {(1,42)(2,51)(4,60)(8,68)(16,75)(32,81)(64,85.5)(128,89)(256,91.5)};
+      \addlegendentry{RLVR Sequential CoT}
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize Majority voting saturates under correlated errors; PRM \& RLVR sustain gains.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Filter order matters:} apply temperature $\tau$, top-$k$, and top-$p$ in a consistent pipeline and \emph{always} renormalize $\vecb{p}$ after zeroing tail tokens.
+    \item \textbf{Always keep top-1 token $w_{(1)}$:} in nucleus sampling, include the boundary token $m^*$ that crosses threshold $p$ so $\mathcal{V}_p$ is never empty.
+    \item \textbf{Speculative acceptance collapse:} if draft $q$ and target $p$ use different tokenizers or mismatched temperatures, $\alpha=\sum_v\min(p,q)$ plummets.
+    \item \textbf{Head-of-line blocking:} a $32\text{k}$-token prefill stalls active decode batches unless split via \emph{chunked prefilling}.
+    \item \textbf{PRM reward hacking \& overthinking:} uncalibrated verifiers get exploited at large $N$; RLVR without length penalties loops on easy prompts.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  LLM inference splits into \textbf{compute-bound prefill} ($O(m^2)$ parallel GEMMs) and \textbf{memory-bandwidth-bound decode} ($O(s)$ streaming of paged \textbf{KV caches}). \textbf{Top-$p$} dynamically prunes the unreliable tail, \textbf{speculative decoding} verifies $\tau$ draft tokens in one parallel pass with zero distribution shift, and \textbf{RLVR/PRM test-time scaling} converts inference FLOPs into reasoning accuracy.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

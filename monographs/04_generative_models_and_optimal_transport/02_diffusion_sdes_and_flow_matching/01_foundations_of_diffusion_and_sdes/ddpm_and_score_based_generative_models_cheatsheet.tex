@@ -1,0 +1,228 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Diffusion, Score SDEs \& Flow Matching}{Denoising Diffusion Probabilistic Models (DDPM) \& Noise-Conditional Score Networks}
+  {Destroy data into Gaussian noise in closed form; invert the bridge by predicting noise or score}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{DDPM \& NCSN\\ \footnotesize\mdseries Forward $\cdot$ Score $\cdot$ Tweedie}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny}]
+    % Clean bimodal distribution on left
+    \draw[csA, very thick, fill=csA!15] (-2.1,-0.4) to[out=70,in=180] (-1.65,0.65) to[out=0,in=180] (-1.35,-0.05) to[out=0,in=180] (-1.05,0.45) to[out=0,in=110] (-0.6,-0.4) -- cycle;
+    \node[csA, font=\tiny\bfseries] at (-1.35,-0.72) {$\vecb x_0\!\sim\!p_{\mathrm{data}}$};
+    % Forward jump arrow (top)
+    \draw[-{Stealth[length=4pt]}, thick, csE, dashed] (-0.55,0.42) to[bend left=28] node[midway, above] {$\sqrt{\bar\alpha_t}\vecb x_0\!+\!\sigma_t\boldsymbol\epsilon$} (1.05,0.42);
+    % Reverse step arrows (bottom)
+    \draw[-{Stealth[length=4pt]}, very thick, csDom] (1.05,-0.15) to[bend left=28] node[midway, below] {$\boldsymbol\epsilon_\theta,\;\vecb s_\theta$} (-0.55,-0.15);
+    % Isotropic Gaussian on right
+    \draw[csE, very thick, fill=csE!15] (1.15,-0.4) to[out=60,in=180] (1.85,0.55) to[out=0,in=120] (2.55,-0.4) -- cycle;
+    \node[csE, font=\tiny\bfseries] at (1.85,-0.72) {$\Normal(\zeros,\eye)$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Forward Noising \& Closed-Form Jump}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{q(\vecb x_t\mid\vecb x_0)=\Normal\!\bigl(\sqrt{\bar\alpha_t}\vecb x_0,\,(1-\bar\alpha_t)\eye\bigr)}
+    \begin{csbul}
+      \item Step: $q(\vecb x_t\mid\vecb x_{t-1})=\Normal(\sqrt{1-\beta_t}\vecb x_{t-1},\beta_t\eye)$
+      \item Signal: $\alpha_t=1-\beta_t$, $\bar\alpha_t=\prod_{s=1}^t\alpha_s$
+      \item Direct sample: $\vecb x_t=\sqrt{\bar\alpha_t}\vecb x_0+\sqrt{1-\bar\alpha_t}\boldsymbol\epsilon$
+      \item Reverse posterior $q(\vecb x_{t-1}\mid\vecb x_t,\vecb x_0)=\Normal(\tilde{\boldsymbol\mu}_t,\tilde\beta_t\eye)$ is \textbf{tractable} given $\vecb x_0$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2pt] (x0) at (0,2.2) {$\vecb x_0$};
+      \node[draw=csA, fill=white, rounded corners=2pt, inner sep=2pt] (xt1) at (2.1,2.2) {$\vecb x_{t-1}$};
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2pt] (xt) at (4.2,2.2) {$\vecb x_t$};
+      \draw[-{Stealth[length=3pt]}, csA, dashed] (x0) to[bend left=35] node[above] {jump} (xt);
+      \draw[-{Stealth[length=3pt]}, csB, thick] (xt) -- node[below] {$\tilde{\boldsymbol\mu}_t$} (xt1);
+      \draw[-{Stealth[length=3pt]}, csB, thick] (x0) to[bend right=28] (xt1);
+      \node[csB, align=center] at (2.1,0.4) {pinned endpoints\\$\Rightarrow$ Gaussian bridge};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ Variational ELBO vs.\ Denoising Score Matching}{%
+  \begin{csbul}
+    \item \textbf{ELBO decomposition:} $-\log p_\theta(\vecb x_0)\le \mathcal L_T + \sum_{t=2}^T \mathcal L_{t-1} + \mathcal L_0$, where $\mathcal L_{t-1}=\KL{q(\vecb x_{t-1}\mid\vecb x_t,\vecb x_0)}{p_\theta(\vecb x_{t-1}\mid\vecb x_t)}$
+    \item \textbf{Ho et al.\ unweighted loss:} drop time prefactors $\Rightarrow$ predict noise $\boldsymbol\epsilon\sim\Normal(\zeros,\eye)$:
+    \csfm{\mathcal L_{\mathrm{simple}}(\theta)=\E_{t,\vecb x_0,\boldsymbol\epsilon}\!\Bigl[\norm{\boldsymbol\epsilon-\boldsymbol\epsilon_\theta(\sqrt{\bar\alpha_t}\vecb x_0+\sqrt{1-\bar\alpha_t}\boldsymbol\epsilon,\,t)}_2^2\Bigr]}
+    \item \textbf{Vincent's DSM theorem:} replacing intractable $\grad_{\tilde{\vecb x}}\log q_\sigma(\tilde{\vecb x})$ by conditional $\grad_{\tilde{\vecb x}}\log q_\sigma(\tilde{\vecb x}\mid\vecb x_0)=-\boldsymbol\epsilon/\sigma$ changes loss only by a $\theta$-constant: $J_{\mathrm{DSM}}(\theta;\sigma)=J_{\mathrm{ESM}}(\theta;\sigma)+C$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ Tweedie's Formula \& 4-Way Equivalence}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \csfm{\grad_{\vecb x_t}\log q_t(\vecb x_t)=-\frac{\E[\boldsymbol\epsilon\mid\vecb x_t]}{\sqrt{1-\bar\alpha_t}}=\frac{\sqrt{\bar\alpha_t}\E[\vecb x_0\mid\vecb x_t]-\vecb x_t}{1-\bar\alpha_t}}
+    \begin{csbul}
+      \item Affine kernel $\vecb x_t=\alpha_t^{\mathrm{aff}}\vecb x_0+\sigma_t\boldsymbol\epsilon$
+      \item $\vecb s_\theta \equiv -\boldsymbol\epsilon_\theta/\sigma_t \equiv (\alpha_t^{\mathrm{aff}}\vecb x_\theta-\vecb x_t)/\sigma_t^2$
+      \item Velocity: $\vecb v_\theta = (\alpha_t^{\mathrm{aff}})'\vecb x_\theta + \sigma_t'\boldsymbol\epsilon_\theta$
+      \item All 4 squared losses match up to scalar weights $w(t)$!
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (x) at (0,2.2) {$\vecb x_\theta$ (clean)};
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (e) at (3.4,2.2) {$\boldsymbol\epsilon_\theta$ (noise)};
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (v) at (0,0) {$\vecb v_\theta$ (velocity)};
+      \node[draw=csC, fill=csC!15, rounded corners=2pt, inner sep=2pt] (s) at (3.4,0) {$\vecb s_\theta$ (score)};
+      \draw[<->, thick, csC] (x) -- (e);
+      \draw[<->, thick, csC] (e) -- node[right] {$-\frac{1}{\sigma_t}$} (s);
+      \draw[<->, thick, csC] (x) -- (v);
+      \draw[<->, thick, csC] (v) -- (s);
+      \draw[<->, dashed, csA] (x) -- node[pos=0.5, fill=white, inner sep=0.5pt] {Tweedie} (s);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ DDPM (VP) vs.\ NCSN (VE)}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{2.9cm}@{}}
+    \textbf{\textcolor{csD}{Aspect}} & \textbf{\textcolor{csD}{DDPM (VP)}} & \textbf{\textcolor{csD}{NCSN / SMLD (VE)}}\\ \hline
+    Perturbation & $\sqrt{\bar\alpha_t}\vecb x_0+\sqrt{1-\bar\alpha_t}\boldsymbol\epsilon$ & $\vecb x_0+\sigma_i\boldsymbol\epsilon$ ($\sigma_1>\dots>\sigma_L$)\\
+    Prior & $\Normal(\zeros,\eye)$ & $\Normal(\zeros,\sigma_1^2\eye)$ ($\sigma_1\gg\sigma_{\mathrm{data}}$)\\
+    Predictor & $\boldsymbol\epsilon_\theta(\vecb x_t,t)\approx\boldsymbol\epsilon$ & $\vecb s_\theta(\tilde{\vecb x},\sigma_i)\approx-\boldsymbol\epsilon/\sigma_i$\\
+    Sampler & Ancestral Markov $p_\theta(\vecb x_{t-1}\mid\vecb x_t)$ & Annealed Langevin MCMC\\
+    Continuum & VP-SDE & VE-SDE\\
+  \end{tabular}\par\vspace{2pt}
+  \small Both share a single time/noise-conditioned U-Net and unify as SDE discretizations.}
+
+\csbranch{5}{E}{5\;\; COST \& SCHEDULES $-$ Linear vs.\ Cosine $\bar\alpha_t$}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Training:} $\mathcal O(1)$ NFE per sample via random $t\sim\Uniform\{1,\dots,T\}$
+      \item \textbf{DDPM inference:} $\mathcal O(T)$ sequential NFEs ($T\approx 1000$)
+      \item \textbf{NCSN ALD inference:} $\mathcal O(LK)$ sequential NFEs ($L$ scales $\times$ $K$ steps)
+      \item \textbf{Cosine schedule:} linear log-SNR decay prevents premature signal collapse of linear $\beta_t$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \draw[->] (0,0) -- (4.2,0) node[right] {$t$};
+      \draw[->] (0,0) -- (0,2.8) node[above] {$\bar\alpha_t$};
+      \draw[csA, very thick] (0,2.5) .. controls (1.0,2.2) and (1.4,0.2) .. (4.0,0.02);
+      \draw[csE, very thick, dashed] (0,2.5) .. controls (1.8,2.4) and (2.6,0.4) .. (4.0,0.05);
+      \node[csA, anchor=west] at (1.2,0.7) {linear $\beta_t$};
+      \node[csE, anchor=west] at (2.0,1.9) {cosine};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Why Multi-Scale Noise Bridges Work}{%
+  \begin{csbul}
+    \item \textbf{Bypasses intractable partition $Z_\theta$:} scores $\grad_{\vecb x}\log p_\theta(\vecb x)=-\grad_{\vecb x}E_\theta(\vecb x)$ drop $Z_\theta$ completely
+    \item \textbf{Heals manifold blindness:} Gaussian smoothing $\sigma_i>0$ spreads support over all $\R^D$
+    \item \textbf{Fixes mode-weight blindness:} large $\sigma_1$ bridges disjoint modes $\pi p_0+(1-\pi)p_1$ so Langevin dynamics recovers true mixture weights $\pi$
+    \item \textbf{Foundation for controllable synthesis:} plug-and-play posterior score $\grad_{\vecb x_t}\log p(\vecb y\mid\vecb x_t)$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Forward jump is 1-step Gaussian; reverse step is MMSE denoising} \\[1pt]
+  \footnotesize\mdseries \textbf{By Tweedie's formula, predicting noise $\boldsymbol\epsilon$ $\Longleftrightarrow$ estimating Stein score $\grad_{\vecb x}\log q_t$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Unperturbed score:} $\vecb s_\theta(\vecb x)$ is blind to low-density voids \& $\pi$
+    \item \textbf{Linear $\beta_t$ collapse:} destroys $t>0.6T$ signal $\to$ cosine + $\vecb v$-pred
+    \item \textbf{Large-step DDPM:} $p_\theta(\vecb x_{t-1}\mid\vecb x_t)$ needs $\beta_t\ll 1\to$ use DDIM
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Denoising Diffusion Probabilistic Models (DDPM) \& Noise-Conditional Score Networks}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Forward marginal ($t$-step jump):
+      \csfm{\vecb x_t=\sqrt{\bar\alpha_t}\,\vecb x_0+\sqrt{1-\bar\alpha_t}\,\boldsymbol\epsilon,\quad \bar\alpha_t=\prod_{s=1}^t(1-\beta_s)}
+    \item Tractable reverse conditional posterior $q(\vecb x_{t-1}\mid\vecb x_t,\vecb x_0)$:
+      \csfm{\tilde{\boldsymbol\mu}_t=\frac{\sqrt{\bar\alpha_{t-1}}\beta_t}{1-\bar\alpha_t}\vecb x_0+\frac{\sqrt{\alpha_t}(1-\bar\alpha_{t-1})}{1-\bar\alpha_t}\vecb x_t,\quad \tilde\beta_t=\frac{1-\bar\alpha_{t-1}}{1-\bar\alpha_t}\beta_t}
+    \item Posterior mean in $\boldsymbol\epsilon$-form:
+      \csfm{\vecb\mu_\theta(\vecb x_t,t)=\frac{1}{\sqrt{\alpha_t}}\!\left(\vecb x_t-\frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\boldsymbol\epsilon_\theta(\vecb x_t,t)\right)}
+    \item Tweedie \& 4-way head conversions ($\vecb x_t=\alpha_t^{\mathrm{aff}}\vecb x_0+\sigma_t\boldsymbol\epsilon$):
+      \csfm{\vecb s_\theta = -\frac{\boldsymbol\epsilon_\theta}{\sigma_t} = \frac{\alpha_t^{\mathrm{aff}}\vecb x_\theta-\vecb x_t}{\sigma_t^2},\quad \vecb v_\theta=(\alpha_t^{\mathrm{aff}})'\vecb x_\theta+\sigma_t'\boldsymbol\epsilon_\theta}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ DDPM vs.\ NCSN (ALD) SAMPLING}
+  \textbf{DDPM Ancestral Sampling} ($\vecb x_T\sim\Normal(\zeros,\eye)$):
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item For $t=T,T-1,\dots,1$: draw $\vecb z\sim\Normal(\zeros,\eye)$ if $t>1$ else $\zeros$
+    \item Update $\vecb x_{t-1}\gets\frac{1}{\sqrt{\alpha_t}}\bigl(\vecb x_t-\frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\boldsymbol\epsilon_\theta(\vecb x_t,t)\bigr)+\sigma_t\vecb z$
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Annealed Langevin Dynamics} ($\sigma_1>\dots>\sigma_L$):
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item For $i=1,\dots,L$: set step size $\tau_i=\epsilon_0(\sigma_i/\sigma_L)^2$
+    \item Run $K$ steps: $\tilde{\vecb x}_k\gets\tilde{\vecb x}_{k-1}+\frac{\tau_i}{2}\vecb s_\theta(\tilde{\vecb x}_{k-1},\sigma_i)+\sqrt{\tau_i}\,\vecb z_k$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    standard image synthesis & DDPM $\mathcal L_{\mathrm{simple}}$ ($\boldsymbol\epsilon$ or $\vecb v$ pred.)\\
+    high-res / high-noise instability & cosine $\bar\alpha_t$ schedule + $\vecb v_\theta$ head\\
+    exact NLL / ELBO tuning & SNR-weighted loss + learned $\Sigma_\theta$\\
+    score-only energy / EBM prior & multi-scale DSM + Annealed Langevin\\
+    high-variance minibatch loss & stratified $t_i=\bmod(u_0+i/k,1)$\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{LOSS WEIGHTING \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item $\norm{\vecb s_\theta-\vecb s^*}_2^2 = \frac{1}{\sigma_t^2}\norm{\boldsymbol\epsilon_\theta-\boldsymbol\epsilon^*}_2^2 = \frac{(\alpha_t^{\mathrm{aff}})^2}{\sigma_t^4}\norm{\vecb x_\theta-\vecb x_0^*}_2^2$
+    \item Multi-scale DSM weight: $\lambda(\sigma_i)=\sigma_i^2 \Rightarrow$ balanced unit-scale target $\norm{\sigma_i\vecb s_\theta(\tilde{\vecb x},\sigma_i)+\boldsymbol\epsilon}_2^2$
+    \item Reverse variance bounds: $\tilde\beta_t \le \sigma_t^2 \le \beta_t$ (identical as $T\to\infty$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{LOG-SNR DECAY: LINEAR $\beta_t$ vs.\ COSINE SCHEDULE}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=0.02, xmax=0.98, ymin=-4.5, ymax=3.0,
+      xlabel={Normalized time $t\in[0,1]$}, ylabel={$\log_{10}\mathrm{SNR}(t)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,0.2,0.4,0.6,0.8,1.0}, ytick={-4,-2,0,2}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.03,0.05)}, anchor=south west, fill=white, fill opacity=0.85}]
+      \addplot[csA, very thick, domain=0.02:0.98, samples=60] {ln(exp(-0.1*x - 9.95*x^2)/(1 - exp(-0.1*x - 9.95*x^2)))/ln(10)};
+      \addlegendentry{Linear $\beta_t$ (collapses $>0.6$)}
+      \addplot[csF, very thick, dashed, domain=0.02:0.98, samples=60] {ln(((cos(deg((x+0.008)/1.008*pi/2)))^2 / (cos(deg(0.008/1.008*pi/2)))^2)/(1 - (cos(deg((x+0.008)/1.008*pi/2)))^2 / (cos(deg(0.008/1.008*pi/2)))^2))/ln(10)};
+      \addlegendentry{Cosine schedule (linear log-SNR)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Manifold \& low-density blindness:} never train score matching on clean data $\vecb x_0$ alone; $\grad_{\vecb x}\log p_{\mathrm{data}}$ is undefined off-manifold and noisy in low-density voids
+    \item \textbf{Disjoint mode mixing:} $\grad_{\vecb x}\log(\pi p_0+(1-\pi)p_1)$ drops $\pi$ when supports are disjoint $\to$ require $\sigma_1$ large enough to overlap modes
+    \item \textbf{Endpoint blow-up:} $\vecb s_\theta=-\boldsymbol\epsilon_\theta/\sigma_t$ diverges as $\sigma_t\to 0$, while $\vecb x_\theta$ loses signal as $\alpha_t^{\mathrm{aff}}\to 0$ $\to$ use $\vecb v_\theta$ or clip $\sigma_t\ge\epsilon$
+    \item \textbf{Final step noise:} always set $\vecb z=\zeros$ at $t=1\to 0$ in ancestral sampling so output returns the clean posterior mean
+    \item \textbf{Non-Gaussian large steps:} skipping $t$ in standard DDPM fails because $q(\vecb x_{t-k}\mid\vecb x_t)$ is multimodal for large $k$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{DDPM \& NCSN are two faces of the same Gaussian bridge.}
+  Forward diffusion jumps in one shot via $\vecb x_t=\sqrt{\bar\alpha_t}\vecb x_0+\sqrt{1-\bar\alpha_t}\boldsymbol\epsilon$.
+  Conditioning on $\vecb x_0$ makes the reverse step an exact Gaussian, and \textbf{Tweedie's identity} $\vecb s^*=-\boldsymbol\epsilon^*/\sigma_t$ proves that predicting added noise is identical to learning the Stein score across noise scales.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

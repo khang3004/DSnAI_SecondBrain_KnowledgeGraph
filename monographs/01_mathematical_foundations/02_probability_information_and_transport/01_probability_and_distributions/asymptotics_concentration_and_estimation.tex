@@ -1,0 +1,618 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf
+  {Mathematical Foundations for Machine Intelligence}
+  {Probability Theory, Information Theory \& Optimal Transport}
+  {Probability Spaces, Gaussians \& Statistical Estimation}
+  {Concentration Inequalities, Limit Theorems \& Statistical Estimation (MLE/MAP)}
+  {\bookcite{introduction_probability_data_science}{Chs.\ 6, 8},
+   \bookcite{probabilisticml_kevinmurphy_introduction}{Chs.\ 4--5},
+   \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3},
+   \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4}}
+
+A central quantitative challenge in machine learning and statistical inference is bridging finite-sample empirical behavior with asymptotic population guarantees. Given $N$ observations drawn from an unknown data-generating process, how tightly does an empirical average concentrate around its expectation? When does a normalized estimator converge in law to a Gaussian, and where does that Gaussian approximation break down? Under what regularity conditions can any unbiased estimator beat the Cram\'er--Rao information floor, and how do prior assumptions transform point estimation from likelihood maximization into regularized risk minimization and full Bayesian decision theory? This monograph synthesizes non-asymptotic concentration bounds, classical limit theorems, likelihood curvature geometry, and frequentist versus Bayesian estimation and testing across four foundational texts.
+
+% ==============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:asymp:formulation}
+% ==============================================================================
+
+Let $(\Omega, \mathcal{F}, \Prob)$ be a probability space supporting an i.i.d.\ sample $\mathcal{D} = \set{x_1, \dots, x_N}$ drawn from an unknown distribution $P^*$, or a supervised dataset $\mathcal{D} = \set{(\vecb{x}_n, y_n)}_{n=1}^N \simiid P^*(\vecb{X}, Y)$, with empirical distribution $\hat{p}_{\mathcal{D}}(x) = \frac{1}{N}\sum_{n=1}^N \delta(x - x_n)$. In concentration and limit analysis, we track the sample mean $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$ relative to the population mean $\mu = \E[X]$ and variance $\sigma^2 = \Var[X]$ \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 353--355}.
+
+In parametric statistical estimation, we posit a model family $\mathcal{M} = \set{p(\cdot \mid \theta) : \theta \in \Theta \subseteq \R^D}$ and assume in the well-specified regime that $P^* = p(\cdot \mid \theta^*)$. An estimator is a measurable map $\hat{\theta}_N = \delta(\mathcal{D}) \in \Theta$ evaluated through three complementary lenses:
+\begin{enumerate}
+  \item \textbf{Finite-sample concentration}: bounding sample-mean deviations $\Prob\bigl(\abs{\bar{X}_N - \mu} \ge \varepsilon\bigr)$ \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 339--350} alongside uniform empirical risk deviations $\sup_{h \in \mathcal{H}} \abs{R(h) - R(h, \mathcal{D})}$ as explicit functions of $N$, $\varepsilon$, and $\abs{\mathcal{H}}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 196--197}.
+  \item \textbf{Asymptotic law \& efficiency}: establishing estimator consistency ($\hat{\theta}_N \xrightarrow{p} \theta^*$ or $\xrightarrow{a.s.} \theta^*$), asymptotic normality ($\sqrt{N}(\hat{\theta}_N - \theta^*) \xrightarrow{d} \Normal(\vecb{0}, \mat{F}(\theta^*)^{-1})$), and attainment of the Cram\'er--Rao covariance lower bound \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 153--160} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 75--79}.
+  \item \textbf{Decision-theoretic risk \& posterior updating}: placing a prior $p(\theta)$ over $\Theta$ to form the posterior $p(\theta \mid \mathcal{D}) \propto p(\mathcal{D} \mid \theta) p(\theta)$, minimizing posterior expected loss $\rho(a \mid \mathcal{D}) = \E_{\theta \mid \mathcal{D}}[\ell(\theta, a)]$ or Bayes risk $R_{\pi_0}(\delta) = \E_{\theta \sim \pi_0}[R(\theta, \delta)]$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 169--191} \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 505, 532}.
+\end{enumerate}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The four source texts adopt distinct conventions reflecting probability engineering (Chan), probabilistic machine learning (Murphy PML1/PML2), and algorithmic optimization (Tiep Vu). Table~\ref{tab:asymp:notation} establishes a unified correspondence used throughout this monograph.
+
+\begin{center}
+\begingroup
+\captionsetup{hypcap=false}
+\captionof{table}{Unified notation and convention mapping across the four synthesized texts.}
+\label{tab:asymp:notation}
+\small
+\renewcommand{\arraystretch}{1.24}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Chan} & \textbf{Murphy (PML1/PML2)} & \textbf{Tiep Vu} & \textbf{Unified Notation} \\
+\midrule
+Likelihood &
+$L(\theta \mid \vecb{x}) = f_{\mat{X}}(\vecb{x};\theta)$ (MLE) vs.\ $f_{\mat{X}\mid\Theta}(\vecb{x}\mid\theta)$ (MAP) &
+$p(\mathcal{D} \mid \theta)$ with true generating value $\theta^*$ &
+$p(\vecb{x}_1,\dots,\vecb{x}_N \mid \theta)$ with parameter $\theta$ or $\lambda$ &
+$L(\theta) = p(\mathcal{D} \mid \theta)$, log-likelihood $\ell(\theta) = \log p(\mathcal{D}\mid\theta)$ \\
+Fisher info.\ matrix &
+Omitted (uses CRLB-free bias/MSE in Ch.\ 8) &
+$\mat{F}(\theta)$ per sample; $N\mat{F}(\theta)$ for $N$ i.i.d.\ points &
+Omitted (uses direct calculus \& KKT conditions) &
+$\mat{F}(\theta) = \Cov_{p_\theta}[\grad \log p(x\mid\theta)]$; total FIM $\mat{I}_N(\theta) = N\mat{F}(\theta)$ \\
+Variance MLE divisor &
+Contrasts $\frac{1}{N}$ (MLE, biased) vs.\ $\frac{1}{N-1}$ (unbiased $S^2$) &
+$\frac{1}{N}$ in MLE; notes bias vanishes as $N\to\infty$ &
+$\frac{1}{N}$ directly from $\grad_{\sigma^2}\ell = 0$ &
+$\hat{\sigma}_{\mathrm{MLE}}^2 = \frac{1}{N}\sum_{n}(x_n - \bar{x})^2$, $S^2 = \frac{N}{N-1}\hat{\sigma}_{\mathrm{MLE}}^2$ \\
+Transform sign (CF) &
+$\Phi_X(j\omega) = \E[e^{-j\omega X}]$ (Fourier engineering sign) &
+Uses MGF/KL \& exponential family $A(\eta)$ &
+Uses standard PDFs without transforms &
+MGF $M_X(s) = \E[e^{sX}]$; CF $\varphi_X(t) = \E[e^{itX}]$ \\
+Conjugate hyperparameters &
+$\mathrm{Beta}(\alpha,\beta)$, Gaussian $\Normal(\mu_0, \sigma_0^2)$ &
+Prior $\breve{m}, \breve{\tau}^2, \breve{\lambda}$ vs.\ posterior $\hat{m}, \hat{\tau}^2, \hat{\lambda}$ &
+$\mathrm{Beta}(\alpha,\beta)$, prior log-penalty $\lambda R(\theta)$ &
+Prior $\Normal(\mu_0, \sigma_0^2)$ or $\mathrm{Beta}(\alpha,\beta)$; posterior $(\alpha_N, \beta_N)$ \\
+Optimal point rule &
+Derives MMSE $\E[\Theta\mid\mat{X}]$ via orthogonality &
+Unifies $0\text{-}1 \to$ MAP, $\ell_2 \to$ mean, $\ell_1 \to$ median &
+Frames MAP as regularized MLE $\ell(\theta) + \log p(\theta)$ &
+$\hat{\theta}_{\mathrm{MLE}}$, $\hat{\theta}_{\mathrm{MAP}}$, and Bayes minimizer $\hat{\theta}_{\mathrm{MMSE}}$ \\
+\bottomrule
+\end{tabularx}
+\endgroup
+\end{center}
+\end{crossbook}
+
+% ==============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:asymp:derivations}
+% ==============================================================================
+
+\subsection{Non-Asymptotic Concentration Inequalities}
+\label{sec:asymp:concentration}
+
+Classical concentration inequalities trade progressively stronger moment assumptions for exponentially sharper bounds on deviation probabilities.
+
+\begin{coremath}[Markov and Chebyshev Inequalities]
+Let $X$ be a scalar random variable and $\varepsilon > 0$.
+\begin{enumerate}
+  \item \textbf{Markov's inequality} \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 339--340}: If $X \ge 0$ a.s.\ and $\E[X] < \infty$, then
+  \begin{equation}
+  \label{eq:asymp:markov}
+  \Prob[X \ge \varepsilon] \le \frac{\E[X]}{\varepsilon}.
+  \end{equation}
+  \emph{Proof.} Since $\varepsilon \mathbf{1}_{\set{X \ge \varepsilon}} \le X$ pointwise whenever $X \ge 0$, taking expectations yields $\varepsilon \Prob[X \ge \varepsilon] \le \E[X]$.
+  \item \textbf{Chebyshev's inequality} \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 341--343}: If $\mu = \E[X]$ and $\sigma^2 = \Var[X] < \infty$, applying \eqref{eq:asymp:markov} to the nonnegative variable $Y = (X - \mu)^2$ at threshold $\varepsilon^2$ gives
+  \begin{equation}
+  \label{eq:asymp:chebyshev}
+  \Prob\bigl[\abs{X - \mu} \ge \varepsilon\bigr] = \Prob\bigl[(X-\mu)^2 \ge \varepsilon^2\bigr] \le \frac{\Var[X]}{\varepsilon^2}.
+  \end{equation}
+  For $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$ with uncorrelated i.i.d.\ summands of variance $\sigma^2$, $\Var[\bar{X}_N] = \sigma^2/N$, hence $\Prob[\abs{\bar{X}_N - \mu} \ge \varepsilon] \le \frac{\sigma^2}{N\varepsilon^2}$.
+\end{enumerate}
+\end{coremath}
+
+Although Chebyshev establishes $O(N^{-1}\varepsilon^{-2})$ variance concentration, polynomial decay fails to control simultaneous events across exponentially large hypothesis spaces. Exponential concentration requires the moment-generating function (MGF) $M_X(s) \triangleq \E[e^{sX}]$ and cumulant-generating function (CGF) $\psi_X(s) \triangleq \log M_X(s)$, defined on the domain $\set{s \in \R : M_X(s) < \infty}$ \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 324--327}.
+
+\begin{coremath}[Chernoff Bound, Fenchel--Legendre Rate, and Sub-Gaussian Tails]
+Assume $M_X(s) < \infty$ on $(0, s_{\max})$. For any $s > 0$, monotonicity of $x \mapsto e^{sx}$ and Markov's inequality \eqref{eq:asymp:markov} give \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 343--346}:
+\begin{equation}
+\label{eq:asymp:chernoff}
+\Prob[X \ge \varepsilon] = \Prob\bigl[e^{sX} \ge e^{s\varepsilon}\bigr] \le \inf_{s > 0} e^{-s\varepsilon} M_X(s) = \exp\bigl(-\psi_X^*(\varepsilon)\bigr), \qquad \psi_X^*(\varepsilon) \triangleq \sup_{s > 0}\bigl(s\varepsilon - \psi_X(s)\bigr),
+\end{equation}
+where $\psi_X^*(\varepsilon)$ is the convex conjugate (Fenchel--Legendre dual) of the CGF $\psi_X$. For i.i.d.\ $X_1,\dots,X_N$, independence factorizes the MGF as $M_{\sum X_n}(s) = [M_X(s)]^N$, yielding the large-deviation rate $\Prob[\bar{X}_N \ge \varepsilon] \le \exp\bigl(-N \psi_X^*(\varepsilon)\bigr)$.
+\begin{itemize}
+  \item \textbf{Gaussian instantiation}: If $X_n \simiid \Normal(\mu, \sigma^2)$, then $M_{X-\mu}(s) = \exp(\tfrac{1}{2}\sigma^2 s^2)$. Setting $\frac{d}{ds}[s\varepsilon - \frac{1}{2}\sigma^2 s^2] = 0$ gives $s^* = \varepsilon/\sigma^2$, hence $\psi_{X-\mu}^*(\varepsilon) = \frac{\varepsilon^2}{2\sigma^2}$ and the two-sided bound \bookcite{introduction_probability_data_science}{Ch.\ 6, p.\ 345}:
+  \begin{equation}
+  \label{eq:asymp:chernoff-gauss}
+  \Prob\bigl[\abs{\bar{X}_N - \mu} \ge \varepsilon\bigr] \le 2\exp\!\left(-\frac{N\varepsilon^2}{2\sigma^2}\right).
+  \end{equation}
+  \item \textbf{Sub-Gaussian class}: A random variable $X$ with mean $\mu$ is \emph{$\sigma$-sub-Gaussian} if its centered MGF is dominated by a Gaussian MGF of variance proxy $\sigma^2$, i.e., $\psi_{X-\mu}(s) \le \frac{1}{2}\sigma^2 s^2$ for all $s \in \R$. Independent summation preserves sub-Gaussianity with additive variance proxy: if $X_n - \mu_n$ are independent $\sigma_n$-sub-Gaussian, then $\sum_{n=1}^N (X_n - \mu_n)$ is $\sqrt{\sum_{n=1}^N \sigma_n^2}$-sub-Gaussian, immediately inheriting \eqref{eq:asymp:chernoff-gauss} with $\sigma^2 = \frac{1}{N}\sum_{n=1}^N \sigma_n^2$.
+\end{itemize}
+\end{coremath}
+
+When distributions are bounded rather than Gaussian, Hoeffding's lemma proves that every bounded random variable is automatically sub-Gaussian with variance proxy determined solely by its support width \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 348--350}.
+
+\begin{coremath}[Hoeffding's Lemma, Hoeffding's Inequality, and Uniform PAC Convergence]
+\begin{enumerate}
+  \item \textbf{Hoeffding's Lemma}: Suppose $X \in [a, b]$ a.s.\ with $\E[X] = \mu$. Define the tilted density $dQ_s(x) = \frac{e^{sx}}{\E[e^{sX}]} dP(x)$ and centered CGF $\psi(s) = \log \E[e^{s(X-\mu)}]$. Differentiating twice yields $\psi(0) = 0$, $\psi'(0) = 0$, and
+  \begin{equation}
+  \psi''(s) = \frac{\E[X^2 e^{sX}]}{\E[e^{sX}]} - \left(\frac{\E[X e^{sX}]}{\E[e^{sX}]}\right)^2 = \Var_{Q_s}[X] \le \frac{(b-a)^2}{4},
+  \end{equation}
+  where the variance bound holds for any distribution on $[a, b]$ since $\Var_{Q_s}[X] \le \E_{Q_s}[(X - \frac{a+b}{2})^2] \le (\frac{b-a}{2})^2$. By Taylor's theorem, $\psi(s) = \frac{1}{2}\psi''(\tilde{s}) s^2 \le \frac{1}{8}s^2(b-a)^2$ for all $s \in \R$, proving that $X$ is $\frac{b-a}{2}$-sub-Gaussian \bookcite{introduction_probability_data_science}{Ch.\ 6, p.\ 348}.
+  \item \textbf{Hoeffding's Inequality}: For independent variables $X_n \in [a_n, b_n]$ with $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$ and $\mu = \E[\bar{X}_N]$, Chernoff optimization with $s^* = \frac{4N\varepsilon}{\sum_{n=1}^N (b_n - a_n)^2}$ yields \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 349--350}:
+  \begin{equation}
+  \label{eq:asymp:hoeffding}
+  \Prob\bigl[\abs{\bar{X}_N - \mu} \ge \varepsilon\bigr] \le 2\exp\!\left(-\frac{2N^2\varepsilon^2}{\sum_{n=1}^N (b_n - a_n)^2}\right) \stackrel{X_n \in [0,1]}{=} 2\exp\bigl(-2N\varepsilon^2\bigr).
+  \end{equation}
+  \item \textbf{Finite-Hypothesis Generalization Bound}: Let $\mathcal{H}$ be a finite hypothesis class with bounded loss $\ell(y, h(\vecb{x})) \in [0, 1]$, population risk $R(h) = \E[\ell(Y, h(\vecb{X}))]$, and empirical risk $R(h, \mathcal{D}) = \frac{1}{N}\sum_{n=1}^N \ell(y_n, h(\vecb{x}_n))$. Combining the union bound \bookcite{introduction_probability_data_science}{Ch.\ 6, p.\ 333} with Hoeffding's inequality \eqref{eq:asymp:hoeffding} gives \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, Thm.\ 5.4.1, p.\ 197}:
+  \begin{equation}
+  \label{eq:asymp:pac}
+  \Prob\Bigl(\max_{h \in \mathcal{H}} \abs{R(h) - R(h,\mathcal{D})} > \varepsilon\Bigr) \le \sum_{h \in \mathcal{H}} \Prob\bigl(\abs{R(h) - R(h,\mathcal{D})} > \varepsilon\bigr) \le 2\abs{\mathcal{H}}\exp\bigl(-2N\varepsilon^2\bigr).
+  \end{equation}
+  Setting the RHS to $\delta$ guarantees with probability at least $1-\delta$ that the ERM excess risk satisfies $R(\hat{h}_{\mathrm{ERM}}) - \min_{h\in\mathcal{H}} R(h) \le \sqrt{\frac{2\log(2\abs{\mathcal{H}}/\delta)}{N}}$.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why Exponential Concentration Beats Polynomial Bounds in High Dimensions]
+Chebyshev's bound only extracts information from the second moment $\Var[X]$, allowing heavy-tailed distributions with identical variance to place $O(\varepsilon^{-2})$ probability mass in the tail. By contrast, optimizing $e^{-s\varepsilon}\E[e^{sX}]$ simultaneously engages \emph{every} higher moment $\E[X^k]$. Crucially, under the union bound over $M = \abs{\mathcal{H}}$ hypotheses (or Bonferroni tests), polynomial $O(M/(N\varepsilon^2))$ bounds require $N = \Omega(M)$ samples, whereas exponential concentration $2M e^{-2N\varepsilon^2}$ requires only $N = O(\log M)$ samples.
+\end{intuition}
+
+% ==============================================================================
+\subsection{Asymptotic Convergence \& Limit Theorems}
+\label{sec:asymp:limits}
+
+Concentration bounds give explicit $N$-dependent probabilities; passing to $N \to \infty$ yields three distinct modes of stochastic convergence \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 357--372}:
+\begin{itemize}
+  \item \textbf{Convergence in probability} ($Y_N \xrightarrow{p} Y$): $\lim_{N\to\infty} \Prob\bigl[\abs{Y_N - Y} > \varepsilon\bigr] = 0$ for every $\varepsilon > 0$.
+  \item \textbf{Almost sure convergence} ($Y_N \xrightarrow{a.s.} Y$): $\Prob\bigl[\lim_{N\to\infty} Y_N = Y\bigr] = 1$, which implies $Y_N \xrightarrow{p} Y$ \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 362--363}, whereas the converse fails when rare spikes drift in probability without vanishing almost surely.
+  \item \textbf{Convergence in distribution} ($Y_N \xrightarrow{d} Y$): $\lim_{N\to\infty} F_{Y_N}(y) = F_Y(y)$ at every continuity point $y$ of $F_Y$; $Y_N \xrightarrow{p} Y \implies Y_N \xrightarrow{d} Y$, with the converse holding only when the limit $Y$ is a constant.
+\end{itemize}
+
+\begin{coremath}[Weak and Strong Laws of Large Numbers (WLLN \& SLLN)]
+Let $X_1, X_2, \dots \simiid P$ with $\E[X_n] = \mu$ and sample mean $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$.
+\begin{enumerate}
+  \item \textbf{Weak Law of Large Numbers (WLLN)} \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 354--359}: By Theorem~6.16, if $\Var[X_n] = \sigma^2 < \infty$, Chebyshev's inequality \eqref{eq:asymp:chebyshev} immediately implies $\Prob[\abs{\bar{X}_N - \mu} \ge \varepsilon] \le \frac{\sigma^2}{N\varepsilon^2} \to 0$ as $N \to \infty$, so $\bar{X}_N \xrightarrow{p} \mu$. (Khinchin's theorem extends WLLN to any i.i.d.\ sequence with $\E[\abs{X_n}] < \infty$; under sub-Gaussianity, Chernoff/Hoeffding strengthens the rate to $O(e^{-cN\varepsilon^2})$.)
+  \item \textbf{Strong Law of Large Numbers (SLLN)}: Assuming finite fourth moment $\E[(X_n - \mu)^4] = \mu_4 < \infty$ (Theorems~6.17--6.18) \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 361--366}, let $Y_n = X_n - \mu$. Expanding $\E[(\sum_{n=1}^N Y_n)^4] = N\mu_4 + 3N(N-1)\sigma^4$ (since cross-terms containing an odd power vanish by zero mean and independence), Markov's inequality on $\bar{Y}_N^4$ gives
+  \begin{equation}
+  \sum_{N=1}^\infty \Prob\bigl[\abs{\bar{X}_N - \mu} \ge \varepsilon\bigr] \le \sum_{N=1}^\infty \frac{N\mu_4 + 3N(N-1)\sigma^4}{N^4 \varepsilon^4} < \infty.
+  \end{equation}
+  By the first Borel--Cantelli lemma, $\Prob[\abs{\bar{X}_N - \mu} \ge \varepsilon \text{ infinitely often}] = 0$ for every rational $\varepsilon > 0$, hence $\bar{X}_N \xrightarrow{a.s.} \mu$. (Kolmogorov's SLLN removes higher moments, requiring only $\E[\abs{X_n}] < \infty$.)
+\end{enumerate}
+\end{coremath}
+
+While the laws of large numbers pin $\bar{X}_N$ to a point mass $\mu$, rescaling fluctuations by $\sqrt{N}$ uncovers universal Gaussian geometry.
+
+\begin{coremath}[Central Limit Theorem \& Berry--Esseen Quantitative Rate]
+Let $X_1, X_2, \dots \simiid P$ with mean $\mu$ and finite variance $\sigma^2 \in (0, \infty)$, and form the standardized average $Z_N = \frac{\sqrt{N}(\bar{X}_N - \mu)}{\sigma} = \frac{1}{\sqrt{N}}\sum_{n=1}^N \tilde{X}_n$, where $\tilde{X}_n = \frac{X_n - \mu}{\sigma}$ has $\E[\tilde{X}_n] = 0$, $\E[\tilde{X}_n^2] = 1$.
+\begin{enumerate}
+  \item \textbf{Lindeberg--L\'evy CLT} \bookcite{introduction_probability_data_science}{Ch.\ 6, Thm.\ 6.19, pp.\ 372--373}: The characteristic function $\varphi_{Z_N}(t) = \E[e^{it Z_N}]$ factorizes by independence and admits a second-order Taylor expansion around $t/\sqrt{N} = 0$:
+  \begin{equation}
+  \varphi_{Z_N}(t) = \left[\varphi_{\tilde{X}}\!\left(\frac{t}{\sqrt{N}}\right)\right]^N = \left[1 + \frac{it}{\sqrt{N}}\E[\tilde{X}] - \frac{t^2}{2N}\E[\tilde{X}^2] + o\!\left(\frac{t^2}{N}\right)\right]^N \xrightarrow{N \to \infty} e^{-t^2/2}.
+  \end{equation}
+  Because $e^{-t^2/2}$ is the characteristic function of $\Normal(0,1)$, L\'evy's continuity theorem implies $Z_N \xrightarrow{d} \Normal(0, 1)$, equivalently $\sqrt{N}(\bar{X}_N - \mu) \xrightarrow{d} \Normal(0, \sigma^2)$.
+  \item \textbf{Berry--Esseen Error Bound} \bookcite{introduction_probability_data_science}{Ch.\ 6, p.\ 375}: If the third absolute central moment $\rho = \E[\abs{X_1 - \mu}^3] < \infty$, then uniform CDF approximation accuracy decays at $O(N^{-1/2})$:
+  \begin{equation}
+  \label{eq:asymp:berry-esseen}
+  \sup_{z \in \R} \abs{F_{Z_N}(z) - \Phi(z)} \le \frac{C \rho}{\sigma^3 \sqrt{N}}, \qquad (C < 0.4748).
+  \end{equation}
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Local Bulk Gaussianity vs.\ Tail Breakdown]
+The Berry--Esseen bound \eqref{eq:asymp:berry-esseen} measures \emph{additive} error in CDF probabilities, which is informative only near the bulk $\bar{X}_N = \mu + O(N^{-1/2})$ where $\Phi(z)$ is of order $1$. In the large-deviation tail $z = \Theta(\sqrt{N})$, $\Phi(-z)$ decays as $\exp(-z^2/2)$ and is vastly smaller than the $O(N^{-1/2})$ residual; skewed summands such as exponential lifetimes exhibit large relative errors in their upper tail even at $N = 1000$, as shown in Figure~\ref{fig:asymp:clt-tails}.
+\end{intuition}
+
+\monographfig[0.64\textwidth]{introduction_probability_data_science_p396_fig1.png}{Failure of the Central Limit Theorem Gaussian approximation in the upper tail for normalized Erlang sums of i.i.d.\ $\mathrm{Exp}(\lambda=1)$ variables across $N \in \set{1, 10, 100, 1000}$. While density near $z=0$ matches $\Normal(0,1)$ closely once $N \ge 100$, severe skewness persists for $z \ge 2.5$, motivating exact exponential Chernoff bounds. Reproduced from \bookcite{introduction_probability_data_science}{Ch.\ 6, Fig.\ 6.22, p.\ 380}.}{fig:asymp:clt-tails}
+
+% ==============================================================================
+\subsection{Likelihood, Information Geometry, Efficiency \& Asymptotics of MLE}
+\label{sec:asymp:mle}
+
+We now pass from sample means to general parametric models $p(x \mid \theta)$ (or conditional $p(y \mid \vecb{x}, \theta)$). Maximizing likelihood admits an exact information-theoretic and risk-minimization equivalence.
+
+\begin{coremath}[MLE as Empirical KL Minimization, ERM, and Functional Invariance]
+Given i.i.d.\ data $\mathcal{D} = \set{x_1, \dots, x_N}$ with empirical distribution $\hat{p}_{\mathcal{D}}$, the maximum likelihood estimator minimizes the negative log-likelihood $\mathrm{NLL}(\theta) = -\sum_{n=1}^N \log p(x_n \mid \theta)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 109--117}; \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 53--58}:
+\begin{enumerate}
+  \item \textbf{KL-Divergence Equivalence}: Adding and subtracting the empirical entropy $H(\hat{p}_{\mathcal{D}})$ yields
+  \begin{equation}
+  \label{eq:asymp:mle-kl}
+  \frac{1}{N}\mathrm{NLL}(\theta) = -\E_{\hat{p}_{\mathcal{D}}}[\log p(X \mid \theta)] = H_{\mathrm{ce}}(\hat{p}_{\mathcal{D}}, p_\theta) = H(\hat{p}_{\mathcal{D}}) + \KL{\hat{p}_{\mathcal{D}}}{p_\theta}.
+  \end{equation}
+  Since $H(\hat{p}_{\mathcal{D}})$ is independent of $\theta$, $\hat{\theta}_{\mathrm{MLE}} = \argmin_\theta \KL{\hat{p}_{\mathcal{D}}}{p_\theta}$. Moreover, by the WLLN, $-\frac{1}{N}\mathrm{NLL}(\theta) \xrightarrow{p} \E_{p^*}[\log p(X \mid \theta)] = -H(p^*) - \KL{p^*}{p_\theta}$, which is uniquely maximized at $\theta = \theta^*$ whenever the model is identifiable \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 499--500}.
+  \item \textbf{ERM and Canonical Closed-Form Cases}: Under conditional log-loss $\ell(y, \theta; \vecb{x}) = -\log p(y \mid \vecb{x}, \theta)$, MLE coincides with empirical risk minimization $R(\theta, \mathcal{D}) = \frac{1}{N}\sum_{n=1}^N \ell(y_n, \theta; \vecb{x}_n)$. Classical stationarity $\grad_\theta \ell(\theta) = \vecb{0}$ gives:
+  \begin{itemize}
+    \item \emph{Categorical} ($x_n \in \set{1,\dots,K}$, Lagrange constraint $\sum_k \theta_k = 1$): $\hat{\theta}_k = N_k / N$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 54--55};
+    \item \emph{Multivariate Gaussian} ($\vecb{x}_n \in \R^D$): $\hat{\vecb{\mu}}_{\mathrm{MLE}} = \bar{\vecb{x}} = \frac{1}{N}\sum_{n=1}^N \vecb{x}_n$ and $\hat{\mat{\Sigma}}_{\mathrm{MLE}} = \frac{1}{N}\sum_{n=1}^N (\vecb{x}_n - \bar{\vecb{x}})(\vecb{x}_n - \bar{\vecb{x}})^\top$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 113--114}; \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 57--58}.
+  \end{itemize}
+  \item \textbf{Invariance Principle} \bookcite{introduction_probability_data_science}{Ch.\ 8, Thm.\ 8.1, pp.\ 500--502}: For any (even non-invertible) mapping $\phi = h(\theta)$, defining the profile likelihood $\tilde{L}(\phi) \triangleq \sup_{\theta : h(\theta) = \phi} L(\theta)$, the supremum over $\phi$ equals $\sup_\theta L(\theta)$, so
+  \begin{equation}
+  \widehat{h(\theta)}_{\mathrm{MLE}} = h\bigl(\hat{\theta}_{\mathrm{MLE}}\bigr).
+  \end{equation}
+\end{enumerate}
+\end{coremath}
+
+To quantify the uncertainty and optimality of MLE, we analyze the local curvature of the log-likelihood via the Fisher information matrix (FIM) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 154--160}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 75--79}.
+
+\begin{coremath}[Fisher Information Identities, Exponential Families, and Cram\'er--Rao Bound]
+Let $\vecb{s}(\theta; x) \triangleq \grad_\theta \log p(x \mid \theta) \in \R^D$ be the per-sample score vector, and assume sufficient smoothness to interchange differentiation and integration over $x$.
+\begin{enumerate}
+  \item \textbf{Zero Expected Score \& Bartlett Curvature Identity}: Differentiating $\int p(x\mid\theta)\,dx = 1$ gives
+  \begin{equation}
+  \E_{p_\theta}[\vecb{s}(\theta; X)] = \int \grad_\theta p(x\mid\theta)\,dx = \grad_\theta \int p(x\mid\theta)\,dx = \vecb{0}.
+  \end{equation}
+  Differentiating $\int \grad_\theta \log p(x\mid\theta)\, p(x\mid\theta)\,dx = \vecb{0}^\top$ via the product rule yields
+  \begin{equation}
+  \label{eq:asymp:fim}
+  \mat{F}(\theta) \triangleq \Cov_{p_\theta}[\vecb{s}(\theta; X)] = \E_{p_\theta}\!\bigl[\vecb{s}(\theta; X)\vecb{s}(\theta; X)^\top\bigr] = -\E_{p_\theta}\!\bigl[\hess_\theta \log p(X \mid \theta)\bigr].
+  \end{equation}
+  In an exponential family $p(x\mid\eta) = h(x)\exp(\eta^\top T(x) - A(\eta))$, $\hess_\eta \log p = -\hess_\eta A(\eta)$ is independent of $x$, so $\mat{F}_\eta = \hess_\eta A(\eta) = \Cov_{p_\eta}[T(X)]$ and in mean parameters $m = \grad_\eta A(\eta)$, $\mat{F}_m = \mat{F}_\eta^{-1}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 78--79}. Under smooth reparameterization $\beta = g(\alpha)$, the chain rule $\vecb{s}_\alpha = \jac_g(\alpha)^\top \vecb{s}_\beta$ gives $\mat{F}_\alpha(\alpha) = \jac_g(\alpha)^\top \mat{F}_\beta(g(\alpha)) \jac_g(\alpha)$.
+  \item \textbf{Cram\'er--Rao Lower Bound (CRLB)}: Let $\hat{\theta}_N = \delta(\mathcal{D})$ be any unbiased estimator ($\E_\theta[\hat{\theta}_N] = \theta$) from $N$ i.i.d.\ samples \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, p.\ 160}, and let $\vecb{s}_N(\theta) = \sum_{n=1}^N \vecb{s}(\theta; x_n)$ satisfy $\E_\theta[\vecb{s}_N] = \vecb{0}$ and $\Cov_\theta[\vecb{s}_N] = N\mat{F}(\theta)$. Differentiating $\int \hat{\theta}_N(\mathcal{D}) p(\mathcal{D}\mid\theta)\,d\mathcal{D} = \theta$ yields $\Cov_\theta(\hat{\theta}_N, \vecb{s}_N) = \E_\theta[(\hat{\theta}_N - \theta)\vecb{s}_N^\top] = \eye_D$. For any $\vecb{u}, \vecb{v} \in \R^D$, Cauchy--Schwarz on $\vecb{u}^\top(\hat{\theta}_N - \theta)$ and $\vecb{v}^\top \vecb{s}_N$ gives $(\vecb{u}^\top \vecb{v})^2 \le (\vecb{u}^\top \Cov_\theta[\hat{\theta}_N]\vecb{u})(\vecb{v}^\top N\mat{F}(\theta)\vecb{v})$. Choosing $\vecb{v} = (N\mat{F}(\theta))^{-1}\vecb{u}$ proves the Loewner matrix bound:
+  \begin{equation}
+  \label{eq:asymp:crlb}
+  \Cov_\theta[\hat{\theta}_N] \succeq \bigl(N\mat{F}(\theta)\bigr)^{-1}.
+  \end{equation}
+  More generally, for a biased scalar estimator with $\E_\theta[\hat{\psi}_N] = \psi(\theta)$, $\Var_\theta[\hat{\psi}_N] \ge \frac{[\psi'(\theta)]^2}{N F(\theta)}$.
+\end{enumerate}
+\end{coremath}
+
+MLE achieves the Cram\'er--Rao floor in the large-sample limit: under mild regularity conditions, its sampling distribution collapses to a Gaussian covariance matching $(N\mat{F}(\theta^*))^{-1}$.
+
+\begin{coremath}[Consistency and Asymptotic Normality (Efficiency) of the MLE]
+Suppose the model is well-specified ($\mathcal{D} \simiid p(\cdot \mid \theta^*)$ with $\theta^* \in \mathrm{int}(\Theta)$), identifiable, and three-times continuously differentiable with integrable third derivatives \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, Thm.\ 4.7.1, p.\ 154}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, Thm.\ 3.3.1, p.\ 75}. By consistency $\hat{\theta}_{\mathrm{MLE}} \xrightarrow{p} \theta^*$, expanding the score stationarity equation $\vecb{0} = \vecb{s}_N(\hat{\theta}_{\mathrm{MLE}})$ around $\theta^*$ gives
+\begin{equation}
+\vecb{0} = \frac{1}{N}\vecb{s}_N(\theta^*) + \left(\frac{1}{N}\hess_\theta \ell(\tilde{\theta}_N)\right)\!(\hat{\theta}_{\mathrm{MLE}} - \theta^*),
+\end{equation}
+for $\tilde{\theta}_N$ on the segment between $\hat{\theta}_{\mathrm{MLE}}$ and $\theta^*$. Multiplying by $\sqrt{N}$ and rearranging:
+\begin{equation}
+\label{eq:asymp:mle-normality}
+\sqrt{N}(\hat{\theta}_{\mathrm{MLE}} - \theta^*) = \left(-\frac{1}{N}\hess_\theta \ell(\tilde{\theta}_N)\right)^{-1} \left(\frac{1}{\sqrt{N}}\sum_{n=1}^N \vecb{s}(\theta^*; X_n)\right).
+\end{equation}
+By the CLT on the i.i.d.\ zero-mean score vectors, $\frac{1}{\sqrt{N}}\vecb{s}_N(\theta^*) \xrightarrow{d} \Normal(\vecb{0}, \mat{F}(\theta^*))$. By the WLLN, $-\frac{1}{N}\hess_\theta\ell(\tilde{\theta}_N) \xrightarrow{p} -\E_{\theta^*}[\hess_\theta \log p(X\mid\theta^*)] = \mat{F}(\theta^*)$. Applying Slutsky's theorem yields
+\begin{equation}
+\sqrt{N}(\hat{\theta}_{\mathrm{MLE}} - \theta^*) \xrightarrow{d} \Normal\bigl(\vecb{0}, \mat{F}(\theta^*)^{-1}\bigr), \qquad \text{or} \qquad \hat{\theta}_{\mathrm{MLE}} \stackrel{\cdot}{\sim} \Normal\bigl(\theta^*, (N\mat{F}(\theta^*))^{-1}\bigr).
+\end{equation}
+Thus MLE is asymptotically unbiased and \emph{asymptotically efficient}, saturating the CRLB \eqref{eq:asymp:crlb}.
+\end{coremath}
+
+\begin{intuition}[Information Curvature and Local KL Geometry]
+Expanding the population KL divergence around $\theta^*$ to second order gives $\KL{p_{\theta^*}}{p_{\theta^*+\delta}} = \frac{1}{2}\delta^\top \mat{F}(\theta^*)\delta + O(\|\delta\|^3)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, p.\ 76}. Directions with high curvature (steep log-likelihood valleys) carry large Fisher information and admit tight parameter estimates, whereas nearly flat directions produce tiny eigenvalues in $\mat{F}(\theta^*)$ and huge estimation variance.
+\end{intuition}
+
+% ==============================================================================
+\subsection{Bayesian Estimation, Regularized ERM, Decision Theory \& Testing}
+\label{sec:asymp:bayes}
+
+In finite samples, MLE can overfit severely when model capacity approaches or exceeds $N$. Introducing a prior $p(\theta)$ regularizes point estimates via MAP and propagates uncertainty via the full posterior $p(\theta \mid \mathcal{D}) = \frac{p(\mathcal{D}\mid\theta)p(\theta)}{p(\mathcal{D})}$.
+
+\begin{coremath}[MAP Estimation, Regularized ERM, and Conjugate Posterior Shrinkage]
+Maximizing the posterior $p(\theta \mid \mathcal{D})$ drops the parameter-independent marginal likelihood $p(\mathcal{D})$ \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 505--515}; \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 58--62}:
+\begin{equation}
+\label{eq:asymp:map-erm}
+\hat{\theta}_{\mathrm{MAP}} = \argmax_{\theta \in \Theta} \bigl[\log p(\mathcal{D} \mid \theta) + \log p(\theta)\bigr] = \argmin_{\theta \in \Theta} \left[\frac{1}{N}\sum_{n=1}^N \ell_{\mathrm{NLL}}(\theta; x_n) - \frac{1}{N}\log p(\theta)\right].
+\end{equation}
+Thus a Gaussian prior $\Normal(\theta \mid \vecb{0}, \tau^2 \eye)$ induces $\ell_2$ (ridge) regularization $\frac{1}{2N\tau^2}\|\theta\|_2^2$, while a Laplace prior induces $\ell_1$ (LASSO) regularization \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 518--519}; \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 121--124}. Two canonical conjugate families yield closed-form shrinkage:
+\begin{enumerate}
+  \item \textbf{Beta--Binomial}: For $N_1$ heads in $N = N_1 + N_0$ Bernoulli($\theta$) trials with prior $\mathrm{Beta}(\theta \mid \alpha, \beta)$ ($\alpha,\beta \ge 1$), the posterior is $\mathrm{Beta}(\theta \mid N_1 + \alpha, N_0 + \beta)$, giving \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 59--61}; \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 130--134}:
+  \begin{equation}
+  \hat{\theta}_{\mathrm{MAP}} = \frac{N_1 + \alpha - 1}{N + \alpha + \beta - 2}, \qquad p(y_{\mathrm{new}} = 1 \mid \mathcal{D}) = \E[\theta \mid \mathcal{D}] = \frac{N_1 + \alpha}{N + \alpha + \beta},
+  \end{equation}
+  reducing at $\alpha = \beta = 1$ to $\hat{\theta}_{\mathrm{MAP}} = \hat{\theta}_{\mathrm{MLE}} = N_1/N$ while the posterior predictive yields Laplace's rule of succession $\frac{N_1 + 1}{N + 2}$ even under a uniform prior.
+  \item \textbf{Gaussian--Gaussian Shrinkage}: For $y_1,\dots,y_N \simiid \Normal(\mu, \sigma^2)$ with known observation precision $\kappa = 1/\sigma^2$ and prior $\Normal(\mu \mid \breve{m}, \breve{\lambda}^{-1})$ ($\breve{\lambda} = 1/\breve{\tau}^2$), completing the square in the exponent gives posterior $\Normal(\mu \mid \hat{m}, \hat{\lambda}^{-1})$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 141--143}; \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 507--512}:
+  \begin{equation}
+  \label{eq:asymp:gauss-shrink}
+  \hat{\lambda} = \breve{\lambda} + N\kappa, \qquad \hat{m} = \frac{N\kappa \bar{y} + \breve{\lambda}\breve{m}}{N\kappa + \breve{\lambda}} = (1 - w)\bar{y} + w\breve{m}, \qquad w = \frac{\breve{\lambda}}{\breve{\lambda} + N\kappa}.
+  \end{equation}
+  Here the posterior mean (= MAP mode) smoothly interpolates between the prior mean $\breve{m}$ (dominant for small $N\kappa$) and $\hat{\theta}_{\mathrm{MLE}} = \bar{y}$ (dominant as $N \to \infty$), illustrated in Figure~\ref{fig:asymp:gaussian-shrinkage}.
+\end{enumerate}
+\end{coremath}
+
+\monographfig[0.78\textwidth]{probabilisticml_kevinmurphy_introduction_p172_fig1.png}{Conjugate Gaussian prior, likelihood, and posterior shrinkage given observation $\bar{y} = 3$ (likelihood centered at MLE $3$). (a) Strong prior $\Normal(\mu\mid 0, 1)$ pulls the posterior mode/mean strongly toward $0$. (b) Weak prior $\Normal(\mu\mid 0, 5)$ assigns greater relative precision weight $(1-w)$ to the data. Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, Fig.\ 4.16, p.\ 142}.}{fig:asymp:gaussian-shrinkage}
+
+Decision theory unifies MAP and MMSE \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 169--178}: every canonical point estimator minimizes posterior expected loss under a chosen metric, extending Chan's orthogonality derivation \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 532--533} across $\ell_2$, $\ell_1$, and $0\text{-}1$ risks.
+
+\begin{coremath}[Bayesian Decision Theory, MMSE/Median/MAP Optimality, and Bayes Risk]
+Given a loss function $\ell(\theta, a)$, the optimal action minimizing posterior expected loss $\rho(a \mid \mathcal{D}) = \int \ell(\theta, a) p(\theta \mid \mathcal{D})\,d\theta$ satisfies:
+\begin{enumerate}
+  \item \textbf{Quadratic ($\ell_2$) loss} $\ell_2(\theta, a) = \|\theta - a\|_2^2$: Setting $\grad_a \E_{\theta\mid\mathcal{D}}[\|\theta - a\|_2^2] = 2(a - \E[\theta \mid \mathcal{D}]) = \vecb{0}$ gives the \textbf{MMSE estimator} $a^* = \E[\theta \mid \mathcal{D}]$, satisfying the orthogonality error principle $\E[(\theta - a^*)^\top \varphi(\mathcal{D})] = 0$ \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 532--533}; \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, p.\ 176}.
+  \item \textbf{Absolute ($\ell_1$) loss} $\ell_1(\theta, a) = \abs{\theta - a}$: Subgradient stationarity requires $\Prob(\theta < a^* \mid \mathcal{D}) = \Prob(\theta \ge a^* \mid \mathcal{D}) = \frac{1}{2}$, yielding the \textbf{posterior median} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, p.\ 177}.
+  \item \textbf{$0\text{-}1$ classification loss} $\ell_{01}(\theta, a) = \mathbf{1}_{\set{\theta \ne a}}$: Minimizing $\rho(a\mid\mathcal{D}) = 1 - \Prob(\theta = a \mid \mathcal{D})$ yields the \textbf{MAP mode} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, p.\ 169}.
+\end{enumerate}
+On the frequentist side, estimator quality at fixed $\theta^*$ decomposes as $\mathrm{MSE}(\hat{\theta} \mid \theta^*) = \E[(\hat{\theta} - \theta^*)^2] = \Var[\hat{\theta}] + \mathrm{bias}(\hat{\theta})^2$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, p.\ 161; Ch.\ 5, p.\ 190}. Under shrinkage \eqref{eq:asymp:gauss-shrink}, $\mathrm{MSE}(\hat{m} \mid \theta^*) = \frac{N\sigma^2 + \breve{\lambda}^2 \sigma^4(\breve{m} - \theta^*)^2}{(N + \breve{\lambda}\sigma^2)^2}$, trading slight bias for lower variance near $\breve{m}$. Averaging frequentist risk over a prior $\pi_0(\theta)$ defines the integrated \textbf{Bayes risk} $R_{\pi_0}(\delta) = \int \pi_0(\theta) R(\theta, \delta)\,d\theta$, whose global minimizer is precisely the pointwise Bayes decision rule $\delta(\mathcal{D}) = \argmin_a \rho(a \mid \mathcal{D})$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, Eq.\ (5.74)--(5.75), p.\ 191}.
+\end{coremath}
+
+Finally, classical hypothesis testing and Bayesian comparison diverge sharply in how they treat unobserved replications versus parameter uncertainty \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 198--204} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 131--138}.
+
+\begin{coremath}[Frequentist Testing (Neyman--Pearson, LRT, p-Values) vs.\ Bayesian Inference]
+\begin{enumerate}
+  \item \textbf{Neyman--Pearson Lemma \& Likelihood Ratio Test (LRT)} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 198--200}: For simple hypotheses $H_0: \theta = \theta_0$ vs.\ $H_1: \theta = \theta_1$ at fixed Type I error $\alpha = \Prob(\text{reject } H_0 \mid H_0)$, the rejection rule maximizing power $1 - \beta = \Prob(\text{reject } H_0 \mid H_1)$ thresholds the likelihood ratio $\Lambda(\mathcal{D}) = \frac{p(\mathcal{D}\mid\theta_1)}{p(\mathcal{D}\mid\theta_0)} > \eta_\alpha$. For composite nested nulls $\Theta_0 \subset \Theta$ with $\Delta D = \dim(\Theta) - \dim(\Theta_0)$, maximizing the ratio $\tilde{\Lambda} = \frac{\sup_{\theta\in\Theta} p(\mathcal{D}\mid\theta)}{\sup_{\theta\in\Theta_0} p(\mathcal{D}\mid\theta)}$ yields Wilks' statistic $2\log\tilde{\Lambda} \xrightarrow{d} \chi^2_{\Delta D}$ under $H_0$.
+  \item \textbf{NHST p-values \& Posterior Error Rate}: Given test statistic $t(\mathcal{D})$, the p-value is $p = \Prob(t(\tilde{\mathcal{D}}) \ge t(\mathcal{D}) \mid H_0)$ for hypothetical replications $\tilde{\mathcal{D}}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 81, 131}. Crucially, $p$ is \emph{not} $\Prob(H_0 \mid \mathcal{D})$; by Bayes' rule, the false-discovery probability given significance ($p < \alpha$) is $\Prob(H_0 \mid \text{sig}) = \frac{\alpha p(H_0)}{\alpha p(H_0) + (1-\beta)p(H_1)}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, p.\ 201}.
+  \item \textbf{Bayes Factors \& ROPE} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 132--133}: Model-comparison Bayes tests integrate out parameters via the marginal likelihood $p(\mathcal{D}\mid M_k) = \int p(\mathcal{D}\mid\theta_k, M_k)p(\theta_k \mid M_k)\,d\theta_k$ to form the Bayes factor $B_{1,0} = \frac{p(\mathcal{D}\mid M_1)}{p(\mathcal{D}\mid M_0)} = \frac{p(M_1\mid\mathcal{D})}{p(M_0\mid\mathcal{D})} / \frac{p(M_1)}{p(M_0)}$ (which penalizes parameter volume automatically, approximated for smooth models by BIC $= \log p(\mathcal{D}\mid\hat{\theta}_{\mathrm{MLE}}) - \frac{D}{2}\log N$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, p.\ 186}). Alternatively, estimation-based Bayesian testing declares practical equivalence if the $95\%$ Highest Posterior Density (HPD) interval falls inside a Region of Practical Equivalence (ROPE) $[\theta_0 - \epsilon, \theta_0 + \epsilon]$, or rejects $H_0$ if HPD and ROPE are disjoint \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, p.\ 133}.
+\end{enumerate}
+\end{coremath}
+
+% ==============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:asymp:algorithms}
+% ==============================================================================
+
+When $\ell(\theta) + \log p(\theta)$ lacks a closed-form solution (e.g., generalized linear models or non-conjugate hierarchical models), second-order Fisher scoring finds $\hat{\theta}$ by replacing the stochastic observed Hessian with the positive-definite expected Fisher information, and bootstrap resampling quantifies finite-sample sampling covariance without Gaussian asymptotics \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, pp.\ 155--157}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 73--75}.
+
+\begin{algorithm}[htbp]
+\caption{Damped Fisher Scoring (MLE/MAP) with Bootstrap Uncertainty Quantification}
+\label{alg:asymp:fisher-bootstrap}
+\KwIn{Dataset $\mathcal{D} = \set{x_n}_{n=1}^N$; log-likelihood $\ell(\theta; \mathcal{D}) = \sum_{n=1}^N \log p(x_n \mid \theta)$; per-sample FIM $\mat{F}(\theta)$; log-prior $\log p(\theta)$ (zero for MLE); prior precision $\mat{P}_{\mathrm{prior}}(\theta) = -\hess_\theta \log p(\theta)$; damping $\epsilon_d > 0$; tolerance $\tau > 0$; bootstrap replicates $B$.}
+\KwOut{Point estimate $\hat{\theta}$, Laplace/asymptotic covariance $\hat{\mat{\Sigma}}_{\mathrm{asy}}$, bootstrap covariance $\hat{\mat{\Sigma}}_{\mathrm{boot}}$, $95\%$ percentile intervals.}
+\BlankLine
+\tcp{Phase 1: Damped Fisher Scoring for MLE or MAP}
+Initialize $\theta^{(0)} \in \mathrm{int}(\Theta)$, $t \leftarrow 0$, objective $\mathcal{J}(\theta) \triangleq \ell(\theta; \mathcal{D}) + \log p(\theta)$\;
+\Repeat{$\Delta\theta^\top \mat{G}^{(t)} \Delta\theta < \tau^2$}{
+  Evaluate total score $\vecb{g}^{(t)} \leftarrow \sum_{n=1}^N \grad_\theta \log p(x_n \mid \theta^{(t)}) + \grad_\theta \log p(\theta^{(t)})$\;
+  Evaluate Fisher curvature $\mat{G}^{(t)} \leftarrow N\mat{F}(\theta^{(t)}) + \mat{P}_{\mathrm{prior}}(\theta^{(t)}) + \epsilon_d \eye_D$\;
+  Solve positive-definite linear system $\mat{G}^{(t)} \Delta\theta = \vecb{g}^{(t)}$\;
+  Find step size $\eta \in (0, 1]$ by backtracking Armijo search on $\mathcal{J}(\theta^{(t)} + \eta \Delta\theta)$\;
+  Update $\theta^{(t+1)} \leftarrow \theta^{(t)} + \eta \Delta\theta$, $t \leftarrow t + 1$\;
+}
+Set $\hat{\theta} \leftarrow \theta^{(t)}$ and $\hat{\mat{\Sigma}}_{\mathrm{asy}} \leftarrow \bigl(N\mat{F}(\hat{\theta}) + \mat{P}_{\mathrm{prior}}(\hat{\theta})\bigr)^{-1}$\;
+\BlankLine
+\tcp{Phase 2: Nonparametric (or Parametric) Bootstrap Resampling}
+\For{$b = 1, \dots, B$}{
+  Draw $\mathcal{D}^{(b)} = \set{x_{n}^{(b)}}_{n=1}^N$ i.i.d.\ uniformly from $\mathcal{D}$ (nonparametric) or from $p(\cdot \mid \hat{\theta})$ (parametric)\;
+  Run Phase 1 on $\mathcal{D}^{(b)}$ warm-started at $\theta^{(0)} \leftarrow \hat{\theta}$ to obtain $\hat{\theta}^{(b)}$\;
+}
+Compute $\bar{\theta}_{\mathrm{boot}} = \frac{1}{B}\sum_{b=1}^B \hat{\theta}^{(b)}$ and $\hat{\mat{\Sigma}}_{\mathrm{boot}} = \frac{1}{B-1}\sum_{b=1}^B (\hat{\theta}^{(b)} - \bar{\theta}_{\mathrm{boot}})(\hat{\theta}^{(b)} - \bar{\theta}_{\mathrm{boot}})^\top$\;
+Return $\hat{\theta}$, $\hat{\mat{\Sigma}}_{\mathrm{asy}}$, $\hat{\mat{\Sigma}}_{\mathrm{boot}}$, and coordinate empirical quantiles $[q_{0.025}, q_{0.975}]$ of $\set{\hat{\theta}^{(b)}}_{b=1}^B$\;
+\end{algorithm}
+
+Notice two computational distinctions in Algorithm~\ref{alg:asymp:fisher-bootstrap}: (i) Fisher scoring guarantees a positive-definite descent metric $\mat{G}^{(t)} \succ \mat{0}$ even at parameter locations where the observed negative Hessian $-\hess_\theta\ell(\theta)$ is indefinite; and (ii) each nonparametric bootstrap dataset covers only $1 - (1 - 1/N)^N \approx 1 - e^{-1} \approx 63.2\%$ of unique points in $\mathcal{D}$, acting as a frequentist sampling analog (``poor man's posterior'') when closed-form Bayes is unavailable \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, p.\ 156}. Table~\ref{tab:asymp:complexity} contrasts the major estimation paradigms.
+
+\begin{table}[htbp]
+\centering
+\caption{Computational complexity and statistical properties across estimation paradigms ($N$ samples, $D$ parameters, $T$ optimization steps, $B$ bootstrap draws, $S$ posterior samples).}
+\label{tab:asymp:complexity}
+\begingroup
+\small
+\renewcommand{\arraystretch}{1.24}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Time Complexity} & \textbf{Memory} & \textbf{Uncertainty Output} & \textbf{Small-$N$ \& Invariance Behavior} \\
+\midrule
+Conjugate Bayes &
+$O(ND)$ sufficient stats &
+$O(D)$ or $O(D^2)$ &
+Exact posterior \& predictive &
+Exact shrinkage; requires conjugate family \\
+ERM / First-order SGD &
+$O(T B_{\mathrm{mb}} D)$ ($B_{\mathrm{mb}}\!\ll\! N$) &
+$O(D)$ &
+None (point estimate only) &
+Overfits without explicit regularizer \\
+MLE (Fisher Scoring) &
+$O(T(ND^2 + D^3))$ &
+$O(D^2)$ &
+Asymptotic $\Normal(\hat{\theta}, (N\mat{F})^{-1})$ &
+Bijective invariance; fails if $N < D$ \\
+MAP + Laplace Approx. &
+$O(T(ND^2 + D^3))$ &
+$O(D^2)$ &
+Gaussian $\Normal(\hat{\theta}_{\mathrm{MAP}}, \mat{H}_{\mathrm{MAP}}^{-1})$ &
+Mitigates small-$N$; mode not invariant \\
+Nonparam.\ Bootstrap &
+$O(B \cdot C_{\mathrm{fit}})$ ($B \ge 200$) &
+$O(BD + D^2)$ &
+Empirical sampling dist. &
+Handles non-Gaussian stats; fails on boundaries \\
+Full Bayes (MCMC/VI) &
+$O(S \cdot C_{\mathrm{grad}})$ &
+$O(SD)$ &
+Full multimodal posterior &
+Coherent uncertainty; invariant under Jeffreys \\
+\bottomrule
+\end{tabularx}
+\endgroup
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Asymptotics, Shrinkage, and the Likelihood Principle]
+Synthesizing across the four monographs reveals three complementary lenses on estimation:
+\begin{itemize}
+  \item \textbf{Chan (Signal Processing \& Finite-Sample Bounds)} develops probability inequalities directly from MGFs, proving Hoeffding and Chernoff bounds \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 343--350} before showing how CLT tail breakdowns motivate exact finite-$N$ bounds \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 378--380}. His Chapter 8 links frequentist MLE invariance with Bayesian MAP and orthogonality-derived MMSE \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 500--533}.
+  \item \textbf{Murphy (PML1/PML2: Decision Theory)} embeds MLE in KL minimization and PAC union bounds \bookcite{probabilisticml_kevinmurphy_introduction}{Chs.\ 4--5, pp.\ 109--110, 197}, proves Fisher score covariance, CRLB, and asymptotic normality \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 75--79}, and critiques NHST p-values via Bayes' theorem and the Likelihood Principle---advocating instead Bayes factors, HPD intervals, and ROPE \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 200--204}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 132--135}.
+  \item \textbf{Tiep Vu (ML Engineering \& Optimization)} derives canonical MLEs via direct log-derivative calculus and Lagrange multipliers, then highlights MAP's operational identity $\log p(\mathcal{D}\mid\theta) + \log p(\theta)$ as anti-overfitting regularization in small-$N$ regimes \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, pp.\ 53--62}.
+\end{itemize}
+\end{crossbook}
+
+% ==============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:asymp:visuals}
+% ==============================================================================
+
+Two complementary geometric structures govern finite-sample and asymptotic statistics: (1) the exponential separation between moment-based and MGF-based concentration bounds, and (2) the Bayesian--frequentist estimation hierarchy trading computational tractability for posterior calibration.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+  width=0.92\textwidth,
+  height=7.5cm,
+  xlabel={Deviation threshold $\varepsilon$ (for $\bar{X}_N - \mu$, with $N = 50$)},
+  ylabel={Tail probability upper bound},
+  xmin=0.02, xmax=0.31,
+  ymin=1e-8, ymax=1.6,
+  xtick={0.05, 0.10, 0.15, 0.20, 0.25, 0.30},
+  xticklabels={0.05, 0.10, 0.15, 0.20, 0.25, 0.30},
+  grid=both,
+  minor grid style={gray!15},
+  major grid style={gray!30},
+  legend pos=south west,
+  legend style={
+    font=\footnotesize,
+    fill=white,
+    fill opacity=0.92,
+    draw=monographRule,
+    cells={anchor=west}
+  },
+  tick label style={font=\footnotesize},
+  label style={font=\small},
+  clip=true
+]
+  % 1. Raw first-moment Markov upper tail for mu = 0.5: P(Xbar >= mu + eps) <= mu/(mu+eps)
+  \addplot[
+    color=monographSlate,
+    thick,
+    densely dashed,
+    domain=0.02:0.31,
+    samples=120
+  ] {0.5/(0.5 + x)};
+  \addlegendentry{Markov (1st moment): $\mu / (\mu + \varepsilon)$}
+
+  % 2. Chebyshev bound: min(1, sigma^2 / (N * eps^2)) with sigma^2 = 1/12, N=50 => 1/(600*x^2)
+  \addplot[
+    color=monographCrimson,
+    very thick,
+    domain=0.02:0.31,
+    samples=160
+  ] {min(1, 1/(600*x*x))};
+  \addlegendentry{Chebyshev (2nd moment): $\min(1, \sigma^2/(N\varepsilon^2))$}
+
+  % 3. Hoeffding bounded-range [0,1] bound: min(1, 2*exp(-2*N*x^2)) = min(1, 2*exp(-100*x^2))
+  \addplot[
+    color=monographTeal,
+    very thick,
+    domain=0.02:0.31,
+    samples=160
+  ] {max(1e-10, min(1, 2*exp(-100*x*x)))};
+  \addlegendentry{Hoeffding (support $[0,1]$): $\min(1, 2e^{-2N\varepsilon^2})$}
+
+  % 4. Variance-adaptive Sub-Gaussian Chernoff: min(1, 2*exp(-N*x^2/(2*sigma^2))) = min(1, 2*exp(-300*x^2))
+  \addplot[
+    color=monographIndigo,
+    very thick,
+    dash pattern=on 5pt off 2pt on 1.5pt off 2pt,
+    domain=0.02:0.31,
+    samples=160
+  ] {max(1e-10, min(1, 2*exp(-300*x*x)))};
+  \addlegendentry{Sub-Gaussian Chernoff ($\sigma^2=1/12$): $\min(1, 2e^{-N\varepsilon^2/(2\sigma^2)})$}
+
+  % Crossover annotation between Chebyshev and Hoeffding near x=0.196
+  \draw[monographNavy, thin, ->] (axis cs:0.158, 0.008) -- (axis cs:0.1955, 0.0436);
+  \node[anchor=north, font=\scriptsize, color=monographNavy, fill=white, inner sep=1.5pt]
+    at (axis cs:0.145, 0.007) {Crossover ($\varepsilon \approx 0.196$)};
+\end{semilogyaxis}
+\end{tikzpicture}
+\caption{Comparison of finite-sample concentration bounds for $N = 50$ i.i.d.\ samples $X_n \sim \mathrm{Uniform}[0, 1]$ ($\mu = 1/2$, $\sigma^2 = 1/12$). Raw Markov ignores both $N$ and dispersion, while Chebyshev decays polynomially as $O(N^{-1}\varepsilon^{-2})$. Note that for tiny deviations ($\varepsilon \lesssim 0.196$) at moderate $N=50$, Chebyshev using the exact variance $\sigma^2 = 1/12$ beats worst-case Hoeffding (which effectively assumes maximal bounded variance $1/4$); beyond $\varepsilon \approx 0.196$, Hoeffding's exponential rate $e^{-2N\varepsilon^2}$ overtakes Chebyshev, and the variance-adaptive sub-Gaussian bound $2e^{-N\varepsilon^2/(2\sigma^2)}$ dominates by orders of magnitude.}
+\label{fig:asymp:tailbounds}
+\end{figure}
+
+Figure~\ref{fig:asymp:tailbounds} demonstrates quantitatively why MGF-based bounds unlock finite-sample generalization: at $\varepsilon = 0.25$ ($N=50$), Chebyshev still permits a $2.67\%$ deviation probability, whereas Hoeffding reduces the upper bound to $3.86 \times 10^{-3}$ and exact variance-aware sub-Gaussian Chernoff drops below $1.5 \times 10^{-8}$. Figure~\ref{fig:asymp:hierarchy} maps the full hierarchy connecting these concentration principles with parametric estimation and Bayesian decision theory.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, node distance=1.45cm and 2.2cm]
+  % Level 0: Data & Empirical Distribution
+  \node[monoBox, text width=12.4cm, align=flush center] (data) {
+    \textbf{Observed Sample \& Data-Generating Process}\\
+    \footnotesize $\mathcal{D} = \set{(\vecb{x}_n, y_n)}_{n=1}^N \simiid P^*(\vecb{X}, Y)$ \quad\textbar\quad Empirical measure $\hat{p}_{\mathcal{D}} = \frac{1}{N}\sum_{n=1}^N \delta_{(\vecb{x}_n, y_n)}$
+  };
+  \coordinate[below=1.15cm of data] (row1mid);
+
+  % Level 1: ERM vs MLE
+  \node[monoBox, text width=6.1cm, minimum height=2.1cm, align=flush left, anchor=north east]
+    (erm) at ([xshift=-1.1cm]row1mid) {
+    \textbf{Empirical Risk Minimization (ERM)}\\
+    \footnotesize $\hat{h}_{\mathrm{ERM}} = \argmin_{h\in\mathcal{H}} \frac{1}{N}\sum_{n=1}^N \ell(y_n, h(\vecb{x}_n))$\\
+    {\scriptsize\color{monographSlate} PAC Hoeffding + union bound: $O(\sqrt{(\log\abs{\mathcal{H}})/N})$}
+  };
+
+  \node[monoBox, text width=6.1cm, minimum height=2.1cm, align=flush left, anchor=north west]
+    (mle) at ([xshift=1.1cm]row1mid) {
+    \textbf{Maximum Likelihood Estimation (MLE)}\\
+    \footnotesize $\hat{\theta}_{\mathrm{MLE}} = \argmin_\theta \KL{\hat{p}_{\mathcal{D}}}{p_\theta} = \argmax_\theta \ell(\theta)$\\
+    {\scriptsize\color{monographSlate} Invariant under $h(\theta)$; $\sqrt{N}(\hat{\theta}-\theta^*) \xrightarrow{d} \Normal(0, \mat{F}^{-1})$}
+  };
+
+  % Level 2: MAP / Regularized ERM (Left) vs Frequentist Inference (Right)
+  \node[monoTealBox, text width=6.1cm, minimum height=2.25cm, align=flush left, below=of erm] (map) {
+    \textbf{MAP Estimation / Regularized ERM}\\
+    \footnotesize $\hat{\theta}_{\mathrm{MAP}} = \argmax_\theta [\ell(\theta) + \log p(\theta)]$\\
+    {\scriptsize\color{monographTeal} $\ell_2 \leftrightarrow$ Gaussian prior; $\ell_1 \leftrightarrow$ Laplace prior}\\
+    {\scriptsize\color{monographCrimson} Warning: mode not invariant under reparam.}
+  };
+
+  \node[monoWarnBox, text width=6.1cm, minimum height=2.25cm, align=flush left, below=of mle] (freq) {
+    \textbf{Frequentist Uncertainty \& Testing}\\
+    \footnotesize Cram\'er--Rao: $\Cov[\hat{\theta}] \succeq (N\mat{F})^{-1}$\\
+    Bootstrap CIs, Neyman--Pearson LRT, p-values\\
+    {\scriptsize\color{monographCrimson} Sampling-rule dependent; tail CLT failures}
+  };
+
+  % Level 3: Full Bayes Posterior (Left) vs Laplace / ML-II (Right)
+  \node[monoIndigoBox, text width=6.1cm, minimum height=2.25cm, align=flush left, below=of map] (bayes) {
+    \textbf{Full Bayesian Posterior Inference}\\
+    \footnotesize $p(\theta \mid \mathcal{D}) = p(\mathcal{D}\mid\theta)p(\theta) / p(\mathcal{D})$\\
+    {\scriptsize\color{monographIndigo} Jeffreys prior $p(\theta) \propto \sqrt{\det\mat{F}(\theta)}$ invariant; Bayes Factors $B_{1,0}$ \& HDI vs.\ ROPE}
+  };
+
+  \node[monoTealBox, text width=6.1cm, minimum height=2.25cm, align=flush left, below=of freq] (laplace) {
+    \textbf{Laplace \& Empirical Bayes (ML-II)}\\
+    \footnotesize $p(\theta\mid\mathcal{D}) \approx \Normal(\hat{\theta}_{\mathrm{MAP}}, \mat{H}_{\mathrm{MAP}}^{-1})$\\
+    {\scriptsize\color{monographSlate} Marginal likelihood $\hat{\xi} = \argmax_\xi p(\mathcal{D}\mid\xi)$; BIC Occam penalty}
+  };
+
+  % Level 4: Posterior Predictive & Decision Theory
+  \coordinate (botmid) at ($(bayes.south)!0.5!(laplace.south)$);
+  \node[monoIndigoBox, text width=13.2cm, align=flush center, below=1.2cm of botmid] (decision) {
+    \textbf{Posterior Predictive Integration \& Bayesian Decision Theory}\\
+    \footnotesize Predictive BMA: $p(y \mid \vecb{x}, \mathcal{D}) = \int p(y \mid \vecb{x}, \theta)\, p(\theta \mid \mathcal{D})\,d\theta$ \quad\textbar\quad Bayes Rule: $a^* = \argmin_a \E_{\theta\mid\mathcal{D}}[\ell(\theta, a)]$\\
+    {\scriptsize\color{monographSlate} Squared loss $\ell_2 \implies$ MMSE mean $\E[\theta\mid\mathcal{D}]$ \;\textbar\; Absolute $\ell_1 \implies$ median \;\textbar\; $0\text{-}1 \implies$ MAP mode}
+  };
+
+  % Planar Non-Crossing Arrows & Crisp White-Backed Labels
+  \draw[monoArrow] ([xshift=-2.8cm]data.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {surrogate loss $\ell$} (erm.north);
+  \draw[monoArrow] ([xshift=2.8cm]data.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {log-loss $-\log p_\theta$} (mle.north);
+  \draw[monoArrow, <->] (erm.east) -- node[midway, above=2pt, font=\scriptsize] {NLL $\equiv$ ERM} (mle.west);
+
+  \draw[monoArrow] (erm.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {$+\lambda R(\theta)$} (map.north);
+  \draw[monoArrow] (mle.south west) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {$+\log p(\theta)$} (map.north east);
+  \draw[monoArrow] (mle.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {CRLB / Boot / LRT} (freq.north);
+
+  \draw[monoArrow] (map.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {integrate $\theta$} (bayes.north);
+  \draw[monoArrow] (map.south east) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {Hessian $\mat{H}_{\mathrm{MAP}}$} (laplace.north west);
+  \draw[monoArrow, dashed] (freq.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {Bernstein--von Mises} (laplace.north);
+
+  \draw[monoArrow] (bayes.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {exact marginalization} ([xshift=-3.6cm]decision.north);
+  \draw[monoArrow] (laplace.south) -- node[midway, fill=white, inner sep=2pt, font=\scriptsize] {Gaussian integral} ([xshift=3.6cm]decision.north);
+\end{tikzpicture}
+\caption{Unified architecture of statistical learning and estimation. Progressing downward replaces worst-case finite-sample bounds and plug-in point approximations ($\hat{\theta}_{\mathrm{MLE}}, \hat{\theta}_{\mathrm{MAP}}$) with curvature-informed uncertainty (CRLB, Laplace) and full posterior integration, culminating in Bayesian decision-theoretic loss minimization \bookcite{probabilisticml_kevinmurphy_introduction}{Chs.\ 4--5}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3}.}
+\label{fig:asymp:hierarchy}
+\end{figure}
+
+% ==============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:asymp:pitfalls}
+% ==============================================================================
+
+Applying asymptotic theory or MAP point summaries blindly in finite-sample or misspecified regimes produces systematic mathematical pathologies.
+
+\begin{pitfall}[Reparameterization Non-Invariance of MAP Modes vs.\ MLE \& Jeffreys Invariance]
+\textbf{Failure Mode.} Unlike MLE, where $\widehat{h(\theta)}_{\mathrm{MLE}} = h(\hat{\theta}_{\mathrm{MLE}})$ holds unconditionally \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 500--502}, MAP estimation maximizes a \emph{probability density}, which transforms via the Jacobian determinant under a smooth bijection $\phi = g(\theta)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 103--105}:
+\begin{equation}
+p_\phi(\phi \mid \mathcal{D}) = p_\theta\bigl(g^{-1}(\phi) \mid \mathcal{D}\bigr) \abs{\det \jac_{g^{-1}}(\phi)}.
+\end{equation}
+Because the Jacobian factor shifts stationary points whenever $g$ is nonlinear, $\hat{\phi}_{\mathrm{MAP}} \ne g(\hat{\theta}_{\mathrm{MAP}})$: an estimator that is a mode in rate coordinates $\theta \in (0, 1)$ ceases to be the mode in log-odds coordinates $\phi = \log(\theta/(1-\theta))$.
+
+\textbf{Remedy.} Summarize full posteriors via quantile-invariant posterior means, medians, or probability mass integrals (Bayesian inference is invariant under reparameterization because probabilities $p(\theta\in A\mid\mathcal{D})$ integrate density with $d\theta$). When an uninformative reference prior is required across coordinate systems, choose the \textbf{Jeffreys prior} $p_J(\theta) \propto \sqrt{\det \mat{F}(\theta)}$, whose Jacobian rule $\mat{F}_\phi = \jac_{g^{-1}}^\top \mat{F}_\theta \jac_{g^{-1}}$ yields $p_J(\phi) \propto \sqrt{\det \mat{F}_\theta(g^{-1}(\phi))}\,\abs{\det \jac_{g^{-1}}(\phi)}$, preserving posterior invariance \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 104--105}.
+\end{pitfall}
+
+\begin{pitfall}[Small-Sample Bias, Boundary Collapse \& High-Dimensional Covariance Singularity]
+\textbf{Failure Mode.} Although MLE is asymptotically unbiased, at finite $N$ it suffers severe pathologies: (i) the Gaussian variance MLE $\hat{\sigma}_{\mathrm{MLE}}^2 = \frac{1}{N}\sum_{n=1}^N (x_n - \bar{x})^2$ has expectation $\frac{N-1}{N}\sigma^2$ (collapsing to $\hat{\sigma}_{\mathrm{MLE}}^2 = 0$ at $N=1$ \bookcite{introduction_probability_data_science}{Ch.\ 8, pp.\ 492--494}); (ii) in $D$ dimensions with $N \le D$, the sample covariance $\hat{\mat{\Sigma}}_{\mathrm{MLE}}$ has rank at most $N-1 < D$ and is strictly singular, causing $\hat{\mat{\Sigma}}_{\mathrm{MLE}}^{-1}$ and log-determinants to diverge \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, p.\ 114}; and (iii) discrete MLE predicts zero probability for any unobserved outcome (the ``black swan'' paradox, e.g., $N_1 = N$ heads gives $\hat{\theta}_{\mathrm{MLE}} = 1$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 4, p.\ 133}; \bookcite{machine_learning_co_ban_tiep_vu}{Ch.\ 4, p.\ 61}).
+
+\textbf{Remedy.} Apply Bessel correction $\frac{N}{N-1}\hat{\sigma}_{\mathrm{MLE}}^2$ for unbiased scalar variance estimation, add diagonal or conjugate inverse-Wishart shrinkage priors when $D \gtrsim N$, and replace plug-in MLE with MAP smoothing or conjugate posterior predictive averaging (e.g., Laplace's rule $\frac{N_1 + 1}{N + 2}$).
+\end{pitfall}
+
+\begin{pitfall}[CLT Breakdown in Heavy Tails, Missing Moments, and Large Deviations]
+\textbf{Failure Mode.} Limit theorems rely strictly on finite moments and local scaling: (i) for Cauchy variables $f(x) = \frac{1}{\pi(1+x^2)}$, the characteristic function is $\varphi_X(t) = e^{-\abs{t}}$ and both $\E[X]$ and $M_X(s)$ fail to exist \bookcite{introduction_probability_data_science}{Ch.\ 6, pp.\ 331, 360}; consequently $\varphi_{\bar{X}_N}(t) = [e^{-\abs{t}/N}]^N = e^{-\abs{t}}$, meaning $\bar{X}_N \stackrel{d}{=} X_1$ never concentrates as $N \to \infty$; (ii) heavy-tailed distributions (Pareto, log-normal) lack finite MGFs in $(0, \delta)$, invalidating Chernoff/Hoeffding bounds; and (iii) even when all moments exist, CLT Gaussian approximations misestimate tail probabilities $\Prob(\bar{X}_N - \mu \ge \varepsilon)$ at $\varepsilon = \Theta(1)$ by orders of magnitude (Figure~\ref{fig:asymp:clt-tails}).
+
+\textbf{Remedy.} Never extrapolate CLT quantiles beyond $O(N^{-1/2})$ from the mean; evaluate tail risks using exact Chernoff rate functions $\psi_X^*(\varepsilon)$ or Hoeffding bounds when bounded/sub-Gaussian, and use median-of-means or truncated M-estimators when $\E[e^{sX}] = \infty$.
+\end{pitfall}
+
+\begin{pitfall}[p-Value Fallacy, Optional Stopping \& Multiple-Testing Inflation]
+\textbf{Failure Mode.} Standard Null Hypothesis Significance Testing (NHST) frequently triggers three inferential failures: (i) equating $p = \Prob(t(\tilde{\mathcal{D}}) \ge t(\mathcal{D}) \mid H_0)$ with $\Prob(H_0 \mid \mathcal{D})$ ignores low prior plausibility $p(H_0)$ and low statistical power $1-\beta$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 200--202}; (ii) stopping data collection early upon observing $p < 0.05$ alters the hypothetical replication space $\tilde{\mathcal{D}}$ and inflates Type I error, violating the \textbf{Likelihood Principle} (inference should depend only on the observed likelihood $p(\mathcal{D}\mid\theta)$, not unobserved stopping intentions \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.\ 5, pp.\ 202--204}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, p.\ 81}); and (iii) running $M$ independent tests at nominal level $\alpha$ inflates the family-wise error rate (FWER) via the union bound to $1 - (1-\alpha)^M \approx M\alpha$ \bookcite{introduction_probability_data_science}{Ch.\ 6, p.\ 333}.
+
+\textbf{Remedy.} Pre-specify sample sizes or use sequential Bayesian updating/Bayes factors (which satisfy the Likelihood Principle), pair effect-size intervals (HPD) with practical ROPE thresholds \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.\ 3, pp.\ 132--135}, and control multiplicity via Bonferroni threshold $\alpha/M$, Benjamini--Hochberg FDR control, or Bayesian hierarchical partial pooling.
+\end{pitfall}
+
+\end{document}

@@ -1,0 +1,78 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Agentic AI Architectures, Protocols \& Production ML Systems}{Recommender Systems, Collaborative Filtering \& Neural Ranking}{Deep CTR Models, Two-Tower Retrieval \& Production Ranking Pipelines}{Factorization Machines, DeepFM, NeuMF, Two-Tower Retrieval \& Multi-Stage Ranking}{\bookcite{dive_into_deep_learning_d2l}{Ch. 21}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22}, \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 4, 6, 8}}
+
+\section{Problem Formulation \& Unified Notation}
+
+Industrial recommendation and advertising systems must score $N \sim 10^6\text{--}10^8$ candidate items for a user context $\vecb{x} \in \R^d$ within a strict $\sim 50\text{--}100\,\mathrm{ms}$ latency SLA, incorporating rich sparse categorical features (user history, device, item metadata, time) \bookcite{dive_into_deep_learning_d2l}{Ch. 21, pp. 933--936}, \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 6, pp. 152--174}. Modern architectures solve this via two-stage or multi-stage funnels: fast \emph{Two-Tower ANN retrieval} followed by expressive \emph{feature-interaction CTR/CVR rankers} (FM, DeepFM, NeuMF, DCN) and diversity/business-rule \emph{re-ranking} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 775--786}, \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 6, pp. 170--175}.
+
+\begin{crossbook}[Cross-Book Notation: Feature-Rich CTR \& Multi-Stage Ranking]
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{D2L / Murphy} & \textbf{Chip Huyen (ML Systems)} & \textbf{Unified Monograph} \\
+\midrule
+Sparse Feature Vector & $\vecb{x} \in \R^d$ (one-hot/multi-hot) & User/Item/Context features & $\vecb{x} \in \R^d$, latent $\vecb{v}_i \in \R^k$ \\
+CTR Prediction & $\hat{y} = \sigma(\text{logit}(\vecb{x}))$ & Multi-objective $P(\text{click}), P(\text{buy})$ & $\hat{y}(\vecb{x}) = \sigma(\phi(\vecb{x}))$ \\
+Funnel Stages & Retrieval $\to$ Ranking & Candidate gen $\to$ Scoring $\to$ Rerank & $10^7 \xrightarrow{\text{ANN}} 10^3 \xrightarrow{\text{DeepFM}} 10^1$ \\
+Ranking Metric & Recall@$K$, NDCG@$K$ & Business KPI + engagement & $\mathrm{NDCG}@K = \frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K}$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Unified notation across \bookcite{dive_into_deep_learning_d2l}{Ch. 21, pp. 933--936}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22}, and \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 4, 6, 8}.}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations}
+
+\subsection{Factorization Machines ($O(kd)$) \& DeepFM / NeuMF}
+
+\begin{coremath}[Factorization Machines (FM), Linear-Time Trick \& DeepFM]
+Naive degree-2 polynomial regression requires $O(d^2)$ parameters and fails on sparse feature pairs never co-occurring in training data. \emph{Factorization Machines (FM)} factorize every pairwise interaction weight $w_{ij} \approx \inner{\vecb{v}_i}{\vecb{v}_j}$ ($\vecb{v}_i \in \R^k$) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 775--777}, \bookcite{dive_into_deep_learning_d2l}{Ch. 21, p. 935}:
+\begin{equation}
+  \hat{y}_{\mathrm{FM}}(\vecb{x}) = w_0 + \sum_{i=1}^d w_i x_i + \sum_{i=1}^d \sum_{j=i+1}^d \inner{\vecb{v}_i}{\vecb{v}_j}\, x_i x_j.
+\end{equation}
+Using the algebraic identity $\sum_{i<j} \inner{\vecb{v}_i}{\vecb{v}_j}x_i x_j = \frac{1}{2}\sum_{f=1}^k \Bigl[\bigl(\sum_{i=1}^d v_{i,f} x_i\bigr)^2 - \sum_{i=1}^d v_{i,f}^2 x_i^2\Bigr]$, FM evaluates all $\binom{d}{2}$ interactions in exact \textbf{linear time} $O(k d)$ (or $O(k \cdot \mathrm{nnz}(\vecb{x}))$ for sparse inputs) \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, p. 776}.
+
+\emph{DeepFM} shares the same embedding table $\mat{V}$ between a low-order FM component and a deep MLP component: $\hat{y}_{\mathrm{DeepFM}} = \sigma\bigl(y_{\mathrm{FM}}(\vecb{x}) + y_{\mathrm{DNN}}(\vecb{e})\bigr)$, capturing both explicit degree-2 crosses and arbitrary high-order nonlinearities end-to-end without manual feature engineering \bookcite{dive_into_deep_learning_d2l}{Ch. 21, p. 935}. Similarly, \emph{NeuMF} fuses Generalized Matrix Factorization ($\vecb{p}_u^{\mathrm{G}}\odot\vecb{q}_i^{\mathrm{G}}$) with an MLP tower over concatenated embeddings \bookcite{dive_into_deep_learning_d2l}{Ch. 21, p. 935}.
+\end{coremath}
+
+\subsection{Two-Tower Retrieval, Multi-Stage Ranking \& Evaluation (NDCG@K)}
+
+\begin{coremath}[Two-Tower In-Batch Softmax \& Discounted Cumulative Gain (NDCG@K)]
+For $10^7$-scale retrieval, heavy cross-attention or DeepFM over $(u, i)$ pairs is intractable. \emph{Two-Tower} models decouple user/context encoder $u(\vecb{x}_u) \in \R^k$ from item encoder $v(\vecb{x}_i) \in \R^k$, scoring $s(u,i) = \inner{u(\vecb{x}_u)}{v(\vecb{x}_i)}/\tau$ so item vectors can be indexed offline in HNSW/IVF-PQ for sub-linear $O(\log N)$ ANN retrieval \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 6, pp. 170--175}. Training uses in-batch softmax with log-Q sampling bias correction:
+\begin{equation}
+  \mathcal{L}_{\mathrm{TT}} = -\log\frac{\exp(s(u, i^+) - \log Q(i^+))}{\exp(s(u, i^+) - \log Q(i^+)) + \sum_{j \in \mathcal{B}^-} \exp(s(u, j) - \log Q(j))},
+\end{equation}
+where $Q(j)$ is item $j$'s sampling probability in mini-batch $\mathcal{B}$. Ranking quality at top-$K$ is evaluated via \emph{Normalized Discounted Cumulative Gain} \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 782--784}:
+\begin{equation}
+  \mathrm{DCG}@K = \sum_{r=1}^K \frac{2^{\mathrm{rel}_r} - 1}{\log_2(r + 1)}, \qquad \mathrm{NDCG}@K = \frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K} \in [0, 1].
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Why Two-Stage Funnels Exist: Decoupling Recall from Interaction Precision]
+A Two-Tower dot product cannot model arbitrary nonlinear crosses between a user's real-time query and an item's attributes, yet it supports $O(\log N)$ ANN indexing \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 6, pp. 170--174}. Placing Two-Tower (recall-optimized) before DeepFM/DCN (precision/calibration-optimized) achieves both million-item coverage and rich feature interaction within milliseconds.
+\end{intuition}
+
+\section{Visual Diagnostics \& Production Pitfalls}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.88, every node/.style={font=\scriptsize}]
+  \node[draw=monographNavy, fill=monographNavyBg, rounded corners=3pt, minimum width=2.5cm, minimum height=0.9cm, align=center] (cat) at (0,0) {\textbf{Catalog}\\$10^7$ items};
+  \node[draw=monographTeal, fill=monographTeal!10, rounded corners=3pt, minimum width=2.7cm, minimum height=0.9cm, align=center] (ret) at (3.6,0) {\textbf{Two-Tower + ANN}\\$\to 10^3$ candidates};
+  \node[draw=monographIndigo, fill=monographIndigo!10, rounded corners=3pt, minimum width=2.7cm, minimum height=0.9cm, align=center] (rnk) at (7.4,0) {\textbf{DeepFM / DCN}\\$\to 10^2$ scored};
+  \node[draw=monographCrimson, fill=monographCrimson!10, rounded corners=3pt, minimum width=2.5cm, minimum height=0.9cm, align=center] (rrk) at (11.0,0) {\textbf{Reranker}\\Top-$10$ slate};
+  \draw[-{Stealth}, very thick, monographNavy] (cat) -- (ret);
+  \draw[-{Stealth}, very thick, monographTeal] (ret) -- (rnk);
+  \draw[-{Stealth}, very thick, monographIndigo] (rnk) -- (rrk);
+\end{tikzpicture}
+\caption{Multi-stage production recommendation funnel balancing latency, recall, and cross-feature interaction.}
+\end{figure}
+
+\begin{pitfall}[Position Bias, Feedback Loops \& Retrieval-Ranking Train-Serve Skew]
+Users disproportionately click top-ranked slots regardless of relevance (\emph{position bias}); training CTR models without position propensity features or Inverse Propensity Scoring (IPS) amplifies rich-get-richer feedback loops and filter bubbles \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 4 \& 8, pp. 111--113, 293}. In Two-Tower in-batch negatives, omitting the $-\log Q(j)$ correction over-penalizes popular items! Finally, training the ranker only on items that passed the old ranker induces \emph{sample selection bias}—mitigated by logging randomized exploration slates \bookcite{chip_huyen_designing_machine_learning_systems}{Ch. 6, pp. 172--174}.
+\end{pitfall}
+
+\end{document}

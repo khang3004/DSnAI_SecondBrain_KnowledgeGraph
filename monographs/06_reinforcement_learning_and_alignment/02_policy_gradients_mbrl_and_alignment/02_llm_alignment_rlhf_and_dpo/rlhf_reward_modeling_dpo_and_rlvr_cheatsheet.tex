@@ -1,0 +1,201 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{6}{Policy Gradients, MBRL \& Alignment}{Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) \& RLVR}
+  {Tilt the reference policy by reward over KL; reparameterize preferences in closed form or verify reasoning directly}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{LLM Alignment\\ \footnotesize\mdseries RLHF $\cdot$ DPO $\cdot$ RLVR}{%
+  \begin{tikzpicture}[scale=0.50]
+    \node[draw=csDom, fill=csDom!12, rounded corners=2pt, font=\scriptsize\bfseries, inner sep=2pt] (ref) at (-1.55,0) {$\pi_{\mathrm{ref}}$};
+    \node[draw=csA, fill=csA!12, rounded corners=2pt, font=\tiny, inner sep=2pt] (rlhf) at (0.85,0.85) {RLHF: $r_\phi+\text{PPO}$};
+    \node[draw=csB, fill=csB!12, rounded corners=2pt, font=\tiny, inner sep=2pt] (dpo) at (0.85,0) {DPO: $\beta\log\frac{\pi_\theta}{\pi_{\mathrm{ref}}}$};
+    \node[draw=csD, fill=csD!12, rounded corners=2pt, font=\tiny, inner sep=2pt] (rlvr) at (0.85,-0.85) {RLVR: $R_{\mathrm{ver}}\in\{0,1\}$};
+    \draw[-{Stealth}, thick, csA] (ref.east)--(rlhf.west);
+    \draw[-{Stealth}, thick, csB] (ref.east)--(dpo.west);
+    \draw[-{Stealth}, thick, csD] (ref.east)--(rlvr.west);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; BRADLEY--TERRY RM, ORM \& PRM $-$ scoring completions}{%
+  \csfm{P(y_w\succ y_l\mid x)=\sigma\big(r^*(x,y_w)-r^*(x,y_l)\big),\quad \mathcal{L}_{\mathrm{RM}}(\phi)=-\E\Big[\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)-m\big)\Big]}
+  \begin{csbul}
+    \item \textbf{Shift invariance:} $r_\phi(x,y)+c(x)$ leaves $P(y_w\succ y_l\mid x)$ unchanged
+    \item \textbf{BT RM:} linear head $h_{\mathrm{last}}(x,y)\T W_r$ at $\langle\mathrm{EOS}\rangle$ trained on pairwise $(y_w\succ y_l)$
+    \item \textbf{ORM vs.\ PRM:} outcome BCE at final answer vs.\ step-level correctness labels $\{-1,0,+1\}$ to catch flawed intermediate reasoning
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; KL-REGULARIZED RLHF $-$ closed-form Gibbs optimum}{%
+  \csfm{\max_{\pi}\;\E_{x\sim\mathcal{D}}\Big[\E_{y\sim\pi(\cdot\mid x)}[r_\phi(x,y)\,] - \beta\,\KL{\pi(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}\Big]}
+  \begin{minipage}[t]{0.62\linewidth}
+    \begin{csbul}
+      \item \textbf{Unique global optimum (Gibbs policy):}
+        $\pi^*(y\mid x) = \frac{1}{Z(x)}\pi_{\mathrm{ref}}(y\mid x)\exp\!\big(\frac{1}{\beta}r_\phi(x,y)\big)$
+      \item Partition $Z(x)=\sum_y\pi_{\mathrm{ref}}(y\mid x)\exp(r_\phi(x,y)/\beta)$
+      \item \textbf{Control-as-inference:} posterior $p(y\mid x,O{=}1)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.41, every node/.style={font=\tiny}]
+      \draw[->, gray] (-1.8,0)--(1.8,0) node[right]{$y$};
+      \draw[csE, thick, dashed, samples=40, domain=-1.6:1.6] plot (\x, {1.0*exp(-(\x+0.7)^2/0.4)+0.95*exp(-(\x-0.7)^2/0.4)});
+      \draw[csB, very thick, samples=40, domain=-1.6:1.6] plot (\x, {0.3*exp(-(\x+0.7)^2/0.3)+1.7*exp(-(\x-0.7)^2/0.25)});
+      \node[csE] at (-0.9,1.35) {$\pi_{\mathrm{ref}}$};
+      \node[csB] at (0.8,1.95) {$\pi^*$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; DIRECT PREFERENCE OPTIMIZATION (DPO) $-$ no explicit RM}{%
+  \csfm{\mathcal{L}_{\mathrm{DPO}}(\theta) = -\E\!\left[\log\sigma\!\left(\beta\log\frac{\pi_\theta(y_w\mid x)}{\pi_{\mathrm{ref}}(y_w\mid x)} - \beta\log\frac{\pi_\theta(y_l\mid x)}{\pi_{\mathrm{ref}}(y_l\mid x)}\right)\right]}
+  \begin{csbul}
+    \item \textbf{Exact reparameterization:} $r(x,y)=\beta\log\frac{\pi^*(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}+\beta\log Z(x)$; $\log Z(x)$ cancels in $r(x,y_w)-r(x,y_l)$!
+    \item \textbf{Gradient weight:} $\sigma(\hat{r}_\theta(x,y_l)-\hat{r}_\theta(x,y_w))$ upweights misranked pairs
+    \item \textbf{Diffusion-DPO:} single-step denoising bound $\Delta_{\mathrm{MSE}}(x_t^w)-\Delta_{\mathrm{MSE}}(x_t^l)$ with shared noise $\epsilon$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; RLVR, GRPO, RLOO \& GSPO $-$ verifiable reasoning}{%
+  \csfm{A_i^{\mathrm{GRPO}}=\frac{r_i-\mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G})},\qquad \rho_i^{\mathrm{GSPO}}(\theta)=\left(\frac{\pi_\theta(y_i\mid x)}{\pi_{\theta_{\mathrm{old}}}(y_i\mid x)}\right)^{1/|y_i|}}
+  \begin{csbul}
+    \item \textbf{RLVR:} exact verifier $R_{\mathrm{ver}}(x,y)\in\{0,1\}$ (math/code) $\Rightarrow$ no reward hacking
+    \item \textbf{RLOO:} unbiased leave-one-out baseline $b_i=\frac{1}{G-1}\sum_{j\ne i} R(x,y_j)$
+    \item \textbf{GSPO:} length-normalized sequence ratio avoids token-clipping drop
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; KL GEOMETRY \& MONTE CARLO ESTIMATORS}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Forward KL} $\KL{\pi_{\mathrm{data}}}{\pi_\theta}$ (SFT): \emph{mode-covering}, stretches mass \& erodes prior modes
+      \item \textbf{Reverse KL} $\KL{\pi_\theta}{\pi_{\mathrm{ref}}}$ (RL/DPO): \emph{mode-seeking}, sharpens high-reward mode \& preserves prior
+      \item \textbf{MC KL estimators} ($r=\pi_\theta/\pi_{\mathrm{ref}}$):
+        $k_1=\log r$, $k_2=\frac{1}{2}(\log r)^2$ (grad), $k_3=(r-1)-\log r\ge 0$ (unbiased)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[csE, thick, samples=40, domain=-2:2] plot (\x, {1.2*exp(-(\x+0.9)^2/0.25)+1.2*exp(-(\x-0.9)^2/0.25)});
+      \draw[csA, thick, dashed, samples=40, domain=-2:2] plot (\x, {0.95*exp(-((\x)^2)/1.5)});
+      \draw[csD, very thick, samples=40, domain=-2:2] plot (\x, {1.45*exp(-(\x-0.9)^2/0.18)});
+      \node[csA] at (0,1.25) {Fwd KL};
+      \node[csD] at (1.1,1.75) {Rev KL};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; PIPELINE COMPARISON $-$ memory vs.\ exploration}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\bfseries\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{2.25cm}@{}}
+    \textbf{\textcolor{csF}{Method}} & \textbf{\textcolor{csF}{Models}} & \textbf{\textcolor{csF}{Online?}} & \textbf{\textcolor{csF}{Sweet Spot \& Trade-off}}\\ \hline
+    PPO-RLHF & 4 ($\pi,\pi_{\mathrm{ref}},r,V$) & Yes & Per-token credit; $4\times$ VRAM\\
+    RLOO & 3 ($\pi,\pi_{\mathrm{ref}},r$) & Yes ($G{\ge}2$) & Unbiased LOO; no critic\\
+    GRPO/RLVR & 2 ($\pi,\pi_{\mathrm{ref}}$) & Yes ($G{\ge}4$) & Verifier $R_{\mathrm{ver}}\in\{0,1\}$\\
+    DPO & 2 ($1$ cached) & No ($\mathcal{D}_{\mathrm{pref}}$) & Simple BCE; OOD shift\\
+    CAI / RLAIF & LLM judge & Either & Scales labels via $\mathcal{C}$\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{$\pi^* \propto \pi_{\mathrm{ref}}\exp(r/\beta)$ $\implies$ Implicit Reward $r = \beta\log(\pi_\theta/\pi_{\mathrm{ref}})$} \\[2pt]
+  \footnotesize\mdseries \textbf{Use DPO for fast offline preference fitting; use online GRPO + RLVR to discover new reasoning paths.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Goodhart hacking:} $R_{\mathrm{proxy}}$ rises while $R_{\mathrm{gold}}$ drops past $d^*=\alpha/(2\beta)$
+    \item \textbf{DPO likelihood drop:} both $\log\pi_\theta(y_{w,l})$ can fall $\to$ add NLL on $y_w$
+    \item \textbf{Uncached $\pi_{\mathrm{ref}}$:} keeping $\pi_{\mathrm{ref}}$ in VRAM wastes 50\% $\to$ cache $\log\pi_{\mathrm{ref}}$
+    \item \textbf{Raw $k_3$ grad:} $\grad_\theta k_3$ is biased if misused $\to$ use $k_2=\frac{1}{2}(\log r)^2$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) \& RLVR}\;---\;Domain 06 $\cdot$ Reinforcement Learning \& Alignment}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Bradley-Terry Pairwise Likelihood:\csfm{P(y_w\succ y_l\mid x)=\frac{1}{1+\exp\!\big(-(r(x,y_w)-r(x,y_l))\big)}=\sigma(\Delta r)}
+    \item Closed-Form Optimal RLHF Policy:\csfm{\pi^*(y\mid x)=\frac{1}{Z(x)}\pi_{\mathrm{ref}}(y\mid x)\exp\!\left(\frac{1}{\beta}r_\phi(x,y)\right)}
+    \item DPO Implicit Reward \& Loss:\csfm{\hat{r}_\theta(x,y)=\beta\log\frac{\pi_\theta(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)},\quad \mathcal{L}_{\mathrm{DPO}}=-\E\!\Big[\log\sigma\!\big(\hat{r}_\theta(x,y_w)-\hat{r}_\theta(x,y_l)\big)\Big]}
+    \item DPO Gradient:\csfm{\nabla_\theta\mathcal{L}_{\mathrm{DPO}}=-\beta\,\E\!\Big[\sigma(\hat{r}_l-\hat{r}_w)\big(\nabla_\theta\log\pi_\theta(y_w\mid x)-\nabla_\theta\log\pi_\theta(y_l\mid x)\big)\Big]}
+    \item Diffusion-DPO Single-Step Objective:\csfm{\tilde{\mathcal{L}}_{\mathrm{Diff\text{-}DPO}}=\E_{t,\epsilon}\!\Big[-\log\sigma\!\big(-\beta T w(t)[\Delta_{\mathrm{MSE}}(x_t^w)-\Delta_{\mathrm{MSE}}(x_t^l)]\big)\Big]}
+    \item Goodhart Over-Optimization Scaling ($d=\sqrt{\KL{\pi_\theta}{\pi_{\mathrm{ref}}}}$):\csfm{R_{\mathrm{proxy}}(d)\approx \alpha_{\mathrm{p}} d,\qquad R_{\mathrm{gold}}(d)\approx \alpha d - \beta d^2 \quad\Big(d^*=\frac{\alpha}{2\beta}\Big)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{DPO vs.\ RLVR (GRPO) RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Offline DPO:} pre-compute \& cache $\log\pi_{\mathrm{ref}}(y_w\mid x),\log\pi_{\mathrm{ref}}(y_l\mid x)$ over $\mathcal{D}_{\mathrm{pref}}$; step $\theta$ on $-\log\sigma(\beta\Delta_{\mathrm{chosen}}-\beta\Delta_{\mathrm{rej}}) - \frac{\alpha}{|y_w|}\log\pi_\theta(y_w\mid x)$.
+    \item \textbf{Online RLVR (GRPO):} for each prompt $x$, sample $G$ completions $y_{1:G}\sim\pi_{\theta_{\mathrm{old}}}$; evaluate exact verifier $r_i=R_{\mathrm{ver}}(x,y_i)\in\{0,1\}$; compute $A_i=(r_i-\mu_G)/(\sigma_G+\delta)$; ascend clipped ratio objective minus $\beta k_2(\pi_\theta,\pi_{\mathrm{ref}})$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    curated pairs $(y_w\succ y_l)$, tight GPU & Offline DPO (+ NLL stabilization)\\
+    math / code / logic with verifier & RLVR + GRPO / GSPO ($R_{\mathrm{ver}}\in\{0,1\}$)\\
+    multi-step reasoning hallucinations & Process Reward Model (PRM) step labels\\
+    open-ended chat + online budget & Iterative DPO or RLOO / PPO + RM ensemble\\
+    diffusion generative model & Diffusion-DPO (shared noise $\epsilon$ at step $t$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KL ESTIMATORS \& REGULARIZATION CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Ratio $r=\pi_\theta(a\mid s)/\pi_{\mathrm{ref}}(a\mid s)$:}
+      $k_1=\log r$ (unbiased value, high variance);
+      $k_2=\frac{1}{2}(\log r)^2$ (unbiased low-var gradient near $r{=}1$);
+      $k_3=(r-1)-\log r\ge 0$ (Bregman divergence, always non-negative)
+    \item \textbf{Over-optimization shield:} ensemble $K$ reward models $\frac{1}{K}\sum_k w_k r_k(x,y)$ or add $\chi^2$-divergence penalty
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{GOODHART'S LAW IN RLHF ($R_{\mathrm{proxy}}$ vs.\ $R_{\mathrm{gold}}$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, xmin=0, xmax=6.0, ymin=-0.8, ymax=2.9,
+      xlabel={Square-Root KL Drift $d=\sqrt{\KL{\pi_\theta}{\pi_{\mathrm{ref}}}}$},
+      ylabel={Normalized Reward}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, xtick={0,1.4,2.8,4.2,5.6},
+      xticklabels={$0$,$1.4$,$d^*{=}2.8$,$4.2$,$5.6$}, ytick={0,1,2}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csA, very thick, dashed, domain=0:6.0, samples=50] {0.46*x};
+      \addplot[csD, ultra thick, domain=0:6.0, samples=50] {1.12*x - 0.20*x^2};
+      \draw[csF, thick, dotted] (axis cs:2.8,-0.8) -- (axis cs:2.8,1.568);
+      \fill[csF] (axis cs:2.8,1.568) circle (2pt);
+      \node[font=\scriptsize\bfseries, csA, anchor=south east] at (axis cs:4.3,2.15) {Proxy $R_{\mathrm{proxy}}=\alpha_{\mathrm{p}}d$};
+      \node[font=\scriptsize\bfseries, csD, anchor=south west] at (axis cs:0.15,1.68) {Gold $R_{\mathrm{gold}}=\alpha d-\beta d^2$};
+      \node[font=\tiny, csA, anchor=north west] at (axis cs:3.0,0.45) {Reward hacking!};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Reward hacking (verbosity/sycophancy):} unconstrained RL exploits spurious RM features; monitor $d=\sqrt{\KL{\pi_\theta}{\pi_{\mathrm{ref}}}}$ and stop before $d^*$.
+    \item \textbf{DPO probability drainage:} DPO only widens $\hat{r}_\theta(y_w)-\hat{r}_\theta(y_l)$, so $\pi_\theta(y_w\mid x)$ can fall while OOD tokens rise; add NLL term on $y_w$.
+    \item \textbf{Distribution shift in offline DPO:} once $\pi_\theta$ drifts far from the policy that generated $\mathcal{D}_{\mathrm{pref}}$, gradients become stale; refresh pairs online.
+    \item \textbf{Token-level IS blowup in long CoT:} per-token $\rho_{i,t}$ has high variance on 10k-token traces; switch to GSPO sequence ratio $\rho_i=\big(\pi_\theta/\pi_{\theta_{\mathrm{old}}}\big)^{1/|y_i|}$.
+    \item \textbf{Catastrophic forgetting in SFT:} forward KL stretches $\pi_\theta$ across low-density regions; keep SFT light and rely on reverse-KL RL/DPO to sharpen capabilities.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{RLHF} tilts $\pi_{\mathrm{ref}}$ into the Gibbs policy $\pi^*\propto\pi_{\mathrm{ref}}\exp(r/\beta)$ under reverse KL (mode-seeking, preserving prior knowledge).
+  \textbf{DPO} solves for $r=\beta\log(\pi^*/\pi_{\mathrm{ref}})+\beta\log Z$ so $\log Z$ cancels inside Bradley-Terry, turning RLHF into offline binary cross-entropy, while \textbf{RLVR + GRPO} replaces learned reward models with exact verifiers to scale reasoning without Goodhart collapse.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

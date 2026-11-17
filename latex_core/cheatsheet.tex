@@ -1,0 +1,152 @@
+% =============================================================================
+% Visual Atlas: Mindmap + Cheatsheet macros (2 landscape A4 pages per leaf)
+%   Page 1  = MINDMAP    : root pictogram + 6 colour-coded branches + hook + trap
+%   Page 2  = CHEATSHEET : 3-column cards (formulas, recipe, shapes, trade-offs)
+% Usage (see any *_cheatsheet.tex):
+%   \csbegin{<domain 1-7>}{<Parent topic>}{<Leaf title>}{<tagline>}
+%     \begin{tikzpicture} \csroot{..}{..} \csbranch{1..6}{A..G}{..}{..} \csnote{7|8}{..} \end{tikzpicture}
+%     \csfoot{..}
+%   \csnextpage
+%     \begin{cscolumns} \begin{cscard}{A}{Title} .. \end{cscard} \columnbreak .. \end{cscolumns}
+%   \csend
+% =============================================================================
+
+\usepackage{multicol}
+\usepackage{pdflscape}
+
+% --- Branch palette (vivid, high contrast, colour-blind-friendly mix) ---------
+\definecolor{csA}{HTML}{E11D48} % crimson  : WHAT / definition
+\definecolor{csB}{HTML}{EA580C} % orange   : HOW / mechanism
+\definecolor{csC}{HTML}{CA8A04} % amber    : KEY RESULT / theorem
+\definecolor{csD}{HTML}{16A34A} % green    : CONNECTIONS
+\definecolor{csE}{HTML}{0891B2} % cyan     : COST / complexity
+\definecolor{csF}{HTML}{4F46E5} % indigo   : USE-CASES
+\definecolor{csG}{HTML}{9333EA} % purple   : hook / trap
+
+% --- Domain colours (title bar) ----------------------------------------------
+\definecolor{csDom1}{HTML}{16324F}
+\definecolor{csDom2}{HTML}{0E7490}
+\definecolor{csDom3}{HTML}{3730A3}
+\definecolor{csDom4}{HTML}{7E22CE}
+\definecolor{csDom5}{HTML}{1D4ED8}
+\definecolor{csDom6}{HTML}{15803D}
+\definecolor{csDom7}{HTML}{C2410C}
+\colorlet{csDom}{csDom1}
+
+% --- Lists inside boxes -------------------------------------------------------
+\newlist{csbul}{itemize}{1}
+\setlist[csbul]{label=\textcolor{csDom}{\raisebox{0.1ex}{\scriptsize$\blacktriangleright$}},
+  leftmargin=1.0em, itemsep=0.7pt, topsep=0.5pt, parsep=0pt, partopsep=0pt}
+
+% --- Page title bar -----------------------------------------------------------
+% #1 kicker (MINDMAP / CHEATSHEET)  #2 parent topic  #3 title  #4 tagline
+\newcommand{\cstitlebar}[4]{%
+  \noindent\begin{tikzpicture}
+    \fill[csDom, rounded corners=4pt] (0,0) rectangle (\textwidth,1.25cm);
+    \fill[white, opacity=0.16, rounded corners=4pt] (0,0) rectangle (3.0cm,1.25cm);
+    \node[white, font=\sffamily\bfseries\small, anchor=center] at (1.5cm,0.625cm) {#1};
+    \node[white, font=\sffamily\bfseries\Large, anchor=west, text width=\dimexpr\textwidth-3.6cm\relax]
+      at (3.3cm,0.80cm) {#3};
+    \node[white, font=\sffamily\scriptsize, anchor=west, text width=\dimexpr\textwidth-3.6cm\relax]
+      at (3.3cm,0.30cm) {\textbf{#2}\;\textbar\; #4};
+  \end{tikzpicture}\par\nointerlineskip\vspace{0.15cm}%
+}
+
+% --- Page lifecycle -----------------------------------------------------------
+% Landscape via pdflscape: the page stays A4-portrait in the PDF with /Rotate 90,
+% so XeLaTeX (xdvipdfmx) can mix portrait chapters and landscape atlas pages.
+% #1 domain index  #2 parent topic  #3 leaf title  #4 tagline
+\newcommand{\csbegin}[4]{%
+  \colorlet{csDom}{csDom#1}%
+  \gdef\csParent{#2}\gdef\csTitle{#3}\gdef\csTagline{#4}%
+  \newgeometry{margin=0.7cm,headheight=0pt,headsep=0pt,footskip=0pt}%
+  \landscape
+  \setlength{\textwidth}{\dimexpr\paperheight-1.4cm\relax}%
+  \setlength{\textheight}{\dimexpr\paperwidth-1.4cm\relax}%
+  \setlength{\hsize}{\textwidth}\setlength{\linewidth}{\textwidth}%
+  \setlength{\oddsidemargin}{-1in}\setlength{\evensidemargin}{-1in}%
+  \setlength{\topmargin}{-1in}\setlength{\headheight}{0pt}\setlength{\headsep}{0pt}%
+  \addtolength{\oddsidemargin}{0.7cm}\addtolength{\evensidemargin}{0.7cm}%
+  \addtolength{\topmargin}{0.7cm}%
+  \thispagestyle{empty}\phantomsection
+  \addcontentsline{toc}{chapter}{Atlas: #3}%
+  \cstitlebar{MINDMAP}{#2}{#3}{#4}%
+  \centering
+}
+\newcommand{\csnextpage}{%
+  \par\newpage\thispagestyle{empty}\raggedright
+  \cstitlebar{CHEATSHEET}{\csParent}{\csTitle}{\csTagline}%
+}
+\newcommand{\csend}{\par\endlandscape\restoregeometry}
+\newcommand{\csfoot}[1]{\par\vspace{-0.1cm}{\centering\sffamily\tiny\color{monographSlate} #1\par}}
+
+% --- Mindmap geometry ---------------------------------------------------------
+\tikzset{
+  csroot/.style={circle, draw=csDom, fill=white, line width=3pt, align=center,
+    inner sep=4pt, text width=5.0cm, font=\sffamily\bfseries\normalsize, text=csDom},
+}
+\pgfdeclarelayer{csbg}
+\pgfsetlayers{csbg,main}
+
+% slot -> position & anchors. Slots 1-3 left, 4-6 right, 7 top-centre, 8 bottom-centre.
+\newcommand{\csslot}[1]{%
+  \ifcase#1\or
+    \def\csx{-9.75}\def\csy{5.86}\def\csedge{-5.48}\def\csout{152}\def\csin{0}\or
+    \def\csx{-9.75}\def\csy{0}\def\csedge{-5.48}\def\csout{180}\def\csin{0}\or
+    \def\csx{-9.75}\def\csy{-5.86}\def\csedge{-5.48}\def\csout{208}\def\csin{0}\or
+    \def\csx{9.75}\def\csy{5.86}\def\csedge{5.48}\def\csout{28}\def\csin{180}\or
+    \def\csx{9.75}\def\csy{0}\def\csedge{5.48}\def\csout{0}\def\csin{180}\or
+    \def\csx{9.75}\def\csy{-5.86}\def\csedge{5.48}\def\csout{-28}\def\csin{180}\or
+    \def\csx{0}\def\csy{7.18}\def\csedge{0}\def\csout{90}\def\csin{90}\or
+    \def\csx{0}\def\csy{-7.18}\def\csedge{0}\def\csout{-90}\def\csin{-90}\fi
+}
+
+\newtcolorbox{csboxenv}[3][]{enhanced, colback=#2!6, colframe=#2, coltitle=white,
+  colbacktitle=#2, fonttitle=\sffamily\bfseries\footnotesize, title={#3},
+  width=8.55cm, height=5.60cm, boxrule=1.1pt, arc=2.5mm, top=1.5pt, bottom=1.5pt,
+  left=4pt, right=4pt, toptitle=1pt, bottomtitle=1pt,
+  halign=left, valign=top, fontupper=\sffamily\fontsize{7.5pt}{8.7pt}\selectfont,
+  before upper={\raggedright\setlength{\tabcolsep}{2.2pt}\setlength{\parskip}{0.4pt}}, #1}
+
+\newtcolorbox{csnoteenv}[3][]{enhanced, colback=#2!10, colframe=#2, coltitle=white,
+  colbacktitle=#2, fonttitle=\sffamily\bfseries\scriptsize, title={#3},
+  width=9.3cm, height=2.95cm, boxrule=1.1pt, arc=2.5mm, top=1.2pt, bottom=1.2pt,
+  left=4pt, right=4pt, toptitle=0.8pt, bottomtitle=0.8pt,
+  halign=left, valign=top, fontupper=\sffamily\fontsize{7.5pt}{8.7pt}\selectfont,
+  before upper={\raggedright\setlength{\parskip}{0.4pt}}, #1}
+
+% Root: #1 title text  #2 pictogram (TikZ picture, ~ 3.0cm tall)
+\newcommand{\csroot}[2]{%
+  \node[csroot] (root) at (0,0) {#1\\[2pt]{\normalfont\footnotesize\tikzset{shape=rectangle, line width=0.4pt, text width=, text=black, inner sep=1.5pt}#2}};%
+}
+
+% Branch: #1 slot 1..6  #2 colour letter A..G  #3 header  #4 body
+\newcommand{\csbranch}[4]{%
+  \csslot{#1}%
+  \begin{pgfonlayer}{csbg}
+    \draw[cs#2, line width=2.8pt, -{Circle[length=5pt]}, line cap=round]
+      (0,0) to[out=\csout,in=\csin] (\csedge,\csy);
+  \end{pgfonlayer}%
+  \node[inner sep=0pt] at (\csx,\csy) {\begin{csboxenv}{cs#2}{#3}#4\end{csboxenv}};%
+}
+
+% Note banner (slots 7, 8): #1 slot  #2 colour  #3 header  #4 body
+\newcommand{\csnote}[4]{%
+  \csslot{#1}%
+  \node[inner sep=0pt] at (\csx,\csy) {\begin{csnoteenv}{cs#2}{#3}#4\end{csnoteenv}};%
+}
+
+% --- Cheatsheet page cards ----------------------------------------------------
+\newtcolorbox{cscard}[3][]{enhanced, colback=#2!5, colframe=#2, coltitle=white,
+  colbacktitle=#2, fonttitle=\sffamily\bfseries\small, title={#3},
+  boxrule=1pt, arc=2mm, top=1.5pt, bottom=1.5pt, left=4pt, right=4pt,
+  toptitle=1pt, bottomtitle=1pt, fontupper=\sffamily\small,
+  before upper={\raggedright\setlength{\tabcolsep}{3pt}\setlength{\parskip}{1.5pt}},
+  before skip=2.5pt, after skip=2.5pt, nobeforeafter, #1}
+\newenvironment{cscolumns}{%
+  \setlength{\columnsep}{7pt}\setlength{\columnseprule}{0pt}%
+  \setlength{\parskip}{0pt}\begin{multicols}{3}\raggedcolumns}{\end{multicols}}
+
+% Tiny helpers for compact math in cards
+\newcommand{\csfm}[1]{\par\vspace{0.5pt}\noindent\hfil$\displaystyle #1$\hfil\par\vspace{0.5pt}}
+\newcommand{\cshl}[1]{\textbf{\textcolor{csDom}{#1}}}

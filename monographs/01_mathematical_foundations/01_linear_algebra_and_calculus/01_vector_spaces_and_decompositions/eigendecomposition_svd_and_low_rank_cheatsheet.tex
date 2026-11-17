@@ -1,0 +1,215 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Linear Algebra \& Calculus}{Eigendecomposition, SVD \& Low-Rank Approximation}
+  {Every matrix = rotate $\cdot$ stretch $\cdot$ rotate; keep only the biggest stretches}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{SVD\\ \footnotesize\mdseries EVD $\cdot$ SVD $\cdot$ Low-Rank}{%
+  \begin{tikzpicture}[scale=0.48]
+    \draw[csA, very thick] (0,0) circle (0.9);
+    \draw[csA, thin] (-1.15,0)--(1.15,0) (0,-1.15)--(0,1.15);
+    \draw[-{Stealth}, very thick, csDom] (1.3,0)--(2.2,0) node[midway, above] {\scriptsize $\mat A$};
+    \begin{scope}[xshift=4.2cm, rotate=28]
+      \draw[csC, very thick] (0,0) ellipse (1.65 and 0.55);
+      \draw[-{Stealth}, thick, csB] (0,0)--(1.65,0) node[right] {\scriptsize $\sigma_1\vecb{u}_1$};
+      \draw[-{Stealth}, thick, csB] (0,0)--(0,0.55) node[above] {\scriptsize $\sigma_2\vecb{u}_2$};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ the three-move machine}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mat A=\mat U\,\mat\Sigma\,\mat V\T}
+    \begin{csbul}
+      \item $\mat V\T$: rotate the \emph{input} basis
+      \item $\mat\Sigma$: stretch axis $i$ by $\sigma_i\ge 0$, sorted $\sigma_1\ge\dots\ge\sigma_r>0$
+      \item $\mat U$: rotate into the \emph{output} space
+      \item exists for \textbf{every} $m\times n$ matrix
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.36, every node/.style={font=\tiny}]
+      \draw[csA, thick] (0,0) circle (0.7); \node at (0,-1.1) {$\mat V\T$};
+      \draw[->] (0.9,0)--(1.5,0);
+      \begin{scope}[xshift=2.7cm]\draw[csC, thick] (0,0) ellipse (1.0 and 0.4); \node at (0,-1.1) {$\mat\Sigma$};\end{scope}
+      \draw[->] (4.0,0)--(4.6,0);
+      \begin{scope}[xshift=5.9cm, rotate=35]\draw[csB, thick] (0,0) ellipse (1.0 and 0.4);\end{scope}
+      \node at (5.9,-1.1) {$\mat U$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; EVD vs SVD $-$ which one?}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.6cm}@{}}
+    & \textbf{\textcolor{csB}{EVD}} & \textbf{\textcolor{csB}{SVD}}\\ \hline
+    shape & square only & any $m\times n$\\
+    form & $\mat P\mat\Lambda\mat P\inv$ (may be complex / defective) & $\mat U\mat\Sigma\mat V\T$, always real\\
+    sym. & $\mat Q\mat\Lambda\mat Q\T$, $\mat Q$ orthogonal & $\sigma_i=|\lambda_i|$\\
+    link & $\sigma_i=\sqrt{\lambda_i(\mat A\T\mat A)}$ & $\mat A\T\mat A=\mat V\mat\Sigma^2\mat V\T$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Rule:} symmetric $\Rightarrow$ EVD is safe; otherwise reach for SVD.}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ Eckart--Young--Mirsky}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mat A_k=\sum_{i=1}^{k}\sigma_i\vecb{u}_i\vecb{v}_i\T}
+    \begin{csbul}
+      \item best rank-$k$ approximation (spectral \& Frobenius)
+      \item $\norm{\mat A-\mat A_k}_2=\sigma_{k+1}$
+      \item $\norm{\mat A-\mat A_k}_F=\bigl(\sum_{i>k}\sigma_i^2\bigr)^{1/2}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[x=0.27cm, y=0.13cm]
+      \foreach \i/\h in {1/14,2/9,3/5.5,4/3,5/1.7,6/1,7/0.6}
+        \fill[csC!80!black, opacity=0.85] (\i-0.35,0) rectangle (\i+0.35,\h);
+      \draw[csA, very thick, dashed] (3.6,-1)--(3.6,16);
+      \node[font=\tiny, csA, anchor=south] at (2,16) {keep};
+      \node[font=\tiny, anchor=north] at (4,-1) {$\sigma_i$ (scree)};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ one object, many names}{%
+  \begin{csbul}
+    \item \textbf{PCA} = SVD of the \emph{centred} data matrix
+    \item \textbf{Pseudoinverse:} $\mat A\pinv=\mat V_r\mat\Sigma_r\inv\mat U_r\T$
+    \item \textbf{Rank} $r$ = number of $\sigma_i>0$ (not pivot count)
+    \item \textbf{Conditioning:} $\kappa_2(\mat A)=\sigma_1/\sigma_r$
+    \item \textbf{Rayleigh:} $\lambda_1=\max_{\vecb x}\frac{\vecb x\T\mat A\vecb x}{\vecb x\T\vecb x}$ (Courant--Fischer)
+    \item $\mat U_r$ spans $\mathrm{col}(\mat A)$, $\mat V_r$ spans $\mathrm{row}(\mat A)$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ which solver?}{%
+  \renewcommand{\arraystretch}{1.2}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{2.2cm}@{}}
+    \textbf{\textcolor{csE}{Solver}} & \textbf{\textcolor{csE}{Time}} & \textbf{\textcolor{csE}{Use}}\\ \hline
+    Full / thin SVD & $O(\min(mn^2,m^2n))$ & small--medium dense\\
+    Power + deflation & $O(Tk\,\mathrm{nnz})$ & sparse top-$k$\\
+    Randomized SVD & $O((q{+}1)\,\mathrm{nnz}\,(k{+}p)+(k{+}p)^2n)$ & huge matrices, GPU PCA\\
+  \end{tabular}\par\vspace{3pt}
+  \small Storage of rank-$k$ factors: $k(m+n+1)$ vs.\ $mn$.
+  \textbf{Randomized:} sketch $\mat Y=\mat A\mat\Omega$, QR, project, small SVD.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ where you will meet it}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Compression:} store $k(m+n+1)$ numbers, not $mn$
+      \item \textbf{PCA / whitening} of features
+      \item \textbf{Least squares} \& regularized inversion (truncated SVD)
+      \item \textbf{Embeddings} at scale (randomized SVD)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\scriptsize}]
+      \fill[csF!25] (0,0) rectangle (2,2); \node at (1,1) {$\mat A$};
+      \node at (2.6,1) {$\approx$};
+      \foreach \x in {3.2,4.9}{\fill[csF!70] (\x,0) rectangle (\x+0.35,2); \fill[csF!40] (\x+0.55,1.65) rectangle (\x+1.55,2);}
+      \node at (4.6,1) {$+$};
+      \node at (4.2,-0.9) {$\sigma_1\vecb u_1\vecb v_1\T\!+\!\sigma_2\vecb u_2\vecb v_2\T$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Rotate $\cdot$ Stretch $\cdot$ Rotate} \\[1pt]
+  \footnotesize\mdseries \textbf{Truncate the small stretches $\Rightarrow$ best low-rank copy.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item never form $\mat A\T\mat A$: it \textbf{squares} $\kappa$ ($\kappa^2$)
+    \item $(\vecb u_i,\vecb v_i)\!\to\!(-\vecb u_i,-\vecb v_i)$: signs are arbitrary
+    \item API returns $\mat V\T$, not $\mat V$
+    \item tied $\sigma_i$: vectors unique only up to rotation
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Eigendecomposition, SVD \& Low-Rank Approximation}\;---\;Domain 01 $\cdot$ Linear Algebra \& Calculus}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Symmetric EVD:\csfm{\mat A=\mat Q\mat\Lambda\mat Q\T,\quad \mat Q\T\mat Q=\mat I}
+    \item Full SVD:\csfm{\mat A=\mat U\mat\Sigma\mat V\T,\quad \mat A\vecb v_i=\sigma_i\vecb u_i}
+    \item Compact SVD:\csfm{\mat A=\mat U_r\mat\Sigma_r\mat V_r\T,\quad r=\rank(\mat A)}
+    \item Pseudoinverse:\csfm{\mat A\pinv=\mat V_r\mat\Sigma_r\inv\mat U_r\T}
+    \item Best rank-$k$:\csfm{\mat A_k=\mat U_k\mat\Sigma_k\mat V_k\T}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{HOW TO COMPUTE IT BY HAND}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item eigen-decompose $\mat A\T\mat A=\mat V\mat\Sigma^2\mat V\T$ (teaching only!)
+    \item $\sigma_i=\sqrt{\lambda_i}$, sort descending
+    \item $\vecb u_i=\mat A\vecb v_i/\sigma_i$ for $\sigma_i>0$
+    \item complete $\mat U$ to an orthonormal basis if full SVD is required
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.3}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    symmetric matrix & EVD ($\mat Q\mat\Lambda\mat Q\T$)\\
+    rectangular / rank-deficient & SVD\\
+    need a few top directions & randomized / power method\\
+    noisy inverse problem & truncated SVD, not $\mat A\inv$\\
+    rank decision & count $\sigma_i>\tau$, never pivots\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{ERROR CHEAT-LINE}
+  \begin{csbul}
+    \item $\norm{\mat A-\mat A_k}_2=\sigma_{k+1}$
+    \item $\norm{\mat A-\mat A_k}_F^2=\sum_{i>k}\sigma_i^2$
+    \item noise amplification of $\mat A\pinv$: $\le\delta/\sigma_r$
+    \item pick $k$ where the scree plot bends (energy $\sum_{i\le k}\sigma_i^2/\sum_i\sigma_i^2$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{HOW MANY COMPONENTS $k$?  (energy curve)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.98\linewidth, height=6.3cm, xmin=0.7, xmax=7.3, ymin=0.55, ymax=1.03,
+      xlabel={$k$}, ylabel={$\sum_{i\le k}\sigma_i^2/\sum_i\sigma_i^2$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, ytick={0.6,0.8,0.95,1}, xtick={1,...,7}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csF, very thick, mark=*, mark size=1.6pt] coordinates {(1,0.611)(2,0.864)(3,0.958)(4,0.986)(5,0.995)(6,0.998)(7,1)};
+      \addplot[csA, dashed, thick, domain=0.7:7.3] {0.95};
+      \node[font=\scriptsize, csA, anchor=north west] at (axis cs:3.3,0.9) {95\% energy $\Rightarrow k=3$};
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize illustrative spectrum $\sigma=(14,9,5.5,3,1.7,1,0.6)$}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item $\kappa_2(\mat A\T\mat A)=\kappa_2(\mat A)^2$ $\to$ squares the damage; use a direct SVD routine
+    \item pseudoinverse on ill-conditioned $\mat A$ explodes noise $\to$ truncate small $\sigma_i$
+    \item defective / non-symmetric $\mat A$: EVD may be complex or non-diagonalizable
+    \item signs and tied singular values are not unique
+    \item library returns $\mat V\T$ (check your API)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND RECAP}
+  \sffamily\footnotesize
+  \textbf{Any matrix} \,=\, \textbf{rotate} $\to$ \textbf{stretch} $\to$ \textbf{rotate}.
+  Stretches are $\sigma_i$. Keep the top $k$ for the \emph{provably} best rank-$k$ copy.
+  PCA, pseudoinverse, conditioning and compression are all the same factorization seen from different sides.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

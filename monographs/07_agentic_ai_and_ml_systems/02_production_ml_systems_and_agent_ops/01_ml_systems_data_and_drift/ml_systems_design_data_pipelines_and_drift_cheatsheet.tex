@@ -1,0 +1,221 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Production ML Systems \& AgentOps}{Iterative ML Systems Design, Feature Engineering, Leakage, Distribution Shift \& Continual Learning}
+  {Decouple Feature--Training--Inference, enforce split-invariance, detect $P(X,Y)$ shift \& retrain continually}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{ML Systems\\ \footnotesize\mdseries FTI $\cdot$ Drift $\cdot$ Continual}{%
+  \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny\sffamily}]
+    % Mini FTI + Shift curves
+    \node[fill=csE!20, draw=csE, thick, rounded corners=1.5pt, inner sep=2.5pt] (pf) at (-1.35,0.85) {$\mathcal{P}_F\!\to\!\mathcal{S}_F$};
+    \node[fill=csB!20, draw=csB, thick, rounded corners=1.5pt, inner sep=2.5pt] (pt) at (1.35,0.85) {$\mathcal{P}_T\!\to\!\mathcal{R}_M$};
+    \draw[-{Stealth}, thick, csDom] (pf.east)--(pt.west);
+    % Two Gaussian curves showing drift below
+    \draw[->, thin, gray] (-2.2,-1.0)--(2.2,-1.0);
+    \draw[csD, very thick, smooth, samples=25, domain=-2.0:1.0] plot (\x, {-1.0 + 1.1*exp(-2.2*(\x+0.6)*(\x+0.6))});
+    \draw[csA, very thick, dashed, smooth, samples=25, domain=-0.8:2.1] plot (\x, {-1.0 + 1.1*exp(-2.2*(\x-0.7)*(\x-0.7))});
+    \draw[-{Stealth}, thick, csA] (-0.4,-0.25)--(0.5,-0.25) node[midway, above] {shift};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Decoupled FTI Architecture}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Feature ($\mathcal{P}_F$):} stream/OLTP $\to\vecb x_t=\phi(\vecb r_{\le t})$ in Store $\mathcal{S}_F$
+      \item \textbf{Training ($\mathcal{P}_T$):} as-of snapshot $\mathcal{D}_{\mathrm{train}}\!\to\!\theta^*\!\to$ Reg $\mathcal{R}_M$
+      \item \textbf{Inference ($\mathcal{P}_I$):} $f_{\theta^*}$ + KV features $\to\hat y_t$, log for drift
+      \item \textbf{Lineage:} version $(v_{\mathrm{data}}, v_\phi, v_\theta)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csE, fill=csE!15, rounded corners=2pt, inner sep=2pt] (pf) at (0,2.4) {$\mathcal{P}_F$};
+      \node[draw=csDom, fill=csDom!15, rounded corners=2pt, inner sep=2pt] (sf) at (2.8,2.4) {Store $\mathcal{S}_F$};
+      \node[draw=csB, fill=csB!15, rounded corners=2pt, inner sep=2pt] (pt) at (1.4,1.0) {$\mathcal{P}_T$};
+      \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2pt] (rm) at (1.4,-0.5) {Reg $\mathcal{R}_M$};
+      \node[draw=csD, fill=csD!15, rounded corners=2pt, inner sep=2pt] (pi) at (3.6,-0.5) {$\mathcal{P}_I$};
+      \draw[-{Stealth}, thick, csDom] (pf)--(sf);
+      \draw[-{Stealth}, thick, csB] (sf)--(pt);
+      \draw[-{Stealth}, thick, csB] (pt)--(rm);
+      \draw[-{Stealth}, thick, csD] (rm)--(pi);
+      \draw[-{Stealth}, thick, csE] (sf)--(pi);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; IMBALANCE \& SPLIT-INVARIANT FEATURES}{%
+  \begin{csbul}
+    \item \textbf{Focal Loss:} suppresses easy majority examples ($p_t\!\to\!1$):
+      \csfm{\mathcal{L}_{\mathrm{FL}}(p_t)=-\alpha_t(1-p_t)^\gamma\log(p_t),\quad W_i^{\mathrm{eff}}=\frac{1-\beta}{1-\beta^{N_i}}}
+    \item \textbf{Prior shift calibration:} oversampling by $r$ shifts prior $\tilde{\pi}_1=\frac{r\pi_1}{r\pi_1+1-\pi_1}$ $\Rightarrow$ recalibrate via Platt/isotonic scaling
+    \item \textbf{Split invariance:} fit scaler/imputer $\psi^*=\mathcal{A}_{\mathrm{fit}}(\mathcal{D}_{\mathrm{train}})$ \emph{only}; join features point-in-time ($\tau\le t$, $t_{\mathrm{train}}<t_{\mathrm{val}}<t_{\mathrm{test}}$)
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; SHIFT TAXONOMY $-$ Factorizing $P(X,Y)$}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{2.35cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csC}{Regime}} & \textbf{\textcolor{csC}{Condition}} & \textbf{\textcolor{csC}{Remedy}}\\ \hline
+    Covariate Shift & $P_{\mathrm{tgt}}(X)\ne P_{\mathrm{src}}(X)$, $P(Y|X)$ fixed & Importance weight $w(\vecb x)=\frac{P_{\mathrm{tgt}}(\vecb x)}{P_{\mathrm{src}}(\vecb x)}$\\
+    Label Shift & $P_{\mathrm{tgt}}(Y)\ne P_{\mathrm{src}}(Y)$, $P(X|Y)$ fixed & BBSE prior $\hat{\vecb\mu}_{\mathrm{tgt}}=\mat C_{\mathrm{src}}\vecb w$\\
+    Concept Drift & $P_{\mathrm{tgt}}(Y|X)\ne P_{\mathrm{src}}(Y|X)$, $P(X)$ fixed & Needs delayed labels $Y$; retrain $\theta$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Identity:} $P(X,Y)=P(Y\mid X)P(X)=P(X\mid Y)P(Y)$.}
+
+\csbranch{4}{D}{4\;\; DRIFT METRICS $-$ KS, PSI \& Kernel MMD}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \begin{csbul}
+      \item \textbf{1D KS Stat:} $D_{n,m}=\sup_x\abs{F_{1,n}(x)-F_{2,m}(x)}$
+      \item \textbf{PSI (Jeffreys KL):} $<0.10$ ok, $\ge 0.25$ crit:
+        \csfm{\mathrm{PSI}=\sum_{b=1}^{B}(q_b-p_b)\ln\frac{q_b}{p_b}}
+      \item \textbf{Multivariate MMD$^2$:} $\norm{\E_P[\phi(X)]-\E_Q[\phi(Y)]}_{\mathcal{H}}^2$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(3.2,0) node[right] {$x$};
+      \draw[->, gray] (0,0)--(0,2.4) node[above] {CDF};
+      \draw[csD, very thick] (0,0) .. controls (0.9,0.2) and (1.2,1.9) .. (3.0,2.1);
+      \draw[csA, very thick, dashed] (0,0) .. controls (1.5,0.1) and (1.9,1.8) .. (3.0,2.1);
+      \draw[<->, csC, very thick] (1.35,0.52)--(1.35,1.42) node[midway, left] {$D_{n,m}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; SERVING \& COMPRESSION TRADE-OFFS}{%
+  \renewcommand{\arraystretch}{1.08}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.95cm}>{\raggedright\arraybackslash}p{2.25cm}>{\raggedright\arraybackslash}p{2.1cm}@{}}
+    \textbf{\textcolor{csE}{Mode / Method}} & \textbf{\textcolor{csE}{Latency / Speed}} & \textbf{\textcolor{csE}{Key Risk}}\\ \hline
+    Batch Serving & min--hrs lag; high tput & stale user context\\
+    Online + Batch KV & ms latency; precomputed & misses sub-min events\\
+    Streaming (Flink) & $<100\,$ms real-time & train--serving skew\\
+    Distillation & $2\times$--$4\times$ faster student & capacity ceiling\\
+    INT8 Quantization & $7\times$ latency cut, $8\times$ tput & rounding without QAT\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize\textbf{Log-and-Wait:} log online features at serving for training.}
+
+\csbranch{6}{F}{6\;\; CONTINUAL LEARNING $-$ Stateful vs.\ Stateless}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Stateless:} $\theta^{(k)}\!\leftarrow\!\mathcal{A}(\mathcal{D}_{t-L:t})$ from scratch
+      \item \textbf{Stateful:} $\theta^{(k)}\!\leftarrow\!\mathrm{FineTune}(\theta^{(k-1)},\mathcal{D}_{\mathrm{new}})$ ($45\times$ compute cut)
+      \item \textbf{Gate:} promote $\theta_{\mathrm{chal}}$ over $\theta_{\mathrm{champ}}$ only if holdout metric gains $>\delta_{\min}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csF, fill=csF!25, rounded corners=2pt, inner sep=2.5pt] (st) at (1.6,2.1) {Stateless $\mathcal{D}_{t-L:t}$};
+      \node[draw=csDom, fill=csDom!15, circle, inner sep=1.5pt] (th) at (0.3,0.7) {$\theta^{(k-1)}$};
+      \node[draw=csD, fill=csD!25, rounded corners=2pt, inner sep=2.5pt] (dn) at (2.7,0.7) {$\mathcal{D}_{\mathrm{new}}$};
+      \draw[-{Stealth}, thick, csDom] (th)--(dn);
+      \node at (1.6,-0.3) {Stateful update};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Decouple FTI $\cdot$ Split-Invariance $\cdot$ Detect Shift $\cdot$ Fine-Tune Stateful} \\[1pt]
+  \footnotesize\mdseries \textbf{Log features at serving time; when $\mathrm{PSI}\ge 0.25$, gate challenger vs.\ champion.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item scaling before train--test split leaks test moments $\psi^*$
+    \item random time-series splits leak future $\to$ enforce $\tau\le t$
+    \item dual SQL batch vs.\ Python stream pipelines cause skew
+    \item cumulative accuracy hides outages $\to$ use sliding $W_t$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Iterative ML Systems Design, Feature Engineering, Leakage, Distribution Shift \& Continual Learning}\;---\;Domain 07 $\cdot$ Production ML Systems \& AgentOps}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Cost-sensitive \& Focal loss:\csfm{\mathcal{L}_{\mathrm{CS}}(\vecb x,i)=\sum_{j=1}^{K}C_{ij}P(j\mid\vecb x),\quad \mathcal{L}_{\mathrm{FL}}=-\alpha_t(1-p_t)^\gamma\log p_t}
+    \item Effective class weight:\csfm{E_{N_i}=\frac{1-\beta^{N_i}}{1-\beta},\qquad W_i^{\mathrm{eff}}=\frac{1-\beta}{1-\beta^{N_i}}}
+    \item Covariate-shift target risk:\csfm{\E_{P_{\mathrm{tgt}}}[\ell(\vecb x,y;\theta)]=\E_{P_{\mathrm{src}}}\!\left[\frac{P_{\mathrm{tgt}}(\vecb x)}{P_{\mathrm{src}}(\vecb x)}\,\ell(\vecb x,y;\theta)\right]}
+    \item PSI \& Kernel MMD$^2$:\csfm{\mathrm{PSI}=\sum_{b=1}^{B}(q_b-p_b)\ln\frac{q_b}{p_b},\quad \mathrm{MMD}^2=\norm{\mu_P-\mu_Q}_{\mathcal{H}}^2}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{CONTINUAL RETRAINING RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{As-of Join:} fetch $\vecb x_t\leftarrow\mathrm{AsOfJoin}(\mathcal{S}_F,\text{entity}_t,\tau\le t)$
+    \item \textbf{Log-and-Wait:} serve $\hat y_t=f_{\theta_{\mathrm{champ}}}(\vecb x_t)$; log $(\vecb x_t,\hat y_t,t)$
+    \item \textbf{Drift Test:} track $\mathrm{PSI}_j(\mathcal{W}_{\mathrm{ref}},\mathcal{W}_t)$ and $\widehat{\mathrm{MMD}}^2$ on window $\mathcal{W}_t$
+    \item \textbf{Stateful Gate:} if $\mathrm{PSI}\ge 0.25$, fine-tune $\theta_{\mathrm{chal}}$ on $\mathcal{D}_{\mathrm{new}}$; promote if holdout gain $>\delta_{\min}$ and reset $\mathcal{W}_{\mathrm{ref}}\leftarrow\mathcal{W}_t$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.15}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.8cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    rare minority ($\pi_1\!\ll\!1/K$) & Focal loss / $W_i^{\mathrm{eff}}$ + Platt scaling\\
+    1D feature/score drift & PSI ($\ge 0.25$ crit) or 2-sample KS\\
+    high-$d$ embedding shift & PCA/AE projection + kernel $\mathrm{MMD}^2$\\
+    covariate shift $P(X)$ & importance weights $P_{\mathrm{tgt}}(\vecb x)/P_{\mathrm{src}}(\vecb x)$\\
+    concept drift $P(Y\mid X)$ & log-and-wait labels + stateful retrain\\
+    strict p99 latency SLA & student distillation + INT8 QAT\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{THRESHOLDS \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{PSI bands:} $<0.10$ stable $\;\vert\;$ $0.10$--$0.25$ warn $\;\vert\;$ $\ge 0.25$ retrain
+    \item \textbf{KS reject $H_0$:} $D_{n,m}>c(\alpha)\sqrt{(n+m)/(nm)}$
+    \item \textbf{Continual micro-batch:} $512$--$1024$ samples ($45\times$ compute cut)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{SLIDING-WINDOW DRIFT \& RETRAIN RESET (PSI / KS)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.98\linewidth, height=4.5cm, xmin=1, xmax=30, ymin=0, ymax=0.36,
+      xlabel={Production Day ($t$)}, ylabel={$\mathrm{PSI}$ / $D_{n,m}$}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, ytick={0,0.10,0.25,0.35}, xtick={1,5,10,15,19,25,30}, grid=both,
+      grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csD, dashed, thick, domain=1:30] {0.10};
+      \addplot[csA, dashed, thick, domain=1:30] {0.25};
+      \addplot[csF, very thick, mark=*, mark size=1.3pt] coordinates {
+        (1,0.03)(4,0.05)(7,0.055)(10,0.095)(13,0.15)(16,0.23)(17,0.265)(19,0.32)(20,0.06)(24,0.05)(27,0.058)(30,0.068)};
+      \addplot[csE, thick, mark=square*, mark size=1.1pt] coordinates {
+        (1,0.02)(4,0.03)(7,0.033)(10,0.055)(13,0.09)(16,0.138)(17,0.16)(19,0.195)(20,0.038)(24,0.032)(27,0.035)(30,0.041)};
+      \node[font=\tiny\bfseries, csA, anchor=west] at (axis cs:19.8,0.30) {Day 19: Retrain \& Reset};
+      \draw[-{Stealth}, csA, thin] (axis cs:19.8,0.30)--(axis cs:19.1,0.32);
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize blue: sliding 24h $\mathrm{PSI}$; cyan: score KS $D_{n,m}$; dashed: $0.10$ warn / $0.25$ crit}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Preprocessing leakage:} fitting $\mu,\sigma$ or SMOTE before splitting leaks test moments
+    \item \textbf{Group \& duplicate leakage:} keep user/patient in one split; deduplicate before splitting
+    \item \textbf{Sentinel collision:} never impute NaN with $0$ without indicator $m_j=\mathbb{I}[x_j\text{ is NaN}]$
+    \item \textbf{Train--serving skew:} dual SQL/stream codebases diverge $\to$ use feature store or Log-and-Wait
+    \item \textbf{Catastrophic forgetting:} sample-by-sample updates overwrite regimes $\to$ gate micro-batches
+    \item \textbf{High-$d$ SMOTE / KS failure:} distance concentration breaks $d\gg 100$ SMOTE; 1D KS misses correlation shift
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Production ML} \,=\, \textbf{FTI Decoupling} ($\mathcal{P}_F\!\to\!\mathcal{S}_F\!\to\!\mathcal{P}_T\!\to\!\mathcal{R}_M\!\to\!\mathcal{P}_I$) $+$ \textbf{As-Of Joins} ($\tau\le t$).
+  Factorize shift into \textbf{Covariate} $P(X)$, \textbf{Label} $P(Y)$, and \textbf{Concept} $P(Y\mid X)$.
+  Track sliding-window $\mathrm{PSI}$ and $\mathrm{MMD}^2$; when $\mathrm{PSI}\ge 0.25$, trigger \textbf{stateful continual retraining} and promote via champion--challenger gating.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

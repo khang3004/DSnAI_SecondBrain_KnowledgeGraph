@@ -1,0 +1,790 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Convex, Smooth \& Stochastic Optimization}{Convex Duality \& Deterministic Gradient Descent Theory}{Convex Sets, Fenchel/Lagrange Duality \& KKT Conditions}{\bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23--25 \& App. A}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Sec. 7.2--7.3}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.1 \& 8.5--8.6}, \bookcite{deep_learning_foundations_concepts}{Sec. 2.5.5 \& App. C}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, Sec. 4.3--4.4}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:convex:formulation}
+% =============================================================================
+
+Constrained optimization underpins nearly every structural estimator in statistical machine learning and modern artificial intelligence, from maximum-margin Support Vector Machines (SVMs) and $\ell_1$-constrained Lasso regression to simplex-constrained exponential-family inference and trust-region policy updates. We consider the canonical finite-dimensional optimization program in $\R^n$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, p. 303}, \bookcite{mathematics_machine_learning_orienly}{Sec. 7.2, p. 235}, and \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.5, p. 302}:
+\begin{equation}
+  \begin{aligned}
+    \minimize_{\vecb{x} \in \mathcal{D}} \quad & f_0(\vecb{x}) \\
+    \text{subject to} \quad & f_i(\vecb{x}) \le 0, \qquad i = 1, \dots, m, \\
+                             & h_j(\vecb{x}) = 0, \qquad j = 1, \dots, p,
+  \end{aligned}
+  \label{eq:convex:primal_std}
+\end{equation}
+where $\mathcal{D} \coloneqq \bigl(\bigcap_{i=0}^m \operatorname{dom} f_i\bigr) \cap \bigl(\bigcap_{j=1}^p \operatorname{dom} h_j\bigr) \subseteq \R^n$ is the nonempty \emph{problem domain}, $f_0 : \mathcal{D} \to \R$ is the \emph{objective (loss) function}, $f_i : \mathcal{D} \to \R$ are \emph{inequality constraint functions}, and $h_j : \mathcal{D} \to \R$ are \emph{equality constraint functions}. The \emph{feasible set} (constraint set) is
+\begin{equation}
+  \mathcal{X} \coloneqq \set{\vecb{x} \in \mathcal{D} : f_i(\vecb{x}) \le 0\;\forall\,i \in \set{1,\dots,m},\;\; h_j(\vecb{x}) = 0\;\forall\,j \in \set{1,\dots,p}},
+  \label{eq:convex:feasible_set}
+\end{equation}
+and the \emph{primal optimal value} is $p^* \coloneqq \inf_{\vecb{x} \in \mathcal{X}} f_0(\vecb{x}) \in [-\infty, +\infty]$, with $p^* = +\infty$ when $\mathcal{X} = \emptyset$ (infeasible) and $p^* = -\infty$ when $f_0$ is unbounded below on $\mathcal{X}$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Sec. 24.2.1, p. 304}. A point $\vecb{x}^* \in \mathcal{X}$ is \emph{primal optimal} if $f_0(\vecb{x}^*) = p^*$. An inequality constraint $f_i(\vecb{x}) \le 0$ is \emph{active} at $\vecb{x} \in \mathcal{X}$ if $f_i(\vecb{x}) = 0$ and \emph{inactive} if $f_i(\vecb{x}) < 0$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, p. 95}.
+
+\subsection{Convex Optimization Subclasses and Canonical Transformations}
+
+Problem~\eqref{eq:convex:primal_std} is a \textbf{convex optimization problem} if and only if (i) $f_0, f_1, \dots, f_m$ are convex functions on convex domain $\mathcal{D}$ and (ii) all equality constraints are affine, $h_j(\vecb{x}) = \vecb{a}_j\T \vecb{x} - b_j = 0$ (written compactly as $\mat{A}\vecb{x} = \vecb{b}$ with $\mat{A} \in \R^{p \times n}$) \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Def. 24.1, p. 305}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Eq. 7.38, p. 239}. Standard canonical subclasses include:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Linear Programs (LP):} $f_0(\vecb{x}) = \vecb{c}\T\vecb{x} + d$, $\mat{G}\vecb{x} \preceq \vecb{h}$, $\mat{A}\vecb{x} = \vecb{b}$, whose feasible set forms a convex polyhedron \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, p. 308} and whose optima occur at extreme vertices or boundary faces \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.5, p. 305}.
+  \item \textbf{Quadratic Programs (QP):} $f_0(\vecb{x}) = \frac{1}{2}\vecb{x}\T\mat{Q}\vecb{x} + \vecb{c}\T\vecb{x} + r$ with symmetric positive semidefinite $\mat{Q} \succeq \zeros$ subject to affine constraints $\mat{G}\vecb{x} \preceq \vecb{h}$, $\mat{A}\vecb{x} = \vecb{b}$ \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Sec. 7.3.2, p. 241}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.5.4, p. 306}.
+  \item \textbf{Geometric Programs (GP):} Problems with posynomial objectives/inequalities $f_i(\vecb{x}) = \sum_{k=1}^{K_i} c_{ik}\prod_{\ell=1}^n x_\ell^{a_{ik\ell}} \le 1$ ($c_{ik}>0$) and monomial equalities on $\vecb{x} \succ \zeros$; while non-convex in $\vecb{x}$, the logarithmic change of variables $y_\ell = \ln x_\ell$ and log-sum-exp composition $\tilde{f}_i(\vecb{y}) = \ln \sum_{k} \exp(\vecb{a}_{ik}\T\vecb{y} + \ln c_{ik}) \le 0$ converts GP exactly into a convex program \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Sec. 24.6, pp. 313--315}.
+\end{itemize}
+
+\subsection{Unified Notation \& Cross-Book Conventions}
+
+Throughout this leaf, we adopt the unified primal-dual notation $(\vecb{x}, \vecb{\lambda}, \vecb{\nu})$ with $f_0$ as objective, $f_i(\vecb{x}) \le 0$ as inequalities ($\lambda_i \ge 0$), $h_j(\vecb{x}) = 0$ as equalities ($\nu_j \in \R$), $L(\vecb{x}, \vecb{\lambda}, \vecb{\nu})$ as the Lagrangian, $g(\vecb{\lambda}, \vecb{\nu})$ as the dual function, and $f^*(\vecb{y})$ as the Fenchel--Legendre conjugate. Table~\ref{tab:convex:notation} reconciles the divergent symbols across all five synthesized textbooks.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{cb:convex:notation}
+Because optimization texts, probabilistic ML references, and deep learning monographs inherit conventions from different mathematical communities, three symbol-role inversions and sign flips require explicit disambiguation before chaining derivations.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.24}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.05cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{V\~{u} (2018)} & \textbf{Deisenroth et al.\ (2020)} & \textbf{Murphy (2022)} & \textbf{Bishop \& Bishop (2024)} & \textbf{Goodfellow et al.\ (2017) / Unified} \\
+\midrule
+Primal objective & $\min f_0(\vecb{x})$ & $\min f(\vecb{x})$ & $\min \mathcal{L}(\vecb{\theta})$ & $\max f(\vecb{x})$ & $\min f(\vecb{x})$ / $\min f_0(\vecb{x})$ \\
+Inequality constraint & $f_i(\vecb{x}) \le 0$ & $g_i(\vecb{x}) \le 0$ & $g_j(\vecb{\theta}) \le 0$ & $h_k(\vecb{x}) \ge 0$ (flipped!) & $h^{(j)}(\vecb{x}) \le 0$ / $f_i(\vecb{x}) \le 0$ \\
+Equality constraint & $h_j(\vecb{x}) = 0$ & $h_j(\vecb{x}) = 0$ & $h_i(\vecb{\theta}) = 0$ & $g_j(\vecb{x}) = 0$ & $g^{(i)}(\vecb{x}) = 0$ / $h_j(\vecb{x}) = 0$ \\
+Dual multipliers & $\vecb{\lambda} \succeq \zeros$ (ineq.), $\vecb{\nu}$ (eq.) & $\vecb{\lambda} \ge \zeros$ (ineq.) & $\vecb{\mu} \ge \zeros$ (ineq.), $\vecb{\lambda}$ (eq.) & $\mu_k \ge 0$ (ineq.), $\lambda_j$ (eq.) & $\vecb{\alpha} \ge \zeros$ (ineq.), $\vecb{\lambda}$ (eq.) / $(\vecb{\lambda}, \vecb{\nu})$ \\
+Lagrangian & $L(\vecb{x},\vecb{\lambda},\vecb{\nu})$ & $\mathfrak{L}(\vecb{x},\vecb{\lambda})$ & $L(\vecb{\theta},\vecb{\mu},\vecb{\lambda})$ & $L(\vecb{x},\{\lambda_j\},\{\mu_k\})$ & $L(\vecb{x},\vecb{\lambda},\vecb{\alpha})$ / $L(\vecb{x},\vecb{\lambda},\vecb{\nu})$ \\
+Dual function & $g(\vecb{\lambda},\vecb{\nu})$ & $\mathfrak{D}(\vecb{\lambda})$ & Implicit in dual QP/LP & Not formulated & Implicit via $\min_{\vecb{x}}\max_{\vecb{\lambda},\vecb{\alpha}\ge \zeros}L$ \\
+Fenchel conjugate & N/A (referenced) & $f^*(\vecb{s}) = \sup_{\vecb{x}}(\inner{\vecb{s}}{\vecb{x}} - f(\vecb{x}))$ & $f^*(\lambda) = \max_x \lambda x - f(x)$ & N/A & $f^*(\vecb{y}) = \sup_{\vecb{x}}(\inner{\vecb{y}}{\vecb{x}} - f(\vecb{x}))$ \\
+\bottomrule
+\end{tabularx}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\caption{Cross-book notation reconciliation across \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24--25}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8}, \bookcite{deep_learning_foundations_concepts}{App. C}, and \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4}.}
+\label{tab:convex:notation}
+\end{table}
+
+\textbf{Four Critical Convention Reconciliations:}
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Objective Sense and Inequality Orientation:} Bishop \& Bishop formulate \emph{maximization} of $f(\vecb{x})$ subject to $h_k(\vecb{x}) \ge 0$, writing $L = f + \sum_j \lambda_j g_j + \sum_k \mu_k h_k$ with $\mu_k \ge 0$ so that $\grad f = -\mu_k \grad h_k$ points away from the feasible interior $h_k > 0$; when switching to \emph{minimization} with $h_k(\vecb{x}) \ge 0$, they explicitly flip the sign to $L = f - \mu_k h_k$ ($\mu_k \ge 0$) \bookcite{deep_learning_foundations_concepts}{App. C, pp. 623--624}. In our standard minimization form~\eqref{eq:convex:primal_std} with $f_i(\vecb{x}) \le 0$, replacing $f_i = -h_k$ yields $L = f_0 + \sum_i \lambda_i f_i$ ($\lambda_i \ge 0$), fully unifying all signs.
+  \item \textbf{$g$ vs.\ $h$ Role Inversion:} Deisenroth et al.\ and Murphy denote inequality constraints by $g$ and equalities by $h$, whereas Goodfellow et al.\ and Bishop \& Bishop assign $g$ to equalities and $h$ to inequalities, and V\~{u} reserves $g(\vecb{\lambda}, \vecb{\nu})$ exclusively for the Lagrange dual function while labeling primal inequalities $f_i$ \bookcite{mathematics_machine_learning_orienly}{p. 235}, \bookcite{probabilisticml_kevinmurphy_introduction}{p. 304}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p. 94}, \bookcite{machine_learning_co_ban_tiep_vu}{p. 318}.
+  \item \textbf{$\mathcal{L}$ vs.\ $L$ Overloading:} Murphy denotes the scalar objective (loss) as $\mathcal{L}(\vecb{\theta})$ and the Lagrangian as $L(\vecb{\theta}, \vecb{\mu}, \vecb{\lambda})$; we reserve $f_0$ for the primal objective and $L$ for the Lagrangian to prevent conflating unconstrained loss values with saddle objectives.
+  \item \textbf{Convex Conjugate Sign Convention:} Both Deisenroth et al.\ ($f^*(\vecb{s})$) and Murphy ($f^*(\lambda)$) define the Fenchel--Legendre conjugate as $\sup_{\vecb{x}}(\inner{\vecb{s}}{\vecb{x}} - f(\vecb{x}))$, which equals the \emph{negated} intercept $-c$ of a supporting affine hyperplane $t = \inner{\vecb{s}}{\vecb{x}} + c$ lying below $\operatorname{epi} f$ \bookcite{mathematics_machine_learning_orienly}{Sec. 7.3.3, pp. 242--243}, \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 8.4, p. 279}.
+\end{enumerate}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:convex:derivations}
+% =============================================================================
+
+\subsection{Convex Sets, Epigraphs, and Hyperplane Separation}
+\label{sec:convex:sets_separation}
+
+A set $C \subseteq \R^n$ is \emph{convex} if the closed line segment joining any two elements lies entirely within $C$: for all $\vecb{x}_1, \vecb{x}_2 \in C$ and all $\theta \in [0, 1]$, $\theta \vecb{x}_1 + (1 - \theta)\vecb{x}_2 \in C$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Def. 23.1, p. 284}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Def. 7.2, p. 236}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Eq. 8.6, p. 277}. More generally, a point $\vecb{x} = \sum_{k=1}^K \theta_k \vecb{x}_k$ with $\theta_k \ge 0$ and $\sum_{k=1}^K \theta_k = 1$ is a \emph{convex combination}, and the set of all finite convex combinations of $S \subseteq \R^n$ defines its \emph{convex hull} $\operatorname{conv}(S)$, the smallest convex set containing $S$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Def. 23.5, p. 287}.
+
+Fundamental convex primitives preserved under arbitrary intersections $\bigcap_{\alpha} C_\alpha$ and affine maps $\vecb{x} \mapsto \mat{A}\vecb{x} + \vecb{b}$ include:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Hyperplanes and Halfspaces:} $\mathcal{H} = \set{\vecb{x} \in \R^n : \vecb{a}\T\vecb{x} = b}$ ($\vecb{a} \neq \zeros$) and $\mathcal{H}_- = \set{\vecb{x} \in \R^n : \vecb{a}\T\vecb{x} \le b}$.
+  \item \textbf{Polyhedra:} Finite intersections of halfspaces and hyperplanes $\mathcal{P} = \set{\vecb{x} \in \R^n : \mat{G}\vecb{x} \preceq \vecb{h},\; \mat{A}\vecb{x} = \vecb{b}}$, forming the canonical feasible domains of linear programs \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, p. 285}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.5, p. 305}.
+  \item \textbf{Norm Balls:} $B_{\norm{\cdot}}(\vecb{x}_c, r) = \set{\vecb{x} \in \R^n : \norm{\vecb{x} - \vecb{x}_c} \le r}$ for any valid norm ($\ell_p$ with $p \ge 1$), by the triangle inequality; by contrast, $\ell_p$ pseudo-norm balls with $0 < p < 1$ violate the triangle inequality and are non-convex \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Fig. 23.3, p. 286}.
+\end{itemize}
+
+\begin{coremath}[Hyperplane Separation, Supporting Hyperplanes \& Epigraph Characterization]
+\label{cm:convex:separation_epi}
+\textbf{1. Strict Point--Set Separation \& Separating Hyperplane Theorem.} Let $C \subseteq \R^n$ be nonempty, closed, and convex, and let $\vecb{x}_0 \notin C$. Define the Euclidean projection $\vecb{p} \coloneqq \argmin_{\vecb{z} \in C} \norm{\vecb{z} - \vecb{x}_0}_2^2$, which exists because $C$ is closed and $r(\vecb{z}) = \norm{\vecb{z} - \vecb{x}_0}_2^2$ is coercive. Set $\vecb{a} \coloneqq \vecb{x}_0 - \vecb{p} \neq \zeros$. For any $\vecb{z} \in C$ and $t \in (0, 1]$, convexity of $C$ gives $\vecb{p} + t(\vecb{z} - \vecb{p}) = (1-t)\vecb{p} + t\vecb{z} \in C$, so optimality of $\vecb{p}$ implies
+\begin{equation}
+  \norm{\vecb{p} - \vecb{x}_0}_2^2 \le \norm{\vecb{p} + t(\vecb{z} - \vecb{p}) - \vecb{x}_0}_2^2
+  = \norm{\vecb{p} - \vecb{x}_0}_2^2 + 2t\,\inner{\vecb{p} - \vecb{x}_0}{\vecb{z} - \vecb{p}} + t^2 \norm{\vecb{z} - \vecb{p}}_2^2.
+  \label{eq:convex:proj_variational}
+\end{equation}
+Subtracting $\norm{\vecb{p} - \vecb{x}_0}_2^2$, dividing by $2t > 0$, and letting $t \searrow 0$ yields $\inner{\vecb{a}}{\vecb{z} - \vecb{p}} \le 0$ for all $\vecb{z} \in C$. Since $\inner{\vecb{a}}{\vecb{x}_0 - \vecb{p}} = \norm{\vecb{a}}_2^2 > 0$, choosing $b = \inner{\vecb{a}}{\vecb{p}} + \frac{1}{2}\norm{\vecb{a}}_2^2$ strictly separates $\vecb{x}_0$ from $C$: $\inner{\vecb{a}}{\vecb{z}} < b < \inner{\vecb{a}}{\vecb{x}_0}$ for all $\vecb{z} \in C$. Applying this separation to the Minkowski difference $C - D$ and $\zeros$ (with closure/boundary approximation when sets touch) establishes the \textbf{Separating Hyperplane Theorem}: two nonempty convex sets $C, D \subseteq \R^n$ with $C \cap D = \emptyset$ admit $(\vecb{a} \neq \zeros, b)$ satisfying $\vecb{a}\T\vecb{x} \le b \;\forall\,\vecb{x} \in C$ and $\vecb{a}\T\vecb{x} \ge b \;\forall\,\vecb{x} \in D$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Thm. 23.1, p. 288}. Taking a sequence $\vecb{x}_0^{(k)} \notin C$ converging to a boundary point $\vecb{x}_0 \in \partial C$ and normalizing $\vecb{a}^{(k)} / \norm{\vecb{a}^{(k)}}_2$ gives a convergent subsequence $\vecb{a}^* \neq \zeros$ establishing the \textbf{Supporting Hyperplane Theorem}: at every boundary point $\vecb{x}_0 \in \partial C$ of a convex set $C$, there exists a hyperplane supporting $C$, i.e., $\inner{\vecb{a}^*}{\vecb{x}} \le \inner{\vecb{a}^*}{\vecb{x}_0}$ for all $\vecb{x} \in C$ \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 242}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, p. 307}.
+
+\textbf{2. Epigraph \& Sublevel Characterization of Convex Functions.} Given $f : \operatorname{dom} f \to \R$, its \emph{epigraph} and \emph{$\alpha$-sublevel set} are \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 236}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.1.3.2, p. 278}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Def. 23.8, p. 294}
+\begin{equation}
+  \operatorname{epi} f \coloneqq \set{(\vecb{x}, t) \in \operatorname{dom} f \times \R : f(\vecb{x}) \le t}, \qquad
+  \mathcal{C}_\alpha(f) \coloneqq \set{\vecb{x} \in \operatorname{dom} f : f(\vecb{x}) \le \alpha}.
+  \label{eq:convex:epigraph_sublevel}
+\end{equation}
+\emph{Theorem.} A function $f$ is convex if and only if $\operatorname{epi} f \subseteq \R^{n+1}$ is a convex set.
+
+\emph{Proof.} ($\Rightarrow$) Let $(\vecb{x}, t), (\vecb{y}, s) \in \operatorname{epi} f$ and $\theta \in [0, 1]$. Since $\operatorname{dom} f$ is convex, $\theta\vecb{x} + (1-\theta)\vecb{y} \in \operatorname{dom} f$, and convexity of $f$ yields $f(\theta\vecb{x} + (1-\theta)\vecb{y}) \le \theta f(\vecb{x}) + (1-\theta)f(\vecb{y}) \le \theta t + (1-\theta)s$, so $\theta(\vecb{x}, t) + (1-\theta)(\vecb{y}, s) \in \operatorname{epi} f$. ($\Leftarrow$) Take $t = f(\vecb{x})$ and $s = f(\vecb{y})$; then $(\vecb{x}, f(\vecb{x})), (\vecb{y}, f(\vecb{y})) \in \operatorname{epi} f \implies (\theta\vecb{x} + (1-\theta)\vecb{y},\; \theta f(\vecb{x}) + (1-\theta)f(\vecb{y})) \in \operatorname{epi} f$, proving $f(\theta\vecb{x} + (1-\theta)\vecb{y}) \le \theta f(\vecb{x}) + (1-\theta)f(\vecb{y})$. Moreover, intersecting $\operatorname{epi} f$ with the hyperplane $t = \alpha$ shows that every $\alpha$-sublevel set $\mathcal{C}_\alpha(f)$ of a convex function is convex, whereas the converse fails: functions with convex sublevel sets are \emph{quasiconvex}, such as $f(x, y) = -e^{x+y}$ (concave, yet every sublevel set is a convex halfspace) \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Thm. 23.2 \& Def. 23.9, pp. 295--296}.
+\end{coremath}
+
+\subsection{First/Second-Order Conditions, Jensen's Inequality \& Optimality}
+
+A function $f : \operatorname{dom} f \to \R$ on a convex domain is \emph{convex} if, for all $\vecb{x}, \vecb{y} \in \operatorname{dom} f$ and $\theta \in [0, 1]$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, p. 289}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 236}, and \bookcite{deep_learning_foundations_concepts}{Eq. 2.101, p. 52},
+\begin{equation}
+  f(\theta\vecb{x} + (1 - \theta)\vecb{y}) \le \theta f(\vecb{x}) + (1 - \theta) f(\vecb{y}).
+  \label{eq:convex:chord_def}
+\end{equation}
+It is \emph{strictly convex} if strict inequality holds for $\vecb{x} \neq \vecb{y}$ and $\theta \in (0, 1)$, and \emph{$m$-strongly convex} ($m > 0$) if $f(\vecb{x}) - \frac{m}{2}\norm{\vecb{x}}_2^2$ is convex \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Eq. 8.10, p. 281}. A function $f$ is (strictly) concave iff $-f$ is (strictly) convex. Convexity is preserved under nonnegative weighted sums $\sum_k \alpha_k f_k$ ($\alpha_k \ge 0$), pointwise supremum $\sup_{\alpha \in \mathcal{A}} f_\alpha(\vecb{x})$, and composition with affine maps $\vecb{x} \mapsto f(\mat{A}\vecb{x} + \vecb{b})$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Sec. 23.3.2, pp. 289--290}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Ex. 7.4, p. 238}.
+
+\begin{coremath}[Jensen's Inequality, Differential Convexity Criteria \& Global Optimality]
+\label{cm:convex:jensen_orders}
+\textbf{1. Jensen's Inequality.} By induction on $K \ge 2$ from~\eqref{eq:convex:chord_def} (writing $\sum_{i=1}^K \theta_i \vecb{x}_i = \theta_1 \vecb{x}_1 + (1-\theta_1)\sum_{i=2}^K \frac{\theta_i}{1-\theta_1}\vecb{x}_i$ when $\theta_1 < 1$), any convex $f$ satisfies $f\bigl(\sum_{i=1}^K \theta_i \vecb{x}_i\bigr) \le \sum_{i=1}^K \theta_i f(\vecb{x}_i)$ for $\theta_i \ge 0$, $\sum_i \theta_i = 1$. Extending to integrable random vectors $\vecb{X}$ (via supporting hyperplanes at $\E[\vecb{X}]$) gives \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 239}, \bookcite{deep_learning_foundations_concepts}{Eqs. 2.102--2.104, p. 52}:
+\begin{equation}
+  f(\E[\vecb{X}]) \le \E[f(\vecb{X})],
+  \label{eq:convex:jensen}
+\end{equation}
+with strict inequality when $f$ is strictly convex and $\vecb{X}$ is non-degenerate. Applying~\eqref{eq:convex:jensen} to the strictly convex function $-\ln u$ ($u > 0$) yields Gibbs' non-negativity inequality for Kullback--Leibler divergence: $\KL{p}{q} = \E_p[-\ln(q(X)/p(X))] \ge -\ln \E_p[q(X)/p(X)] = -\ln 1 = 0$, with equality iff $p = q$ almost everywhere \bookcite{deep_learning_foundations_concepts}{Eq. 2.105, pp. 52--53}.
+
+\textbf{2. First- and Second-Order Differential Conditions.} Suppose $\operatorname{dom} f$ is open and convex.
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{First-Order ($f \in C^1$):} $f$ is convex if and only if every first-order Taylor approximation is a global underestimator \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Eq. 7.31, p. 237}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, Eq. 23.3, p. 296}:
+  \begin{equation}
+    f(\vecb{y}) \ge f(\vecb{x}) + \grad f(\vecb{x})\T(\vecb{y} - \vecb{x}) \qquad \forall\,\vecb{x}, \vecb{y} \in \operatorname{dom} f.
+    \label{eq:convex:first_order}
+  \end{equation}
+  \emph{Proof.} ($\Rightarrow$) Rearranging~\eqref{eq:convex:chord_def} for $t \in (0, 1]$ gives $f(\vecb{y}) - f(\vecb{x}) \ge \frac{f(\vecb{x} + t(\vecb{y}-\vecb{x})) - f(\vecb{x})}{t} \xrightarrow{t \searrow 0} \grad f(\vecb{x})\T(\vecb{y}-\vecb{x})$. ($\Leftarrow$) Let $\vecb{z} = \theta\vecb{x} + (1-\theta)\vecb{y}$. Applying~\eqref{eq:convex:first_order} at $\vecb{z}$ toward $\vecb{x}$ and $\vecb{y}$, multiplying by $\theta$ and $1-\theta$, and summing cancels $\grad f(\vecb{z})\T[\theta(\vecb{x}-\vecb{z}) + (1-\theta)(\vecb{y}-\vecb{z})] = 0$, leaving $\theta f(\vecb{x}) + (1-\theta)f(\vecb{y}) \ge f(\vecb{z})$.
+  \item \emph{Second-Order ($f \in C^2$):} Restricting $g(t) = f(\vecb{x} + t\vecb{d})$ gives $g''(t) = \vecb{d}\T\hess f(\vecb{x} + t\vecb{d})\vecb{d}$. Hence $f$ is convex iff $\hess f(\vecb{x}) \succeq \zeros$ everywhere; strictly convex if $\hess f(\vecb{x}) \succ \zeros$ everywhere; and $m$-strongly convex iff $\hess f(\vecb{x}) \succeq m\eye_n$ everywhere \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Thm. 8.1.1 \& Sec. 8.1.3.4, pp. 280--281}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, p. 93}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, pp. 297--298}.
+\end{itemize}
+
+\textbf{3. Local $=$ Global \& Variational Optimality.} Let $\vecb{x}_0 \in \mathcal{X}$ be locally optimal for convex problem~\eqref{eq:convex:primal_std} within radius $R > 0$. If there existed $\vecb{y} \in \mathcal{X}$ with $f_0(\vecb{y}) < f_0(\vecb{x}_0)$, choosing $\theta \in (0, 1]$ small enough that $\vecb{z} = (1-\theta)\vecb{x}_0 + \theta\vecb{y}$ satisfies $\norm{\vecb{z}-\vecb{x}_0}_2 < R$ preserves $\vecb{z} \in \mathcal{X}$ (by convexity of $\mathcal{X}$) while yielding $f_0(\vecb{z}) \le (1-\theta)f_0(\vecb{x}_0) + \theta f_0(\vecb{y}) < f_0(\vecb{x}_0)$, contradicting local optimality \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Sec. 24.3.2, p. 306}. When $f_0 \in C^1$, $\vecb{x}^* \in \mathcal{X}$ is globally optimal iff \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Eq. 24.10, p. 306}:
+\begin{equation}
+  \grad f_0(\vecb{x}^*)\T(\vecb{x} - \vecb{x}^*) \ge 0 \quad \forall\,\vecb{x} \in \mathcal{X}
+  \quad\Longleftrightarrow\quad
+  -\grad f_0(\vecb{x}^*) \in \mathcal{N}_{\mathcal{X}}(\vecb{x}^*),
+  \label{eq:convex:variational_opt}
+\end{equation}
+where $\mathcal{N}_{\mathcal{X}}(\vecb{x}^*) \coloneqq \set{\vecb{v} \in \R^n : \inner{\vecb{v}}{\vecb{x} - \vecb{x}^*} \le 0\;\forall\,\vecb{x} \in \mathcal{X}}$ is the \emph{normal cone} of $\mathcal{X}$ at $\vecb{x}^*$. For nonsmooth convex $f$, the \emph{subdifferential} $\partial f(\vecb{x}) \coloneqq \set{\vecb{g} \in \R^n : f(\vecb{z}) \ge f(\vecb{x}) + \vecb{g}\T(\vecb{z}-\vecb{x})\;\forall\,\vecb{z} \in \operatorname{dom} f}$ generalizes gradients, and $\vecb{x}^*$ minimizes $f$ over $\R^n$ iff $\zeros \in \partial f(\vecb{x}^*)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Eq. 8.13, p. 282}.
+\end{coremath}
+
+\begin{intuition}[Supporting Hyperplanes as First-Order Optimality Certificates]
+Inequality~\eqref{eq:convex:variational_opt} carries an immediate geometric meaning (visualized later in Figure~\ref{fig:convex:tiep_support}): if $\grad f_0(\vecb{x}^*) \neq \zeros$, the negative gradient $-\grad f_0(\vecb{x}^*)$ points in the steepest descent direction, while every feasible displacement $\vecb{x} - \vecb{x}^*$ forms an obtuse or right angle with $-\grad f_0(\vecb{x}^*)$. Thus the affine hyperplane $\set{\vecb{x} : \grad f_0(\vecb{x}^*)\T(\vecb{x} - \vecb{x}^*) = 0}$ supports the convex feasible set $\mathcal{X}$ at $\vecb{x}^*$, preventing any feasible step from decreasing $f_0$.
+\end{intuition}
+
+\subsection{Fenchel--Legendre Conjugate \& Biconjugation Duality}
+\label{sec:convex:fenchel}
+
+Whereas Lagrangian duality dualizes explicit problem constraints, the \emph{Fenchel--Legendre transform} (convex conjugate) dualizes a function's epigraph directly through its family of supporting affine hyperplanes, as developed in \bookcite{mathematics_machine_learning_orienly}{Sec. 7.3, p. 242} and illustrated in \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 8.4, p. 279}.
+
+\begin{coremath}[Fenchel--Legendre Conjugate, Fenchel--Young Inequality \& Fenchel--Moreau]
+\label{cm:convex:fenchel}
+For any function $f : \R^n \to \R \cup \set{+\infty}$ (not necessarily convex or differentiable), its \textbf{Fenchel--Legendre conjugate} $f^* : \R^n \to \R \cup \set{+\infty}$ is defined by \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Eq. 7.53, p. 242}:
+\begin{equation}
+  f^*(\vecb{y}) \coloneqq \sup_{\vecb{x} \in \operatorname{dom} f} \bigl(\inner{\vecb{y}}{\vecb{x}} - f(\vecb{x})\bigr).
+  \label{eq:convex:fenchel_def}
+\end{equation}
+\textbf{1. Universal Convexity of $f^*$.} For each fixed $\vecb{x} \in \operatorname{dom} f$, the map $\vecb{y} \mapsto \inner{\vecb{y}}{\vecb{x}} - f(\vecb{x})$ is affine in $\vecb{y}$. Because the pointwise supremum of affine functions is convex and lower semi-continuous (closed), $f^*$ is \emph{always convex and closed}, even when $f$ is non-convex \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 23, p. 290}, \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 242}.
+
+\textbf{2. Fenchel--Young Inequality.} By definition~\eqref{eq:convex:fenchel_def}, for all $\vecb{x}, \vecb{y} \in \R^n$:
+\begin{equation}
+  f(\vecb{x}) + f^*(\vecb{y}) \ge \inner{\vecb{y}}{\vecb{x}},
+  \label{eq:convex:fenchel_young}
+\end{equation}
+with equality if and only if $\vecb{x}$ attains the supremum, i.e., $\inner{\vecb{y}}{\vecb{z}} - f(\vecb{z}) \le \inner{\vecb{y}}{\vecb{x}} - f(\vecb{x}) \;\forall\,\vecb{z} \iff f(\vecb{z}) \ge f(\vecb{x}) + \inner{\vecb{y}}{\vecb{z} - \vecb{x}} \iff \vecb{y} \in \partial f(\vecb{x})$ (reducing to $\vecb{y} = \grad f(\vecb{x})$ when $f$ is differentiable and convex) \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Eq. 7.58, p. 243}.
+
+\textbf{3. Biconjugate \& Fenchel--Moreau Theorem.} Applying~\eqref{eq:convex:fenchel_def} a second time gives $f^{**}(\vecb{x}) \coloneqq \sup_{\vecb{y} \in \operatorname{dom} f^*} \bigl(\inner{\vecb{x}}{\vecb{y}} - f^*(\vecb{y})\bigr)$. By~\eqref{eq:convex:fenchel_young}, $f^{**}(\vecb{x}) \le f(\vecb{x})$ universally; specifically, $f^{**}$ is the \emph{closed convex envelope} (greatest closed convex minorizer) of $f$. Under the mild condition that $f$ is \emph{proper} ($f(\vecb{x}) > -\infty$ and $\operatorname{dom} f \neq \emptyset$), convex, and lower semi-continuous, the \textbf{Fenchel--Moreau Theorem} guarantees exact involution $f^{**} = f$ (proved via strict hyperplane separation of any point $(\vecb{x}_0, t_0) \notin \operatorname{epi} f$ from the closed convex set $\operatorname{epi} f$) \bookcite{mathematics_machine_learning_orienly}{Ch. 7, p. 243}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Fig. 8.4(b), p. 279}.
+
+\textbf{4. Canonical ML Conjugates \& Fenchel--Rockafellar Duality.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Kernel Quadratic Form} \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Ex. 7.7, Eqs. 7.59--7.62, p. 244}: For $f(\vecb{y}) = \frac{\lambda}{2}\vecb{y}\T\mat{K}^{-1}\vecb{y}$ ($\mat{K} \succ \zeros$, $\lambda > 0$), setting $\grad_{\vecb{y}}(\inner{\vecb{y}}{\vecb{\alpha}} - f(\vecb{y})) = \vecb{\alpha} - \lambda\mat{K}^{-1}\vecb{y} = \zeros$ gives $\vecb{y} = \lambda \mat{K}\vecb{\alpha}$ and $f^*(\vecb{\alpha}) = \frac{1}{2\lambda}\vecb{\alpha}\T\mat{K}\vecb{\alpha}$.
+  \item \emph{Norms \& Dual Norms:} If $f(\vecb{x}) = \norm{\vecb{x}}$ with dual norm $\norm{\vecb{y}}_* \coloneqq \sup_{\norm{\vecb{z}}\le 1}\inner{\vecb{y}}{\vecb{z}}$, then $f^*(\vecb{y}) = 0$ if $\norm{\vecb{y}}_* \le 1$ and $+\infty$ otherwise (the indicator $I_{\set{\norm{\cdot}_*\le 1}}(\vecb{y})$).
+  \item \emph{Negative Entropy \& Log-Sum-Exp:} On $\vecb{x} \in \Simplex^{n-1}$ (with $f(\vecb{x}) = \sum_i x_i \ln x_i$ inside $\Simplex^{n-1}$ and $+\infty$ outside), maximizing $\vecb{y}\T\vecb{x} - \sum_i x_i \ln x_i$ gives the softmax-normalized Gibbs optimal $\hat{x}_i = e^{y_i}/\sum_k e^{y_k}$ and $f^*(\vecb{y}) = \ln \sum_{i=1}^n e^{y_i}$.
+  \item \emph{Separable Empirical Losses \& Fenchel Duality} \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Ex. 7.8--7.9, pp. 244--245}: If $L(\vecb{t}) = \sum_{i=1}^n \ell_i(t_i)$, then $L^*(\vecb{z}) = \sum_{i=1}^n \ell_i^*(z_i)$. Introducing $\vecb{y} = \mat{A}\vecb{x}$ with Lagrange multiplier $\vecb{u}$ into $\min_{\vecb{x}} f(\mat{A}\vecb{x}) + g(\vecb{x})$ for convex $f, g$ swaps $\min_{\vecb{x},\vecb{y}}\max_{\vecb{u}}$ to $\max_{\vecb{u}}\min_{\vecb{x},\vecb{y}}$ (under regularity), yielding the \textbf{Fenchel--Rockafellar dual}:
+  \begin{equation}
+    \min_{\vecb{x} \in \R^n} f(\mat{A}\vecb{x}) + g(\vecb{x})
+    = \max_{\vecb{u} \in \R^m} \Bigl[ -f^*(\vecb{u}) - g^*(-\mat{A}\T\vecb{u}) \Bigr].
+    \label{eq:convex:fenchel_rockafellar}
+  \end{equation}
+\end{itemize}
+\end{coremath}
+
+\begin{intuition}[Geometric Intercept Interpretation of $f^*(\vecb{y})$]
+Consider a 1D function $f(x)$ and fix a slope $s \in \R$. Moving a line $t = s x + c$ vertically downward until it just touches the graph of $f$ from below sets the intercept $c = \inf_x (f(x) - sx) = -\sup_x (sx - f(x)) = -f^*(s)$ \bookcite{mathematics_machine_learning_orienly}{Sec. 7.3.3, Eqs. 7.54--7.58, p. 243}. Hence $f^*(s)$ measures the exact \emph{negative $t$-intercept} of the tightest affine lower bound of slope $s$. Reconstructing $f^{**}(x) = \sup_s (sx - f^*(s))$ takes the upper envelope of all such supporting halfspaces $\set{(x,t) : t \ge sx - f^*(s)}$, faithfully carving out $\operatorname{epi} f$ when $f$ is closed convex, or filling in non-convex "dents" to produce the convex hull of $\operatorname{epi} f$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 8.4(b), p. 279}.
+\end{intuition}
+
+\subsection{Lagrangian Dual Function, Weak/Strong Duality \& Slater's Condition}
+\label{sec:convex:lagrangian_duality}
+
+To convert the hard-constrained problem~\eqref{eq:convex:primal_std} into a smooth saddle formulation, first note that adding infinite-step indicator barriers $\hat{L}(\vecb{x}) = f_0(\vecb{x}) + \sum_{i=1}^m I_{\le 0}(f_i(\vecb{x})) + \sum_{j=1}^p I_{=0}(h_j(\vecb{x}))$ (where $I_{\le 0}(z) = 0$ if $z \le 0$ and $+\infty$ if $z > 0$) preserves the exact primal optimum, yet is discontinuous \bookcite{mathematics_machine_learning_orienly}{Ch. 7, Eqs. 7.18--7.19, pp. 233--234}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Eq. 8.97, p. 304}. Replacing infinite indicator steps by linear penalties yields the \textbf{Lagrangian} \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Sec. 25.2.1, p. 318}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, Eq. 4.14, p. 94}:
+\begin{equation}
+  L(\vecb{x}, \vecb{\lambda}, \vecb{\nu}) \coloneqq f_0(\vecb{x}) + \sum_{i=1}^m \lambda_i f_i(\vecb{x}) + \sum_{j=1}^p \nu_j h_j(\vecb{x})
+  = f_0(\vecb{x}) + \vecb{\lambda}\T \vecb{f}(\vecb{x}) + \vecb{\nu}\T \vecb{h}(\vecb{x}),
+  \label{eq:convex:lagrangian}
+\end{equation}
+with Lagrange/KKT multiplier vectors $\vecb{\lambda} \in \R^m_{\ge 0}$ and $\vecb{\nu} \in \R^p$. Exactly recovering the barrier via $\sup_{\vecb{\lambda} \succeq \zeros,\, \vecb{\nu}} L(\vecb{x}, \vecb{\lambda}, \vecb{\nu}) = \hat{L}(\vecb{x})$ expresses the primal problem in unconstrained minimax form: $p^* = \inf_{\vecb{x} \in \mathcal{D}} \sup_{\vecb{\lambda} \succeq \zeros,\, \vecb{\nu}} L(\vecb{x}, \vecb{\lambda}, \vecb{\nu})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eqs. 4.15--4.18, p. 94}, \bookcite{mathematics_machine_learning_orienly}{Eq. 7.26, p. 235}.
+
+\begin{coremath}[Lagrange Dual Problem, Weak Duality, Slater's Theorem \& Saddle Points]
+\label{cm:convex:duality_slater}
+\textbf{1. Dual Function \& Concavity.} Swapping $\inf$ and $\sup$ defines the \textbf{Lagrange dual function} \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Eq. 25.5, p. 318}, \bookcite{mathematics_machine_learning_orienly}{Def. 7.1, p. 234}:
+\begin{equation}
+  g(\vecb{\lambda}, \vecb{\nu}) \coloneqq \inf_{\vecb{x} \in \mathcal{D}} L(\vecb{x}, \vecb{\lambda}, \vecb{\nu}).
+  \label{eq:convex:dual_fn}
+\end{equation}
+Because $L(\vecb{x}, \cdot, \cdot)$ is affine in $(\vecb{\lambda}, \vecb{\nu})$ for every $\vecb{x} \in \mathcal{D}$, $g(\vecb{\lambda}, \vecb{\nu})$ is a pointwise infimum of affine functions and is therefore \emph{always concave} (possibly taking $-\infty$), regardless of whether $f_0, f_i, h_j$ are convex \bookcite{machine_learning_co_ban_tiep_vu}{p. 318}, \bookcite{mathematics_machine_learning_orienly}{p. 235}. The \textbf{Lagrange dual problem} is thus always a concave maximization (convex optimization) problem:
+\begin{equation}
+  d^* \coloneqq \sup_{\vecb{\lambda} \succeq \zeros,\; \vecb{\nu} \in \R^p} g(\vecb{\lambda}, \vecb{\nu}),
+  \label{eq:convex:dual_prob}
+\end{equation}
+with dual feasibility requiring $\vecb{\lambda} \succeq \zeros$ and $g(\vecb{\lambda}, \vecb{\nu}) > -\infty$ \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Eq. 25.11, p. 321}.
+
+\textbf{2. Weak Duality ($d^* \le p^*$).} By the universal minimax inequality $\sup_y \inf_x \phi(x,y) \le \inf_x \sup_y \phi(x,y)$ \bookcite{mathematics_machine_learning_orienly}{Eqs. 7.23--7.24, pp. 234--235}---equivalently, for any $\vecb{x} \in \mathcal{X}$ and $\vecb{\lambda} \succeq \zeros$, $g(\vecb{\lambda}, \vecb{\nu}) \le L(\vecb{x}, \vecb{\lambda}, \vecb{\nu}) \le f_0(\vecb{x})$ since $\lambda_i f_i(\vecb{x}) \le 0$ and $\nu_j h_j(\vecb{x}) = 0$ \bookcite{machine_learning_co_ban_tiep_vu}{Eq. 25.6, p. 319}---taking $\inf_{\vecb{x} \in \mathcal{X}}$ and $\sup_{\vecb{\lambda} \succeq \zeros, \vecb{\nu}}$ establishes \textbf{weak duality}:
+\begin{equation}
+  d^* = \sup_{\vecb{\lambda} \succeq \zeros,\, \vecb{\nu}} \inf_{\vecb{x} \in \mathcal{D}} L(\vecb{x}, \vecb{\lambda}, \vecb{\nu})
+  \;\le\; \inf_{\vecb{x} \in \mathcal{D}} \sup_{\vecb{\lambda} \succeq \zeros,\, \vecb{\nu}} L(\vecb{x}, \vecb{\lambda}, \vecb{\nu}) = p^*,
+  \label{eq:convex:weak_duality}
+\end{equation}
+holding unconditionally for \emph{all} optimization problems (convex or non-convex). The nonnegative quantity $\Delta_{\mathrm{gap}} \coloneqq p^* - d^* \ge 0$ is the \emph{optimal duality gap} \bookcite{machine_learning_co_ban_tiep_vu}{Sec. 25.3.1, p. 322}. When $d^* = p^*$, \textbf{strong duality} holds.
+
+\textbf{3. Slater's Constraint Qualification \& Strong Duality Theorem.} Assume~\eqref{eq:convex:primal_std} is convex ($f_0,\dots,f_m$ convex, $h_j(\vecb{x}) = (\mat{A}\vecb{x} - \vecb{b})_j$). \emph{Slater's condition} holds if there exists a strictly feasible point $\tilde{\vecb{x}} \in \operatorname{relint}(\mathcal{D})$ such that \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Def. 25.1 \& Thm. 25.1, p. 322}:
+\begin{equation}
+  f_i(\tilde{\vecb{x}}) < 0 \quad \text{for all non-affine } f_i \qquad \bigl(f_i(\tilde{\vecb{x}}) \le 0 \text{ suffices if } f_i \text{ is affine}\bigr), \qquad \mat{A}\tilde{\vecb{x}} = \vecb{b}.
+  \label{eq:convex:slater}
+\end{equation}
+\emph{Theorem (Slater).} Under convexity and~\eqref{eq:convex:slater}, strong duality $d^* = p^*$ holds; moreover, if $p^* > -\infty$, the dual optimum $(\vecb{\lambda}^*, \vecb{\nu}^*)$ is attained.
+
+\emph{Proof Sketch via Hyperplane Separation.} Consider the convex epigraph-value set
+\[
+  \mathcal{A} \coloneqq \set{(\vecb{u}, \vecb{v}, t) \in \R^m \times \R^p \times \R : \exists\,\vecb{x} \in \mathcal{D} \text{ with } \vecb{f}(\vecb{x}) \preceq \vecb{u},\; \mat{A}\vecb{x}-\vecb{b} = \vecb{v},\; f_0(\vecb{x}) \le t}.
+\]
+Assume $\operatorname{rank}(\mat{A}) = p$ and $\operatorname{int}(\mathcal{D}) \neq \emptyset$ (otherwise reduce to $\operatorname{aff}(\mathcal{D})$). Because $p^* = \inf \set{t : (\zeros, \zeros, t) \in \mathcal{A}}$, the point $(\zeros, \zeros, p^*)$ does not belong to $\operatorname{int}(\mathcal{A})$ (if $p^* > -\infty$). By the Supporting/Separating Hyperplane Theorem (Core Formulation~\ref{cm:convex:separation_epi}), there exists $(\tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}}, \mu) \neq \zeros$ supporting $\mathcal{A}$ at $(\zeros, \zeros, p^*)$:
+\begin{equation}
+  \tilde{\vecb{\lambda}}\T \vecb{u} + \tilde{\vecb{\nu}}\T \vecb{v} + \mu t \ge \mu p^* \qquad \forall\,(\vecb{u}, \vecb{v}, t) \in \mathcal{A}.
+  \label{eq:convex:slater_sep}
+\end{equation}
+Since $\vecb{u}$ and $t$ can be increased arbitrarily inside $\mathcal{A}$, necessarily $\tilde{\vecb{\lambda}} \succeq \zeros$ and $\mu \ge 0$. Applying~\eqref{eq:convex:slater_sep} to $(\vecb{f}(\tilde{\vecb{x}}), \zeros, f_0(\tilde{\vecb{x}})) \in \mathcal{A}$ yields $\tilde{\vecb{\lambda}}\T\vecb{f}(\tilde{\vecb{x}}) + \mu(f_0(\tilde{\vecb{x}}) - p^*) \ge 0$. If $\mu = 0$, then $\tilde{\vecb{\lambda}}\T\vecb{f}(\tilde{\vecb{x}}) \ge 0$, which forces $\tilde{\vecb{\lambda}} = \zeros$ since $f_i(\tilde{\vecb{x}}) < 0$; then~\eqref{eq:convex:slater_sep} becomes $\tilde{\vecb{\nu}}\T(\mat{A}\vecb{x} - \vecb{b}) \ge 0$ for all $\vecb{x} \in \mathcal{D}$ near $\tilde{\vecb{x}} \in \operatorname{int}(\mathcal{D})$, forcing $\tilde{\vecb{\nu}} = \zeros$ (contradicting $(\tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}}, \mu) \neq \zeros$). Hence $\mu > 0$. Dividing~\eqref{eq:convex:slater_sep} by $\mu$ and setting $\vecb{\lambda}^* \coloneqq \tilde{\vecb{\lambda}}/\mu \succeq \zeros$, $\vecb{\nu}^* \coloneqq \tilde{\vecb{\nu}}/\mu$ gives $L(\vecb{x}, \vecb{\lambda}^*, \vecb{\nu}^*) \ge p^*$ for all $\vecb{x} \in \mathcal{D}$, so $d^* \ge g(\vecb{\lambda}^*, \vecb{\nu}^*) \ge p^*$, combining with~\eqref{eq:convex:weak_duality} to yield $d^* = p^*$.
+
+\textbf{4. Saddle-Point Characterization.} A pair $(\vecb{x}^*, (\vecb{\lambda}^*, \vecb{\nu}^*))$ with $\vecb{x}^* \in \mathcal{D}$, $\vecb{\lambda}^* \succeq \zeros$ is primal-dual optimal with zero duality gap ($f_0(\vecb{x}^*) = g(\vecb{\lambda}^*, \vecb{\nu}^*)$) if and only if it is a \textbf{saddle point} of $L$:
+\begin{equation}
+  L(\vecb{x}^*, \vecb{\lambda}, \vecb{\nu}) \;\le\; L(\vecb{x}^*, \vecb{\lambda}^*, \vecb{\nu}^*) \;\le\; L(\vecb{x}, \vecb{\lambda}^*, \vecb{\nu}^*)
+  \qquad \forall\,\vecb{x} \in \mathcal{D},\;\forall\,\vecb{\lambda} \succeq \zeros,\;\forall\,\vecb{\nu} \in \R^p.
+  \label{eq:convex:saddle}
+\end{equation}
+\end{coremath}
+
+\subsection{Complementary Slackness \& KKT Optimality Conditions}
+\label{sec:convex:kkt}
+
+\begin{coremath}[Complementary Slackness \& Karush--Kuhn--Tucker (KKT) Theorem]
+\label{cm:convex:kkt}
+\textbf{1. Derivation of Complementary Slackness.} Suppose strong duality holds ($p^* = d^*$) and is attained at primal-optimal $\vecb{x}^*$ and dual-optimal $(\vecb{\lambda}^*, \vecb{\nu}^*)$ (no convexity required yet). Expanding the duality chain yields \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Eqs. 25.13--25.16, p. 323}:
+\begin{align}
+  f_0(\vecb{x}^*) = g(\vecb{\lambda}^*, \vecb{\nu}^*)
+  &= \inf_{\vecb{x} \in \mathcal{D}} \Bigl( f_0(\vecb{x}) + \sum_{i=1}^m \lambda_i^* f_i(\vecb{x}) + \sum_{j=1}^p \nu_j^* h_j(\vecb{x}) \Bigr) \nonumber \\
+  &\le f_0(\vecb{x}^*) + \sum_{i=1}^m \underbrace{\lambda_i^* f_i(\vecb{x}^*)}_{\le 0} + \sum_{j=1}^p \underbrace{\nu_j^* h_j(\vecb{x}^*)}_{= 0}
+  \le f_0(\vecb{x}^*).
+  \label{eq:convex:comp_slack_chain}
+\end{align}
+Because the two ends are identical, both inequalities collapse to equalities. First, $\vecb{x}^*$ minimizes $L(\cdot, \vecb{\lambda}^*, \vecb{\nu}^*)$ over $\mathcal{D}$ (so $\grad_{\vecb{x}} L(\vecb{x}^*, \vecb{\lambda}^*, \vecb{\nu}^*) = \zeros$ when differentiable, or $\zeros \in \partial_{\vecb{x}} L$ when subdifferentiable). Second, $\sum_{i=1}^m \lambda_i^* f_i(\vecb{x}^*) = 0$ with each term non-positive forces termwise \textbf{complementary slackness} \bookcite{probabilisticml_kevinmurphy_introduction}{Eq. 8.106, p. 305}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p. 95}, \bookcite{deep_learning_foundations_concepts}{Eq. C.11, p. 624}:
+\begin{equation}
+  \lambda_i^* f_i(\vecb{x}^*) = 0 \quad \forall\,i=1,\dots,m
+  \quad\Longleftrightarrow\quad
+  \bigl(\lambda_i^* > 0 \implies f_i(\vecb{x}^*) = 0\bigr) \;\land\; \bigl(f_i(\vecb{x}^*) < 0 \implies \lambda_i^* = 0\bigr).
+  \label{eq:convex:comp_slack}
+\end{equation}
+
+\textbf{2. The Four KKT Conditions.} Assuming $f_0, f_i, h_j$ are differentiable, the KKT system at $(\vecb{x}^*, \vecb{\lambda}^*, \vecb{\nu}^*)$ reads \bookcite{machine_learning_co_ban_tiep_vu}{Eqs. 25.19--25.23, p. 324}, \bookcite{probabilisticml_kevinmurphy_introduction}{Eqs. 8.103--8.106, pp. 304--305}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{pp. 95--96}:
+\begin{alignat}{2}
+  \text{(Primal)}\quad && f_i(\vecb{x}^*) &\le 0 \;(i=1,\dots,m),\;\; h_j(\vecb{x}^*) = 0 \;(j=1,\dots,p), \label{eq:convex:kkt_primal} \\
+  \text{(Dual)}\quad && \lambda_i^* &\ge 0 \;(i=1,\dots,m),\;\; \vecb{\nu}^* \in \R^p, \label{eq:convex:kkt_dual} \\
+  \text{(Slackness)}\quad && \lambda_i^* f_i(\vecb{x}^*) &= 0 \;(i=1,\dots,m), \label{eq:convex:kkt_cs} \\
+  \text{(Stationarity)}\quad && \grad f_0(\vecb{x}^*) &+ \sum_{i=1}^m \lambda_i^* \grad f_i(\vecb{x}^*) + \sum_{j=1}^p \nu_j^* \grad h_j(\vecb{x}^*) = \zeros. \label{eq:convex:kkt_stat}
+\end{alignat}
+
+\textbf{3. Necessity vs.\ Sufficiency.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Non-Convex (Necessity Only):} Under strong duality (or a regularity/constraint qualification such as LICQ), KKT~\eqref{eq:convex:kkt_primal}--\eqref{eq:convex:kkt_stat} are \emph{necessary} for optimality, not sufficient \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p. 95}, \bookcite{machine_learning_co_ban_tiep_vu}{p. 324}.
+  \item \emph{Convex (Sufficiency \& Equivalence under Slater):} If~\eqref{eq:convex:primal_std} is convex and differentiable, any triple $(\tilde{\vecb{x}}, \tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}})$ satisfying KKT is \emph{sufficient} for global primal-dual optimality and zero duality gap! Indeed, since $\tilde{\vecb{\lambda}} \succeq \zeros$ and $h_j$ are affine, $\vecb{x} \mapsto L(\vecb{x}, \tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}})$ is convex; hence stationarity~\eqref{eq:convex:kkt_stat} implies $\tilde{\vecb{x}}$ globally minimizes $L(\cdot, \tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}})$, yielding $g(\tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}}) = L(\tilde{\vecb{x}}, \tilde{\vecb{\lambda}}, \tilde{\vecb{\nu}}) = f_0(\tilde{\vecb{x}})$ by~\eqref{eq:convex:kkt_primal} and~\eqref{eq:convex:kkt_cs}. Conversely, under Slater's condition~\eqref{eq:convex:slater}, strong duality holds and KKT is both \emph{necessary and sufficient} \bookcite{machine_learning_co_ban_tiep_vu}{p. 324}, \bookcite{probabilisticml_kevinmurphy_introduction}{p. 305}.
+\end{itemize}
+\end{coremath}
+
+\begin{intuition}[Geometric Normal-Vector Balance at Active Constraints]
+Why must $\lambda_i^* \ge 0$ in~\eqref{eq:convex:kkt_dual}? As Bishop \& Bishop and Murphy both illustrate \bookcite{deep_learning_foundations_concepts}{App. C, Fig. C.3, p. 623}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.5.2, p. 305}, at any point on an active boundary $f_i(\vecb{x}^*) = 0$, the gradient $\grad f_i(\vecb{x}^*)$ points orthogonally \emph{outward} into the infeasible zone $f_i(\vecb{x}) > 0$ (since $f_i(\vecb{x}^* + \vecb{\epsilon}) \approx \vecb{\epsilon}\T\grad f_i(\vecb{x}^*) > 0$). For $\vecb{x}^*$ to minimize $f_0$, the downhill direction $-\grad f_0(\vecb{x}^*)$ cannot point into the feasible interior; instead it must lie strictly inside the nonnegative \emph{normal cone} generated by active outward normals: $-\grad f_0(\vecb{x}^*) = \sum_{i \in \mathcal{A}(\vecb{x}^*)} \lambda_i^* \grad f_i(\vecb{x}^*) + \sum_j \nu_j^* \grad h_j(\vecb{x}^*)$ with $\lambda_i^* \ge 0$. Any inactive constraint ($f_i(\vecb{x}^*) < 0$) exerts zero force ($\lambda_i^* = 0$).
+\end{intuition}
+
+\textbf{Worked Canonical ML Instantiations of KKT \& Duals:}
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Equality-Constrained KKT Linear System} \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Eqs. 25.24--25.26, pp. 324--325}: Minimizing $\frac{1}{2}\vecb{x}\T\mat{P}\vecb{x} + \vecb{q}\T\vecb{x} + r$ ($\mat{P} \succeq \zeros$) subject to $\mat{A}\vecb{x} = \vecb{b}$ reduces KKT directly to the symmetric indefinite block saddle system:
+  \begin{equation}
+    \begin{bmatrix} \mat{P} & \mat{A}\T \\ \mat{A} & \zeros \end{bmatrix}
+    \begin{bmatrix} \vecb{x}^* \\ \vecb{\nu}^* \end{bmatrix}
+    = \begin{bmatrix} -\vecb{q} \\ \vecb{b} \end{bmatrix}.
+    \label{eq:convex:kkt_eq_qp}
+  \end{equation}
+  \item \textbf{Inequality-Constrained QP Dual \& Active-Set KKT on the $\ell_1$ Ball:} Minimizing $\frac{1}{2}\vecb{x}\T\mat{Q}\vecb{x} + \vecb{c}\T\vecb{x}$ ($\mat{Q} \succ \zeros$) subject to $\mat{A}\vecb{x} \preceq \vecb{b}$ gives $\grad_{\vecb{x}} L = \mat{Q}\vecb{x} + \vecb{c} + \mat{A}\T\vecb{\lambda} = \zeros$, so $\vecb{x}(\vecb{\lambda}) = -\mat{Q}^{-1}(\vecb{c} + \mat{A}\T\vecb{\lambda})$ and the concave dual QP becomes $\max_{\vecb{\lambda} \succeq \zeros} -\frac{1}{2}(\vecb{c} + \mat{A}\T\vecb{\lambda})\T\mat{Q}^{-1}(\vecb{c} + \mat{A}\T\vecb{\lambda}) - \vecb{\lambda}\T\vecb{b}$ \bookcite{mathematics_machine_learning_orienly}{Sec. 7.3, pp. 241--242}. In Murphy's 2D $\ell_1$-ball instantiation $\min_{\vecb{\theta}} (\theta_1 - \frac{3}{2})^2 + (\theta_2 - \frac{1}{8})^2$ ($\mat{Q} = 2\eye_2$, $\vecb{c} = -(3, \frac{1}{4})\T$) s.t.\ $\abs{\theta_1}+\abs{\theta_2} \le 1$ (four inequalities $\pm\theta_1 \pm\theta_2 \le 1$) \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.5, pp. 306--307}, the two left faces are strictly inactive ($f_3, f_4 < 0 \implies \mu_3^* = \mu_4^* = 0$), while the active right faces enforce $\vecb{\theta}^* = (1, 0)\T$ and $\vecb{\mu}^* = (0.625, 0.375, 0, 0)\T$ (confirming $-\grad f_0(\vecb{\theta}^*) = (1, 0.25)\T = 0.625\,(1,1)\T + 0.375\,(1,-1)\T$).
+  \item \textbf{Rayleigh Quotient \& Spectral Norm:} \bookcite{machine_learning_co_ban_tiep_vu}{App. A, pp. 380--381}. Maximizing $\vecb{x}\T\mat{A}\T\mat{A}\vecb{x}$ s.t.\ $\vecb{x}\T\vecb{x} = 1$ gives $L(\vecb{x}, \lambda) = \vecb{x}\T\mat{A}\T\mat{A}\vecb{x} + \lambda(1 - \vecb{x}\T\vecb{x}) \implies \mat{A}\T\mat{A}\vecb{x} = \lambda\vecb{x}$, identifying the Lagrange multiplier $\lambda^*$ directly with the eigenvalue $\lambda_{\max}(\mat{A}\T\mat{A}) = \norm{\mat{A}}_2^2$.
+\end{enumerate}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:convex:algorithms}
+% =============================================================================
+
+Solving general constrained convex programs beyond closed-form KKT systems relies on two complementary algorithmic paradigms: (1) \textbf{Primal--Dual Interior-Point (Log-Barrier) Methods}, which smooth inequalities into a logarithmic barrier and follow the central path toward KKT optimality with superlinear/quadratic Newton precision \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.5.3.1, p. 306}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, p. 307}, and (2) \textbf{Augmented Lagrangian Methods (Method of Multipliers)}, which add a quadratic penalty to the Lagrangian to enforce strong convexity/smoothness and achieve dual ascent convergence without strict convexity of $f_0$.
+
+\subsection{Primal--Dual Interior-Point Barrier Method}
+
+For convex~\eqref{eq:convex:primal_std} with strictly feasible interior ($\exists\,\tilde{\vecb{x}} : f_i(\tilde{\vecb{x}}) < 0$, $\mat{A}\tilde{\vecb{x}} = \vecb{b}$), replacing indicator steps by $-\frac{1}{t}\sum_{i=1}^m \ln(-f_i(\vecb{x}))$ ($t > 0$) yields the central-path problem $\min_{\vecb{x}} t f_0(\vecb{x}) - \sum_{i=1}^m \ln(-f_i(\vecb{x}))$ s.t.\ $\mat{A}\vecb{x} = \vecb{b}$. Defining $\lambda_i \coloneqq -1 / (t f_i(\vecb{x})) > 0$ reveals the perturbed KKT conditions:
+\begin{equation}
+  \mat{r}_t(\vecb{x}, \vecb{\lambda}, \vecb{\nu}) \coloneqq
+  \begin{bmatrix}
+    \grad f_0(\vecb{x}) + \jac_{\vecb{f}}(\vecb{x})\T \vecb{\lambda} + \mat{A}\T\vecb{\nu} \\
+    -\diag(\vecb{\lambda})\,\vecb{f}(\vecb{x}) - \frac{1}{t}\ones_m \\
+    \mat{A}\vecb{x} - \vecb{b}
+  \end{bmatrix} = \zeros,
+  \label{eq:convex:central_path}
+\end{equation}
+where $\jac_{\vecb{f}}(\vecb{x}) \in \R^{m \times n}$ has rows $\grad f_i(\vecb{x})\T$. Because $\vecb{\lambda} \succ \zeros$ and $\vecb{f}(\vecb{x}) \prec \zeros$, evaluating the dual bound along the central path yields an exact certificate on the suboptimality gap: $f_0(\vecb{x}^*(t)) - p^* \le m / t$ (via $\sum_i \lambda_i^* (-f_i(\vecb{x}^*(t))) = m/t$). Algorithm~\ref{alg:convex:ipm} solves~\eqref{eq:convex:central_path} via damped Newton steps while maintaining strict primal--dual positivity ($\vecb{f}(\vecb{x}) \prec \zeros$, $\vecb{\lambda} \succ \zeros$).
+
+\begin{algorithm}[htbp]
+\caption{Primal--Dual Path-Following Interior-Point Method for Convex Programs}
+\label{alg:convex:ipm}
+\KwIn{Convex $f_0, \vecb{f} \in C^2$, $\mat{A} \in \R^{p \times n}$, $\vecb{b} \in \R^p$, strictly feasible $\vecb{x}^{(0)}$ ($\vecb{f}(\vecb{x}^{(0)}) \prec \zeros$), $\vecb{\lambda}^{(0)} \succ \zeros$, $\vecb{\nu}^{(0)}$, barrier factor $\mu > 1$ (e.g., $10$), tolerance $\varepsilon > 0$.}
+\KwOut{Primal--dual $\varepsilon$-optimal tuple $(\vecb{x}^*, \vecb{\lambda}^*, \vecb{\nu}^*)$ with duality gap $\le \varepsilon$.}
+Initialize $k \leftarrow 0$\;
+\Repeat{$\hat{\eta} \le \varepsilon$ \textbf{and} $\norm{\vecb{r}_{\mathrm{dual}}}_2 \le \varepsilon$ \textbf{and} $\norm{\mat{A}\vecb{x}^{(k)} - \vecb{b}}_2 \le \varepsilon$}{
+  Compute surrogate duality gap $\hat{\eta} \leftarrow -\vecb{f}(\vecb{x}^{(k)})\T \vecb{\lambda}^{(k)}$ and set $t \leftarrow \mu m / \hat{\eta}$\;
+  Evaluate KKT residual $\vecb{r}_t(\vecb{x}^{(k)}, \vecb{\lambda}^{(k)}, \vecb{\nu}^{(k)})$ via~\eqref{eq:convex:central_path}, where $\vecb{r}_{\mathrm{dual}} = \grad f_0 + \jac_{\vecb{f}}\T\vecb{\lambda} + \mat{A}\T\vecb{\nu}$\;
+  Form Newton Jacobian $\mat{H}_{\mathrm{KKT}}$ of $\vecb{r}_t$ and solve $\mat{H}_{\mathrm{KKT}} (\Delta\vecb{x}, \Delta\vecb{\lambda}, \Delta\vecb{\nu})\T = -\vecb{r}_t$\;
+  Compute max feasible fraction-to-boundary step:
+  $\alpha_{\max} \leftarrow \min\!\bigl(1,\; 0.99 \min_{i : \Delta\lambda_i < 0} (-\lambda_i^{(k)} / \Delta\lambda_i)\bigr)$\;
+  Backtrack $\alpha \leftarrow \alpha_{\max}$ (halving $\alpha \leftarrow \beta\alpha$, $\beta \in (0,1)$) until $\vecb{f}(\vecb{x}^{(k)} + \alpha\Delta\vecb{x}) \prec \zeros$ and $\norm{\vecb{r}_t(\vecb{x}^{(k)}+\alpha\Delta\vecb{x}, \vecb{\lambda}^{(k)}+\alpha\Delta\vecb{\lambda}, \vecb{\nu}^{(k)}+\alpha\Delta\vecb{\nu})}_2 \le (1 - c\,\alpha)\norm{\vecb{r}_t}_2$\;
+  Update $(\vecb{x}^{(k+1)}, \vecb{\lambda}^{(k+1)}, \vecb{\nu}^{(k+1)}) \leftarrow (\vecb{x}^{(k)}, \vecb{\lambda}^{(k)}, \vecb{\nu}^{(k)}) + \alpha(\Delta\vecb{x}, \Delta\vecb{\lambda}, \Delta\vecb{\nu})$, $k \leftarrow k + 1$\;
+}
+\Return{$(\vecb{x}^{(k)}, \vecb{\lambda}^{(k)}, \vecb{\nu}^{(k)})$}\;
+\end{algorithm}
+
+\subsection{Augmented Lagrangian (Method of Multipliers)}
+
+When $f_0$ is non-strictly convex (e.g., linear or piecewise-linear) or high-dimensional ($\hess L$ too large to factorize), ordinary dual ascent $\vecb{\nu}^{k+1} = \vecb{\nu}^k + \alpha_k(\mat{A}\vecb{x}^k - \vecb{b})$ can oscillate or diverge because $g$ is non-differentiable or unbounded. Adding a quadratic augmentation $\frac{\rho}{2}\norm{\mat{A}\vecb{x}-\vecb{b}}_2^2$ ($\rho > 0$) and Rockafellar--Wets smoothed inequality term yields the \textbf{Augmented Lagrangian} (Algorithm~\ref{alg:convex:alm}):
+\begin{equation}
+  \mathcal{L}_\rho(\vecb{x}, \vecb{\lambda}, \vecb{\nu})
+  \coloneqq f_0(\vecb{x}) + \vecb{\nu}\T(\mat{A}\vecb{x} - \vecb{b}) + \frac{\rho}{2}\norm{\mat{A}\vecb{x} - \vecb{b}}_2^2
+  + \frac{1}{2\rho}\sum_{i=1}^m \Bigl( \max\bigl(0,\, \lambda_i + \rho f_i(\vecb{x})\bigr)^2 - \lambda_i^2 \Bigr).
+  \label{eq:convex:aug_lagrangian}
+\end{equation}
+Differentiating~\eqref{eq:convex:aug_lagrangian} w.r.t.\ $\vecb{x}$ shows that the dual update $\lambda_i^{k+1} = \max(0, \lambda_i^k + \rho f_i(\vecb{x}^{k+1}))$, $\vecb{\nu}^{k+1} = \vecb{\nu}^k + \rho(\mat{A}\vecb{x}^{k+1} - \vecb{b})$ automatically enforces exact KKT stationarity $\grad f_0(\vecb{x}^{k+1}) + \sum_i \lambda_i^{k+1}\grad f_i(\vecb{x}^{k+1}) + \mat{A}\T\vecb{\nu}^{k+1} \approx \zeros$ at every outer iteration, without requiring $\rho \to \infty$ (avoiding quadratic-penalty ill-conditioning).
+
+\begin{algorithm}[htbp]
+\caption{Primal--Dual Augmented Lagrangian (Method of Multipliers)}
+\label{alg:convex:alm}
+\KwIn{Objective $f_0$, convex constraints $\vecb{f}(\vecb{x}) \preceq \zeros$, $\mat{A}\vecb{x}=\vecb{b}$, penalty $\rho > 0$, initial $(\vecb{x}^{(0)}, \vecb{\lambda}^{(0)}, \vecb{\nu}^{(0)})$, tolerance $\varepsilon > 0$.}
+\KwOut{Approximate KKT tuple $(\vecb{x}^*, \vecb{\lambda}^*, \vecb{\nu}^*)$.}
+\For{$k = 0, 1, \dots, K_{\max}-1$}{
+  $\vecb{x}^{(k+1)} \leftarrow \argmin_{\vecb{x} \in \mathcal{D}} \mathcal{L}_\rho(\vecb{x}, \vecb{\lambda}^{(k)}, \vecb{\nu}^{(k)})$ \tcp*{Unconstrained/box-constrained inner solve}
+  $\vecb{\nu}^{(k+1)} \leftarrow \vecb{\nu}^{(k)} + \rho(\mat{A}\vecb{x}^{(k+1)} - \vecb{b})$ \tcp*{Exact dual ascent on equality residual}
+  $\lambda_i^{(k+1)} \leftarrow \max\bigl(0,\; \lambda_i^{(k)} + \rho f_i(\vecb{x}^{(k+1)})\bigr)$ for $i = 1, \dots, m$ \tcp*{Projected dual ascent}
+  $r_{\mathrm{prim}} \leftarrow \norm{\mat{A}\vecb{x}^{(k+1)} - \vecb{b}}_2 + \norm{\max(\zeros, \vecb{f}(\vecb{x}^{(k+1)}))}_2$\;
+  $r_{\mathrm{cs}} \leftarrow \sum_{i=1}^m \abs{\lambda_i^{(k+1)} f_i(\vecb{x}^{(k+1)})}$\;
+  \If{$r_{\mathrm{prim}} \le \varepsilon$ \textbf{and} $r_{\mathrm{cs}} \le \varepsilon$}{
+    \textbf{break}\;
+  }
+}
+\Return{$(\vecb{x}^{(k+1)}, \vecb{\lambda}^{(k+1)}, \vecb{\nu}^{(k+1)})$}\;
+\end{algorithm}
+
+\subsection{Complexity, Convergence \& Cross-Book Methodological Synthesis}
+
+Table~\ref{tab:convex:solvers} compares the major algorithmic classes for constrained convex optimization discussed across the synthesized textbooks.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.23}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{2.65cm} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Method} & \textbf{Per-Iteration Cost} & \textbf{Iteration Rate} & \textbf{Feasibility} & \textbf{Suitability \& Failure Mode} \\
+\midrule
+Projected GD (Murphy Sec.\ 8.6.1) & $\mathcal{O}(n)$ + $\operatorname{proj}_{\mathcal{X}}$ & $\mathcal{O}(1/\epsilon)$ smooth; $\mathcal{O}(\log(1/\epsilon))$ str.\ cvx & Strictly feasible at every step & Fast for simple boxes/balls/simplex; impractical if $\operatorname{proj}_{\mathcal{X}}$ is costly \\
+Subgradient / Dual Ascent & $\mathcal{O}(n + m)$ (or $\min_{\vecb{x}} L$) & $\mathcal{O}(1/\epsilon^2)$ nonsmooth & Dual feasible; primal only at limit & Decomposable across constraints; fails/slow if $L(\cdot,\vecb{\lambda})$ is unbounded or non-strictly convex \\
+Augmented Lagrangian (Alg.~\ref{alg:convex:alm}) & Inner L-BFGS / GD solve & Linear to superlinear (outer) & Asymptotic primal feasibility & Handles non-strictly convex $f_0$ without $\rho \to \infty$; relies on inner solver tolerance \\
+Primal--Dual IPM (Alg.~\ref{alg:convex:ipm}) & $\mathcal{O}\bigl((n+p)^3\bigr)$ dense KKT solve & $\mathcal{O}(\sqrt{m}\log(m/\epsilon))$ Newton steps & Strictly interior ($\vecb{f} \prec \zeros$) & Gold standard (e.g., \texttt{CVXOPT}) for small/medium LPs, QPs, GPs; memory-bound in huge $n$ \\
+Simplex / Active-Set (Murphy Sec.\ 8.5.3) & $\mathcal{O}(mn)$ pivot / active KKT & Low poly typical; exponential worst-case & Vertex feasible at every step & Exact vertex solutions and warm starts for LPs/QPs; slower than IPM on large dense problems \\
+\bottomrule
+\end{tabularx}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\caption{Computational trade-offs among constrained convex optimization algorithms synthesized from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, pp. 305--309}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, pp. 307--316}, and \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, pp. 93--96}.}
+\label{tab:convex:solvers}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Constrained Optimization Perspectives in ML]
+\label{cb:convex:perspectives}
+Each of the five textbooks highlights a distinct facet of constrained convex theory tailored to its ML applications:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Projected Gradient vs.\ Lagrangian Reparameterization:} Goodfellow et al.\ contrast small-step projected gradient descent (or tangent-space gradient projection) against unconstrained reparameterizations (e.g., $\vecb{x}(\theta) = [\cos\theta, \sin\theta]\T$ on $S^1$) and generalized KKT Lagrangians, emphasizing that deep networks rarely admit global convexity guarantees \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, pp. 93--96}. Murphy unifies projected gradient descent rigorously as a \emph{proximal gradient} update on the indicator function $I_{\mathcal{C}}(\vecb{\theta})$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.6.1, pp. 308--309}.
+  \item \textbf{Normal-Vector Statics vs.\ Minimax Duality:} Bishop \& Bishop derive KKT via local Taylor orthogonality ($\vecb{\epsilon}\T\grad g = 0$) and boundary gradient opposition ($\grad f = -\mu\grad h$), building intuition for MaxEnt Gaussians and SVMs \bookcite{deep_learning_foundations_concepts}{Sec. 2.5.4 \& App. C, pp. 50--51, 621--624}. Deisenroth et al.\ and V\~{u} complement this local view with global \emph{minimax weak duality}, concave dual maximization, and Fenchel conjugation \bookcite{mathematics_machine_learning_orienly}{Ch. 7, pp. 233--245}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, pp. 317--325}.
+  \item \textbf{From Convex Theory to Kernel Duals \& Solvers:} V\~{u} demonstrates explicitly how Slater's condition verifies strong duality for both hard-margin and soft-margin SVMs (via scaling $(\vecb{w}_1, b_1) = (2\vecb{w}_0, 2b_0)$ or selecting slack $\xi_n$ sufficiently large) and pairs theory with practical \texttt{CVXOPT} interior-point LP/QP/GP solvers \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, pp. 307--316; Ch. 26--27, pp. 332, 342}.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:convex:visuals}
+% =============================================================================
+
+We integrate three crisp 300~DPI source figures alongside bespoke TikZ geometric diagrams and PGFPlots curves to visualize supporting hyperplanes, active KKT constraints, Fenchel biconjugation, and primal--dual saddle/gap geometry.
+
+\monographfig[0.54\textwidth]{machine_learning_co_ban_tiep_vu_p319_fig1.png}{Supporting hyperplane and first-order variational optimality condition~\eqref{eq:convex:variational_opt} for a differentiable objective on a convex feasible set $\mathcal{X}$. At the optimal boundary point $\vecb{x}_0$, every feasible step $\vecb{x} - \vecb{x}_0$ forms an obtuse angle with $-\grad f_0(\vecb{x}_0)$, so the level-set tangent plane supports $\mathcal{X}$. Reproduced from \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 24, Fig. 24.2, p. 307}.}{fig:convex:tiep_support}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_introduction_p332_fig1.png}{Active vs.\ inactive constraints in 2D constrained minimization: (a) equality constraint $\theta_1 + \theta_2 = 1$ forces parallel contour and constraint normals at $\vecb{\theta}^* = (1/2, 1/2)$; (b) $\ell_1$-norm ball $\abs{\theta_1} + \abs{\theta_2} \le 1$ exhibits two active right faces ($\mu_1^*, \mu_2^* > 0$) and two inactive left faces ($\mu_3^* = \mu_4^* = 0$) at vertex $\vecb{\theta}^* = (1, 0)\T$. Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Fig. 8.20, p. 302}.}{fig:convex:murphy_kkt}
+
+\monographfig[0.82\textwidth]{machine_learning_co_ban_tiep_vu_p332_fig1.png}{Lagrangian lower bounds and concave dual maximization for $\min_x x^2 + 10\sin(x) + 10$ subject to $(x-2)^2 \le 4$: (a) Lagrangian slices $f_0(x) + \lambda f_1(x)$ lie below $f_0(x)$ inside the feasible interval $[0, 4]$; (b) the dual function $g(\lambda)$ is concave and bounded above by $p^*$, here attaining zero duality gap despite non-convex $f_0$. Reproduced from \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Fig. 25.1, p. 320}.}{fig:convex:tiep_dual}
+
+Figure~\ref{fig:convex:tikz_epigraph_kkt} constructs the exact epigraph/Fenchel supporting hyperplane correspondence alongside the KKT normal-cone decomposition at an active vertex, while Figure~\ref{fig:convex:tikz_saddle} depicts primal--dual saddle geometry and the epigraph--value separation proof of Slater's theorem.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth]
+  % --- PANEL (a): Epigraph & Fenchel Conjugate Supporting Hyperplane ---
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\footnotesize\bfseries, text=monographNavy] at (3.35,4.52)
+      {(a) Epigraph $\operatorname{epi} f$ \& Fenchel Intercept $-f^*(s)$};
+
+    % Shaded epigraph region above f(u) = 0.28*(x-1.6)^2 + 0.35
+    \begin{scope}
+      \clip (0.55,0.0) rectangle (5.20,3.65);
+      \fill[monographTealBg]
+        plot[domain=0.55:5.20, samples=60] (\x, {0.28*(\x-1.6)*(\x-1.6) + 0.35})
+        -- (5.20,3.70) -- (0.55,3.70) -- cycle;
+    \end{scope}
+
+    % Axes: t-axis at x = 1.6, x-axis at t = 0
+    \draw[->, monographSlate, thick] (0.35,0) -- (6.3,0) node[right, font=\scriptsize] {$x$};
+    \draw[->, monographSlate, thick] (1.6,-1.75) -- (1.6,3.72) node[above, font=\scriptsize] {$t$};
+
+    % Convex curve f(x)
+    \draw[monographNavy, very thick, domain=0.55:4.90, samples=70]
+      plot (\x, {0.28*(\x-1.6)*(\x-1.6) + 0.35})
+      node[left=3pt, font=\scriptsize\bfseries] {$t = f(x)$};
+
+    % Epigraph label
+    \node[font=\footnotesize\bfseries, text=monographTeal] at (2.85,2.75) {$\operatorname{epi} f$};
+
+    % Tangent point x0 = 4.1 (u0 = 2.5, t0 = 2.10), slope s = 1.40, line t = 1.40*(x-1.6) - 1.40
+    \coordinate (X0) at (4.1, 2.10);
+    \coordinate (Int) at (1.6, -1.40);
+    \coordinate (X1Curve) at (2.7, 0.6888);
+    \coordinate (X1Line) at (2.7, 0.14);
+
+    % Supporting hyperplane line
+    \draw[monographCrimson, very thick] (1.25, -1.89) -- (5.20, 3.64);
+    \node[font=\scriptsize, text=monographCrimson, right=2pt, align=left] at (4.85, 2.55)
+      {Supporting line:\\[-1pt]$t = sx - f^*(s)$};
+
+    % Normal vector (s, -1) scaled down cleanly
+    \draw[->, monographIndigo, thick] (X0) -- ($(X0)+(0.72,-0.514)$)
+      node[below right=-1pt, font=\scriptsize] {$(s,-1)$};
+
+    % Intercept bracket showing f*(s)
+    \draw[<->, monographIndigo, thick] (1.42, 0) -- (1.42, -1.40)
+      node[midway, left=1pt, font=\scriptsize] {$f^*(s)$};
+
+    % Fenchel-Young vertical gap at x = 2.7
+    \draw[monographSlate, dashed, thick] (X1Line) -- (X1Curve);
+    \node[font=\tiny, text=monographSlate, right=1pt, align=left] at (2.72, 0.42)
+      {Fenchel--Young\\[-1pt]gap $\ge 0$};
+
+    % Points
+    \fill[monographNavy] (X0) circle (2.2pt)
+      node[above left=1pt, font=\scriptsize] {$(x_0, f(x_0))$};
+    \fill[monographCrimson] (Int) circle (2.2pt)
+      node[right=3pt, font=\scriptsize] {$(0, -f^*(s))$};
+    \draw[monographSlate, dotted] (4.1,0) -- (X0);
+    \node[below=1pt, font=\scriptsize, text=monographSlate] at (4.1,0) {$x_0$};
+  \end{scope}
+
+  % --- PANEL (b): KKT Normal Cone & Active vs. Inactive Constraints ---
+  \begin{scope}[shift={(8.25,0)}]
+    \node[font=\footnotesize\bfseries, text=monographNavy] at (3.65,4.52)
+      {(b) KKT Normal Cone $\mathcal{N}_{\mathcal{X}}(\vecb{x}^*)$ at Active Corner};
+
+    % Feasible set X bounded by f1 <= 0 (top-right edge) and f2 <= 0 (bottom-right edge)
+    \coordinate (Vstar) at (4.25, 1.55);
+    \coordinate (Vtop) at (1.55, 3.30);
+    \coordinate (Vleft) at (0.75, 1.25);
+    \coordinate (Vbot) at (2.10, -0.35);
+
+    \fill[monographNavyBg, draw=monographNavy, thick]
+      (Vleft) .. controls (0.95, 2.55) and (1.15, 2.95) .. (Vtop)
+      -- (Vstar) -- (Vbot)
+      .. controls (1.35, -0.15) and (0.80, 0.45) .. (Vleft) -- cycle;
+
+    \node[font=\small\bfseries, text=monographNavy] at (1.95, 1.45) {Feasible $\mathcal{X}$};
+
+    % Objective contours (arcs centered outside to the right)
+    \draw[monographRule, thick, dashed] (4.05, 0.35) arc[start angle=195, end angle=140, radius=2.3];
+    \draw[monographRule, thick, dashed] (4.55, 0.40) arc[start angle=198, end angle=142, radius=2.1];
+    \node[font=\tiny, text=monographSlate] at (4.18, -0.05) {$f_0$ contours};
+
+    % Inactive constraint f3(x) <= 0 along bottom-left outside Vstar
+    \draw[monographSlate, thick, dash dot] (0.55, -0.65) -- (3.85, -1.20);
+    \node[font=\scriptsize, text=monographSlate, align=left] at (2.30, -1.42)
+      {Inactive: $f_3(\vecb{x}^*) < 0 \implies \lambda_3^* = 0$};
+
+    % Active boundary labels
+    \node[font=\scriptsize, text=monographTeal, above right=0pt, rotate=-33] at (2.45, 2.72) {$f_1(\vecb{x}) = 0$};
+    \node[font=\scriptsize, text=monographIndigo, below right=0pt, rotate=41] at (2.60, 0.05) {$f_2(\vecb{x}) = 0$};
+
+    % Outward normals grad f1 = (1.75, 2.70) normalized -> ~(0.85, 1.31), grad f2 = (1.90, -2.15) -> ~(1.0, -1.13)
+    \coordinate (G1) at ($(Vstar)+(1.05, 1.62)$);
+    \coordinate (G2) at ($(Vstar)+(1.20, -1.36)$);
+    \coordinate (NegGrad) at ($(Vstar)+(1.75, 0.25)$);
+
+    % Shaded Normal Cone
+    \fill[monographIndigoBg, opacity=0.72]
+      (Vstar) -- ($(Vstar)+(1.45, 2.24)$) -- ($(Vstar)+(1.85, -2.09)$) -- cycle;
+    \node[font=\scriptsize\bfseries, text=monographIndigo, align=center] at (6.72, 2.45)
+      {Normal cone\\[-1pt]$\mathcal{N}_{\mathcal{X}}(\vecb{x}^*)$};
+
+    % Parallelogram decomposition of -grad f0 = lam1 grad f1 + lam2 grad f2
+    \coordinate (Comp1) at ($(Vstar)+(0.84, 1.30)$);
+    \coordinate (Comp2) at ($(Vstar)+(0.91, -1.05)$);
+    \draw[monographSlate, thin, dashed] (Comp1) -- (NegGrad) -- (Comp2);
+
+    % Gradient arrows
+    \draw[->, monographTeal, very thick] (Vstar) -- (G1)
+      node[above=1pt, font=\scriptsize\bfseries] {$\grad f_1(\vecb{x}^*)$};
+    \draw[->, monographIndigo, very thick] (Vstar) -- (G2)
+      node[below=1pt, font=\scriptsize\bfseries] {$\grad f_2(\vecb{x}^*)$};
+    \draw[->, monographCrimson, very thick] (Vstar) -- (NegGrad)
+      node[right=2pt, font=\scriptsize\bfseries] {$-\grad f_0(\vecb{x}^*)$};
+
+    % Feasible direction vector x - x*
+    \coordinate (Xfeas) at (2.45, 0.72);
+    \draw[->, monographNavy, thick] (Vstar) -- (Xfeas)
+      node[above left=-1pt, font=\scriptsize] {$\vecb{x}-\vecb{x}^*$};
+    \fill[monographNavy] (Xfeas) circle (1.8pt);
+
+    % Optimal point x*
+    \fill[monographCrimson] (Vstar) circle (2.6pt)
+      node[left=4pt, font=\footnotesize\bfseries, text=monographCrimson] {$\vecb{x}^*$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Geometric structure of Fenchel conjugation and KKT stationarity. (a) Any affine supporting tangent $t = sx - f^*(s)$ lies below $\operatorname{epi} f$, intersecting the vertical axis at $-f^*(s)$ with vertical Fenchel--Young gap $f(x) + f^*(s) - sx \ge 0$ \bookcite{mathematics_machine_learning_orienly}{Sec. 7.3.3, p. 243}, \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 8.4, p. 279}. (b) At a KKT point $\vecb{x}^*$, $-\grad f_0(\vecb{x}^*)$ lies inside the nonnegative normal cone $\mathcal{N}_{\mathcal{X}}(\vecb{x}^*) = \operatorname{cone}\{\grad f_1(\vecb{x}^*), \grad f_2(\vecb{x}^*)\}$ spanned by active outward normals ($\lambda_1^*, \lambda_2^* > 0$), while inactive constraint $f_3$ receives $\lambda_3^* = 0$ \bookcite{deep_learning_foundations_concepts}{App. C, p. 623}, \bookcite{machine_learning_co_ban_tiep_vu}{p. 307}.}
+\label{fig:convex:tikz_epigraph_kkt}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth]
+  % --- PANEL (a): Primal-Dual Saddle Point Geometry ---
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\footnotesize\bfseries, text=monographNavy] at (3.45,4.45)
+      {(a) Lagrangian Saddle Point $(\vecb{x}^*, \vecb{\lambda}^*)$};
+
+    % Stylized 3D saddle surface mesh in 2D projection
+    % Primal valley slice (convex in x at lambda*)
+    \draw[monographTealBg, fill=monographTealBg!65]
+      (0.75, 2.75) .. controls (2.25, 1.35) and (4.75, 1.35) .. (6.25, 2.75)
+      -- (5.55, 1.55) .. controls (4.25, 0.45) and (2.75, 0.45) .. (1.45, 1.55) -- cycle;
+
+    % Back and front convex ribs
+    \draw[monographRule, thick] (1.15, 3.15) .. controls (2.45, 1.85) and (4.55, 1.85) .. (5.85, 3.15);
+    \draw[monographRule, thick] (1.45, 0.95) .. controls (2.65, -0.05) and (4.35, -0.05) .. (5.55, 0.95);
+
+    % Left and right concave/affine ribs in lambda
+    \draw[monographRule, thick] (1.15, 3.15) .. controls (1.25, 2.15) and (1.35, 1.55) .. (1.45, 0.95);
+    \draw[monographRule, thick] (5.85, 3.15) .. controls (5.75, 2.15) and (5.65, 1.55) .. (5.55, 0.95);
+
+    % Principal Primal Slice L(x, lambda*) - convex bowl minimized at x*
+    \draw[monographNavy, very thick]
+      (0.75, 2.75) .. controls (2.25, 1.25) and (4.75, 1.25) .. (6.25, 2.75);
+    \node[font=\scriptsize\bfseries, text=monographNavy, right=2pt, align=left] at (5.68, 2.15)
+      {Primal slice\\[-1pt]$L(\vecb{x}, \vecb{\lambda}^*)$};
+
+    % Principal Dual Slice L(x*, lambda) - tilted concave ridge maximized at lambda*
+    \draw[monographCrimson, very thick]
+      (2.40, 0.45) .. controls (2.95, 1.38) and (3.25, 1.62) .. (3.50, 1.62)
+      .. controls (3.75, 1.62) and (4.05, 1.98) .. (4.60, 2.85);
+    \node[font=\scriptsize\bfseries, text=monographCrimson, right=3pt, align=left] at (2.88, 0.65)
+      {Dual slice\\[-1pt]$L(\vecb{x}^*, \vecb{\lambda}) \le p^*$};
+
+    % Saddle point marker
+    \coordinate (Saddle) at (3.50, 1.62);
+    \fill[monographIndigo] (Saddle) circle (2.8pt);
+    \node[monoIndigoBox, font=\scriptsize, inner sep=3.5pt] (SaddleTag) at (3.30, 3.68)
+      {$L(\vecb{x}^*,\vecb{\lambda}) \le L(\vecb{x}^*,\vecb{\lambda}^*) \le L(\vecb{x},\vecb{\lambda}^*)$};
+    \draw[monoArrow, monographIndigo] (SaddleTag.south) -- ($(Saddle)+(0,0.12)$);
+
+    % Axis hints
+    \draw[->, monographSlate, thick] (0.55, -0.35) -- (6.35, -0.35) node[right, font=\scriptsize] {Primal $\vecb{x}$};
+    \draw[->, monographSlate, thick] (0.55, -0.35) -- (1.30, 0.48) node[above left=0pt, font=\scriptsize] {Dual $\vecb{\lambda}\succeq \zeros$};
+  \end{scope}
+
+  % --- PANEL (b): Slater Hyperplane Separation in (u, t)-Space ---
+  \begin{scope}[shift={(7.65,0)}]
+    \node[font=\footnotesize\bfseries, text=monographNavy] at (3.65,4.45)
+      {(b) Value Set $\mathcal{A}$ \& Slater Separation ($p^* = d^*$)};
+
+    % Axes: u = f1(x) horizontal, t = f0(x) vertical
+    \draw[->, monographSlate, thick] (0.4, 0.75) -- (6.65, 0.75) node[right, font=\scriptsize] {$u = f_1(\vecb{x})$};
+    \draw[->, monographSlate, thick] (3.45, -0.45) -- (3.45, 3.70) node[above, font=\scriptsize] {$t = f_0(\vecb{x})$};
+
+    % Convex epigraph-value set A (u >= -1.8, bowl rising on left and flattening on right)
+    \fill[monographTealBg, opacity=0.85]
+      (1.45, 3.45) .. controls (1.50, 2.35) and (2.25, 1.75) .. (3.45, 1.45)
+      .. controls (4.65, 1.15) and (5.55, 1.10) .. (6.45, 1.15)
+      -- (6.45, 3.45) -- cycle;
+    \draw[monographTeal, very thick]
+      (1.45, 3.45) .. controls (1.50, 2.35) and (2.25, 1.75) .. (3.45, 1.45)
+      .. controls (4.65, 1.15) and (5.55, 1.10) .. (6.45, 1.15);
+    \node[font=\footnotesize\bfseries, text=monographTeal] at (5.35, 2.35) {Convex set $\mathcal{A}$};
+
+    % Non-convex hypothetical dent below line to illustrate duality gap
+    \draw[monographCrimson, thick, dashed]
+      (3.45, 1.45) .. controls (4.10, 0.25) and (4.95, 0.15) .. (5.85, 1.13);
+    \node[font=\tiny, text=monographCrimson, align=center] at (4.55, 0.12) {Non-convex dip $\implies d^* < p^*$};
+
+    \draw[monographIndigo, very thick] (0.75, 2.125) -- (6.55, 0.675);
+    \node[font=\scriptsize\bfseries, text=monographIndigo, below=2pt, rotate=-14] at (1.35, 1.97)
+      {Support: $t + \lambda^* u = p^*$};
+
+    % Feasible half-plane shading hint
+    \node[font=\tiny, text=monographSlate] at (1.85, 0.42) {Feasible $u \le 0$};
+
+    % Slater interior point (u_tilde < 0)
+    \coordinate (SlaterPt) at (2.42, 2.55);
+    \fill[monographNavy] (SlaterPt) circle (2.2pt)
+      node[above=2pt, font=\scriptsize, align=center] {Slater $\tilde{\vecb{x}}$\\[-1pt]\tiny($f_1(\tilde{\vecb{x}})<0$)};
+
+    % Optimal point (0, p*)
+    \coordinate (Pstar) at (3.45, 1.45);
+    \fill[monographCrimson] (Pstar) circle (2.6pt)
+      node[above right=2pt, font=\scriptsize\bfseries, text=monographCrimson] {$(0, p^*)$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Primal--dual saddle geometry and Slater's theorem. (a) Any optimal primal--dual pair $(\vecb{x}^*, \vecb{\lambda}^*)$ with zero gap forms a saddle point of $L(\vecb{x}, \vecb{\lambda})$: convex-minimal along primal $\vecb{x}$ and concave-maximal along dual $\vecb{\lambda} \succeq \zeros$. (b) In $(u, t)$ constraint--objective space, Slater's strict feasibility ($\tilde{u} = f_1(\tilde{\vecb{x}}) < 0$) forces the separating hyperplane supporting $\mathcal{A}$ at $(0, p^*)$ to be non-vertical ($\mu > 0$), ensuring $d^* = p^*$; non-convex dips extending below the supporting line for $u > 0$ create a strictly positive duality gap $p^* - d^* > 0$.}
+\label{fig:convex:tikz_saddle}
+\end{figure}
+
+Figure~\ref{fig:convex:pgf_fenchel_gap} presents exact PGFPlots diagnostics contrasting convex vs.\ non-convex Fenchel biconjugation ($f^{**} = f$ vs.\ $f^{**} < f$) alongside weak and strong Lagrangian duality curves $g(\lambda)$ vs.\ $p^*$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=1.75cm
+  },
+  width=0.42\textwidth,
+  height=0.39\textwidth,
+  grid=major,
+  grid style={monographRule!55, dashed},
+  tick label style={font=\scriptsize},
+  label style={font=\small},
+  title style={font=\footnotesize\bfseries, text=monographNavy},
+  legend style={font=\tiny, fill=white, fill opacity=0.90, text opacity=1, draw=monographRule, inner sep=2pt}
+]
+  % --- Panel (a): Convex vs Non-Convex & Fenchel Biconjugate ---
+  \nextgroupplot[
+    title={(a) Convexity, Support \& Biconjugate $f^{**}$},
+    xlabel={$x$},
+    ylabel={Function value},
+    xmin=-1.85, xmax=1.85,
+    ymin=-0.72, ymax=1.75,
+    xtick={-1.5,-1,-0.5,0,0.5,1,1.5},
+    ytick={-0.5,0,0.5,1,1.5},
+    legend pos=north west
+  ]
+    % Convex f(x) = 0.5*x^2
+    \addplot[monographNavy, very thick, domain=-1.8:1.8, samples=121] {0.5*x^2};
+    \addlegendentry{$f_{\mathrm{cvx}}(x) = \tfrac{1}{2}x^2$ ($= f_{\mathrm{cvx}}^{**}$)}
+
+    % Supporting tangent at x0 = 1: y = x - 0.5
+    \addplot[monographTeal, thick, dashed, domain=-0.2:1.8, samples=41] {x - 0.5};
+    \addlegendentry{Support $y = sx - f_{\mathrm{cvx}}^*(s)$, $s=1$}
+
+    % Non-convex double well f_nc(x) = 0.5*(x^2 - 1)^2
+    \addplot[name path=fnc, monographCrimson, very thick, domain=-1.72:1.72, samples=141]
+      {0.5*(x^2 - 1)^2};
+    \addlegendentry{$f_{\mathrm{nc}}(x) = \tfrac{1}{2}(x^2 - 1)^2$}
+
+    % Biconjugate convex envelope f_nc**(x): 0 on [-1,1], 0.5*(x^2-1)^2 outside
+    \addplot[name path=fbiconj, monographIndigo, very thick, dash dot, domain=-1.72:1.72, samples=161]
+      {(abs(x) <= 1 ? 0 : 0.5*(x^2 - 1)^2)};
+    \addlegendentry{$f_{\mathrm{nc}}^{**}(x)$ (convex envelope)}
+
+    % Shaded biconjugation gap on [-1, 1]
+    \addplot[monographCrimsonBg!75, opacity=0.55] fill between[of=fnc and fbiconj, soft clip={domain=-1:1}];
+
+    % Key markers
+    \fill[monographTeal] (axis cs:0,-0.5) circle (1.8pt)
+      node[right=2pt, font=\tiny, text=monographTeal] {$-f_{\mathrm{cvx}}^*(1) = -\tfrac{1}{2}$};
+    \fill[monographNavy] (axis cs:1,0.5) circle (1.8pt);
+    \node[font=\tiny, text=monographCrimson, align=center] at (axis cs:0,0.68) {$f_{\mathrm{nc}} - f_{\mathrm{nc}}^{**} > 0$};
+
+  % --- Panel (b): Concave Dual Function & Duality Gap ---
+  \nextgroupplot[
+    title={(b) Concave Dual $g(\lambda)$ \& Gap $p^* - d^*$},
+    xlabel={Dual multiplier $\lambda \ge 0$},
+    ylabel={Objective / Dual value},
+    xmin=0, xmax=1.6,
+    ymin=-0.65, ymax=0.72,
+    xtick={0,0.4,0.8,1.2,1.6},
+    ytick={-0.5,-0.25,0,0.25,0.5},
+    legend pos=south west
+  ]
+    % Convex problem primal optimal p*_cvx = 0.5
+    \addplot[monographNavy, thick, dashed, domain=0:1.6, samples=2] {0.5};
+    \addlegendentry{$p_{\mathrm{cvx}}^* = 0.50$ (Slater holds)}
+
+    % Convex dual g_cvx(lam) = lam - 0.5*lam^2
+    \addplot[monographTeal, very thick, domain=0:1.6, samples=81] {x - 0.5*x^2};
+    \addlegendentry{$g_{\mathrm{cvx}}(\lambda) = \lambda - \tfrac{1}{2}\lambda^2$}
+
+    % Non-convex primal optimal p*_nc = 0.3894
+    \addplot[monographCrimson, thick, dashed, domain=0:1.6, samples=2] {0.3894};
+    \addlegendentry{$p_{\mathrm{nc}}^* \approx 0.389$ (non-convex)}
+
+    % Exact non-convex dual g_nc(lam) for min (x^2-1)^2 + 0.4x s.t. x >= 0
+    \addplot[monographIndigo, very thick] coordinates {
+      (0.00,-0.4095) (0.05,-0.3573) (0.10,-0.3054) (0.15,-0.2538) (0.20,-0.2024)
+      (0.25,-0.1514) (0.30,-0.1006) (0.35,-0.0502) (0.40,0.0000) (0.45,-0.0502)
+      (0.50,-0.1006) (0.55,-0.1514) (0.60,-0.2024) (0.65,-0.2538) (0.70,-0.3054)
+      (0.75,-0.3573) (0.80,-0.4095) (0.85,-0.4620) (0.90,-0.5148) (0.95,-0.5678)
+      (1.00,-0.6210)
+    };
+    \addlegendentry{$g_{\mathrm{nc}}(\lambda)$ ($d_{\mathrm{nc}}^* = 0$)}
+
+    % Strong duality touch point and positive gap arrow
+    \fill[monographTeal] (axis cs:1.0,0.5) circle (2.0pt)
+      node[above=2pt, font=\tiny, text=monographTeal] {$\Delta_{\mathrm{gap}} = 0$};
+    \fill[monographIndigo] (axis cs:0.4,0.0) circle (2.0pt);
+    \draw[<->, monographCrimson, thick] (axis cs:0.4,0.015) -- (axis cs:0.4,0.375)
+      node[midway, right=2pt, font=\tiny, align=left] {Gap\\[-1pt]$\approx 0.389$};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Quantitative Fenchel conjugation and Lagrangian duality gaps. (a) For convex $f_{\mathrm{cvx}}(x) = \frac{1}{2}x^2$, supporting lines $y = sx - f^*(s)$ recover $f_{\mathrm{cvx}}^{**} = f_{\mathrm{cvx}}$ exactly; for the non-convex double well $f_{\mathrm{nc}}(x) = \frac{1}{2}(x^2-1)^2$, the Fenchel biconjugate $f_{\mathrm{nc}}^{**}$ flattens the central barrier into the convex hull ($f_{\mathrm{nc}}^{**} = 0$ on $[-1, 1]$). (b) For convex $\min_{x \ge 1} \frac{1}{2}x^2$, Slater's condition holds and $g_{\mathrm{cvx}}(\lambda) = \lambda - \frac{1}{2}\lambda^2$ attains $p_{\mathrm{cvx}}^* = 0.5$ at $\lambda^* = 1$; for non-convex $\min_{x \ge 0} (x^2-1)^2 + 0.4x$, $g_{\mathrm{nc}}(\lambda)$ remains concave with a subdifferential kink at $\lambda^* = 0.4$ ($d_{\mathrm{nc}}^* = 0$), leaving a strict duality gap $p_{\mathrm{nc}}^* - d_{\mathrm{nc}}^* \approx 0.389$.}
+\label{fig:convex:pgf_fenchel_gap}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:convex:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Non-Differentiable Kinks, Multi-Valued Duals \& Subgradient Oscillation]
+At non-differentiable kinks---such as $\ell_1$ regularizers ($\abs{x_j}$ at $x_j = 0$), hinge losses, or dual functions $g(\lambda)$ where $\argmin_{\vecb{x}} L(\vecb{x}, \lambda)$ jumps between distinct minimizers (e.g., $\lambda^* = 0.4$ in Figure~\ref{fig:convex:pgf_fenchel_gap}(b))---gradients do not exist \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, Sec. 8.1.4, pp. 281--282}. Standard fixed-step gradient descent oscillates perpetually across the kink because $\norm{\vecb{g}}_2$ need not vanish near $\vecb{x}^*$.
+\textbf{Remedy:} Replace gradients with subgradients $\vecb{g}^{(k)} \in \partial f(\vecb{x}^{(k)})$ using square-summable diminishing step sizes ($\sum_k \alpha_k = \infty$, $\sum_k \alpha_k^2 < \infty$), or exploit composite splitting via proximal gradient operators $\vecb{x}^{(k+1)} = \operatorname{prox}_{\eta L_r}(\vecb{x}^{(k)} - \eta\grad L_s(\vecb{x}^{(k)}))$ (such as soft-thresholding for $\ell_1$) \bookcite{probabilisticml_kevinmurphy_introduction}{Sec. 8.6, pp. 308--310}.
+\end{pitfall}
+
+\begin{pitfall}[Failed Slater Qualification: Non-Zero Duality Gap \& Missing KKT Multipliers]
+Convexity alone does \emph{not} guarantee strong duality or existence of KKT multipliers when Slater's condition~\eqref{eq:convex:slater} fails \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 25, Sec. 25.3.2, p. 323}:
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt, topsep=2pt]
+  \item \textbf{Convex Non-Zero Duality Gap:} Consider minimizing $f_0(x, y) = e^{-x}$ on $\mathcal{D} = \R \times \R_{>0}$ subject to $f_1(x, y) = x^2 / y \le 0$. Although $f_0$ and the quadratic-over-linear constraint $f_1$ are convex ($\hess f_1(x,y) = \frac{2}{y^3}[y,\, -x]\T[y,\, -x] \succeq \zeros$), feasibility forces $x = 0$, leaving no strictly feasible point ($f_1(x, y) < 0$ is impossible). Hence $p^* = e^0 = 1$, whereas $g(\lambda) = \inf_{x \in \R,\, y > 0} (e^{-x} + \lambda x^2/y) = 0$ for all $\lambda \ge 0$, yielding $d^* = 0$ and a permanent duality gap $p^* - d^* = 1$.
+  \item \textbf{KKT Multiplier Non-Existence (Failed Constraint Qualification):} Minimizing $f_0(x) = x$ subject to $f_1(x) = x^2 \le 0$ is convex with unique optimum $x^* = 0$, yet Slater fails and $\grad f_0(0) + \lambda \grad f_1(0) = 1 + \lambda(0) = 1 \neq 0$ for every $\lambda \ge 0$: no KKT tuple exists at $x^* = 0$.
+\end{enumerate}
+\textbf{Remedy:} Always verify strict feasibility (e.g., as in V\~{u}'s explicit Slater checks for hard/soft-margin SVMs \bookcite{machine_learning_co_ban_tiep_vu}{pp. 332, 342}) or replace degenerate constraints like $x^2 \le 0$ with linear equalities $x = 0$.
+\end{pitfall}
+
+\begin{pitfall}[Spurious Saddle Points, Indefinite Hessians \& Multiplier Sign Errors]
+Outside convex programs, KKT stationarity~\eqref{eq:convex:kkt_stat} holds at local maxima and saddle points as well as minima \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 4, pp. 92--95}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 8, pp. 277, 280}.
+\begin{itemize}[leftmargin=1.4em, itemsep=2pt, topsep=2pt]
+  \item \textbf{Indefinite Hessians:} At saddle points (e.g., $f(x, y) = x^2 - y^2$ in V\~{u} \bookcite{machine_learning_co_ban_tiep_vu}{Fig. 23.11, p. 293} and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Fig. 8.6(d), p. 280}), $\hess L_{\vecb{x}\vecb{x}}$ possesses mixed-sign eigenvalues; second-order Newton steps blindly jump toward saddle points unless restricted to positive curvature on the tangent subspace $\ker(\jac_{\mathrm{act}}(\vecb{x}^*))$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p. 92}.
+  \item \textbf{Multiplier Sign Inversion:} Flipping $f_i(\vecb{x}) \le 0$ vs.\ Bishop's $h_k(\vecb{x}) \ge 0$ without adjusting the Lagrangian sign allows $\lambda_i < 0$, which reverses the normal-cone constraint and turns a constrained minimum into a boundary maximum \bookcite{deep_learning_foundations_concepts}{App. C, pp. 623--624}.
+\end{itemize}
+\end{pitfall}
+
+\begin{pitfall}[Barrier Conditioning Blowup Near Active Boundaries]
+In primal log-barrier optimization $\phi_t(\vecb{x}) = t f_0(\vecb{x}) - \sum_{i=1}^m \ln(-f_i(\vecb{x}))$, the barrier Hessian
+\[
+  \hess \phi_t(\vecb{x}) = t\hess f_0(\vecb{x}) + \sum_{i=1}^m \frac{1}{f_i(\vecb{x})^2}\grad f_i(\vecb{x})\grad f_i(\vecb{x})\T - \sum_{i=1}^m \frac{1}{f_i(\vecb{x})}\hess f_i(\vecb{x})
+\]
+exhibits rank-$1$ spikes scaling as $f_i(\vecb{x})^{-2} = \mathcal{O}(t^2)$ perpendicular to active constraints, driving the Hessian condition number $\kappa_2(\hess \phi_t) \to \infty$ as $t \to \infty$. Solving the unscaled primal Newton system directly suffers severe floating-point cancellation; primal--dual interior-point formulations (Algorithm~\ref{alg:convex:ipm}) equalize scaling via the regularized complementarity block $-\diag(\vecb{\lambda})\vecb{f}(\vecb{x}) = \frac{1}{t}\ones_m$ and fraction-to-boundary step control.
+\end{pitfall}
+
+\end{document}

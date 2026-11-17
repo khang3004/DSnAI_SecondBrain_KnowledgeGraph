@@ -1,0 +1,191 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Unsupervised \& Bayesian Inference}{Importance Sampling, Metropolis-Hastings, Gibbs, Langevin \& HMC/NUTS}
+  {Beat high-dimensional random walks: glide along the typical set with symplectic Hamiltonian flow}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MC $\cdot$ MCMC $\cdot$ HMC\\ \footnotesize\mdseries IS $\cdot$ MH/Gibbs $\cdot$ Leapfrog}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[csDom!35, line width=5pt] (0,0) ellipse (1.85 and 0.95);
+    \draw[csA, thick] (-1.6,0.1)--(-1.3,0.4)--(-1.5,0.65)--(-1.1,0.5)--(-0.9,0.8)--(-0.6,0.55);
+    \draw[csD, very thick, -{Stealth}] (-1.3,-0.62) arc (-140:35:1.85 and 0.95);
+    \node[font=\tiny, csA] at (-1.1,1.15) {RW $\mathcal O(d^2)$};
+    \node[font=\tiny, csD] at (0.6,-1.25) {HMC $\mathcal O(d^{1/4})$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; MONTE CARLO \& DIAGNOSTICS ($\hat{R}$, ESS)}{%
+  \csfm{\hat\mu_S = \frac{1}{S}\sum_{s=1}^S f(\vecb\theta^{(s)}),\qquad \Var[\hat\mu_S] = \frac{\sigma^2}{S}\,\tau_{\mathrm{int}}}
+  \begin{csbul}
+    \item \textbf{Dimension-free i.i.d.\ error:} $\mathcal O(S^{-1/2})$ when $\vecb\theta^{(s)}\simiid\pi$
+    \item \textbf{Correlated chain ESS:} $\mathrm{ESS} = \frac{S}{\tau_{\mathrm{int}}} = \frac{S}{1+2\sum_{\ell=1}^\infty \rho(\ell)}$ (require $\ge 400$)
+    \item \textbf{Split Gelman--Rubin $\hat R$:} $\hat R = \sqrt{\frac{\frac{S-1}{S}W + \frac{1}{S}B}{W}} < 1.01$ across $M\ge 4$ chains
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; IMPORTANCE SAMPLING \& $\chi^2$ COLLAPSE}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\hat\mu_{\mathrm{SNIS}}=\sum_{s=1}^S W_s f(\vecb\theta^{(s)}),\quad \tilde w_s=\frac{\tilde\pi(\vecb\theta^{(s)})}{q(\vecb\theta^{(s)})}}
+    \begin{csbul}
+      \item \textbf{Weight variance:} $\Var_q[w]=\chi^2(\pi\|q)$
+      \item \textbf{Effective size:} $\mathrm{ESS}_{\mathrm{IS}}=\frac{(\sum_s\tilde w_s)^2}{\sum_s\tilde w_s^2}\approx\frac{S}{1+\chi^2}$
+      \item \textbf{Curse of $d$:} $1+\chi^2 = c^d$ ($c>1$) $\Rightarrow$ 1 weight $\to 1$
+      \item \textbf{SMC cure:} resample when $\mathrm{ESS}_{\mathrm{IS}} < N_s/2$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[x=0.32cm, y=0.14cm]
+      \fill[csA!85] (0.7,0) rectangle (1.3,13.5);
+      \foreach \i/\h in {2/0.8,3/0.3,4/0.5,5/0.2,6/0.4}
+        \fill[csB!60] (\i-0.3,0) rectangle (\i+0.3,\h);
+      \draw[gray, thick] (0.2,0)--(6.6,0);
+      \node[font=\tiny, csA, anchor=west] at (1.4,11) {$W_1\!\approx\!1$};
+      \node[font=\tiny] at (3.5,-2.5) {high-$d$ weight collapse};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; METROPOLIS--HASTINGS \& GIBBS}{%
+  \csfm{\alpha(\vecb\theta,\vecb\theta') = \min\!\left(1,\,\frac{\tilde\pi(\vecb\theta')\,q(\vecb\theta\mid\vecb\theta')}{\tilde\pi(\vecb\theta)\,q(\vecb\theta'\mid\vecb\theta)}\right)}
+  \begin{csbul}
+    \item \textbf{Detailed balance:} $T(\vecb\theta'\mid\vecb\theta)\pi(\vecb\theta)=T(\vecb\theta\mid\vecb\theta')\pi(\vecb\theta') \implies \pi$ stationary ($Z$ cancels)
+    \item \textbf{RW-MH scaling:} step $\sigma=\mathcal O(d^{-1/2})$ (accept $\approx 0.234$) $\Rightarrow \mathcal O(d^2)$ cost
+    \item \textbf{Gibbs:} sample $\theta_j\sim\pi(\theta_j\mid\vecb\theta_{-j}) \implies \alpha\equiv 1$; \textbf{Collapsed Gibbs} marginalizes conjugate parameters ($\Var[\E[f\mid\vecb z]]\le\Var[f]$)
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; HMC, SYMPLECTIC LEAPFROG \& NUTS}{%
+  \csfm{H(\vecb\theta,\vecb r) = E(\vecb\theta) + \tfrac{1}{2}\vecb r\T\mat M\inv\vecb r,\qquad E(\vecb\theta)=-\log\tilde\pi(\vecb\theta)}
+  \begin{csbul}
+    \item \textbf{Leapfrog ($L$ steps):} half-kick $\vecb r_{t+\frac{1}{2}} = \vecb r_t - \frac{\epsilon}{2}\grad E(\vecb\theta_t)$, full drift $\vecb\theta_{t+1} = \vecb\theta_t + \epsilon\mat M\inv\vecb r_{t+\frac{1}{2}}$, half-kick $\vecb r_{t+1} = \vecb r_{t+\frac{1}{2}} - \frac{\epsilon}{2}\grad E(\vecb\theta_{t+1})$
+    \item \textbf{Symplectic:} $|\det\jac_{\mathrm{LF}}|=1$, reversible, bounded $\Delta H=\mathcal O(\epsilon^2)$, $\mathcal O(d^{1/4})$ steps
+    \item \textbf{NUTS:} binary tree halts at U-turn $(\vecb\theta^+-\vecb\theta^-)\T\mat M\inv\vecb r^\pm < 0$ (auto-tunes $L$)
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; LANGEVIN DYNAMICS (ULA, MALA, SGLD)}{%
+  \csfm{\vecb\theta_{t+1} = \vecb\theta_t + \epsilon\,\grad_{\vecb\theta}\log\tilde\pi(\vecb\theta_t) + \sqrt{2\epsilon}\,\vecb\xi_t,\quad \vecb\xi_t\sim\Normal(\zeros,\eye_d)}
+  \begin{csbul}
+    \item \textbf{Overdamped SDE:} $\mathrm d\vecb\theta_t = \grad\log\pi(\vecb\theta_t)\,\mathrm dt + \sqrt{2}\,\mathrm d\vecb W_t$ (Fokker--Planck $\to \pi$)
+    \item \textbf{ULA / SGLD:} unadjusted step has $\mathcal O(\epsilon)$ asymptotic bias; SGLD uses minibatches with decaying $\epsilon_t$ ($\sum\epsilon_t=\infty,\sum\epsilon_t^2<\infty$)
+    \item \textbf{MALA:} adds MH accept/reject (= 1-step HMC); exact $\pi$, scales as $\mathcal O(d^{1/3})$
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; SAMPLER SCALING COMPARISON}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{2.85cm}@{}}
+    \textbf{\textcolor{csF}{Sampler}} & \textbf{\textcolor{csF}{Grad}} & \textbf{\textcolor{csF}{Scaling}} & \textbf{\textcolor{csF}{Bias / Bottleneck}}\\ \hline
+    IS / SNIS & No & $\mathcal O(e^{cd})$ & $0$; collapses in high $d$\\
+    RW-MH & No & $\mathcal O(d^2)$ & $0$; diffusive random walk\\
+    Gibbs & No & $\mathcal O((L/\ell)^2)$ & $0$; stalls under correlation\\
+    ULA / SGLD & $\grad\log\tilde\pi$ & $\mathcal O(d^{1/3})$ & $\mathcal O(\epsilon)$ bias; minibatch fast\\
+    MALA & $\grad\log\tilde\pi$ & $\mathcal O(d^{1/3})$ & $0$; local 1-step leapfrog\\
+    HMC / NUTS & $\grad\log\tilde\pi$ & $\mathcal O(d^{1/4})$ & $0$; coherent typical-set orbits\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Random Walks Diffuse as $\mathcal O(d^2)$;\; Symplectic HMC Glides as $\mathcal O(d^{1/4})$} \\[1pt]
+  \footnotesize\mdseries \textbf{Momentum + volume-preserving leapfrog surfs the high-dimensional typical set without $Z$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Euler in HMC:} non-symplectic drift sends $\Delta H\to\infty$ $\to$ always use leapfrog
+    \item \textbf{Neal's funnel:} hierarchical neck diverges $\to$ non-centered $\vecb\theta=\vecb\mu+\sigma\tilde{\vecb\theta}$
+    \item \textbf{Single-chain $\hat R$:} misses separated modes $\to$ run $M\ge 4$ overdispersed chains
+    \item \textbf{Fixed-$\epsilon$ ULA/SGLD:} samples from $\mathcal O(\epsilon)$-biased target without MH step
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Monte Carlo Integration, Metropolis-Hastings, Gibbs, HMC \& Langevin Sampling}\;---\;Domain 02 $\cdot$ Unsupervised \& Bayesian Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Correlated MCMC variance \& ESS:\csfm{\Var[\hat\mu_S] = \frac{\sigma^2}{S}\Bigl(1+2\sum_{\ell=1}^\infty\rho(\ell)\Bigr),\quad \mathrm{ESS}=\frac{S}{\tau_{\mathrm{int}}}}
+    \item Importance weight $\chi^2$ degeneracy:\csfm{\mathrm{ESS}_{\mathrm{IS}} = \frac{(\sum_{s=1}^S\tilde w_s)^2}{\sum_{s=1}^S\tilde w_s^2} \approx \frac{S}{1+\chi^2(\pi\|q)}}
+    \item HMC MH acceptance ($\Delta H = H(\vecb\theta'_L,\vecb r'_L)-H(\vecb\theta_0,\vecb r_0)$):\csfm{\alpha_{\mathrm{HMC}} = \min\bigl(1,\,\exp(-\Delta H)\bigr)}
+    \item MALA asymmetric proposal density:\csfm{q(\vecb\theta'\mid\vecb\theta) = \Normal\!\bigl(\vecb\theta + \epsilon\grad\log\tilde\pi(\vecb\theta),\,2\epsilon\eye_d\bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{HMC SYMPLECTIC LEAPFROG RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Momentum:} draw $\vecb r_0\sim\Normal(\zeros,\mat M)$, set $(\vecb\theta'_0,\vecb r'_0)=(\vecb\theta^{(s-1)},\vecb r_0)$
+    \item \textbf{Repeat $L$ leapfrog steps:}
+      $\vecb r'\gets\vecb r'-\tfrac{\epsilon}{2}\grad E(\vecb\theta')$;\;
+      $\vecb\theta'\gets\vecb\theta'+\epsilon\mat M\inv\vecb r'$;\;
+      $\vecb r'\gets\vecb r'-\tfrac{\epsilon}{2}\grad E(\vecb\theta')$
+    \item \textbf{MH correction:} accept $\vecb\theta'_L$ with prob.\ $\min(1,e^{-\Delta H})$; else keep $\vecb\theta^{(s-1)}$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    low-dim.\ $d\le 5$, fast proposal & Self-Normalized IS (SNIS)\\
+    discrete or conjugate conditionals & Blocked / Collapsed Gibbs\\
+    black-box non-diff.\ $\tilde\pi(\vecb\theta)$ & Adaptive Random-Walk MH\\
+    smooth posterior, $d\in[10,10^5]$ & HMC / NUTS with mass matrix $\mat M$\\
+    massive dataset $N\gg 10^6$ & SGLD / SGHMC (minibatch $\grad\log\tilde\pi$)\\
+    multimodal / state-space $\pi_t$ & Tempered SMC / Annealed IS\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& TUNING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Optimal MH accept rates:} RW-MH $\approx 0.234$; MALA $\approx 0.574$; HMC $\approx 0.65\text{--}0.80$
+    \item \textbf{Typical set radius:} for $\Normal(\zeros,\eye_d)$, $\norm{\vecb\theta}_2\approx\sqrt{d}\pm\mathcal O(1)$
+    \item \textbf{Convergence bar:} split-$\hat R < 1.01$, $\mathrm{ESS}\ge 400$, $0$ divergences
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{DIMENSIONAL SCALING: RW-MH vs.\ MALA vs.\ HMC}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmode=log, ymode=log,
+      xmin=10, xmax=10000, ymin=1, ymax=1e8,
+      xlabel={Dimension $d$}, ylabel={Steps per Indep.\ Sample},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.96)}, anchor=north west, font=\tiny, draw=gray!40}]
+      \addplot[csA, very thick, domain=10:10000, samples=25] {x^2};
+      \addlegendentry{RW-MH $\mathcal O(d^2)$}
+      \addplot[csB, very thick, dashed, domain=10:10000, samples=25] {x^(1/3)};
+      \addlegendentry{MALA $\mathcal O(d^{1/3})$}
+      \addplot[csD, very thick, domain=10:10000, samples=25] {x^(1/4)};
+      \addlegendentry{HMC / NUTS $\mathcal O(d^{1/4})$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Evaluating $\tilde w_s$ in linear space:} $\tilde\pi/q$ overflows/underflows in high $d$; always compute $\log\tilde w_s$ and normalize via log-sum-exp
+    \item \textbf{Standard Euler in HMC:} breaks $|\det\jac|=1$ and causes secular energy drift $\Delta H\propto L$; only symplectic integrators preserve shadow $H$
+    \item \textbf{Centered hierarchical funnel:} $x\mid v\sim\Normal(0,e^v)$ traps HMC above the neck; reparameterize as $x=e^{v/2}\tilde x$ with $\tilde x\sim\Normal(0,1)$
+    \item \textbf{Diagonal crawling in Gibbs:} strongly correlated coordinates mix as $\mathcal O((L/\ell)^2)$; block variables or switch to HMC
+    \item \textbf{Ignoring divergent transitions:} even a few leapfrog divergences indicate curvature bias in posterior expectations; raise target accept (e.g.\ $0.95$) or reparameterize
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  In high dimensions, probability mass lives on a thin \textbf{typical-set shell}, not at the mode.
+  \textbf{IS} collapses exponentially ($\chi^2$), and \textbf{RW-MH/Gibbs} diffuse as $\mathcal O(d^2)$.
+  \textbf{HMC/NUTS} introduces auxiliary momentum $\vecb r$ and symplectic leapfrog steps ($|\det\jac|=1$, $\Delta H=\mathcal O(\epsilon^2)$) to surf level sets of $H$ in $\mathcal O(d^{1/4})$ steps.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

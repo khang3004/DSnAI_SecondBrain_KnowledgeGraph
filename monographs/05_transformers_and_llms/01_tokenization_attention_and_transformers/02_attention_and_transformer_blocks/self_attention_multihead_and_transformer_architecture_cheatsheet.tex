@@ -1,0 +1,221 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{5}{Tokenization, Attention \& Transformers}{Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention \& GPT/BERT Blocks}
+  {Dynamic soft dictionary lookup $\cdot$ scale by $\sqrt{d_k}$ to save gradients $\cdot$ mask the future with $-\infty$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Self-Attention\\ \footnotesize\mdseries QKV $\cdot$ Causal $\cdot$ MHA}{%
+  \begin{tikzpicture}[scale=0.62, every node/.style={font=\tiny\sffamily}]
+    % Q K^T -> causal lower-triangular mask -> V
+    \node[draw=csA, fill=csA!15, rounded corners=2pt, inner sep=2.5pt] (q) at (0,0) {$\mat{Q}$};
+    \node[draw=csB, fill=csB!15, rounded corners=2pt, inner sep=2.5pt] (k) at (0.85,0.65) {$\mat{K}\T$};
+    % Causal triangle grid
+    \begin{scope}[xshift=1.75cm, yshift=-0.65cm, scale=0.33]
+      \fill[csD!35] (0,3) rectangle (1,4);
+      \fill[csD!35] (0,2) rectangle (2,3);
+      \fill[csD!35] (0,1) rectangle (3,2);
+      \fill[csD!35] (0,0) rectangle (4,1);
+      \fill[csA!20] (1,3) rectangle (4,4);
+      \fill[csA!20] (2,2) rectangle (4,3);
+      \fill[csA!20] (3,1) rectangle (4,2);
+      \draw[step=1, gray!70, thin] (0,0) grid (4,4);
+      \draw[csDom, thick] (0,0) rectangle (4,4);
+      \node at (2.8,3.3) {$-\infty$};
+      \node at (1.2,0.7) {$\mat{A}$};
+    \end{scope}
+    \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2.5pt] (v) at (3.75,0) {$\mat{V}$};
+    \draw[-{Stealth}, thick, csDom] (q.east)--(1.68,0);
+    \draw[-{Stealth}, thick, csDom] (k.south east)--(1.68,0.25);
+    \draw[-{Stealth}, thick, csDom] (3.12,0)--(v.west);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ differentiable dictionary lookup}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mathrm{Attention}(\mat{Q},\mat{K},\mat{V}) = \softmax\!\left(\frac{\mat{Q}\mat{K}\T}{\sqrt{d_k}}\right)\mat{V}}
+    \begin{csbul}
+      \item $\mat{Q}=\mat{X}\mat{W}_Q,\;\mat{K}=\mat{X}\mat{W}_K\in\R^{N\times d_k}$
+      \item $\mat{V}=\mat{X}\mat{W}_V\in\R^{N\times d_v}$
+      \item $\mat{W}_Q\neq\mat{W}_K$ enables asymmetric affinities
+      \item output row $\vecb{y}_i\T = \sum_{j=1}^N A_{ij}\vecb{v}_j\T$ (convex hull)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.62, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2pt] (q) at (0,2.3) {$\vecb{q}_i$};
+      \node[draw=csB, fill=csB!12, rounded corners=2pt, inner sep=2pt] (k) at (2.1,2.3) {$\vecb{k}_j$};
+      \node[draw=csC, fill=csC!15, circle, inner sep=1.5pt] (dot) at (1.05,1.05) {$\cdot/\sqrt{d_k}$};
+      \node[draw=csD, fill=csD!15, rounded corners=2pt, inner sep=2pt] (sm) at (1.05,-0.35) {$A_{ij}\vecb{v}_j$};
+      \draw[-{Stealth}, csA] (q)--(dot);
+      \draw[-{Stealth}, csB] (k)--(dot);
+      \draw[-{Stealth}, csC] (dot)--(sm);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; WHY $1/\sqrt{d_k}$ \& PRE-SOFTMAX MASKING}{%
+  \csfm{\Var(\vecb{q}\T\vecb{k}) = d_k \;\implies\; \Var\!\left(\frac{\vecb{q}\T\vecb{k}}{\sqrt{d_k}}\right) = 1}
+  \begin{csbul}
+    \item \textbf{Softmax Jacobian:} $\pd{p_i}{s_j}=p_i(\delta_{ij}-p_j)\to 0$ if large $\Var(s)$ saturates $p_{i^*}\to 1$
+    \item \textbf{Causal mask $\mat{M}$:} $M_{ij}=0$ ($j\le i$), $M_{ij}=-\infty$ ($j>i$) added \emph{before} $\softmax$
+    \item \textbf{Zero leakage:} $A_{ij} = \frac{\exp(S_{ij})\mathbb{I}[j\le i]}{\sum_{m=1}^i \exp(S_{im})}$ sums strictly over prefix $m\le i$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; MULTI-HEAD, GQA \& PRE-LN BLOCK}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mathrm{MHA}(\mat{X}) = \mathrm{Concat}(\mat{H}_1,\dots,\mat{H}_H)\mat{W}_O}
+    \begin{csbul}
+      \item \textbf{Split:} $[B,T,d]\to[B,H,T,d_k]$, $d_k=d/H$
+      \item \textbf{GQA:} $H$ query heads share $H_{\mathrm{kv}}$ KV heads
+      \item \textbf{Pre-LN:} $\mat{Z}=\mat{X}+\mathrm{MHA}(\mathrm{LN}_1(\mat{X}))$, $\tilde{\mat{X}}=\mat{Z}+\mathrm{MLP}(\mathrm{LN}_2(\mat{Z}))$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csC, fill=csC!12, rounded corners=2pt, inner sep=2pt] (ln1) at (0,2.4) {$\mathrm{LN}_1\to\mathrm{MHA}$};
+      \node[draw=csC, fill=csC!20, circle, inner sep=1pt] (add1) at (0,1.25) {$+$};
+      \node[draw=csD, fill=csD!12, rounded corners=2pt, inner sep=2pt] (ln2) at (0,0.1) {$\mathrm{LN}_2\to\mathrm{MLP}$};
+      \node[draw=csD, fill=csD!20, circle, inner sep=1pt] (add2) at (0,-1.05) {$+$};
+      \draw[-{Stealth}] (0,3.25)--(ln1); \draw[-{Stealth}] (ln1)--(add1);
+      \draw[-{Stealth}] (add1)--(ln2); \draw[-{Stealth}] (ln2)--(add2);
+      \draw[-{Stealth}, csA, thick] (0,3.05)--(-1.85,3.05)--(-1.85,1.25)--(add1);
+      \draw[-{Stealth}, csA, thick] (0,0.75)--(-1.85,0.75)--(-1.85,-1.05)--(add2);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; ARCHITECTURES $-$ GPT vs.\ BERT vs.\ T5 vs.\ ViT}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{2.9cm}@{}}
+    \textbf{\textcolor{csD}{Family}} & \textbf{\textcolor{csD}{Mask}} & \textbf{\textcolor{csD}{Objective \& Use}}\\ \hline
+    GPT / LLaMA & Causal ($j\le i$) & Next-token MLE; KV generation\\
+    BERT / RoBERTa & Full $N\times N$ & 15\% Masked LM; embeddings/NER\\
+    Enc--Dec (T5) & Bi + Causal + Cross & Span denoising; Seq2Seq\\
+    ViT & Full (+ \texttt{[CLS]}) & $P\times P$ image patch tokens\\
+  \end{tabular}\par\vspace{2pt}
+  \small \textbf{Cross-Attn:} $\mat{Q}=\mat{X}_{\mathrm{dec}}\mat{W}_Q$, $\mat{K}=\mat{Z}_{\mathrm{enc}}\mat{W}_K$, $\mat{V}=\mat{Z}_{\mathrm{enc}}\mat{W}_V$.}
+
+\csbranch{5}{E}{5\;\; COST \& FLASHATTENTION $-$ beating $O(HN^2)$ HBM}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.1cm}@{}}
+    \textbf{\textcolor{csE}{Variant}} & \textbf{\textcolor{csE}{FLOPs}} & \textbf{\textcolor{csE}{HBM Memory}}\\ \hline
+    Dense MHA & $O(N^2 d + N d^2)$ & $O(H N^2 + N d)$\\
+    FlashAttention & $O(N^2 d + N d^2)$ & $O(N d)$ (SRAM tiled)\\
+    Local Window $w$ & $O(N w d + N d^2)$ & $O(H N w + N d)$\\
+    LSH / Performer & $O(Nd\log N)$ / $O(NMd)$ & Sub-quadratic approx.\\
+  \end{tabular}\par\vspace{2pt}
+  \small \textbf{FlashAttention:} tiles $\mat{Q},\mat{K},\mat{V}$ in SRAM with online softmax $(\max,\text{sum})$ rescaling.}
+
+\csbranch{6}{F}{6\;\; KERNEL VIEW \& TIED UNEMBEDDING}{%
+  \begin{csbul}
+    \item \textbf{Nadaraya--Watson smoother:} $A_{ij} = \frac{\kappa(\vecb{q}_i,\vecb{k}_j)}{\sum_m \kappa(\vecb{q}_i,\vecb{k}_m)}$ on simplex $\Delta^{N-1}$
+    \item \textbf{Position-wise MLP:} GELU or gated SwiGLU injects non-linearity per token
+    \item \textbf{Tied LM head:} logits $\vecb{u}_i = (\vecb{h}_i^{(L)})\T\mat{E}\T\in\R^{|\mathcal{V}|}$ shares input embedding $\mat{E}$
+    \item \textbf{$O(1)$ path length:} any token pair interacts in $1$ hop vs.\ $O(N)$ in RNNs
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Project QKV $\cdot$ Scale by $\sqrt{d_k}$ $\cdot$ Mask Future $\cdot$ Route Values} \\[1pt]
+  \footnotesize\mdseries \textbf{Pre-LN keeps the residual highway clean; FlashAttention keeps $N\times N$ inside SRAM.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item omitting $1/\sqrt{d_k}$ gives $\Var(\vecb{q}\T\vecb{k})=d_k\Rightarrow$ vanishing softmax Jacobian
+    \item masking \emph{after} $\softmax$ leaks future mass into denominator
+    \item all-$-\infty$ row yields $0/0=\texttt{NaN}$; keep $j=i$ unmasked
+    \item Post-LN scales residual stream $\Rightarrow$ unstable deep gradients
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention \& GPT/BERT Blocks}\;---\;Domain 05 $\cdot$ Tokenization, Attention \& Transformers}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Causal Scaled Dot-Product Attention:\csfm{\mat{A}_{\mathrm{causal}} = \softmax\!\left(\frac{\mat{Q}\mat{K}\T}{\sqrt{d_k}} + \mat{M}\right)\mat{V}}
+    \item Variance \& Softmax Jacobian:\csfm{\Var\!\left(\frac{\vecb{q}\T\vecb{k}}{\sqrt{d_k}}\right)=1,\qquad \pd{p_i}{s_j} = p_i(\delta_{ij}-p_j)}
+    \item Multi-Head Projection ($d_k = d_{\mathrm{model}}/H$):\csfm{\mat{H}_h = \mathrm{Attn}(\mat{X}\mat{W}_{Q,h},\mat{X}\mat{W}_{K,h},\mat{X}\mat{W}_{V,h})}
+    \item Pre-LN Transformer Block:\csfm{\mat{Z}^{(\ell)} = \mat{X}^{(\ell)} + \mathrm{MHA}(\mathrm{LN}_1(\mat{X}^{(\ell)})),\quad \mat{X}^{(\ell+1)} = \mat{Z}^{(\ell)} + \mathrm{MLP}(\mathrm{LN}_2(\mat{Z}^{(\ell)}))}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{BATCHED MHA TENSOR-SPLIT RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Pre-normalize input: $\tilde{\mathcal{X}} = \mathrm{LN}_1(\mathcal{X}) \in \R^{B\times T\times d}$.
+    \item Fused QKV projection: $\mathcal{Q},\mathcal{K},\mathcal{V} \in \R^{B\times T\times d}$.
+    \item View \& transpose to heads: $[B,T,H,d_k] \to [B,H,T,d_k]$.
+    \item Logits $\mathcal{S} = (\mathcal{Q}\mathcal{K}\T)/\sqrt{d_k} \in \R^{B\times H\times T\times T}$; set $S_{b,h,i,j}=-\infty$ for $j>i$.
+    \item $\mathcal{H} = \softmax(\mathcal{S})\mathcal{V} \to$ transpose to $[B,T,d] \to \mathcal{H}\mat{W}_O + \mathcal{X}$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    autoregressive generation & Decoder-only + causal mask $\mat{M}$\\
+    bidirectional classification & Encoder-only (BERT) full mask\\
+    conditional translation & Encoder--Decoder + cross-attention\\
+    stable deep training ($L\gg 12$) & Pre-LN / RMSNorm on residual branch\\
+    small KV-cache at inference & GQA ($H_{\mathrm{kv}} \ll H$) or MQA ($H_{\mathrm{kv}}=1$)\\
+    long sequences ($N\ge 4\text{k}$) & FlashAttention (SRAM online softmax)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{COMPLEXITY \& PARAMETER CHEAT-LINE}
+  \begin{csbul}
+    \item MHA params per layer: $4d_{\mathrm{model}}^2$ ($\mat{W}_Q,\mat{W}_K,\mat{W}_V,\mat{W}_O$) — independent of $H$!
+    \item GQA KV-cache reduction factor: $H / H_{\mathrm{kv}}$
+    \item Attention FLOPs vs.\ MLP FLOPs: $O(N^2 d)$ dominates when $N > d$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{LOGIT SPREAD \& HBM SCALING ($H=32$, FP16)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.2cm, xmode=log, ymode=log,
+      xmin=256, xmax=32768, ymin=1, ymax=80000,
+      xlabel={Sequence Length $N$}, ylabel={Attention HBM (MB)},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={256,1024,4096,16384}, xticklabels={256,1k,4k,16k},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north west, legend style={font=\tiny, fill=white, fill opacity=0.9}]
+      \addplot[csA, very thick, domain=256:32768, samples=30] {64 * x^2 / 1e6};
+      \addlegendentry{Naive $O(HN^2)$}
+      \addplot[csF, very thick, dashed, domain=256:32768, samples=30] {16384 * x / 1e6};
+      \addlegendentry{FlashAttention $O(Nd)$}
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize Tiling $\mat{Q},\mat{K},\mat{V}$ in SRAM eliminates quadratic $N\times N$ HBM materialization.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing $1/\sqrt{d_k}$:} standard deviation grows as $\sqrt{d_k}$, pushing softmax into one-hot saturation where $\pd{p_i}{s_j}\approx 0$.
+    \item \textbf{Post-softmax zeroing:} multiplying $\softmax(\mat{S})$ by a lower-triangular mask leaves rows summing to $<1$ and leaks future magnitude unless renormalized.
+    \item \textbf{All-masked padding row:} if padding + causal mask sets an entire row to $-\infty$, $\softmax$ produces $\texttt{NaN}$; always keep $j=i$ unmasked or guard empty rows.
+    \item \textbf{FP16 $\exp$ overflow:} subtract row-wise $m_i=\max_j S_{ij}$ before exponentiating and accumulate softmax denominator in FP32.
+    \item \textbf{Transpose bug:} reshaping $[B,T,d]\to[B,H,T,d_k]$ directly without \texttt{.view(B,T,H,d\_k).transpose(1,2)} scrambles sequence and head axes.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Self-attention routes information in $O(1)$ sequential hops by matching \textbf{queries} against \textbf{keys} ($\mat{Q}\mat{K}\T/\sqrt{d_k}$), masking future tokens with $-\infty$ before $\softmax$, and taking a convex combination of \textbf{values} $\mat{V}$. Wrapping $H$ parallel heads and a position-wise MLP inside a \textbf{Pre-LN residual stream} yields the universal building block of GPT, BERT, T5, and ViT.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

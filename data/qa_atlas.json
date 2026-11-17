@@ -1,0 +1,44 @@
+{
+  "targets": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "tex_path": "atlas.tex",
+      "pdf_path": "/Users/KhangDS/Programing/CodeLab_Playground/SecondBrain/atlas.pdf",
+      "exit_code": 0,
+      "passed": true,
+      "errors": [],
+      "overfull_hbox": [],
+      "overfull_vbox": [
+        {
+          "kind": "vbox",
+          "overflow_pt": 5.5319,
+          "location": "has occurred while \\output is active []"
+        },
+        {
+          "kind": "vbox",
+          "overflow_pt": 6.45697,
+          "location": "has occurred while \\output is active []"
+        },
+        {
+          "kind": "vbox",
+          "overflow_pt": 6.14651,
+          "location": "has occurred while \\output is active []"
+        },
+        {
+          "kind": "vbox",
+          "overflow_pt": 3.94609,
+          "location": "has occurred while \\output is active []"
+        },
+        {
+          "kind": "vbox",
+          "overflow_pt": 4.03056,
+          "location": "has occurred while \\output is active []"
+        }
+      ],
+      "other_warnings": [],
+      "max_overfull_hbox_pt": 0.0
+    }
+  ]
+}

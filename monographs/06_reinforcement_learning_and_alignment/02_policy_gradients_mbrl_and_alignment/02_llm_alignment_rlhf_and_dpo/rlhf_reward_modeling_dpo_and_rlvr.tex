@@ -1,0 +1,295 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 06: Reinforcement Learning \& Alignment}{Policy Gradients, Model-Based RL, MARL \& LLM Alignment}{Post-Training Alignment: RLHF, Reward Modeling, DPO \& RLVR}{Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) \& RLVR}{RLHF Ch.~5--8, 11--14; Foundations of LLMs Ch.~4; Murphy RL Ch.~6; Jurafsky \& Martin Sec.~8.3--8.4; Diffusion Principles Sec.~C.1.5}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:align:formulation}
+
+Post-training alignment steers a pretrained and supervised fine-tuned (SFT) autoregressive policy $\pi_{\mathrm{ref}}(y \mid x)$ toward human preferences or verifiable correctness criteria without sacrificing fluency or general world knowledge. Formally, given a prompt distribution $x \sim \mathcal{D}$ and an autoregressive completion $y = (y_1, \dots, y_T)$ generated under
+\begin{equation}
+\label{eq:align:ar_factorization}
+\pi_\theta(y \mid x) = \prod_{t=1}^{T} \pi_\theta(y_t \mid x, y_{<t}),
+\end{equation}
+post-training can be viewed either as a \emph{single-turn contextual bandit} with sequence-valued action $y$ and terminal scalar reward $r(x,y)$, or as a \emph{deterministic-transition token-level MDP} with state $s_t = \mathrm{concat}(x, y_{<t})$, action $a_t = y_t$, and transition $p(s_{t+1} \mid s_t, a_t) = \delta(s_{t+1} = \mathrm{concat}(s_t, a_t))$ \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, pp.~150--151}. Unlike classical RL where the environment supplies an exogenous reward, preference-based alignment must first infer a scalar proxy $r_\phi(x,y)$ from pairwise comparisons $(x, y_w, y_l)$ where $y_w \succ y_l$, or bypass explicit reward modeling altogether via closed-form policy-reward reparameterization \bookcite{reinforcement_learning_from_human_feedback}{Ch.~5, p.~39; Ch.~8, p.~115}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:align:notation}
+Because LLM alignment bridges NLP, classical RL, and generative modeling, each textbook adopts slightly different symbols for identical mathematical objects. Table~\ref{tab:align:notation_tbl} establishes a unified notation used throughout this monograph.
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{@{}lccccX@{}}
+\toprule
+\textbf{Concept} & \textbf{RLHF} & \textbf{LLMs} & \textbf{Murphy} & \textbf{J\&M / Diff.} & \textbf{Unified} \\
+\midrule
+Prompt / Context & $x$ & $x$ & $s$ ($x$) & $x$ / $c$ & $x \sim \mathcal{D}$ \\
+Completion & $y$ & $y$ & $a$ ($y$) & $o$ / $x_{0:T}$ & $y = y_{1:T}$ \\
+Preference Pair & $y_c \succ y_r$ & $y_a \succ y_b$ & $y_w \succ y_l$ & $o_w \succ o_l$ & $y_w \succ y_l$ \\
+Reward Model & $r_\theta(y|x)$ & $r(x,y)$ & $R(x,y)$ & $r_\psi(c,x)$ & $r_\phi(x,y)$ \\
+Reference Policy & $\pi_{\mathrm{ref}}$ & $\pi_{\mathrm{SFT}}$ & $\pi_{\mathrm{ref}}$ & $\pi_{\mathrm{ref}}$ & $\pi_{\mathrm{ref}}(y|x)$ \\
+KL Coefficient & $\beta$ & $\beta$ & $\beta$ & $\beta$ & $\beta > 0$ \\
+\bottomrule
+\end{tabularx}
+\label{tab:align:notation_tbl}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:align:derivations}
+
+\subsection{Bradley-Terry Preference Modeling, ORMs, and PRMs}
+
+\begin{coremath}[Bradley-Terry Likelihood \& Pairwise Cross-Entropy Loss]
+Under the Bradley-Terry model \bookcite{speech_language_processing_aug26}{Sec.~8.3.2, p.~218} \bookcite{reinforcement_learning_from_human_feedback}{Ch.~5, pp.~39--41}, each completion $y$ to prompt $x$ possesses a latent strength $p(y \mid x) = \exp(r^*(x,y)) > 0$. The probability that $y_w$ is preferred over $y_l$ is the logistic sigmoid of their reward difference:
+\begin{equation}
+\label{eq:align:bt_prob}
+P(y_w \succ y_l \mid x) = \frac{\exp(r^*(x, y_w))}{\exp(r^*(x, y_w)) + \exp(r^*(x, y_l))} = \sigma\!\big(r^*(x, y_w) - r^*(x, y_l)\big),
+\end{equation}
+where $\sigma(z) = (1 + e^{-z})^{-1}$. Equivalently, the reward gap $\delta = r^*(x, y_w) - r^*(x, y_l)$ equals the log-odds $\log \frac{P(y_w \succ y_l \mid x)}{1 - P(y_w \succ y_l \mid x)}$. Parameterizing $r_\phi(x,y) = h_{\mathrm{last}}(x,y)^\top W_r$ via a linear head on the final Transformer hidden state at the $\langle\mathrm{EOS}\rangle$ token \bookcite{foundations_large_language_models}{Ch.~4, p.~180}, we train $r_\phi$ by minimizing the negative log-likelihood over preference dataset $\mathcal{D}_{\mathrm{pref}}$:
+\begin{equation}
+\label{eq:align:bt_loss}
+\mathcal{L}_{\mathrm{RM}}(\phi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\big(r_\phi(x, y_w) - r_\phi(x, y_l) - m(y_w, y_l)\big) \right],
+\end{equation}
+where $m(y_w, y_l) = 0$ recovers the standard objective and $m(y_w, y_l) > 0$ incorporates the Llama~2 annotator-rating margin \bookcite{reinforcement_learning_from_human_feedback}{Ch.~15, p.~180}.
+\end{coremath}
+
+\begin{intuition}[Shift Invariance \& Reward Model Taxonomy]
+Because Eq.~\eqref{eq:align:bt_prob} depends solely on $r_\phi(x, y_w) - r_\phi(x, y_l)$, adding any prompt-dependent constant $c(x)$ leaves preference probabilities unchanged. In practice, practitioners distinguish four supervision granularities \bookcite{reinforcement_learning_from_human_feedback}{Ch.~5, p.~44} \bookcite{foundations_large_language_models}{Ch.~4, p.~198} \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~148}: (i) \textbf{Bradley-Terry RMs} assign a sequence-level scalar score at $\langle\mathrm{EOS}\rangle$ from pairwise comparisons; (ii) \textbf{Outcome Reward Models (ORMs)} predict per-token correctness probabilities trained via binary cross-entropy against a final verifiable outcome; (iii) \textbf{Process Reward Models (PRMs)} supervise intermediate reasoning step boundaries (e.g., $\{-1, 0, +1\}$ correctness labels) to catch flawed reasoning paths that accidentally reach a correct final answer; and (iv) \textbf{Value Functions} $V_\psi(s_t)$ regress expected future return $\mathbb{E}[G_t \mid s_t]$ for on-policy advantage estimation.
+\end{intuition}
+
+\subsection{KL-Regularized RLHF Objective \& Closed-Form Gibbs Policy}
+
+\begin{coremath}[Variational Derivation of the Optimal RLHF Policy]
+Directly maximizing $\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}[r_\phi(x,y)]$ collapses $\pi_\theta$ onto a single high-reward mode and induces reward hacking. To anchor $\pi_\theta$ near $\pi_{\mathrm{ref}}$, RLHF maximizes the KL-regularized objective \bookcite{reinforcement_learning_from_human_feedback}{Ch.~8, pp.~110--111} \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, pp.~154--155}:
+\begin{equation}
+\label{eq:align:rlhf_obj}
+\max_{\pi} \; \mathbb{E}_{x \sim \mathcal{D}} \Big[ \mathbb{E}_{y \sim \pi(\cdot \mid x)}[r_\phi(x,y)] - \beta D_{\mathrm{KL}}\!\big(\pi(y \mid x) \,\|\, \pi_{\mathrm{ref}}(y \mid x)\big) \Big].
+\end{equation}
+Expanding $D_{\mathrm{KL}}(\pi \,\|\, \pi_{\mathrm{ref}}) = \mathbb{E}_{y \sim \pi}\big[\log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}\big]$, negating to form a minimization, dividing by $\beta > 0$, and introducing the prompt-dependent partition function
+\begin{equation}
+\label{eq:align:partition}
+Z(x) = \sum_{y} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right),
+\end{equation}
+we rewrite Eq.~\eqref{eq:align:rlhf_obj} as minimizing
+\begin{equation}
+\label{eq:align:kl_equiv}
+\min_{\pi} \; \mathbb{E}_{x \sim \mathcal{D}} \!\left[ D_{\mathrm{KL}}\!\left( \pi(y \mid x) \;\Big\|\; \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right) \right) - \log Z(x) \right].
+\end{equation}
+Since $\log Z(x)$ is independent of $\pi$ and $D_{\mathrm{KL}}(p \,\|\, q) \ge 0$ with equality if and only if $p = q$ almost everywhere, the unique global optimum is the exponential-tilted Gibbs policy:
+\begin{equation}
+\label{eq:align:gibbs_opt}
+\pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right).
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Control as Inference \& Posterior Sampling]
+Murphy \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~155} highlights that Eq.~\eqref{eq:align:gibbs_opt} is identically Bayes' rule in the control-as-inference framework: treating $\pi_{\mathrm{ref}}(y \mid x)$ as a prior and $\exp(r_\phi(x,y)/\beta)$ as the likelihood $p(O=1 \mid x,y)$ of an optimality event $O=1$, RLHF performs amortized posterior sampling from $p(y \mid x, O=1) \propto \pi_{\mathrm{ref}}(y \mid x)\exp(r_\phi(x,y)/\beta)$.
+\end{intuition}
+
+\subsection{Exact DPO Reparameterization \& Gradient Mechanics}
+
+\begin{coremath}[Direct Preference Optimization (DPO) Change of Variables]
+Taking logarithms of Eq.~\eqref{eq:align:gibbs_opt} and solving for $r_\phi(x,y)$ expresses the reward exactly in terms of the optimal policy $\pi^*$, the reference $\pi_{\mathrm{ref}}$, and the intractable partition function $Z(x)$ \bookcite{reinforcement_learning_from_human_feedback}{Ch.~8, pp.~111--113} \bookcite{speech_language_processing_aug26}{Sec.~8.4.2, p.~222}:
+\begin{equation}
+\label{eq:align:dpo_reparam}
+r(x,y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)} + \beta \log Z(x).
+\end{equation}
+Substituting Eq.~\eqref{eq:align:dpo_reparam} into the Bradley-Terry likelihood~\eqref{eq:align:bt_prob} causes $\beta \log Z(x)$ to cancel identically between $y_w$ and $y_l$:
+\begin{equation}
+\label{eq:align:dpo_bt}
+P^*(y_w \succ y_l \mid x) = \sigma\!\left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)} - \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)} \right).
+\end{equation}
+Replacing $\pi^*$ with a parametric policy $\pi_\theta$ yields the DPO maximum-likelihood objective:
+\begin{equation}
+\label{eq:align:dpo_loss}
+\mathcal{L}_{\mathrm{DPO}}(\theta; \pi_{\mathrm{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\left( \hat{r}_\theta(x, y_w) - \hat{r}_\theta(x, y_l) \right) \right],
+\end{equation}
+where $\hat{r}_\theta(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}$ is the \emph{implicit reward}. Differentiating Eq.~\eqref{eq:align:dpo_loss} with respect to $\theta$ gives
+\begin{equation}
+\label{eq:align:dpo_grad}
+\nabla_\theta \mathcal{L}_{\mathrm{DPO}}(\theta) = -\beta\,\mathbb{E}_{(x, y_w, y_l)} \Big[ \underbrace{\sigma\!\big(\hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w)\big)}_{\text{misranking weight}} \big( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x) \big) \Big].
+\end{equation}
+The scalar weight $\sigma(\hat{r}_\theta(x,y_l) - \hat{r}_\theta(x,y_w))$ vanishes when the policy already ranks $y_w$ well above $y_l$ and amplifies updates when the implicit reward model misranks the pair \bookcite{speech_language_processing_aug26}{Sec.~8.4.2, p.~222}.
+\end{coremath}
+
+\subsection{Transfer to Continuous/Denoising Domains: Diffusion-DPO}
+
+In diffusion models, a sample $x_0$ is generated via a $T$-step Markov reverse chain $x_{0:T}$ conditioned on prompt $c$, with $\pi_\theta(x_{0:T} \mid c) = \pi_\theta(x_T \mid c)\prod_{t=1}^T \pi_\theta(x_{t-1} \mid x_t, c)$. Evaluating the marginal likelihood $\pi_\theta(x_0 \mid c)$ is intractable, and backpropagating through all $T \sim 10^2\text{--}10^3$ denoising steps is memory-prohibitive \bookcite{theprinciple_diffusion_models}{Sec.~8.5, pp.~250--252}. Applying Jensen's inequality to the convex function $-\log \sigma(\cdot)$ over posterior trajectories $x_{1:T} \sim \pi_\theta(\cdot \mid x_0, c)$ and sampling a single timestep $t \sim \mathcal{U}\{1,\dots,T\}$ yields the tractable single-step Diffusion-DPO upper bound:
+\begin{equation}
+\label{eq:align:diff_dpo}
+\tilde{\mathcal{L}}_{\mathrm{Diff\text{-}DPO}}(\theta; \pi_{\mathrm{ref}}) = \mathbb{E}_{(c, x_0^w, x_0^l),\, t,\, \epsilon \sim \mathcal{N}(0,I)} \!\left[ -\log \sigma\!\big(-\beta T \, w(t) \, [\Delta_{\mathrm{MSE}}(x_t^w) - \Delta_{\mathrm{MSE}}(x_t^l)]\big) \right],
+\end{equation}
+where $\Delta_{\mathrm{MSE}}(x_t) = \|\hat{\epsilon}_\theta(x_t, t, c) - \epsilon\|_2^2 - \|\hat{\epsilon}_{\mathrm{ref}}(x_t, t, c) - \epsilon\|_2^2$ and $x_t^w, x_t^l$ share the same Gaussian noise $\epsilon$ for variance reduction \bookcite{theprinciple_diffusion_models}{Sec.~8.5.4, p.~252}.
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:align:algorithms}
+
+\subsection{From Critic-Based PPO to Critic-Free RLOO, GRPO, GSPO, and RLVR}
+
+While PPO optimizes a clipped surrogate objective with per-token Generalized Advantage Estimation (GAE) from a learned value network $V_\psi(s_t)$, \bookcite{reinforcement_learning_from_human_feedback}{Ch.~6, pp.~64--72} notes that maintaining a critic comparable in size to the policy doubles memory overhead and introduces value-estimation bias. Modern post-training increasingly favors \emph{group-relative, critic-free} estimators that sample $G$ completions $\{y_1, \dots, y_G\} \sim \pi_{\theta_{\mathrm{old}}}(\cdot \mid x)$ per prompt:
+\begin{sloppypar}
+\begin{itemize}
+\item \textbf{RLOO (REINFORCE Leave-One-Out):} Computes an unbiased leave-one-out baseline $b(x, y_i) = \frac{1}{G-1}\sum_{j \neq i} R(x, y_j)$ so that $A_i^{\mathrm{RLOO}} = R(x, y_i) - b(x, y_i)$ \bookcite{reinforcement_learning_from_human_feedback}{Ch.~6, p.~58}.
+\item \textbf{GRPO (Group Relative Policy Optimization):} Normalizes rewards within each group via $A_i = \frac{r_i - \mathrm{mean}(\{r_j\}_{j=1}^G)}{\mathrm{std}(\{r_j\}_{j=1}^G)}$, applying an explicit per-token KL penalty in the loss rather than in the reward \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~151} \bookcite{reinforcement_learning_from_human_feedback}{Ch.~6, pp.~66--67}.
+\item \textbf{GSPO (Group Sequence Policy Optimization):} Replaces high-variance token ratios $\rho_{i,t}(\theta)$ with a length-normalized sequence ratio $\rho_i(\theta) = \big(\frac{\pi_\theta(y_i \mid x)}{\pi_{\theta_{\mathrm{old}}}(y_i \mid x)}\big)^{1/|y_i|}$, matching importance sampling to sequence rewards \bookcite{reinforcement_learning_from_human_feedback}{Ch.~6, p.~70}.
+\item \textbf{RLVR (RL with Verifiable Rewards):} Replaces the learned Bradley-Terry RM with a deterministic verifier $R_{\mathrm{ver}}(x,y) \in \{0, 1\}$ (e.g., symbolic math equivalence on \verb|\boxed{}| or code unit tests), enabling large-scale reasoning without reward hacking \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~148} \bookcite{reinforcement_learning_from_human_feedback}{Ch.~7, pp.~95--96}.
+\end{itemize}
+\end{sloppypar}
+
+\monographfig[0.82\textwidth]{foundations_large_language_models_p200_fig1.png}{Comparison of (a) three-stage RLHF (PPO) requiring an explicit Reward Model and Value Function versus (b) Direct Preference Optimization (DPO), which fits the policy directly on pairwise preference data via closed-form reparameterization \bookcite{foundations_large_language_models}{Ch.~4, Fig.~4.10, p.~193}.}{fig:align:rlhf_vs_dpo}
+
+\monographfig[0.92\textwidth]{reinforement_learning_kevin_murphy_p154_fig1.png}{Three baseline-estimation paradigms for token-level advantage $A_t$: (a) critic-free group Monte Carlo baselines (RLOO / GRPO), (b) parametric value network $V_\phi(s_t)$ in PPO, and (c) per-state Monte Carlo rollouts in VinePPO \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, Fig.~6.1, p.~154}.}{fig:align:baseline_estimators}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=0.75cm and 1.25cm,
+  >=Stealth,
+  every node/.style={font=\small}
+]
+% Row 1: 3-Stage RLHF (PPO)
+\node[monoBox, minimum width=2.1cm] (sft1) {SFT Policy $\pi_{\mathrm{ref}}$};
+\node[monoIndigoBox, right=of sft1, minimum width=2.4cm] (bt) {Bradley-Terry RM $r_\phi$};
+\node[monoTealBox, right=of bt, minimum width=2.5cm] (ppo) {KL-PPO + Critic $V_\psi$};
+\node[monoBox, right=of ppo, minimum width=2.0cm] (out1) {Aligned $\pi_\theta$};
+\draw[monoArrow] (sft1) -- node[above, font=\scriptsize] {Prefs} (bt);
+\draw[monoArrow] (bt) -- node[above, font=\scriptsize] {Proxy $r_\phi$} (ppo);
+\draw[monoArrow] (ppo) -- (out1);
+\draw[monoArrow, dashed] (ppo.south) to[bend left=22] node[below, font=\scriptsize] {On-policy rollouts} (bt.south);
+\node[left=0.3cm of sft1, font=\scriptsize\bfseries, text=monographNavy] {RLHF:};
+
+% Row 2: Direct Alignment (DPO)
+\node[monoBox, below=1.35cm of sft1, minimum width=2.1cm] (sft2) {SFT Policy $\pi_{\mathrm{ref}}$};
+\node[monoTealBox, right=of sft2, minimum width=6.15cm] (dpo) {Closed-Form Reparameterization: $\hat{r}_\theta = \beta \log \frac{\pi_\theta}{\pi_{\mathrm{ref}}}$};
+\node[monoBox, right=of dpo, minimum width=2.0cm] (out2) {Aligned $\pi_\theta$};
+\draw[monoArrow] (sft2) -- node[above, font=\scriptsize] {$(y_w \succ y_l)$} (dpo);
+\draw[monoArrow] (dpo) -- node[above, font=\scriptsize] {BCE} (out2);
+\node[left=0.3cm of sft2, font=\scriptsize\bfseries, text=monographTeal] {DPO:};
+
+% Row 3: Verifiable RLVR (GRPO)
+\node[monoBox, below=1.25cm of sft2, minimum width=2.1cm] (sft3) {Base / SFT $\pi_{\mathrm{ref}}$};
+\node[monoIndigoBox, right=of sft3, minimum width=2.4cm] (ver) {Verifier $R_{\mathrm{ver}} \in \{0,1\}$};
+\node[monoTealBox, right=of ver, minimum width=2.5cm] (grpo) {GRPO ($G$ rollouts)};
+\node[monoBox, right=of grpo, minimum width=2.0cm] (out3) {Reasoning $\pi_\theta$};
+\draw[monoArrow] (sft3) -- node[above, font=\scriptsize] {Group $G$} (ver);
+\draw[monoArrow] (ver) -- node[above, font=\scriptsize] {Exact $A_i$} (grpo);
+\draw[monoArrow] (grpo) -- (out3);
+\node[left=0.3cm of sft3, font=\scriptsize\bfseries, text=monographIndigo] {RLVR:};
+\end{tikzpicture}%
+}
+\caption{Architectural comparison of post-training pipelines: (top) three-stage RLHF with an explicit Bradley-Terry RM and critic-based PPO; (middle) offline Direct Preference Optimization eliminating both the RM and RL loop; (bottom) RLVR replacing the learned RM with a deterministic verifier and critic-free GRPO.}
+\label{fig:align:rlhf_dpo_rlvr_pipeline}
+\end{figure}
+
+\begin{algorithm}[htbp]
+\caption{Unified Post-Training: DPO (Offline) vs.\ GRPO / RLVR (Online Group-Relative)}
+\label{alg:align:dpo_grpo}
+\KwIn{Reference policy $\pi_{\mathrm{ref}}$, initial policy $\pi_\theta \leftarrow \pi_{\mathrm{ref}}$, KL coefficient $\beta$, clip $\varepsilon$, mode $\in \{\mathrm{DPO}, \mathrm{GRPO}\}$}
+\KwOut{Aligned policy $\pi_\theta$}
+\If{$\mathrm{mode} = \mathrm{DPO}$}{
+  Pre-compute and cache $\log \pi_{\mathrm{ref}}(y_w \mid x)$ and $\log \pi_{\mathrm{ref}}(y_l \mid x)$ over $\mathcal{D}_{\mathrm{pref}}$\;
+  \For{each minibatch $(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}$}{
+    Compute $\Delta_{\mathrm{chosen}} \leftarrow \log \pi_\theta(y_w \mid x) - \log \pi_{\mathrm{ref}}(y_w \mid x)$\;
+    Compute $\Delta_{\mathrm{rej}} \leftarrow \log \pi_\theta(y_l \mid x) - \log \pi_{\mathrm{ref}}(y_l \mid x)$\;
+    Update $\theta$ by minimizing $\mathcal{L}_{\mathrm{DPO}} = -\log \sigma\!\big(\beta(\Delta_{\mathrm{chosen}} - \Delta_{\mathrm{rej}})\big)$\;
+  }
+}
+\Else(\tcp*[f]{GRPO / RLVR online loop}){
+  \For{each prompt batch $x \sim \mathcal{D}$}{
+    Sample $G$ completions $\{y_1, \dots, y_G\} \sim \pi_{\theta_{\mathrm{old}}}(\cdot \mid x)$ and score $r_i = R_{\mathrm{ver}}(x, y_i)$\;
+    Compute group-relative advantages $A_i \leftarrow \frac{r_i - \mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G}) + \delta}$\;
+    Update $\theta$ for $K$ epochs maximizing $\frac{1}{G}\sum_{i=1}^G \frac{1}{|y_i|}\sum_{t=1}^{|y_i|} \min(\rho_{i,t} A_i, \mathrm{clip}(\rho_{i,t}, 1-\varepsilon, 1+\varepsilon)A_i) - \beta \hat{D}_{\mathrm{KL}}$\;
+  }
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Computational, memory, and statistical comparison of LLM post-training optimizers.}
+\label{tab:align:complexity}
+\begin{tabularx}{\textwidth}{@{}lccccX@{}}
+\toprule
+\textbf{Method} & \textbf{Models} & \textbf{Rollouts} & \textbf{Critic} & \textbf{On-Policy} & \textbf{Primary Trade-off} \\
+\midrule
+PPO (RLHF) & 4 ($\pi_\theta, \pi_{\mathrm{ref}}, r_\phi, V_\psi$) & $1$ (or $G$) & Yes & Yes & Highest memory; per-token GAE credit \\
+RLOO & 3 ($\pi_\theta, \pi_{\mathrm{ref}}, r_\phi$) & $G \ge 2$ & No & Yes & Unbiased LOO baseline; sequence advantage \\
+GRPO (RLVR) & 2 ($\pi_\theta, \pi_{\mathrm{ref}}$) & $G \ge 4$ & No & Yes & No RM or critic; excels on math and code \\
+DPO (Offline) & 2 (1 cached) & $0$ ($\mathcal{D}$) & No & No & Simplest stack; vulnerable to OOD shift \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Online RL, Direct Alignment, and Constitutional AI]
+\label{sec:align:crossbook_synth}
+All five sources converge on a fundamental trade-off between \emph{optimization stability} and \emph{on-policy exploration}. While Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Sec.~8.4.2, p.~222} and \emph{The Principles of Diffusion Models} \bookcite{theprinciple_diffusion_models}{Sec.~8.5.1, p.~243} emphasize DPO's elimination of unstable RL loops and multi-model hosting, \emph{Foundations of Large Language Models} \bookcite{foundations_large_language_models}{Ch.~4, p.~196} and Lambert \bookcite{reinforcement_learning_from_human_feedback}{Ch.~8, p.~116} note that offline DPO cannot explore beyond its static preference dataset $\mathcal{D}_{\mathrm{pref}}$, whereas online PPO/GRPO continuously discovers novel reasoning strategies. To scale preference annotation without human bottlenecks, Constitutional AI (CAI / RLAIF) \bookcite{reinforcement_learning_from_human_feedback}{Ch.~12, p.~156} \bookcite{foundations_large_language_models}{Ch.~4, p.~197} uses an LLM guided by a written constitution $\mathcal{C}$ to critique SFT drafts and label pairwise preferences, while variants such as SimPO and KTO modify DPO to remove the reference model or handle unpaired binary feedback.
+\end{crossbook}
+
+\section{Visual Diagnostics, KL Geometry \& Goodhart Over-Optimization}
+\label{sec:align:diagnostics}
+
+As shown in \bookcite{reinforcement_learning_from_human_feedback}{Ch.~15, pp.~184--185}, a central geometric distinction in post-training separates \textbf{forward KL} $D_{\mathrm{KL}}(\pi_{\mathrm{data}} \,\|\, \pi_\theta)$ minimized by SFT from \textbf{reverse KL} $D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})$ minimized by RLHF and DPO. Forward KL is \emph{mode-covering}: forcing $\pi_\theta$ to cover new target modes stretches probability mass across low-density regions and erodes prior knowledge modes (catastrophic forgetting). Reverse KL is \emph{mode-seeking}: $\pi_\theta$ concentrates on high-reward modes while leaving prior modes largely intact (Figure~\ref{fig:align:forward_reverse_kl}). To estimate reverse KL in GRPO/PPO without excessive variance, Murphy \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~154} notes three standard Monte Carlo estimators for $r(a) = \pi_\theta(a \mid s)/\pi_{\mathrm{ref}}(a \mid s)$: $k_1 = \log r$, $k_2 = \frac{1}{2}(\log r)^2$ (biased value, unbiased/low-variance gradient), and $k_3 = (r - 1) - \log r$ (unbiased value, but biased gradient).
+
+\monographfig[0.88\textwidth]{reinforcement_learning_from_human_feedback_p190_fig1.png}{Forgetting dynamics under forward KL (SFT, top) versus reverse KL (RL, bottom): forward KL stretches probability mass and drains the prior knowledge mode, whereas reverse KL preserves the prior mode while shifting the target mode toward $\pi^*$ \bookcite{reinforcement_learning_from_human_feedback}{Ch.~15, Fig.~46, p.~184}.}{fig:align:forward_reverse_kl}
+
+Even with reverse-KL regularization, \bookcite{reinforcement_learning_from_human_feedback}{Ch.~14, pp.~174--175} and \bookcite{foundations_large_language_models}{Ch.~4, p.~192} show that optimizing a learned proxy reward $R_{\mathrm{proxy}}$ induces \textbf{Goodhart's Law}: as the policy drifts further from $\pi_{\mathrm{ref}}$ in KL distance $d = \sqrt{D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})}$, the proxy score climbs monotonically while the true (gold) human preference score rises initially and then collapses. Figure~\ref{fig:align:goodhart_kl_curve} plots this characteristic quadratic divergence $R_{\mathrm{gold}}(d) = \alpha d - \beta d^2$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.82\textwidth,
+  height=5.6cm,
+  xlabel={Square-Root KL Divergence $d = \sqrt{D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})}$},
+  ylabel={Normalized Reward Score},
+  xmin=0, xmax=6.2,
+  ymin=-1.2, ymax=3.4,
+  grid=major,
+  grid style={dashed, gray!30},
+  legend pos=north west,
+  legend style={font=\footnotesize, draw=gray!50, fill=white, fill opacity=0.9},
+  every axis label/.style={font=\small},
+  tick label style={font=\footnotesize}
+]
+% Proxy reward: monotonic climb
+\addplot[domain=0:6.0, samples=100, color=monographCrimson, very thick, dashed] {0.52*x};
+\addlegendentry{Proxy RM $R_{\mathrm{proxy}}(d) = \alpha_{\mathrm{p}} d$}
+
+% Gold / True reward: alpha*d - beta*d^2 (peaks at d* = 2.8)
+\addplot[domain=0:6.0, samples=100, color=monographTeal, very thick] {1.12*x - 0.20*x^2};
+\addlegendentry{Gold Reward $R_{\mathrm{gold}}(d) = \alpha d - \beta d^2$}
+
+% Optimal stopping line d* = 2.8, R_gold = 1.568
+\addplot[dashed, color=monographNavy, thick] coordinates {(2.8, -1.2) (2.8, 1.568)};
+\node[circle, fill=monographNavy, inner sep=2pt] at (axis cs:2.8, 1.568) {};
+\node[anchor=east, font=\scriptsize\bfseries, text=monographNavy, fill=white, inner sep=2pt] at (axis cs:2.72, 0.35) {Optimal KL $d^* = \frac{\alpha}{2\beta}$};
+\node[anchor=north west, font=\scriptsize, text=monographCrimson] at (axis cs:3.6, 0.35) {Over-optimization regime};
+\end{axis}
+\end{tikzpicture}
+\caption{Goodhart's Law scaling in KL-regularized RLHF: the learned proxy reward $R_{\mathrm{proxy}}$ increases monotonically with $\sqrt{D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})}$, whereas the true gold reward $R_{\mathrm{gold}}(d) = \alpha d - \beta d^2$ peaks at $d^* = \alpha / (2\beta)$ and degrades under reward hacking.}
+\label{fig:align:goodhart_kl_curve}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:align:pitfalls}
+
+\begin{pitfall}[Reward Hacking \& Goodhart Over-Optimization]
+\textbf{Failure Mode:} Excessive RL steps against a single learned Bradley-Terry RM exploit spurious correlations (e.g., verbosity, sycophancy, or formatting artifacts), driving $R_{\mathrm{proxy}}$ up while true quality $R_{\mathrm{gold}}$ collapses (Figure~\ref{fig:align:goodhart_kl_curve}).\\
+\textbf{Remedy:} Monitor $\sqrt{D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})}$ and halt before $d^*$; average an ensemble of diverse RMs $r_{\mathrm{combine}}(x,y) = \frac{1}{K}\sum_{k=1}^K w_k r_k(x,y)$ \bookcite{foundations_large_language_models}{Ch.~4, Eq.~(4.72), p.~192}; or replace KL with $\chi^2$-divergence regularization, which is provably robust to over-optimization \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~154}.
+\end{pitfall}
+
+\begin{pitfall}[DPO Preference Displacement \& Likelihood Collapse]
+\textbf{Failure Mode:} Because $\mathcal{L}_{\mathrm{DPO}}$ only maximizes the \emph{relative} margin $\hat{r}_\theta(x,y_w) - \hat{r}_\theta(x,y_l)$, both $\pi_\theta(y_w \mid x)$ and $\pi_\theta(y_l \mid x)$ can decrease simultaneously while their gap widens, degrading fluency \bookcite{reinforcement_learning_from_human_feedback}{Ch.~8, p.~115}.\\
+\textbf{Remedy:} Add a length-normalized negative log-likelihood term on the chosen response, $\mathcal{L}_{\mathrm{DPO+NLL}} = \mathcal{L}_{\mathrm{DPO}} - \frac{\alpha}{|y_w|}\log \pi_\theta(y_w \mid x)$ \bookcite{reinforcement_learning_from_human_feedback}{Ch.~15, Eq.~(159), p.~180}.
+\end{pitfall}
+
+\begin{pitfall}[Token-Level Importance Ratio Instability \& Clipped Token Dropping]
+\textbf{Failure Mode:} In PPO/GRPO on long reasoning chains or sparse MoE models, per-token ratios $\rho_{i,t}(\theta)$ exhibit extreme variance, causing individual tokens to dominate updates or hit the clipping boundary $[1-\varepsilon, 1+\varepsilon]$ and receive zero gradient (``token dropping'') \bookcite{reinforcement_learning_from_human_feedback}{Ch.~6, pp.~69--70}.\\
+\textbf{Remedy:} Use GSPO's length-normalized sequence-level importance ratio $\rho_i(\theta)$ and compute KL penalties with the low-variance $k_2 = \frac{1}{2}(\log r)^2$ estimator rather than $k_3$ \bookcite{reinforement_learning_kevin_murphy}{Ch.~6, p.~154}.
+\end{pitfall}
+
+\begin{pitfall}[Reference Model Memory Bottleneck in DPO]
+\textbf{Failure Mode:} Naively co-locating $\pi_\theta$ and $\pi_{\mathrm{ref}}$ during DPO forward passes doubles activation and weight memory.\\
+\textbf{Remedy:} Pre-compute and cache $\log \pi_{\mathrm{ref}}(y_w \mid x)$ and $\log \pi_{\mathrm{ref}}(y_l \mid x)$ over the offline dataset before training, cutting peak GPU memory by $50\%$ \bookcite{reinforcement_learning_from_human_feedback}{Ch.~8, p.~116}.
+\end{pitfall}
+
+\end{document}

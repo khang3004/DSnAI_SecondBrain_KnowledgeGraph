@@ -1,0 +1,225 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Agentic Reasoning, RAG, MCP \& Workflows}{Agent Taxonomy, ReAct Synergy, Reflection, Planning \& Multi-Agent Orchestration}
+  {Interleave verbal thoughts ($\mathcal{L}$) with external actions ($\mathcal{A}$) inside bounded, guarded feedback loops}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{ReAct \& MAS\\ \footnotesize\mdseries Think $\cdot$ Act $\cdot$ Orchestrate}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize\sffamily}]
+    \node[draw=csA, fill=csA!12, rounded corners=3pt, thick, minimum width=1.5cm, minimum height=0.55cm] (th) at (0,1.0) {Think $\hat{a}_t$};
+    \node[draw=csB, fill=csB!12, rounded corners=3pt, thick, minimum width=1.5cm, minimum height=0.55cm] (ac) at (1.7,-0.45) {Act $a_t$};
+    \node[draw=csE, fill=csE!12, rounded corners=3pt, thick, minimum width=1.5cm, minimum height=0.55cm] (ob) at (-1.7,-0.45) {Obs $o_{t+1}$};
+    \draw[-{Stealth}, very thick, csA] (th.east) to[out=-15,in=105] (ac.north);
+    \draw[-{Stealth}, very thick, csB] (ac.west) to[out=200,in=-20] (ob.east);
+    \draw[-{Stealth}, very thick, csE] (ob.north) to[out=75,in=195] (th.west);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ augmented action loop}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\hat{\mathcal{A}} = \mathcal{A} \cup \mathcal{L}}
+    \begin{csbul}
+      \item \textbf{Thought} $\hat{a}_t{\in}\mathcal{L}$: verbal reasoning; zero env mutation
+      \item \textbf{Action} $a_t{\in}\mathcal{A}$: tool call $\to s_{t+1}\sim\mathcal{P}(\cdot\mid s_t,a_t)$
+      \item \textbf{Context} $c_t=(x,o_1,\hat{a}_1,a_1,\dots,o_t)$ steers $\pi(\cdot\mid c_t)$
+      \item \textbf{Triad:} Model (Brain) + Tools + Orchestrator
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csDom, fill=csDom!10, rounded corners=2pt, inner sep=2.5pt] (o) at (0,2.5) {\textbf{Orchestrator} $c_t$};
+      \node[draw=csA, fill=csA!10, rounded corners=2pt, inner sep=2.5pt] (m) at (0,1.25) {\textbf{Model} $\pi(\hat{a}_t,a_t)$};
+      \node[draw=csE, fill=csE!10, rounded corners=2pt, inner sep=2.5pt] (t) at (0,0.0) {\textbf{Tools} $g(\theta)\!\to\!o_{t+1}$};
+      \draw[-{Stealth}, thick, csDom] (o)--(m);
+      \draw[-{Stealth}, thick, csA] (m)--(t);
+      \draw[-{Stealth}, thick, csE] (t.west) -- ++(-0.6,0) |- (o.west);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ CoT vs Act-Only vs ReAct}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.25cm}>{\raggedright\arraybackslash}p{1.90cm}>{\raggedright\arraybackslash}p{2.20cm}@{}}
+    \textbf{\textcolor{csB}{Paradigm}} & \textbf{\textcolor{csB}{Space}} & \textbf{\textcolor{csB}{Strength}} & \textbf{\textcolor{csB}{Primary Failure}}\\ \hline
+    CoT-only & $\mathcal{L}$ & multi-step deduction & $56\%$ halluc.; no live facts\\
+    Act-only & $\mathcal{A}$ & direct env grounding & myopic on long horizons\\
+    \textbf{ReAct} & $\mathcal{A}\cup\mathcal{L}$ & grounded subgoals & $47\%$ repetitive action loops\\
+    ReAct+CoT-SC & hybrid & best QA + verification & higher token/latency cost\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Rule:} Sparse thoughts beat dense Inner Monologue ($71\%$ vs $53\%$ ALFWorld).}
+
+\csbranch{3}{C}{3\;\; PATTERNS $-$ 5 canonical building blocks}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Reflection:} $\pi_{\mathrm{gen}}\!\to\!y^{(k)}$, critic $q(y^{(k)})\!\ge\!\tau$ or refine
+      \item \textbf{Tool Use:} schema-grounded API / SQL / sandbox calls
+      \item \textbf{ReAct:} closed Thought--Action--Observation loop
+      \item \textbf{Planning:} decompose mission $x\to(g_1,\dots,g_m)$
+      \item \textbf{Multi-Agent:} graph $G=(V,E)$ of specialist tuples
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csC, fill=csC!12, rounded corners=2pt, inner sep=2.5pt] (g) at (0,2.4) {Generator $\pi_{\mathrm{gen}}$};
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2.5pt] (e) at (0,1.1) {Critic $q(y^{(k)})\!\ge\!\tau$?};
+      \node[draw=csD, fill=csD!12, rounded corners=2pt, inner sep=2.5pt] (p) at (0,-0.2) {Prompt Enhancer};
+      \draw[-{Stealth}, thick, csC] (g)--(e);
+      \draw[-{Stealth}, thick, csA] (e)--node[right, inner sep=1pt]{no}(p);
+      \draw[-{Stealth}, thick, csD] (p.west)--++(-0.6,0)|-(g.west);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; MULTI-AGENT $-$ Manager vs Decentralized}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Vertex:} $v_i=(M_i,\mathcal{T}_i,I_i)\in V$
+      \item \textbf{Manager:} $v_{\mathrm{mgr}}$ calls $v_i.\texttt{as\_tool}()$, retains state \& synthesizes
+      \item \textbf{Handoffs:} edge $(v_i,v_j)$ transfers $c_t$ \& turn ownership
+      \item \textbf{Split:} $>10\text{--}15$ overlapping tools or tangled rules
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csD, fill=csD!15, rounded corners=2pt, inner sep=2pt] (m) at (0,2.0) {Mgr};
+      \node[draw=csE, fill=csE!12, rounded corners=2pt, inner sep=2pt] (s1) at (-1.2,0.8) {$v_1$};
+      \node[draw=csE, fill=csE!12, rounded corners=2pt, inner sep=2pt] (s2) at (1.2,0.8) {$v_2$};
+      \draw[<->, thick, csD] (m)--(s1); \draw[<->, thick, csD] (m)--(s2);
+      \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2pt] (p1) at (-1.8,-0.6) {Triage};
+      \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2pt] (p2) at (0.0,-0.6) {Order};
+      \node[draw=csF, fill=csF!15, rounded corners=2pt, inner sep=2pt] (p3) at (1.8,-0.6) {Tech};
+      \draw[-{Stealth}, thick, csA] (p1)--(p2); \draw[-{Stealth}, thick, csA] (p2)--(p3);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; TAXONOMY $-$ Agency Levels (0--4 vs 1--5)}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.95cm}>{\raggedright\arraybackslash}p{1.55cm}@{}}
+    \textbf{\textcolor{csE}{Intro Agents}} & \textbf{\textcolor{csE}{2025 Guide}} & \textbf{\textcolor{csE}{Control Flow}} & \textbf{\textcolor{csE}{Bottleneck}}\\ \hline
+    L0: Core LM & L1: Responder & weights only ($\mathcal{L}$) & cutoff / halluc.\\
+    L1: Connected & L2--3: Router/Tool & single tool call ($\mathcal{A}$) & myopic chains\\
+    L2: Strategic & Plan + ReAct & multi-step + memory & context bloat\\
+    L3: Collab MAS & L4: Multi-Agent & Manager / Handoff $G$ & coord.\ latency\\
+    L4: Self-Evolve & L5: Autonomous & dynamic \texttt{AgentCreator} & sandbox risk\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ when an agent is warranted}{%
+  \begin{csbul}
+    \item \textbf{Build an agent when:} (i) nuanced context-sensitive decisions, (ii) brittle deterministic rule trees, or (iii) heavy unstructured inputs
+    \item \textbf{Do NOT use an agent for:} static single-turn classifiers or fixed pipelines
+    \item \textbf{Guardrail stack:} input $\mathcal{G}_{\mathrm{in}}(x)$ (PII, relevance, regex) $\to$ risk check $\mathrm{Risk}(g)$ $\to$ HITL approval gate $\to$ output $\mathcal{G}_{\mathrm{out}}(y)$
+    \item \textbf{Small-model rule:} prompting PaLM-8B/62B on ReAct collapses; SFT on $3{,}000$ bootstrapped traces beats 540B prompting
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Think in $\mathcal{L}$ to guide Action $\cdot$ Act in $\mathcal{A}$ to ground Thought} \\[1pt]
+  \footnotesize\mdseries \textbf{Bound the loop with $T_{\max}$, critic $\tau$, and CoT-SC backoff.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Loop trap:} $47\%$ of errors are $(\hat{a}_t,a_t)$ loops $\to$ cap $T_{\max}$
+    \item \textbf{Empty search:} $23\%$ derail on empty hits $\to$ suggest entities
+    \item \textbf{Tool overlap:} $>10$ tools hurt routing $\to$ split agents
+    \item \textbf{Unchecked writes:} gate high-risk tools via HITL
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Agent Taxonomy, ReAct Synergy, Reflection, Planning \& Multi-Agent Orchestration}\;---\;Domain 07 $\cdot$ Agentic AI \& Production ML Systems}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Augmented action space \& trajectory context:
+      \csfm{\hat{\mathcal{A}}=\mathcal{A}\cup\mathcal{L},\quad c_t=(x,o_1,\hat{a}_1,a_1,\dots,o_t)}
+    \item Autoregressive ReAct trajectory factorization:
+      \csfm{\Prob(\tau\mid x)=\prod_{t=1}^{T}\pi(\hat{a}_t\mid c_t)\,\pi(a_t\mid c_t,\hat{a}_t)\,\mathcal{P}(o_{t+1}\mid s_t,a_t)}
+    \item ReAct $\leftrightarrow$ CoT-SC hybrid switching rules ($n=21$):
+      \csfm{t > T_{\max}\implies\text{CoT-SC};\quad \max_{y}\sum_{i=1}^{n}\mathbb{I}[y^{(i)}{=}y]<\frac{n}{2}\implies\text{ReAct}}
+    \item Iterative refinement stopping criterion:
+      \csfm{q(y^{(k)}) = \pi_{\mathrm{eval}}(y^{(k)},x) \ge \tau \;\;\text{or}\;\; k = K_{\max}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{BOUNDED REACT + REFLECTION RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Input Guardrail:} verify $\mathcal{G}_{\mathrm{in}}(x)$; abort/escalate if tripwire fires.
+    \item \textbf{Init Context:} $c_1\leftarrow(I,x,\text{LongTermMemory.fetch}(x))$, $t\leftarrow 1$.
+    \item \textbf{Think \& Act:} sample $\hat{a}_t\sim\pi(\cdot\mid c_t)$, then $a_t\sim\pi(\cdot\mid c_t,\hat{a}_t)$.
+    \item \textbf{Tool Gate:} if $a_t=\texttt{ToolCall}(g,\theta)$, enforce HITL when $\mathrm{Risk}(g)=\mathrm{High}$, execute $o_{t+1}\leftarrow g(\theta)$ in sandbox, append to $c_{t+1}$.
+    \item \textbf{Critic Gate:} if $a_t$ emits answer $y$, check $\pi_{\mathrm{eval}}(y,x)\ge\tau$ and $\mathcal{G}_{\mathrm{out}}(y)$; else append critique $f_t$ and loop until $T_{\max}$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.15}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    deterministic rules, fixed flow & standard workflow / DAG (not an agent)\\
+    embodied / multi-step env & sparse ReAct ($\hat{a}_t$ only at key subgoals)\\
+    knowledge QA + reasoning & hybrid $\text{ReAct}\leftrightarrow\text{CoT-SC}$ switching\\
+    central synthesis across skills & Manager pattern ($v_i.\texttt{as\_tool}()$)\\
+    turn ownership transfer & Decentralized pattern ($\texttt{handoff}(c_t)$)\\
+    small model ($8\text{B}\text{--}62\text{B}$) & SFT on $3{,}000$ bootstrapped ReAct traces\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{HORIZON \& ERROR BOUNDS CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Step caps:} $T_{\max}=7$ (HotpotQA, $<0.84\%$ exceed), $T_{\max}=5$ (FEVER)
+    \item \textbf{Hallucination drop:} CoT $56\%$ failure share $\to$ ReAct $0\%$ ($6\%$ FP vs $14\%$)
+    \item \textbf{Loop share:} $47\%$ of ReAct failures are repetitive loops; $23\%$ bad searches
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{BENCHMARK SYNERGY (HotpotQA, FEVER, ALFWorld)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[ybar, bar width=4.8pt, width=0.96\linewidth, height=4.1cm,
+      ymin=0, ymax=78, ylabel={Score / SR (\%)}, label style={font=\scriptsize},
+      symbolic x coords={HotpotQA, FEVER, ALFWorld, WebShop}, xtick=data,
+      tick label style={font=\scriptsize}, ytick={0,25,50,75}, grid=major,
+      grid style={line width=.1pt, draw=gray!25}, enlarge x limits=0.18,
+      legend style={at={(0.5,1.02)}, anchor=south, legend columns=4, font=\tiny, draw=none}]
+      \addplot[fill=csC!75, draw=csC] coordinates {(HotpotQA,29.4)(FEVER,56.3)(ALFWorld,0)(WebShop,0)};
+      \addplot[fill=csA!75, draw=csA] coordinates {(HotpotQA,25.7)(FEVER,58.9)(ALFWorld,45.0)(WebShop,30.1)};
+      \addplot[fill=csE!80, draw=csE] coordinates {(HotpotQA,27.4)(FEVER,60.9)(ALFWorld,71.0)(WebShop,40.0)};
+      \addplot[fill=csF!85, draw=csF] coordinates {(HotpotQA,35.1)(FEVER,64.6)(ALFWorld,71.0)(WebShop,40.0)};
+      \legend{CoT, Act-only, ReAct, Hybrid/Best}
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize ReAct dominates interactive envs ($71\%$ ALFWorld); Hybrid wins QA/FEVER.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Infinite / repetitive $(a_t,o_t)$ loops:} hash action-observation pairs, enforce $T_{\max}$, and back off to CoT-SC or human escalation
+    \item \textbf{Dense Inner Monologue pollution:} forcing thoughts on every step wastes context tokens and drops ALFWorld SR from $71\%$ to $53\%$
+    \item \textbf{Non-informative tool returns:} empty search results derail reasoning; return structured ``similar entity'' suggestions
+    \item \textbf{Premature multi-agent splitting:} maximize single-agent prompt \& tool clarity before adding multi-agent coordination latency
+    \item \textbf{Few-shot ReAct on small models:} fails without trajectory SFT
+    \item \textbf{Missing HITL gates:} never allow autonomous execution of high-risk write, deletion, or payment tools without explicit approval
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Pure CoT hallucinates; pure Act is myopic.}
+  \textbf{ReAct} unifies $\hat{\mathcal{A}}=\mathcal{A}\cup\mathcal{L}$ so thoughts decompose goals and observations ground facts.
+  Wrap the loop in \textbf{Reflection} ($q\ge\tau$), \textbf{Guardrails} ($\mathcal{G}_{\mathrm{in}},\mathcal{G}_{\mathrm{out}}$), and \textbf{Manager/Handoff graphs} $G=(V,E)$ to scale safely to production.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

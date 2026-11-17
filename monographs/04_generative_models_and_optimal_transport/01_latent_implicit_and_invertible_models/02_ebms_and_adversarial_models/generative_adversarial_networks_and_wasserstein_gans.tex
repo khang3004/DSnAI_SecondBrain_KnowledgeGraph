@@ -1,0 +1,350 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Autoencoders, VAEs, Normalizing Flows, EBMs \& GANs}{Energy-Based Models, Score Matching \& Adversarial Networks}{GAN Game Dynamics, Mode Collapse, f-GANs \& Wasserstein/OT-GANs}{Murphy Adv. Ch.~26, Prince Ch.~15, Bishop Ch.~17, Optimal Transport Monograph}
+\setlength{\emergencystretch}{2.5em}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:gan:formulation}
+
+Implicit generative models learn a target data distribution $p_{\mathrm{data}}$ over $\mathcal{X} \subseteq \R^d$ without specifying a tractable density function. Instead, a latent variable $z \sim p_Z$ (typically $p_Z = \Normal(\zeros, \eye)$ or $\Uniform([-1,1]^{d_z})$ with $d_z \ll d$) is passed through a deterministic, differentiable generator $G_\theta : \mathcal{Z} \to \mathcal{X}$ parameterized by $\theta$. As formulated in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~894} and \bookcite{deep_learning_foundations_concepts}{Ch.~17, p.~534}, this induces the pushforward model distribution $q_\theta = (G_\theta)_\# p_Z$. Because $q_\theta(x)$ is intractable in closed form, Generative Adversarial Networks (GANs) introduce a second network---a discriminator $D_\phi : \mathcal{X} \to (0,1)$ or real-valued critic $f_\phi : \mathcal{X} \to \R$---that estimates a divergence or Integral Probability Metric (IPM) solely from samples \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~896}.
+
+In the classical zero-sum minimax formulation \bookcite{understandingdl_simonprince}{Ch.~15, p.~277} \bookcite{optimal_transport}{p.~44}, the two players solve:
+\begin{equation}
+  \label{eq:gan:minimax}
+  \min_{\theta} \max_{\phi} V(\phi, \theta)
+  := \E_{x \sim p_{\mathrm{data}}}\!\left[\log D_\phi(x)\right]
+   + \E_{z \sim p_Z}\!\left[\log\!\left(1 - D_\phi(G_\theta(z))\right)\right].
+\end{equation}
+More generally, GANs need not be zero-sum; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~905} separates the discriminator loss $L_D(\phi, \theta)$ and generator loss $L_G(\phi, \theta)$ into the coupled nested optimization:
+\begin{equation}
+  \label{eq:gan:general_game}
+  \min_{\phi} L_D(\phi, \theta), \qquad \min_{\theta} L_G(\phi, \theta),
+\end{equation}
+where $L_D(\phi, \theta) = \E_{p_{\mathrm{data}}}[g(D_\phi(x))] + \E_{p_Z}[h(D_\phi(G_\theta(z)))]$ and $L_G(\phi, \theta) = \E_{p_Z}[\ell(D_\phi(G_\theta(z)))]$ for scalar functions $g, h, \ell : \R \to \R$.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The four synthesized sources adopt distinct conventions for generator/discriminator symbols, probability measures, and optimization signs. Table~\ref{tab:gan:notation} reconciles these notations into the unified conventions used throughout this monograph.
+
+\medskip
+\noindent
+{\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified} & \textbf{Murphy Adv. (Ch.~26)} & \textbf{Prince (Ch.~15)} & \textbf{Bishop (Ch.~17) / OT} \\
+\midrule
+Data dist. & $p_{\mathrm{data}}(x)$ & $p^*(x)$ & $\Pr(x)$ & $p_{\mathrm{data}}(x)$ / $P$ \\
+Model dist. & $q_\theta(x)$ & $q_\theta(x)$ & $\Pr(x^*)$ & $p_G(x)$ / $(T_\phi)_\# p_Z$ \\
+Generator & $G_\theta(z)$ & $G_\theta(z)$ & $g[z, \theta]$ & $g(z, w)$ / $T_\phi(z)$ \\
+Disc. / Critic & $D_\phi(x),\, f_\phi(x)$ & $D_\phi(x)$ & $\mathrm{sig}[f[x,\phi]],\, f[x,\phi]$ & $d(x, \phi)$ / $f_\omega(x)$ \\
+Objective sign & $\min_\theta \max_\phi V$ & $\min_\theta \max_\phi V$ ($\times \frac{1}{2}$) & $\argmax_\theta \min_\phi$ (NLL) & $\max_w \min_\phi E_{\mathrm{GAN}}$ \\
+\bottomrule
+\end{tabularx}
+}
+\captionof{table}{Cross-book notation reconciliation: \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~896--905}, \bookcite{understandingdl_simonprince}{Ch.~15, pp.~277--285}, \bookcite{deep_learning_foundations_concepts}{Ch.~17, pp.~534--538}, and \bookcite{optimal_transport}{pp.~43--52}.}
+\label{tab:gan:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:gan:theory}
+
+\subsection{Optimal Discriminator, Jensen--Shannon Equilibrium, and Gradient Saturation}
+
+\begin{coremath}[Theorem 1: Minimax Optimal Discriminator \& Jensen--Shannon Divergence]
+For a fixed generator $G_\theta$ inducing density $q_\theta(x)$ with full support, the inner maximization of \eqref{eq:gan:minimax} over all measurable functions $D : \mathcal{X} \to (0,1)$ has the unique pointwise maximizer \bookcite{understandingdl_simonprince}{Ch.~15, p.~281} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~897}:
+\begin{equation}
+  \label{eq:gan:opt_disc}
+  D^*_\theta(x) = \frac{p_{\mathrm{data}}(x)}{p_{\mathrm{data}}(x) + q_\theta(x)}.
+\end{equation}
+\textbf{Proof.} Writing $V(G_\theta, D)$ as an integral over $\mathcal{X}$:
+\[
+  V(G_\theta, D) = \int_{\mathcal{X}} \Big[ p_{\mathrm{data}}(x)\log D(x) + q_\theta(x)\log(1 - D(x)) \Big] \mathrm{d}x.
+\]
+For any $(a, b) \in \R_+^2 \setminus \{(0,0)\}$, the scalar function $y \mapsto a\log y + b\log(1-y)$ on $(0,1)$ has derivative $\frac{a}{y} - \frac{b}{1-y} = 0$ at $y^* = \frac{a}{a+b}$, and second derivative $-\frac{a}{y^2} - \frac{b}{(1-y)^2} < 0$. Setting $a = p_{\mathrm{data}}(x)$ and $b = q_\theta(x)$ yields \eqref{eq:gan:opt_disc}. Equivalently, in density-ratio form, $D^*_\theta(x)/(1 - D^*_\theta(x)) = p_{\mathrm{data}}(x)/q_\theta(x)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~896}.
+
+Substituting $D^*_\theta$ back into \eqref{eq:gan:minimax} and letting $m_\theta = \frac{1}{2}(p_{\mathrm{data}} + q_\theta)$ gives:
+\begin{align}
+  V(G_\theta, D^*_\theta)
+  &= \E_{p_{\mathrm{data}}}\!\left[\log \frac{p_{\mathrm{data}}(x)}{2m_\theta(x)}\right]
+   + \E_{q_\theta}\!\left[\log \frac{q_\theta(x)}{2m_\theta(x)}\right] \nonumber \\
+  &= \KL{p_{\mathrm{data}}}{m_\theta} + \KL{q_\theta}{m_\theta} - 2\log 2
+   = 2\,\JS{p_{\mathrm{data}}}{q_\theta} - \log 4. \label{eq:gan:jsd_eq}
+\end{align}
+Since $\JS{p_{\mathrm{data}}}{q_\theta} \ge 0$ with equality if and only if $q_\theta = p_{\mathrm{data}}$, the global minimax equilibrium is attained at $q_\theta = p_{\mathrm{data}}$ and $D^*_\theta(x) \equiv \frac{1}{2}$, with game value $-\log 4$ (or $-\log 2$ under the $\frac{1}{2}$-weighted objective of \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~897}). \hfill $\square$
+\end{coremath}
+
+\begin{intuition}[Mode Dropping, Quality vs.\ Coverage, and Non-Saturating Loss]
+Expanding $\JS{p_{\mathrm{data}}}{q_\theta} = \frac{1}{2}\KL{p_{\mathrm{data}}}{m_\theta} + \frac{1}{2}\KL{q_\theta}{m_\theta}$ reveals an asymmetry in practice \bookcite{understandingdl_simonprince}{Ch.~15, pp.~281--282}: the second term penalizes regions where $q_\theta(x)$ is high but $p_{\mathrm{data}}(x)$ is low (enforcing \emph{quality}), whereas the first term penalizes regions where $p_{\mathrm{data}}(x)$ is high but $q_\theta(x)$ is low (enforcing \emph{coverage}). Because the generator only controls $q_\theta$, minimizing the saturating loss $\E_{p_Z}[\log(1 - D_\phi(G_\theta(z)))]$ suffers from vanishing gradients when $D_\phi(G_\theta(z)) \approx 0$ (early in training or when $D_\phi$ is too strong). Replacing it with the \emph{non-saturating} generator loss $L_G^{\mathrm{NS}}(\phi, \theta) = -\E_{p_Z}[\log D_\phi(G_\theta(z))]$ provides strong gradients near $D_\phi \approx 0$ \bookcite{deep_learning_foundations_concepts}{Ch.~17, p.~538} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~905}, though it shifts the effective divergence toward a reverse-KL-like objective that can exacerbate mode dropping.
+\end{intuition}
+
+\subsection{$f$-GANs: Variational Divergence Minimization}
+
+Beyond the Bernoulli log-loss, any proper binary scoring rule corresponds to an $f$-divergence \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~897--900}. For a convex, lower-semicontinuous generator $f : \R_+ \to \R$ with $f(1) = 0$, the $f$-divergence is $D_f(p_{\mathrm{data}} \| q_\theta) = \int q_\theta(x) f\!\left(\frac{p_{\mathrm{data}}(x)}{q_\theta(x)}\right)\mathrm{d}x$.
+
+\begin{coremath}[Theorem 2: $f$-GAN Variational Lower Bound via Fenchel Duality]
+Let $f^\dagger(t) := \sup_{u \in \mathrm{dom}(f)} \{ut - f(u)\}$ denote the Fenchel--Legendre convex conjugate of $f$. By the Fenchel--Moreau theorem, $f(u) = \sup_{t \in \mathrm{dom}(f^\dagger)} \{ut - f^\dagger(t)\}$. Substituting $u = p_{\mathrm{data}}(x)/q_\theta(x)$ and exchanging integration and supremum over a variational critic class $\mathcal{T} \subseteq \{T : \mathcal{X} \to \mathrm{dom}(f^\dagger)\}$ yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~899}:
+\begin{equation}
+  \label{eq:gan:fgan}
+  D_f(p_{\mathrm{data}} \| q_\theta)
+  \ge \sup_{T \in \mathcal{T}} \Big\{ \E_{x \sim p_{\mathrm{data}}}[T(x)] - \E_{x \sim q_\theta}[f^\dagger(T(x))] \Big\}.
+\end{equation}
+The bound is tight whenever the optimal critic $T^*(x) = f'\!\left(\frac{p_{\mathrm{data}}(x)}{q_\theta(x)}\right)$ lies in $\mathcal{T}$. Parameterizing $T_\phi(x) = a_f(V_\phi(x))$ with an output activation $a_f : \R \to \mathrm{dom}(f^\dagger)$ gives the $f$-GAN minimax game $\min_\theta \max_\phi \big(\E_{p_{\mathrm{data}}}[T_\phi(x)] - \E_{p_Z}[f^\dagger(T_\phi(G_\theta(z)))]\big)$. Table~\ref{tab:gan:fgan} lists standard instantiations.
+
+\medskip
+\noindent
+{\small
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Divergence} & \textbf{Generator $f(u)$} & \textbf{Conjugate $f^\dagger(t)$} & \textbf{Optimal Critic $T^*(x)$ ($r = p_{\mathrm{data}}/q_\theta$)} \\
+\midrule
+Forward KL & $u\log u$ & $\exp(t - 1)$ & $1 + \log r(x)$ \\
+Reverse KL & $-\log u$ & $-1 - \log(-t)$ & $-1 / r(x)$ \\
+JSD & $u\log u - (u+1)\log\frac{u+1}{2}$ & $-\log(2 - e^t)$ & $\log\frac{2r(x)}{r(x)+1}$ \\
+Pearson $\chi^2$ & $(u - 1)^2$ & $\frac{1}{4}t^2 + t$ & $2(r(x) - 1)$ \\
+\bottomrule
+\end{tabularx}
+}
+\captionof{table}{Standard $f$-divergences, Fenchel conjugates, and optimal critics \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, Table~26.2, p.~899}.}
+\label{tab:gan:fgan}
+\end{coremath}
+
+\subsection{Disjoint-Support Failure, Continuity Theorem, and Kantorovich--Rubinstein Duality}
+
+In high-dimensional spaces $\mathcal{X} = \R^d$, natural data $p_{\mathrm{data}}$ and generator outputs $q_\theta = (G_\theta)_\# p_Z$ typically concentrate on low-dimensional manifolds ($d_z \ll d$) whose intersection has measure zero \bookcite{understandingdl_simonprince}{Ch.~15, p.~282}. Because $f$-divergences depend on the density ratio $p_{\mathrm{data}}(x)/q_\theta(x)$, they fail catastrophically when supports are disjoint \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~903}; \bookcite{optimal_transport}{p.~45}.
+
+\begin{coremath}[Theorem 3: Disjoint-Support Saturation vs.\ Wasserstein Continuity \& Duality]
+\textbf{(a) Disjoint-Support Counterexample.} Let $P = (0, \Uniform(0,1))$ and $Q_\theta = (\theta, \Uniform(0,1))$ in $\R^2$ \bookcite{optimal_transport}{pp.~45--48}. For any $\theta \neq 0$, $\mathrm{supp}(P) \cap \mathrm{supp}(Q_\theta) = \emptyset$, so:
+\begin{equation}
+  \label{eq:gan:disjoint_counterexample}
+  \KL{P}{Q_\theta} = +\infty, \qquad
+  \JS{P}{Q_\theta} = \begin{cases} \log 2 & \text{if } \theta \neq 0, \\ 0 & \text{if } \theta = 0, \end{cases}
+  \qquad
+  \Wass[1]{P}{Q_\theta} = \abs{\theta}.
+\end{equation}
+Thus $\mathrm{JSD}$ is discontinuous at $\theta = 0$ and has zero gradient everywhere $\theta \neq 0$, whereas $W_1$ is continuous everywhere and provides a constant unit gradient $\partial_\theta W_1 = \sign(\theta)$ for $\theta \neq 0$.
+
+\textbf{(b) Primal and Kantorovich--Rubinstein Dual.} The $1$-Wasserstein (Earth Mover's) distance between $p_{\mathrm{data}}$ and $q_\theta$ is \bookcite{optimal_transport}{pp.~46--50} \bookcite{understandingdl_simonprince}{Ch.~15, p.~285}:
+\begin{equation}
+  \label{eq:gan:w1_primal_dual}
+  \Wass[1]{p_{\mathrm{data}}}{q_\theta}
+  = \inf_{\pi \in \Pi(p_{\mathrm{data}}, q_\theta)} \int_{\mathcal{X}\times\mathcal{X}} \norm{x - y}_2\,\mathrm{d}\pi(x, y)
+  = \sup_{\norm{f}_{\mathrm{Lip}} \le 1} \Big\{ \E_{x \sim p_{\mathrm{data}}}[f(x)] - \E_{y \sim q_\theta}[f(y)] \Big\},
+\end{equation}
+where $\Pi(p_{\mathrm{data}}, q_\theta)$ is the set of couplings with marginals $p_{\mathrm{data}}, q_\theta$, and $\norm{f}_{\mathrm{Lip}} \le 1$ means $\abs{f(x) - f(y)} \le \norm{x - y}_2$ for all $x, y \in \mathcal{X}$. This places $W_1$ inside the family of Integral Probability Metrics (IPMs), which measure density \emph{differences} rather than ratios \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~900}.
+
+\textbf{(c) Continuity Theorem (Arjovsky et al., 2017).} If $G_\theta(z)$ is continuous in $\theta$, then $\theta \mapsto \Wass[1]{p_{\mathrm{data}}}{q_\theta}$ is continuous everywhere. Moreover, if $G_\theta$ is locally Lipschitz in $\theta$ with $\E_{p_Z}[L(\theta, z)] < \infty$, then $\Wass[1]{p_{\mathrm{data}}}{q_\theta}$ is continuous everywhere and differentiable almost everywhere \bookcite{optimal_transport}{p.~48}. \hfill $\square$
+\end{coremath}
+
+Figure~\ref{fig:gan:kl_js_vs_w1} plots the exact behavior of $\mathrm{KL}$, $\mathrm{JSD}$, and $W_1$ for the parallel-line family \eqref{eq:gan:disjoint_counterexample}, and Figure~\ref{fig:gan:disjoint_support_murphy} illustrates how a smooth parametric neural critic $D_\phi$ partially mitigates—but does not eliminate—the density-ratio singularity compared to an IPM critic.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.82\textwidth,
+      height=5.8cm,
+      xlabel={Support separation parameter $\theta$},
+      ylabel={Divergence / Distance},
+      xmin=-1.5, xmax=1.5,
+      ymin=-0.08, ymax=1.78,
+      grid=both,
+      grid style={line width=0.2pt, draw=monographRule!45},
+      axis lines=left,
+      legend style={
+        at={(0.5,1.04)}, anchor=south, legend columns=2,
+        font=\small, fill=white, draw=monographRule, rounded corners=2pt
+      },
+      xtick={-1.5,-1.0,-0.5,0,0.5,1.0,1.5},
+      ytick={0,0.6931,1.0,1.5},
+      yticklabels={$0$, $\log 2$, $1.0$, $1.5$}
+    ]
+      % W1 = |theta|
+      \addplot[color=monographTeal, ultra thick, domain=-1.5:1.5, samples=101] {abs(x)};
+      \addlegendentry{$W_1(P, Q_\theta) = |\theta|$ ($\nabla_\theta W_1 = \pm 1$)}
+
+      % JSD = log(2) for theta != 0
+      \addplot[color=monographCrimson, ultra thick, domain=-1.5:-0.02, samples=2] {0.6931};
+      \addlegendentry{$\JS{P}{Q_\theta} = \log 2 \cdot \mathbf{1}_{\theta \neq 0}$ ($\nabla_\theta = 0$)}
+      \addplot[color=monographCrimson, ultra thick, domain=0.02:1.5, samples=2, forget plot] {0.6931};
+      \addplot[only marks, mark=*, mark size=2.4pt, color=monographCrimson, forget plot] coordinates {(0,0)};
+      \addplot[only marks, mark=o, mark size=2.4pt, color=monographCrimson, fill=white, forget plot] coordinates {(0,0.6931)};
+
+      % KL = +inf annotation
+      \draw[dashed, color=monographIndigo, thick] (axis cs:-1.5,1.62) -- (axis cs:-0.03,1.62);
+      \draw[dashed, color=monographIndigo, thick] (axis cs:0.03,1.62) -- (axis cs:1.5,1.62);
+      \node[color=monographIndigo, font=\small, anchor=center] at (axis cs:0,1.42) {$\KL{P}{Q_\theta} = +\infty$ ($\theta \neq 0$)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Disjoint-support convergence failure on $P = (0,\Uniform(0,1))$ vs.\ $Q_\theta = (\theta,\Uniform(0,1))$: $\mathrm{KL}$ diverges and $\mathrm{JSD} \equiv \log 2$ has zero gradient for all $\theta \neq 0$, whereas $W_1(P, Q_\theta) = |\theta|$ is continuous everywhere and yields a constant unit gradient toward $\theta = 0$ \bookcite{optimal_transport}{pp.~45--48}.}
+  \label{fig:gan:kl_js_vs_w1}
+\end{figure}
+
+\monographfig[0.86\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p937_fig1.png}{Disjoint-support behavior: (a) Exact $\mathrm{KL}(p^* \| q_\theta) = \infty$ cannot distinguish $q(\theta_1)$ from $q(\theta_2)$; (b) a smooth parametric MLP critic $D_\phi$ approximates the singular ratio $p^*/q_\theta$ and supplies a non-zero input gradient $\nabla_x D_\phi(x)$, whereas IPMs (such as $W_1$) build smoothness directly into the metric via the $1$-Lipschitz constraint \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, Fig.~26.4, p.~903}.}{fig:gan:disjoint_support_murphy}
+
+\subsection{Continuous vs.\ Discrete Game Dynamics: DiracGAN Stability}
+
+Even when the loss landscape is well-defined, alternating or simultaneous gradient descent in \eqref{eq:gan:general_game} need not converge to a Nash equilibrium. Writing the continuous-time ODEs $\dot{\phi} = -\grad_\phi L_D(\phi, \theta)$ and $\dot{\theta} = -\grad_\theta L_G(\phi, \theta)$ gives the game Jacobian \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~910}:
+\begin{equation}
+  \label{eq:gan:game_jacobian}
+  \mat{J}(\phi, \theta) =
+  \begin{bmatrix}
+    -\grad^2_{\phi\phi} L_D(\phi, \theta) & -\grad^2_{\theta\phi} L_D(\phi, \theta) \\
+    -\grad^2_{\phi\theta} L_G(\phi, \theta) & -\grad^2_{\theta\theta} L_G(\phi, \theta)
+  \end{bmatrix}.
+\end{equation}
+For the canonical \textbf{DiracGAN} ($p_{\mathrm{data}} = \delta_0$, $q_\theta = \delta_\theta$, linear discriminator $D_\phi(x) = \phi x$), evaluating $\mat{J}$ at the unique Nash equilibrium $(\phi, \theta) = (0,0)$ gives $\mat{J}(0,0) = \begin{bmatrix} 0 & \ell'(0) \\ -\ell'(0) & 0 \end{bmatrix}$ with purely imaginary eigenvalues $\lambda_\pm = \pm i\ell'(0)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~911}. Consequently, $\frac{\mathrm{d}}{\mathrm{d}t}(\theta^2 + \phi^2) = 0$: continuous dynamics orbit in closed circles, while discrete simultaneous Euler updates with step size $h > 0$ spiral outward unless regularized.
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:gan:algorithms}
+
+\subsection{Enforcing $1$-Lipschitzness: Weight Clipping, WGAN-GP, and Spectral Normalization}
+
+Approximating the Kantorovich--Rubinstein supremum \eqref{eq:gan:w1_primal_dual} with a neural critic $f_\phi$ requires enforcing $\norm{\grad_x f_\phi(x)}_2 \le 1$ almost everywhere. Three principal mechanisms achieve this:
+\begin{enumerate}
+  \item \textbf{Weight Clipping (WGAN):} Clamping weights $\phi \leftarrow \mathrm{clip}(\phi, -c, c)$ (e.g., $c = 0.01$) guarantees bounded Lipschitzness \bookcite{understandingdl_simonprince}{Ch.~15, p.~285}, but severely restricts critic capacity and induces pathological weight saturation at $\pm c$.
+  \item \textbf{Gradient Penalty (WGAN-GP):} Exploiting the property that the optimal $W_1$ critic has unit gradient norm along straight lines between coupled real and generated points, WGAN-GP adds a soft penalty along random interpolants $\hat{x} = \epsilon x + (1-\epsilon)\tilde{x}$ with $\epsilon \sim \Uniform(0,1)$ \bookcite{deep_learning_foundations_concepts}{Ch.~17, p.~538} \bookcite{understandingdl_simonprince}{Ch.~15, p.~285}:
+  \begin{equation}
+    \label{eq:gan:wgan_gp_loss}
+    L_D^{\mathrm{WGAN\text{-}GP}}(\phi, \theta)
+    = \E_{\tilde{x} \sim q_\theta}[f_\phi(\tilde{x})] - \E_{x \sim p_{\mathrm{data}}}[f_\phi(x)]
+    + \eta\,\E_{\hat{x}}\!\left[\left(\norm{\grad_{\hat{x}} f_\phi(\hat{x})}_2 - 1\right)^2\right].
+  \end{equation}
+  \item \textbf{Spectral Normalization (SN-GAN):} Normalizing each layer's weight matrix $\mat{W}_l$ by its largest singular value, $\mat{W}_l^{\mathrm{SN}} := \mat{W}_l / \sigma_{\max}(\mat{W}_l)$ (via one power-iteration step per update), enforces $\norm{f_\phi}_{\mathrm{Lip}} \le \prod_l \norm{\mat{W}_l^{\mathrm{SN}}}_2 = 1$ for $1$-Lipschitz activations without per-sample second-order derivatives \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~918}.
+\end{enumerate}
+
+\begin{algorithm}[htbp]
+\caption{WGAN-GP Alternating Training (with Spectral-Norm Variant)}
+\label{alg:gan:wgan_gp}
+\KwIn{Data distribution $p_{\mathrm{data}}$, prior $p_Z$, critic steps $n_{\mathrm{critic}}$ (default $5$), penalty weight $\eta$ (default $10$), batch size $m$, Adam $(\alpha, \beta_1, \beta_2)$ with low $\beta_1 \in [0, 0.5]$.}
+\KwOut{Trained generator parameters $\theta$ and critic parameters $\phi$.}
+Initialize $\theta, \phi$\;
+\While{$\theta$ has not converged}{
+  \For{$t = 1, \dots, n_{\mathrm{critic}}$}{
+    Sample real minibatch $\{x^{(i)}\}_{i=1}^m \sim p_{\mathrm{data}}$ and latent minibatch $\{z^{(i)}\}_{i=1}^m \sim p_Z$\;
+    Sample $\epsilon^{(i)} \sim \Uniform(0, 1)$ for $i = 1, \dots, m$\;
+    $\tilde{x}^{(i)} \leftarrow G_\theta(z^{(i)})$,\quad $\hat{x}^{(i)} \leftarrow \epsilon^{(i)} x^{(i)} + (1 - \epsilon^{(i)})\tilde{x}^{(i)}$\;
+    $L_D^{(i)} \leftarrow f_\phi(\tilde{x}^{(i)}) - f_\phi(x^{(i)}) + \eta \left(\norm{\grad_{\hat{x}^{(i)}} f_\phi(\hat{x}^{(i)})}_2 - 1\right)^2$\;
+    Update $\phi \leftarrow \mathrm{Adam}\!\left(\grad_\phi \frac{1}{m}\sum_{i=1}^m L_D^{(i)},\, \phi,\, \alpha, \beta_1, \beta_2\right)$\;
+    \textit{(SN-GAN variant: omit $\eta$ term and apply $\mat{W}_l \leftarrow \mat{W}_l / \sigma_{\max}(\mat{W}_l)$ per layer)}\;
+  }
+  Sample fresh latent minibatch $\{z^{(i)}\}_{i=1}^m \sim p_Z$\;
+  $L_G \leftarrow -\frac{1}{m}\sum_{i=1}^m f_\phi(G_\theta(z^{(i)}))$\;
+  Update $\theta \leftarrow \mathrm{Adam}(\grad_\theta L_G,\, \theta,\, \alpha, \beta_1, \beta_2)$\;
+}
+\end{algorithm}
+
+\subsection{Primal Optimal Transport GANs: mOT-GAN, Partial OT, and Sliced OT-GAN}
+
+Dual WGAN formulations are tied to the Euclidean $c(x,y) = \norm{x-y}_2$ cost, which can poorly reflect perceptual similarity in high-dimensional pixel spaces \bookcite{optimal_transport}{p.~53}. Direct primal OT-GANs replace the dual critic with an empirical transport cost $\mathrm{OT}_c(\hat{q}_\theta, \hat{p}_{\mathrm{data}})$ over $M$ generated and $n$ real samples, but exact linear programming costs $\mathcal{O}(\max\{M,n\}^3)$ and entropic Sinkhorn costs $\mathcal{O}(\max\{M,n\}^2)$, which is prohibitive for $n \sim 10^6$ \bookcite{optimal_transport}{pp.~55--57}.
+
+\begin{itemize}
+  \item \textbf{Minibatch OT-GAN (mOT-GAN):} Averages OT across $k$ uniformly drawn minibatches of size $m \le \min\{M, n\}$ \bookcite{optimal_transport}{pp.~59--62}:
+  \begin{equation}
+    \label{eq:gan:mot}
+    \min_{\theta} \frac{1}{k} \sum_{i=1}^{k} \mathrm{OT}_c\!\left((G_\theta)_\# P_{z_i^m},\, P_{X_i^m}\right),
+  \end{equation}
+  reducing per-step complexity to $\mathcal{O}(km^2)$ with Sinkhorn. However, small-batch sampling induces \emph{misspecified matchings} (cross-mode pairings absent from the global OT plan), which can be alleviated via Minibatch Partial OT ($\mathrm{m\text{-}POT}_s$) transporting only a fraction $s \in (0,1]$ of mass at $\mathcal{O}(k(m+1)^2)$ cost \bookcite{optimal_transport}{pp.~64--69}.
+  \item \textbf{Sliced OT-GAN ($\mathrm{SW}_p$):} Projects distributions onto $L$ random $1$-D directions $u \in \mathbb{S}^{d-1}$, where $1$-D OT reduces to sorting in $\mathcal{O}(n \log n)$ time with dimension-free sample complexity \bookcite{optimal_transport}{pp.~83--84}. For images, vectorizing into $\R^d$ discards spatial structure and incurs $\mathcal{O}(Ld)$ memory; \emph{Convolution Sliced-OT} replaces vector projections with strided/dilated convolutional slicers \bookcite{optimal_transport}{pp.~84--88}.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+{\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Discrepancy} & \textbf{Critic Constraint} & \textbf{Step Complexity} & \textbf{Disjoint Support} \\
+\midrule
+Minimax GAN & $\mathrm{JSD}$ & $D_\phi \in (0,1)$ & $\mathcal{O}(m)$ & Saturates ($\log 2$) \\
+$f$-GAN & $D_f$ & $T_\phi \in \mathrm{dom}(f^\dagger)$ & $\mathcal{O}(m)$ & Singular / smooth MLP \\
+WGAN-GP & $W_1$ (dual) & Soft $\norm{\grad_{\hat{x}} f_\phi}_2 \approx 1$ & $\mathcal{O}(n_{\mathrm{critic}} m)$ (2nd-order) & Smooth ($\norm{\cdot}_2$) \\
+SN-GAN & Hinge / $W_1$ & $\sigma_{\max}(\mat{W}_l) = 1$ & $\mathcal{O}(n_{\mathrm{critic}} m)$ (power iter.) & Smooth \\
+mOT-GAN & Primal $\mathrm{OT}_c$ & None (Sinkhorn) & $\mathcal{O}(km^2)$ & Smooth (misspec.\ risk) \\
+Sliced OT-GAN & $\mathrm{SW}_p$ & None ($L$ projections) & $\mathcal{O}(L m \log m)$ & Smooth ($\mathcal{O}(m\log m)$) \\
+\bottomrule
+\end{tabularx}
+}
+\caption{Comparative synthesis of adversarial and optimal-transport generative objectives \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~897--918} \bookcite{optimal_transport}{pp.~51--88}.}
+\label{tab:gan:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Architectural Stabilization \& Quality--Diversity Trade-offs]
+Across \bookcite{understandingdl_simonprince}{Ch.~15, pp.~286--288}, \bookcite{deep_learning_foundations_concepts}{Ch.~17, pp.~539--540}, and \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~917--918}, loss stabilization alone is insufficient for high-resolution synthesis without architectural inductive biases:
+\begin{itemize}
+  \item \textbf{Progressive Growing \& StyleGAN:} Training starts at $4\times 4$ resolution and smoothly fades in higher-resolution residual blocks up to $1024\times 1024$ \bookcite{understandingdl_simonprince}{Ch.~15, p.~286}. StyleGAN further maps $z \sim p_Z$ through an MLP to an intermediate disentangled latent $w \in \mathcal{W}$ that modulates feature maps via Adaptive Instance Normalization (AdaIN) \bookcite{understandingdl_simonprince}{Ch.~15, pp.~295--297}.
+  \item \textbf{Truncation Trick:} Sampling $z$ from a truncated distribution (or interpolating $w' = \bar{w} + \tau(w - \bar{w})$ with $\tau \in (0,1]$) trades sample diversity for perceptual fidelity \bookcite{understandingdl_simonprince}{Ch.~15, p.~287}.
+  \item \textbf{Regularization vs.\ Capacity:} Excessive discriminator regularization (e.g., over-strong gradient penalties or spectral norm) guarantees stability but can degrade sample sharpness \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~918}.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:gan:visuals}
+
+Figure~\ref{fig:gan:minimax_vs_wgan} contrasts the standard minimax GAN feedback loop against the $1$-Lipschitz WGAN-GP / Spectral-Norm critic architecture, highlighting how removing the sigmoid bottleneck and enforcing bounded Lipschitzness eliminates gradient saturation.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=0.6cm and 1.0cm]
+    % --- Top Row: Standard Minimax GAN ---
+    \node[font=\small\bfseries\color{monographNavy}, anchor=west] (titleA) at (-5.6, 3.30) {(a) Standard Minimax GAN ($\mathrm{JSD}$ / BCE)};
+    \node[monoBox, minimum width=1.6cm] (z1) at (-4.8, 1.35) {$z \sim p_Z$};
+    \node[monoTealBox, right=of z1, minimum width=1.8cm] (G1) {$G_\theta(z)$\\{\scriptsize Generator}};
+    \node[monoIndigoBox, right=of G1, minimum width=2.2cm] (D1) {$D_\phi(x) \in (0,1)$\\{\scriptsize Sigmoid Disc.}};
+    \node[monoWarnBox, right=of D1, minimum width=2.3cm] (L1) {BCE $\log(1-D_\phi)$\\{\scriptsize Saturates as $D_\phi \to 0$}};
+    \node[monoBox, above=0.4cm of D1, minimum width=1.6cm] (x1) {$x \sim p_{\mathrm{data}}$};
+
+    \draw[monoArrow] (z1) -- (G1);
+    \draw[monoArrow] (G1) -- node[above, font=\scriptsize]{$\tilde{x}$} (D1);
+    \draw[monoArrow] (x1) -- (D1);
+    \draw[monoArrow] (D1) -- (L1);
+    \draw[monoArrow, color=monographCrimson, dashed] (L1.south) -- ++(0,-0.35) -| node[pos=0.25, below, font=\scriptsize\color{monographCrimson}]{Vanishing $\nabla_\theta L_G \to 0$ on disjoint supports} (G1.south);
+
+    % --- Bottom Row: WGAN-GP / SN-GAN ---
+    \node[font=\small\bfseries\color{monographNavy}, anchor=west] (titleB) at (-5.6, -0.75) {(b) WGAN-GP / Spectral-Norm Critic ($W_1$ IPM)};
+    \node[monoBox, minimum width=1.6cm] (z2) at (-4.8, -2.55) {$z \sim p_Z$};
+    \node[monoTealBox, right=of z2, minimum width=1.8cm] (G2) {$G_\theta(z)$\\{\scriptsize Generator}};
+    \node[monoIndigoBox, right=of G2, minimum width=2.2cm] (D2) {$f_\phi(x) \in \R$\\{\scriptsize $1$-Lip.\ Critic}};
+    \node[monoTealBox, right=of D2, minimum width=2.3cm] (L2) {$W_1$ Dual + GP/SN\\{\scriptsize $\norm{\nabla_{\hat{x}} f_\phi}_2 \approx 1$}};
+    \node[monoBox, above=0.4cm of D2, minimum width=1.6cm] (x2) {$x \sim p_{\mathrm{data}}$};
+
+    \draw[monoArrow] (z2) -- (G2);
+    \draw[monoArrow] (G2) -- node[above, font=\scriptsize]{$\tilde{x}$} (D2);
+    \draw[monoArrow] (x2) -- (D2);
+    \draw[monoArrow] (D2) -- (L2);
+    \draw[monoArrow, color=monographTeal] (L2.south) -- ++(0,-0.35) -| node[pos=0.25, below, font=\scriptsize\color{monographTeal}]{Smooth non-vanishing $\nabla_\theta \E[f_\phi(G_\theta(z))]$} (G2.south);
+  \end{tikzpicture}
+  \caption{Architectural contrast between (a) the classical minimax GAN with sigmoid saturation and (b) the $1$-Lipschitz WGAN-GP / Spectral-Norm critic yielding well-behaved gradients \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~900--906} \bookcite{understandingdl_simonprince}{Ch.~15, pp.~282--285}.}
+  \label{fig:gan:minimax_vs_wgan}
+\end{figure}
+
+Figure~\ref{fig:gan:mode_collapse_murphy} visualizes mode collapse and mode hopping on a $16$-component Gaussian mixture: as discriminator loss drops from $1.252$ to $0.305$, generator loss climbs and samples collapse onto one or two modes. Figure~\ref{fig:gan:mot_misspecified} illustrates the geometric origin of misspecified matchings in minibatch OT-GAN.
+
+\monographfig[0.82\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p942_fig1.png}{Mode collapse and mode hopping in a $16$-Gaussian mixture: (a) true data density; (b--f) generator collapse onto a tiny subset of modes as discriminator loss decreases and generator loss increases \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, Fig.~26.6, p.~908}.}{fig:gan:mode_collapse_murphy}
+
+\monographfig[0.72\textwidth]{optimal_transport_p67_fig1.png}{Misspecified matching in minibatch OT-GAN: (left) exact global matching between empirical measures $\mu_n$ and $\nu_n$; (right) minibatch subsampling $(P_{X^m}, P_{Y^m})$ induces false cross-mode pairings (red arrows), motivating minibatch partial OT \bookcite{optimal_transport}{p.~66}.}{fig:gan:mot_misspecified}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:gan:pitfalls}
+
+\begin{pitfall}[Mode Collapse, Mode Hopping, and Oscillatory Limit Cycles]
+\textbf{Failure Mode:} As shown by the DiracGAN Jacobian \eqref{eq:gan:game_jacobian}, unregularized alternating/simultaneous gradient descent exhibits purely imaginary eigenvalues $\lambda_\pm = \pm i\ell'(0)$ and fails to converge \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, pp.~910--911}. In multimodal data, the generator either collapses onto a single high-density mode or hops indefinitely between modes without ever increasing support coverage (Figure~\ref{fig:gan:mode_collapse_murphy}).
+
+\textbf{Remedy:} Lower Adam momentum ($\beta_1 \in [0, 0.5]$ instead of $0.9$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~908}, apply instance noise or $R_1$/gradient penalties to damp imaginary eigenvalues, and use progressive growing or minibatch discrimination \bookcite{understandingdl_simonprince}{Ch.~15, pp.~286--287}.
+\end{pitfall}
+
+\begin{pitfall}[Weight Clipping Collapse vs.\ WGAN-GP BatchNorm Incompatibility]
+\textbf{Failure Mode:} Enforcing $1$-Lipschitzness via weight clipping $[-c, c]$ forces critic weights toward the boundary $\pm c$, reducing the critic to a near-linear function and stalling learning. Conversely, WGAN-GP penalizes $\norm{\grad_{\hat{x}} f_\phi(\hat{x})}_2$ independently per sample $\hat{x}$; placing \texttt{BatchNorm} inside the critic introduces cross-sample dependencies within a minibatch, invalidating the per-sample gradient penalty \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~26, p.~918}.
+
+\textbf{Remedy:} Replace \texttt{BatchNorm} in WGAN-GP critics with \texttt{LayerNorm} or \texttt{GroupNorm}, or use Spectral Normalization $\mat{W}_l / \sigma_{\max}(\mat{W}_l)$ which enforces global Lipschitzness without second-order gradient penalties.
+\end{pitfall}
+
+\begin{pitfall}[Misspecified Minibatch OT Matchings and Sliced-OT Vectorization]
+\textbf{Failure Mode:} In mOT-GAN \eqref{eq:gan:mot}, using $k=1$ and small batch size $m$ forces every generated point in $P_{z^m}$ to match some real point in $P_{X^m}$ even when modes are missing from the subsample, producing biased gradients toward the barycenter (Figure~\ref{fig:gan:mot_misspecified}) \bookcite{optimal_transport}{pp.~60, 64--66}. In Sliced OT-GAN, flattening high-resolution images to $\R^d$ destroys spatial locality and requires $\mathcal{O}(Ld)$ projection memory \bookcite{optimal_transport}{p.~84}.
+
+\textbf{Remedy:} Increase $m$ and $k$ or adopt Minibatch Partial OT ($\mathrm{m\text{-}POT}_s$) to discard unmatchable mass \bookcite{optimal_transport}{pp.~67--69}; for image synthesis, replace vector projections with strided/dilated Convolution Sliced-OT \bookcite{optimal_transport}{pp.~87--88}.
+\end{pitfall}
+
+\end{document}

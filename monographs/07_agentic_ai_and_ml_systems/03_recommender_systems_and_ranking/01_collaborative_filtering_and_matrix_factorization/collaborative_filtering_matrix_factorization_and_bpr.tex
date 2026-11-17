@@ -1,0 +1,87 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Agentic AI Architectures, Protocols \& Production ML Systems}{Recommender Systems, Collaborative Filtering \& Neural Ranking}{Collaborative Filtering, Matrix Factorization \& Implicit Feedback Ranking}{Collaborative Filtering, Matrix Factorization (ALS/SGD), AutoRec \& Bayesian Personalized Ranking (BPR)}{\bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 17--19}, \bookcite{dive_into_deep_learning_d2l}{Ch. 21}}
+
+\section{Problem Formulation \& Unified Notation}
+
+\begin{sloppypar}
+Given $M$ users $\mathcal{U}$ and $N$ items $\mathcal{I}$, recommender systems observe a sparse interaction matrix $\mat{Y} \in \R^{M \times N}$ over observed pairs $\Omega = \{(u, i) : y_{ui} \text{ observed}\}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 771--773}, \bookcite{dive_into_deep_learning_d2l}{Ch. 21, pp. 933--935}. In \emph{explicit feedback} ($y_{ui} \in \{1,\dots,5\}$), missing entries are Not Missing At Random (MNAR); in \emph{implicit feedback} (clicks, watches, purchases), only positive interactions $\mathcal{I}_u^+$ are observed while unobserved pairs mix true negatives with unexposed positives \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 774--779}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 18, pp. 237--244}.
+\end{sloppypar}
+
+\begin{crossbook}[Cross-Book Notation: Collaborative Filtering \& Matrix Completion]
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Murphy (PML1 Ch. 22)} & \textbf{Tiep Vu (Ch. 18--19)} & \textbf{Unified Monograph} \\
+\midrule
+Utility / Rating Matrix & $\mat{Y} \in \R^{N_u \times N_m}$ & $\mat{Y} \in \R^{N \times M}$ (items $\times$ users) & $\mat{Y} \in \R^{M \times N}$ (users $\times$ items) \\
+Latent Factors & $\mat{U} \in \R^{N_u \times K}$, $\mat{V} \in \R^{N_m \times K}$ & $\mat{X}$ (items), $\mat{W}$ (users) & $\vecb{p}_u \in \R^K$ (user), $\vecb{q}_i \in \R^K$ (item) \\
+Bias Terms & $\mu + b_u + b_i$ & User mean $\bar{y}_u$ normalization & $\hat{y}_{ui} = \mu + b_u + b_i + \vecb{p}_u\T \vecb{q}_i$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Unified notation across \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 771--785}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 18--19, pp. 237--268}, and \bookcite{dive_into_deep_learning_d2l}{Ch. 21}.}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations}
+
+\subsection{Neighborhood Collaborative Filtering \& Biased Matrix Factorization}
+
+\begin{coremath}[Item-Item Similarity, Biased Matrix Factorization \& Alternating Least Squares]
+Neighborhood collaborative filtering predicts missing ratings from cosine or Pearson similarity between mean-centered user or item vectors \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 18, pp. 238--249}:
+\begin{equation}
+  \hat{y}_{ui} = \bar{y}_u + \frac{\sum_{j \in \mathcal{N}_u(i)} \mathrm{sim}(i, j)\,(y_{uj} - \bar{y}_u)}{\sum_{j \in \mathcal{N}_u(i)} |\mathrm{sim}(i, j)|}.
+\end{equation}
+To capture global low-rank preference structure across sparse entries $\Omega$, \emph{Biased Matrix Factorization} models $\hat{y}_{ui} = \mu + b_u + b_i + \vecb{p}_u\T \vecb{q}_i$ and minimizes regularized squared error over $\Omega$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 773--776}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 19, pp. 253--264}:
+\begin{equation}
+  \mathcal{L}_{\mathrm{MF}} = \sum_{(u,i)\in\Omega} \bigl(y_{ui} - \mu - b_u - b_i - \vecb{p}_u\T \vecb{q}_i\bigr)^2 + \lambda\Bigl(\sum_u (\norm{\vecb{p}_u}_2^2 + b_u^2) + \sum_i (\norm{\vecb{q}_i}_2^2 + b_i^2)\Bigr).
+\end{equation}
+Although jointly non-convex in $(\mat{P}, \mat{Q})$, fixing $\mat{Q}$ makes $\mathcal{L}_{\mathrm{MF}}$ strictly convex quadratic in each $\vecb{p}_u$, yielding \emph{Alternating Least Squares (ALS)} closed-form updates \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 775--776}:
+\begin{equation}
+  \vecb{p}_u \gets \Bigl(\sum_{i \in \Omega_u} \vecb{q}_i \vecb{q}_i\T + \lambda \eye_K\Bigr)\inv \sum_{i \in \Omega_u} (y_{ui} - \mu - b_u - b_i)\,\vecb{q}_i.
+\end{equation}
+For \emph{implicit feedback} with confidence weights $c_{ui} = 1 + \alpha r_{ui}$ and preference indicators $p_{ui} = \mathbb{I}(r_{ui} > 0)$, weighted ALS sums over all $N$ items using the Gram matrix trick $\mat{Q}\T\mat{Q} + \sum_{i \in \mathcal{I}_u^+} (c_{ui}-1)\vecb{q}_i\vecb{q}_i\T$ in $O(|\Omega| K^2 + M K^3)$ instead of $O(MNK^2)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 777--779}.
+\end{coremath}
+
+\subsection{AutoRec \& Bayesian Personalized Ranking (BPR)}
+
+\begin{coremath}[AutoRec Reconstruction \& Pairwise BPR Objective]
+\emph{AutoRec} replaces linear dot products with a single-hidden-layer autoencoder over sparse item rating vectors $\vecb{y}^{(i)} \in \R^M$, backpropagating masked reconstruction loss only on observed entries $\Omega$ \bookcite{dive_into_deep_learning_d2l}{Ch. 21, p. 935}:
+\begin{equation}
+  \mathcal{L}_{\mathrm{AutoRec}} = \sum_{i=1}^N \norm{\bigl(\vecb{y}^{(i)} - f(\mat{W}\sigma(\mat{V}\vecb{y}^{(i)} + \vecb{b}_1) + \vecb{b}_2)\bigr) \odot \vecb{m}^{(i)}}_2^2 + \frac{\lambda}{2}(\norm{\mat{W}}_F^2 + \norm{\mat{V}}_F^2).
+\end{equation}
+For top-$K$ recommendation from implicit positives $\mathcal{I}_u^+$, pointwise regression treats missing items as absolute zeros, whereas \emph{Bayesian Personalized Ranking (BPR)} maximizes the posterior probability of pairwise orderings $(i \succ_u j)$ for $i \in \mathcal{I}_u^+$, $j \notin \mathcal{I}_u^+$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 779--782}:
+\begin{equation}
+  \mathcal{L}_{\mathrm{BPR}} = -\sum_{(u, i, j) \in \mathcal{D}_S} \log \sigma\bigl(\hat{y}_{ui} - \hat{y}_{uj}\bigr) + \lambda \norm{\Theta}_2^2,
+\end{equation}
+directly optimizing a smooth surrogate of Area Under the ROC Curve (AUC).
+\end{coremath}
+
+\begin{intuition}[Why Item-Item CF Beats User-User and Why BPR Matches Top-K Ranking]
+In large catalogs, user tastes drift rapidly and $|U| \gg |I|$, whereas item-item co-occurrence similarities remain stable and precomputable \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 18, pp. 244--248}. Moreover, BPR directly penalizes ranking inversions ($\hat{y}_{uj} > \hat{y}_{ui}$) rather than wasting capacity calibrating absolute score magnitudes on unobserved negatives \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 780--782}.
+\end{intuition}
+
+\section{Algorithmic Pipeline \& Pitfalls}
+
+\begin{algorithm}[htbp]
+\caption{Stochastic Gradient BPR with Uniform/Popularity Negative Sampling}
+\DontPrintSemicolon
+\KwIn{Implicit positives $\{\mathcal{I}_u^+\}_{u=1}^M$, latent dim $K$, learning rate $\eta$, regularization $\lambda$}
+\KwOut{Embeddings $\mat{P} \in \R^{M\times K}$, $\mat{Q} \in \R^{N\times K}$}
+Initialize $\mat{P}, \mat{Q} \sim \Normal(0, 0.01^2)$\;
+\For{$t = 1, \dots, T$}{
+  Sample user $u \sim \mathcal{U}(\mathcal{U})$, positive item $i \sim \mathcal{U}(\mathcal{I}_u^+)$, and negative item $j \notin \mathcal{I}_u^+$\;
+  Compute margin $\Delta = \vecb{p}_u\T(\vecb{q}_i - \vecb{q}_j) + b_i - b_j$ and weight $w = \sigma(-\Delta)$\;
+  $\vecb{p}_u \gets \vecb{p}_u + \eta\bigl(w(\vecb{q}_i - \vecb{q}_j) - \lambda \vecb{p}_u\bigr)$\;
+  $\vecb{q}_i \gets \vecb{q}_i + \eta\bigl(w\vecb{p}_u - \lambda \vecb{q}_i\bigr)$,\quad $\vecb{q}_j \gets \vecb{q}_j + \eta\bigl(-w\vecb{p}_u - \lambda \vecb{q}_j\bigr)$\;
+}
+\Return{$\mat{P}, \mat{Q}$}
+\end{algorithm}
+
+\begin{pitfall}[MNAR Exposure Bias, Popularity Collapse \& Cold-Start]
+Observed explicit ratings suffer from \emph{Missing Not At Random (MNAR)} selection bias: users rate items they expect to like or hate, inflating naive RMSE estimates \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 22, pp. 774--775}. In BPR, uniform negative sampling mostly draws trivial tail items ($\sigma(-\Delta) \approx 0$), causing vanishing gradients; adaptive hard-negative sampling or popularity-weighted negatives is essential. Finally, pure collaborative filtering cannot score brand-new users or items with zero interactions (\emph{cold-start}), motivating feature-rich hybrid models \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 18, pp. 248--250}.
+\end{pitfall}
+
+\end{document}

@@ -1,0 +1,398 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Diffusion Models, Score SDEs, Flow Matching \& Fast Samplers}{Guidance, Fast ODE Solvers \& Consistency Distillation}{Classifier/Classifier-Free Guidance, DDIM/DPM-Solver ODEs \& Consistency Models}{Diffusion Principles Part C \& D, Murphy Adv. Sec.~25.5--25.7, Bishop Sec.~20.4}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:dsolver:formulation}
+% =============================================================================
+
+Standard Denoising Diffusion Probabilistic Models (DDPMs) suffer from two operational bottlenecks at inference time: (i)~\emph{uncontrolled generation}, where sampling from the unconditional marginal $p_0(\vecb{x})$ cannot enforce semantic constraints $\vecb{c}$ without external steering, and (ii)~\emph{prohibitive sampling latency}, where discretizing the reverse-time Markov chain requires $N \approx 500$--$1000$ neural function evaluations (NFEs). Both challenges are unified by the continuous-time Probability Flow Ordinary Differential Equation (PF-ODE) associated with a linear--Gaussian forward perturbation kernel $q(\vecb{x}_t \mid \vecb{x}_0) = \Normal(\vecb{x}_t; \alpha_t \vecb{x}_0, \sigma_t^2 \eye)$ \bookcite{theprinciple_diffusion_models}{Ch.~8--9, pp.~232, 268}:
+\begin{equation}
+  \label{eq:dsolver:pf_ode}
+  \dd{\vecb{x}_t}{t} = f(t)\vecb{x}_t - \frac{1}{2} g^2(t) \grad_{\vecb{x}_t} \log p_t(\vecb{x}_t),
+  \qquad f(t) = \frac{\alpha'_t}{\alpha_t}, \quad g^2(t) = 2\sigma_t\sigma'_t - 2\frac{\alpha'_t}{\alpha_t}\sigma_t^2,
+\end{equation}
+where $t \in [0, T]$ runs from clean data ($t=0$) to the Gaussian prior ($t=T$), and the marginal densities $p_t(\vecb{x}_t)$ of \eqref{eq:dsolver:pf_ode} match those of the reverse-time SDE \bookcite{deep_learning_foundations_concepts}{Sec.~20.3.4, p.~609}. Controllable generation replaces the unconditional score $\grad_{\vecb{x}_t}\log p_t(\vecb{x}_t)$ in \eqref{eq:dsolver:pf_ode} with a guided score $\vecb{s}(\vecb{x}_t, t, \vecb{c}; \omega)$, while fast sampling replaces naive Euler steps with exponential integrators (DDIM, DEIS, DPM-Solver++) or learned flow maps (Progressive Distillation, Consistency Models, CTM, and Mean Flow).
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Source texts adopt slightly different conventions for forward noise schedules, guidance weights, and latent state symbols. Table~\ref{tab:dsolver:notation} establishes a unified notation used throughout this monograph.
+
+\vspace{0.4em}
+{\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X l@{}}
+  \toprule
+  \textbf{Concept} & \textbf{Unified} & \textbf{Diffusion Princ.} & \textbf{Murphy Adv.} & \textbf{Bishop} \\
+  \midrule
+  Noisy state & $\vecb{x}_t$ & $\vecb{x}_t$ (Ch.~8--11) & $\vecb{x}_t$ (Sec.~25.5) & $\vecb{z}$ \\
+  Forward kernel & $\alpha_t \vecb{x}_0 + \sigma_t \vecb{\epsilon}$ & $\alpha_t \vecb{x}_0 + \sigma_t \vecb{\epsilon}$ & $\sqrt{\bar{\alpha}_t}\vecb{x}_0 + \sqrt{1-\bar{\alpha}_t}\vecb{\epsilon}$ & $q(\vecb{z}_t \mid \vecb{x})$ \\
+  Guidance scale & $\omega \ge 0$ & $\omega$ (Sec.~8.2--8.3) & $w = \omega - 1$ (Sec.~25.6.3) & $\lambda$ \\
+  Half-log SNR & $\lambda_t = \log(\alpha_t/\sigma_t)$ & $\lambda_t$ (Eq.~9.4.2) & --- & --- \\
+  Flow / consistency & $\Psi_{s\to t}(\vecb{x}_s)$ & $\Psi_{s\to t}$, $f_\theta(\vecb{x}_s, s)$ & $f(\vecb{z}_s; \theta)$ (Fig.~25.12) & --- \\
+  \bottomrule
+\end{tabularx}}
+\captionof{table}{Cross-book notation reconciliation across \bookcite{theprinciple_diffusion_models}{Ch.~8--11}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.5--25.7}, and \bookcite{deep_learning_foundations_concepts}{Sec.~20.4}.}
+\label{tab:dsolver:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Guidance, Controllable Generation \& Preference Alignment}
+\label{sec:dsolver:guidance}
+% =============================================================================
+
+\subsection{Classifier Guidance vs.\ Classifier-Free Guidance (CFG)}
+
+Given a conditioning variable $\vecb{c}$ (class label, text prompt, or reference signal), the goal is to sample from $p_0(\vecb{x}\mid\vecb{c})$ by steering the reverse dynamics with the conditional score $\grad_{\vecb{x}_t}\log p_t(\vecb{x}_t\mid\vecb{c})$.
+
+\begin{coremath}[Bayes Decomposition and Classifier Guidance]
+Applying Bayes' theorem to $p_t(\vecb{x}_t \mid \vecb{c}) = p_t(\vecb{x}_t) p_t(\vecb{c}\mid\vecb{x}_t) / p(\vecb{c})$ and noting that $\grad_{\vecb{x}_t}\log p(\vecb{c}) = \zeros$ yields the exact conditional score decomposition \bookcite{deep_learning_foundations_concepts}{Eq.~20.58, p.~610}:
+\begin{equation}
+  \label{eq:dsolver:bayes_score}
+  \grad_{\vecb{x}_t} \log p_t(\vecb{x}_t \mid \vecb{c}) = \grad_{\vecb{x}_t} \log p_t(\vecb{x}_t) + \grad_{\vecb{x}_t} \log p_t(\vecb{c} \mid \vecb{x}_t).
+\end{equation}
+To trade off sample diversity against conditional fidelity, Classifier Guidance (CG) introduces a tempered tilted density $p_t(\vecb{x}_t \mid \vecb{c}, \omega) \propto p_t(\vecb{x}_t)\, p_t(\vecb{c}\mid\vecb{x}_t)^{\omega}$ with guidance scale $\omega \ge 0$ \bookcite{theprinciple_diffusion_models}{Eq.~8.2.2--8.2.3, p.~237}:
+\begin{equation}
+  \label{eq:dsolver:cg_score}
+  \vecb{s}_{\mathrm{CG}}(\vecb{x}_t, t, \vecb{c}; \omega)
+  := \vecb{s}_\phi(\vecb{x}_t, t) + \omega \grad_{\vecb{x}_t} \log p_\psi(\vecb{c} \mid \vecb{x}_t, t),
+\end{equation}
+where $p_\psi(\vecb{c}\mid\vecb{x}_t, t)$ is a separately trained time-dependent classifier on noisy inputs $\vecb{x}_t$. Setting $\omega = 0$ recovers unconditional generation, $\omega = 1$ yields the true conditional score, and $\omega > 1$ sharpens mode concentration at the expense of diversity \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.6.2, p.~920}.
+\end{coremath}
+
+Training a noise-robust classifier $p_\psi(\vecb{c}\mid\vecb{x}_t, t)$ across all $t \in [0, T]$ is expensive and brittle for open-vocabulary conditioning. Classifier-Free Guidance (CFG) eliminates the external classifier by inverting \eqref{eq:dsolver:bayes_score}.
+
+\begin{coremath}[Classifier-Free Guidance via Implicit Classifier]
+From \eqref{eq:dsolver:bayes_score}, the implicit classifier gradient equals the difference between conditional and unconditional scores:
+\begin{equation}
+  \grad_{\vecb{x}_t} \log p_t(\vecb{c} \mid \vecb{x}_t)
+  = \grad_{\vecb{x}_t} \log p_t(\vecb{x}_t \mid \vecb{c}) - \grad_{\vecb{x}_t} \log p_t(\vecb{x}_t).
+\end{equation}
+Substituting this identity into \eqref{eq:dsolver:cg_score} yields the Classifier-Free Guidance score \bookcite{theprinciple_diffusion_models}{Eq.~8.3.3, p.~242}:
+\begin{equation}
+  \label{eq:dsolver:cfg_score}
+  \vecb{s}_{\phi}^{\mathrm{CFG}}(\vecb{x}_t, t, \vecb{c}; \omega)
+  := \omega \vecb{s}_\phi(\vecb{x}_t, t, \vecb{c}) + (1 - \omega) \vecb{s}_\phi(\vecb{x}_t, t, \emptyset),
+\end{equation}
+where a single neural network $\vecb{s}_\phi$ is trained jointly on paired $(\vecb{x}_0, \vecb{c})$ and unconditional $(\vecb{x}_0, \emptyset)$ by randomly dropping $\vecb{c} \gets \emptyset$ with probability $10\%$--$20\%$ \bookcite{deep_learning_foundations_concepts}{Sec.~20.4.2, p.~611}. Note that \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.6.3, p.~920} writes \eqref{eq:dsolver:cfg_score} as $(1+w)\vecb{s}_\phi(\vecb{x}_t, t, \vecb{c}) - w\vecb{s}_\phi(\vecb{x}_t, t, \emptyset)$ with $w = \omega - 1$.
+\end{coremath}
+
+\begin{intuition}[Why CFG Outperforms Classifier Guidance]
+As highlighted by \bookcite{deep_learning_foundations_concepts}{Sec.~20.4.2, p.~611}, a discriminative classifier $p_\psi(\vecb{c}\mid\vecb{x}_t)$ can ignore most coordinates of $\vecb{x}_t$ as long as it extracts features sufficient to predict $\vecb{c}$, causing adversarial or off-manifold gradients under large $\omega$. By contrast, CFG relies on the conditional generative density $p_t(\vecb{x}_t\mid\vecb{c})$, which must assign high likelihood to all structural aspects of $\vecb{x}_t$. Figure~\ref{fig:dsolver:glide_cfg} illustrates this dramatic semantic sharpening on GLIDE.
+\end{intuition}
+
+\monographfig[0.82\textwidth]{deep_learning_foundations_concepts_p612_fig1.png}{Illustration of Classifier-Free Guidance on GLIDE for the prompt ``A stained glass window of a panda eating bamboo'' \bookcite{deep_learning_foundations_concepts}{Fig.~20.7, p.~612}. Left: unguided conditional model ($\omega=1$, i.e.\ $\lambda=0$ in Bishop's notation). Right: guided sampling ($\lambda=3$), demonstrating sharper semantic alignment with reduced sample diversity.}{fig:dsolver:glide_cfg}
+
+\subsection{Training-Free Guidance \& Diffusion-DPO Alignment}
+
+When an auxiliary differentiable loss $\ell(\cdot, \vecb{c}) : \R^D \to \R_{\ge 0}$ (e.g., CLIP similarity or an inverse-problem measurement residual) is given at test time, training-free guidance injects corrections into the DDIM step either in \emph{data space} ($\hat{\vecb{x}}_0(\vecb{x}_t) + \eta^{\mathrm{data}}_t G_0$, with $G_0 = -\grad_{\vecb{x}_0}\ell(\vecb{x}_0, \vecb{c})$) or in \emph{noise space} via a surrogate likelihood $\tilde{p}_t(\vecb{c}\mid\vecb{x}_t) \propto \exp(-\eta \ell(\hat{\vecb{x}}_0(\vecb{x}_t), \vecb{c}))$, requiring backpropagation through the denoiser Jacobian $\grad_{\vecb{x}_t}\hat{\vecb{x}}_0(\vecb{x}_t)\T$ \bookcite{theprinciple_diffusion_models}{Ch.~8.4, pp.~243--244}.
+
+For human-preference alignment without online RL rollouts or a separate reward model, Diffusion-DPO extends Direct Preference Optimization (DPO) to diffusion models. Inverting the closed-form KL-regularized RLHF optimum $\pi^*(\vecb{x}\mid\vecb{c}) = Z(\vecb{c})^{-1}\pi_{\mathrm{ref}}(\vecb{x}\mid\vecb{c})\exp(r(\vecb{c},\vecb{x})/\beta)$ defines the implicit reward \bookcite{theprinciple_diffusion_models}{Ch.~8.5, pp.~248--252}:
+\begin{equation}
+  \label{eq:dsolver:dpo_reward}
+  r_\pi(\vecb{c}, \vecb{x}) = \beta\log\frac{\pi(\vecb{x}\mid\vecb{c})}{\pi_{\mathrm{ref}}(\vecb{x}\mid\vecb{c})} + \beta\log Z(\vecb{c}).
+\end{equation}
+Substituting $r_\pi$ into the Bradley--Terry logistic loss on winner--loser pairs $(\vecb{x}^w, \vecb{x}^l, \vecb{c})$ cancels the intractable partition function $Z(\vecb{c})$ exactly.
+
+% =============================================================================
+\section{Fast ODE Solvers: DDIM, Exponential Integrators \& DPM-Solver++}
+\label{sec:dsolver:solvers}
+% =============================================================================
+
+\subsection{DDIM as Exponential Euler on the Semilinear PF-ODE}
+
+Writing the PF-ODE \eqref{eq:dsolver:pf_ode} in $\vecb{\epsilon}$-prediction form ($\grad_{\vecb{x}_t}\log p_t(\vecb{x}_t) \approx -\vecb{\epsilon}_\phi(\vecb{x}_t, t)/\sigma_t$) reveals a \emph{semilinear} structure comprising a stiff linear drift $f(t)\vecb{x}_t$ and a nonlinear residual:
+\begin{equation}
+  \label{eq:dsolver:semilinear_ode}
+  \dd{\vecb{x}_t}{t} = \frac{\alpha'_t}{\alpha_t}\vecb{x}_t + \frac{g^2(t)}{2\sigma_t}\vecb{\epsilon}_\phi(\vecb{x}_t, t).
+\end{equation}
+Integrating \eqref{eq:dsolver:semilinear_ode} from $s$ to $t < s$ using the integrating factor $E(s \to t) = \exp\!\left(\int_s^t f(u)\,du\right) = \alpha_t/\alpha_s$ eliminates discretization error on the linear term.
+
+\begin{coremath}[DDIM = Exponential Euler (Proposition 9.2.1)]
+Fixing the integrand $\vecb{\epsilon}_\phi(\vecb{x}_\tau, \tau) \approx \vecb{\epsilon}_\phi(\tilde{\vecb{x}}_s, s)$ on $\tau \in [t, s]$ in the variation-of-constants formula gives \bookcite{theprinciple_diffusion_models}{Prop.~9.2.1, pp.~268--270}:
+\begin{align}
+  \tilde{\vecb{x}}_t
+  &= \frac{\alpha_t}{\alpha_s}\tilde{\vecb{x}}_s + \left(\int_s^t \frac{\alpha_t}{\alpha_\tau} \frac{g^2(\tau)}{2\sigma_\tau}\,d\tau\right)\vecb{\epsilon}_\phi(\tilde{\vecb{x}}_s, s) \nonumber \\
+  &= \frac{\alpha_t}{\alpha_s}\tilde{\vecb{x}}_s - \alpha_t\!\left(\frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}\right)\vecb{\epsilon}_\phi(\tilde{\vecb{x}}_s, s)
+  = \alpha_t \hat{\vecb{x}}_0(\tilde{\vecb{x}}_s, s) + \sigma_t \vecb{\epsilon}_\phi(\tilde{\vecb{x}}_s, s), \label{eq:dsolver:ddim}
+\end{align}
+since $\frac{g^2(\tau)}{2\sigma_\tau \alpha_\tau} = \dd{}{\tau}\!\left(\frac{\sigma_\tau}{\alpha_\tau}\right)$. Equivalently, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.5.1, pp.~916--917} derives \eqref{eq:dsolver:ddim} from a non-Markovian forward process $q(\vecb{x}_{t-1}\mid\vecb{x}_t, \vecb{x}_0)$ with variance $\tilde{\sigma}_t^2 = 0$, preserving training marginals while allowing arbitrary step skipping. Crucially, under $\vecb{v}$-prediction, plain Euler equals DDIM; under $\vecb{\epsilon}$-, $\vecb{x}$-, or $\vecb{s}$-prediction, \emph{exponential Euler} equals DDIM $\ne$ plain Euler \bookcite{theprinciple_diffusion_models}{Obs.~9.2.1, p.~272}.
+\end{coremath}
+
+\subsection{DPM-Solver, Log-SNR Reparameterization \& DPM-Solver++}
+
+Because DDIM is first-order (global error $O(h)$), quality degrades below $\sim 25$ steps. DPM-Solver raises the convergence order by changing variables from physical time $t$ to the strictly decreasing half-log signal-to-noise ratio $\lambda_t := \log(\alpha_t/\sigma_t)$ with inverse $t_\lambda(\cdot)$ \bookcite{theprinciple_diffusion_models}{Sec.~9.4.1, pp.~287--289}.
+
+\begin{coremath}[DPM-Solver: Exponentially Weighted Integral in Log-SNR]
+Under $\hat{\vecb{x}}_\lambda := \vecb{x}_{t_\lambda(\lambda)}$ and $\hat{\vecb{\epsilon}}_\phi(\hat{\vecb{x}}_\lambda, \lambda) := \vecb{\epsilon}_\phi(\vecb{x}_{t_\lambda(\lambda)}, t_\lambda(\lambda))$, the exact PF-ODE solution $\tilde{\Psi}_{s\to t}(\vecb{x}_s)$ simplifies to \bookcite{theprinciple_diffusion_models}{Prop.~9.4.1, p.~288}:
+\begin{equation}
+  \label{eq:dsolver:dpm_exact}
+  \tilde{\Psi}_{s\to t}(\vecb{x}_s) = \frac{\alpha_t}{\alpha_s}\vecb{x}_s - \alpha_t \int_{\lambda_s}^{\lambda_t} e^{-\lambda} \hat{\vecb{\epsilon}}_\phi(\hat{\vecb{x}}_\lambda, \lambda)\,d\lambda.
+\end{equation}
+Expanding $\hat{\vecb{\epsilon}}_\phi$ in an $(n-1)$-th order Taylor series around $\lambda_s$ with step $h = \lambda_t - \lambda_s > 0$ yields DPM-Solver-$n$ with local error $O(h^{n+1})$ and global error $O(h^n)$:
+\begin{equation}
+  \label{eq:dsolver:dpm_taylor}
+  \tilde{\vecb{x}}_t = \frac{\alpha_t}{\alpha_s}\tilde{\vecb{x}}_s - \alpha_t \sum_{k=0}^{n-1} \hat{\vecb{\epsilon}}_\phi^{(k)}(\hat{\vecb{x}}_{\lambda_s}, \lambda_s)\, C_k + O(h^{n+1}),
+  \qquad C_k := \int_{\lambda_s}^{\lambda_t} e^{-\lambda}\frac{(\lambda - \lambda_s)^k}{k!}\,d\lambda.
+\end{equation}
+For $n=1$, $C_0 = e^{-\lambda_s}(1 - e^{-h}) = \frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}$, recovering DDIM \eqref{eq:dsolver:ddim} \bookcite{theprinciple_diffusion_models}{Eq.~9.4.8, p.~291}.
+\end{coremath}
+
+Under large CFG scales ($\omega \gg 1$), $\vecb{\epsilon}$-prediction and its higher-order $\lambda$-derivatives amplify, destabilizing DPM-Solver-$n$. DPM-Solver++ resolves this by switching to $\vecb{x}$-prediction ($\hat{\vecb{x}}_\phi$) with dynamic thresholding \bookcite{theprinciple_diffusion_models}{Sec.~9.5.2, p.~300}:
+\begin{equation}
+  \label{eq:dsolver:dpmpp_exact}
+  \tilde{\Psi}_{s\to t}(\vecb{x}_s) = \frac{\sigma_t}{\sigma_s}\vecb{x}_s + \sigma_t \int_{\lambda_s}^{\lambda_t} e^{\lambda} \hat{\vecb{x}}_\phi(\hat{\vecb{x}}_\lambda, \lambda)\,d\lambda.
+\end{equation}
+Whereas DEIS fits a multistep Lagrange polynomial over past anchors, DPM-Solver++ provides both a second-order single-step Runge--Kutta midpoint variant (2S, Algorithm~\ref{alg:dsolver:dpmpp2s}) and a second-order multistep Adams--Bashforth variant (2M) using Newton backward divided differences at 1 NFE per step \bookcite{theprinciple_diffusion_models}{Sec.~9.6, pp.~306--308}.
+
+\begin{algorithm}[htbp]
+  \caption{DPM-Solver++(2S) Midpoint Sampling \bookcite{theprinciple_diffusion_models}{Alg.~6, p.~302}}
+  \label{alg:dsolver:dpmpp2s}
+  \KwIn{Initial noise $\vecb{x}_T \sim \Normal(\zeros, \eye)$, schedule $\{t_i\}_{i=0}^M$ with $t_0=T, t_M=0$, data predictor $\hat{\vecb{x}}_\phi$}
+  \KwOut{Generated clean sample $\tilde{\vecb{x}}_{t_M}$}
+  Initialize $\tilde{\vecb{x}}_{t_0} \gets \vecb{x}_T$, compute $\lambda_{t_i} \gets \log(\alpha_{t_i}/\sigma_{t_i})$ for $i=0,\dots,M$\;
+  \For{$i \gets 1$ \KwTo $M$}{
+    $h_i \gets \lambda_{t_i} - \lambda_{t_{i-1}}$; \quad $s_{\mathrm{mid}} \gets t_\lambda\!\left(\tfrac{1}{2}(\lambda_{t_{i-1}} + \lambda_{t_i})\right)$\;
+    $\hat{\vecb{x}}_0 \gets \hat{\vecb{x}}_\phi(\tilde{\vecb{x}}_{t_{i-1}}, t_{i-1})$ \tcp*{Optionally apply dynamic thresholding}
+    $\vecb{u}_i \gets \frac{\sigma_{s_{\mathrm{mid}}}}{\sigma_{t_{i-1}}}\tilde{\vecb{x}}_{t_{i-1}} - \alpha_{s_{\mathrm{mid}}}\!\left(e^{-h_i/2} - 1\right)\hat{\vecb{x}}_0$\;
+    $\tilde{\vecb{x}}_{t_i} \gets \frac{\sigma_{t_i}}{\sigma_{t_{i-1}}}\tilde{\vecb{x}}_{t_{i-1}} - \alpha_{t_i}\!\left(e^{-h_i} - 1\right)\hat{\vecb{x}}_\phi(\vecb{u}_i, s_{\mathrm{mid}})$\;
+  }
+\end{algorithm}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabularx}{\textwidth}{@{}l l l c c X@{}}
+    \toprule
+    \textbf{Solver} & \textbf{Numerical Analogue} & \textbf{Param.} & \textbf{Order} & \textbf{Typical NFE} & \textbf{CFG Stability} \\
+    \midrule
+    DDPM & Euler--Maruyama (SDE) & $\vecb{\epsilon}$ & $O(h^{1/2})$ & $500$--$1000$ & High (small steps) \\
+    DDIM & Exp.\ Euler (ODE) & $\vecb{\epsilon}, \vecb{x}, \vecb{v}$ & $O(h)$ & $25$--$100$ & High \\
+    DEIS & Exp.\ Adams--Bashforth & $\vecb{\epsilon}$ & $O(h^r)$ & $10$--$20$ & Moderate \\
+    DPM-Solver-$n$ & Exp.\ Runge--Kutta ($\lambda$) & $\vecb{\epsilon}$ & $O(h^n)$ & $10$--$20$ & Degrades at large $\omega$ \\
+    DPM-Solver++ (2S/2M) & Exp.\ RK / AB ($\lambda$) & $\vecb{x}$ + thresh. & $O(h^2)$ & $10$--$20$ & High at large $\omega$ \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Comparison of PF-ODE / SDE samplers and their classical numerical analogues \bookcite{theprinciple_diffusion_models}{Table~9.1, p.~306}.}
+  \label{tab:dsolver:solvers}
+\end{table}
+
+% =============================================================================
+\section{Distillation, Consistency Models \& General Flow Maps}
+\label{sec:dsolver:distillation}
+% =============================================================================
+
+Training-free ODE solvers still require $10$--$25$ NFEs because large steps induce curved trajectory errors and multimodal posteriors \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.5.2, p.~917}. Reaching $1$--$4$ NFEs requires learning a direct state-to-state or state-to-origin flow map.
+
+\subsection{Progressive Distillation (PD)}
+
+Progressive Distillation iteratively halves the required step count by training a student $\vecb{x}_\theta(\vecb{x}_s, s)$ to match two consecutive DDIM steps of a frozen teacher $\vecb{x}_\phi$ ($s \to u \to t$) in a single step $s \to t$ \bookcite{theprinciple_diffusion_models}{Sec.~10.3, pp.~339--341}.\\
+\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.5.3, pp.~917--918} details how each round halves the sampling budget.
+
+\begin{coremath}[Two-Steps-in-One Target in Progressive Distillation (Lemma 10.3.1)]
+Let $\tilde{\vecb{x}}_u = \mathrm{Solver}_{s\to u}(\vecb{x}_s; \vecb{x}_\phi)$ and $\tilde{\vecb{x}}_t = \mathrm{Solver}_{u\to t}(\tilde{\vecb{x}}_u; \vecb{x}_\phi)$ denote two teacher DDIM steps. Equating $\tilde{\vecb{x}}_t$ to a single student DDIM step $\frac{\sigma_t}{\sigma_s}\vecb{x}_s + \alpha_s\!\left(\frac{\alpha_t}{\alpha_s} - \frac{\sigma_t}{\sigma_s}\right)\tilde{\vecb{x}}$ yields the closed-form pseudo-clean target \bookcite{theprinciple_diffusion_models}{Lemma~10.3.1, p.~341}:
+\begin{equation}
+  \label{eq:dsolver:pd_target}
+  \tilde{\vecb{x}} = \frac{\sigma_s \tilde{\vecb{x}}_t - \sigma_t \vecb{x}_s}{\alpha_t \sigma_s - \alpha_s \sigma_t}.
+\end{equation}
+Minimizing $\E_{s, \vecb{x}_s}[w(\lambda_s)\norm{\vecb{x}_\theta(\vecb{x}_s, s) - \tilde{\vecb{x}}}_2^2]$ halves $N \to N/2 \to N/4 \to \dots$, and extends to CFG by first distilling $\omega \sim \Uniform[\omega_{\min}, \omega_{\max}]$ into an $\omega$-conditioned teacher \bookcite{theprinciple_diffusion_models}{Sec.~10.3.4, p.~344}.
+\end{coremath}
+
+\monographfig[0.72\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p918_fig1.png}{Progressive Distillation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~25.12, p.~918}: each distillation round compresses two deterministic teacher DDIM steps into a single student step, halving the total NFE budget until $1$--$4$ step generation is achieved.}{fig:dsolver:prog_distill}
+
+\subsection{Consistency Models (CM), CTM \& Mean Flow}
+
+Consistency Models (CMs) and their generalizations exploit the fundamental \emph{semigroup property} of deterministic ODE flow maps $\Psi_{s\to t}$ \bookcite{theprinciple_diffusion_models}{Eq.~11.2.1, p.~353}:
+\begin{equation}
+  \label{eq:dsolver:semigroup}
+  \Psi_{u\to t} \circ \Psi_{s\to u} = \Psi_{s\to t}, \qquad \Psi_{s\to s} = \mathrm{Id}, \qquad \forall\, s, u, t \in [0, T].
+\end{equation}
+
+\monographfig[0.70\textwidth]{theprinciple_diffusion_models_p353_fig1.png}{Flow map semigroup property along a PF-ODE oracle trajectory \bookcite{theprinciple_diffusion_models}{Fig.~11.2, p.~353}: transitioning from $s \to u$ and then $u \to t$ equals the direct map $\Psi_{s\to t}$.}{fig:dsolver:flow_semigroup}
+
+\begin{coremath}[Consistency Function, Discrete Equivalence \& Continuous Limit]
+Fixing $t=0$ defines the consistency function $f^*(\vecb{x}_s, s) := \Psi_{s\to 0}(\vecb{x}_s)$, which satisfies self-consistency $f^*(\vecb{x}(s), s) = f^*(\vecb{x}(u), u)$ and boundary condition $f^*(\vecb{x}_0, 0) = \vecb{x}_0$. On a grid $0 = s_1 < \dots < s_N = T$ with stop-gradient target $\theta^-$, \emph{Consistency Distillation (CD)} regresses $f_\theta(\vecb{x}_{s_{i+1}}, s_{i+1})$ toward $f_{\theta^-}(\tilde{\vecb{x}}^\phi_{s_i}, s_i)$ using a one-step teacher ODE update, whereas \emph{Consistency Training (CT)} uses a one-point unbiased score estimator $\tilde{\vecb{x}}_{s_i} = \alpha_{s_i}\vecb{x}_0 + \sigma_{s_i}\vecb{\epsilon}$ sharing the same $(\vecb{x}_0, \vecb{\epsilon})$ pair. By Taylor expansion around $\E[\vecb{x}_{s'} \mid \vecb{x}_s] = \vecb{x}_{s'}^{\mathrm{DDIM}}$, \bookcite{theprinciple_diffusion_models}{Thm.~11.2.1, p.~358} proves:
+\begin{equation}
+  \label{eq:dsolver:cm_ct_equiv}
+  \mathcal{L}_{\mathrm{CM}}(\theta, \theta^-) = \mathcal{L}_{\mathrm{CT}}(\theta, \theta^-) + O(\Delta s^2).
+\end{equation}
+Taking $\Delta s \to 0$ yields the continuous-time objective \bookcite{theprinciple_diffusion_models}{Prop.~11.3.1, p.~362}:
+\begin{equation}
+  \label{eq:dsolver:cm_cont}
+  \mathcal{L}_{\mathrm{CM}}^\infty(\theta, \theta^-) = \E_{s, \vecb{x}_0, \vecb{\epsilon}}\!\left[\omega(s)\, f_\theta(\vecb{x}_s, s)\T \dd{}{s}f_{\theta^-}(\vecb{x}_s, s)\right],
+  \quad \dd{}{s}f_{\theta^-} = \partial_s f_{\theta^-} + \partial_{\vecb{x}} f_{\theta^-} \vecb{v}^*,
+\end{equation}
+stabilized in sCM via the trigonometric schedule $\vecb{x}_s = \cos(s)\vecb{x}_0 + \sin(s)\vecb{z}$ ($\vecb{z} \sim \Normal(\zeros, \sigma_d^2\eye)$) and $f_\theta(\vecb{x}, s) = \cos(s)\vecb{x} - \sin(s)\sigma_d F_\theta(\vecb{x}/\sigma_d, c_{\mathrm{noise}}(s))$ \bookcite{theprinciple_diffusion_models}{Eq.~11.3.8, p.~365}.
+\end{coremath}
+
+\begin{algorithm}[htbp]
+  \caption{Consistency Training (CT) \& Multi-Step Consistency Sampling \bookcite{theprinciple_diffusion_models}{Ch.~11.2}}
+  \label{alg:dsolver:cm_train_sample}
+  \KwIn{Dataset $p_{\mathrm{data}}$, model $f_\theta$, EMA target $\theta^-$, discretization $\{s_i\}_{i=1}^N$, sampling steps $\{\tau_1, \dots, \tau_K\}$}
+  \KwOut{Trained consistency model $f_\theta$ and $K$-step sample $\hat{\vecb{x}}_0$}
+  \tcp{Training Step}
+  Sample $\vecb{x}_0 \sim p_{\mathrm{data}}$, $\vecb{\epsilon} \sim \Normal(\zeros, \eye)$, and index $i \sim \Uniform\{1, \dots, N-1\}$\;
+  $\vecb{x}_{s_{i+1}} \gets \alpha_{s_{i+1}}\vecb{x}_0 + \sigma_{s_{i+1}}\vecb{\epsilon}$; \quad $\vecb{x}_{s_i} \gets \alpha_{s_i}\vecb{x}_0 + \sigma_{s_i}\vecb{\epsilon}$\;
+  Compute $\mathcal{L} \gets \omega(s_i)\, d\!\left(f_\theta(\vecb{x}_{s_{i+1}}, s_{i+1}),\, f_{\theta^-}(\vecb{x}_{s_i}, s_i)\right)$ and update $\theta \gets \theta - \eta\grad_\theta\mathcal{L}$\;
+  Update EMA target $\theta^- \gets \mu\theta^- + (1-\mu)\theta$\;
+  \tcp{Multi-Step Inference ($K \ge 1$)}
+  Sample $\hat{\vecb{x}}_T \sim \Normal(\zeros, \sigma_T^2\eye)$ and set $\hat{\vecb{x}}_0 \gets f_\theta(\hat{\vecb{x}}_T, T)$\;
+  \For{$k \gets 1$ \KwTo $K-1$}{
+    Sample $\vecb{\epsilon} \sim \Normal(\zeros, \eye)$; \quad $\hat{\vecb{x}}_{\tau_k} \gets \alpha_{\tau_k}\hat{\vecb{x}}_0 + \sigma_{\tau_k}\vecb{\epsilon}$; \quad $\hat{\vecb{x}}_0 \gets f_\theta(\hat{\vecb{x}}_{\tau_k}, \tau_k)$\;
+  }
+\end{algorithm}
+
+\begin{crossbook}[Cross-Book Synthesis: General Flow Maps (CTM, Mean Flow) \& Discrete Diffusion]
+While CMs learn only the origin map $\Psi_{s\to 0}$, \textbf{Consistency Trajectory Models (CTM)} and \textbf{Mean Flow (MF)} parameterize the general two-time flow map $\Psi_{s\to t}(\vecb{x}_s)$ for arbitrary $s \ge t \ge 0$ \bookcite{theprinciple_diffusion_models}{Sec.~11.4--11.5, pp.~370--383}:
+\begin{equation}
+  \label{eq:dsolver:ctm_mf}
+  \Psi_{s\to t}(\vecb{x}_s)
+  \approx \underbrace{\frac{t}{s}\vecb{x}_s + \frac{s-t}{s} g_\theta(\vecb{x}_s, s, t)}_{\text{CTM}}
+  = \underbrace{\vecb{x}_s + (t-s) h_\theta(\vecb{x}_s, s, t)}_{\text{Mean Flow}},
+\end{equation}
+where $g_\theta(\vecb{x}_s, s, t) = \vecb{x}_s - s\, h_\theta(\vecb{x}_s, s, t)$ and both losses are equivalent up to a $1/s^2$ time weighting. Setting $s=t$ recovers the instantaneous velocity $\vecb{v}^*(\vecb{x}_s, s)$, unifying diffusion/flow-matching training with $1$-step generation. For categorical data (text, segmentation), \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.7, pp.~921--924} extends diffusion to discrete state spaces (D3PM) via row-stochastic transition matrices $\mat{Q}_t$ with tractable marginals $q(\vecb{x}_t\mid\vecb{x}_0) = \Cat(\vecb{x}_t \mid \vecb{x}_0 \bar{\mat{Q}}_t)$.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Acceleration Trade-Offs}
+\label{sec:dsolver:visuals}
+% =============================================================================
+
+Figure~\ref{fig:dsolver:acceleration_taxonomy} synthesizes the four acceleration regimes alongside CFG score extrapolation, and Figure~\ref{fig:dsolver:nfe_vs_quality} quantifies the resulting NFE--FID and CFG fidelity--diversity trade-offs.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=0.85cm and 0.65cm, >=stealth]
+    % Top row: step-reduction taxonomy
+    \node[monoWarnBox, text width=2.7cm, align=center] (ddpm) {\textbf{DDPM (SDE)}\\$500$--$1000$ NFEs\\Markovian Euler};
+    \node[monoBox, right=of ddpm, text width=3.1cm, align=center] (ode) {\textbf{DDIM / DPM-Solver++}\\$10$--$25$ NFEs\\Exp.\ Integrator ($\lambda_t$)};
+    \node[monoTealBox, right=of ode, text width=2.9cm, align=center] (pd) {\textbf{Prog.\ Distillation}\\$2$--$8$ NFEs\\$2$-in-$1$ Teacher Match};
+    \node[monoIndigoBox, right=of pd, text width=3.0cm, align=center] (cm) {\textbf{CM / CTM / MF}\\$1$--$2$ NFEs\\Semigroup Flow Map};
+
+    \draw[monoArrow] (ddpm) -- (ode);
+    \draw[monoArrow] (ode) -- (pd);
+    \draw[monoArrow] (pd) -- (cm);
+
+    % Bottom row: CFG geometry & training-free vs learned
+    \node[monoBox, below=0.95cm of ddpm.south east, anchor=north west, xshift=-1.2cm, text width=6.1cm, align=left] (cfg) {%
+      \textbf{CFG Score Extrapolation ($\omega > 1$):}\\
+      $\vecb{s}^{\mathrm{CFG}} = \vecb{s}(\vecb{x}_t, t, \emptyset) + \omega\big[\vecb{s}(\vecb{x}_t, t, \vecb{c}) - \vecb{s}(\vecb{x}_t, t, \emptyset)\big]$\\
+      \footnotesize Pushes sample away from unconditional mode toward $\vecb{c}$.%
+    };
+    \node[monoTealBox, right=0.8cm of cfg, text width=6.1cm, align=left] (flow) {%
+      \textbf{Semigroup Flow-Map Unification:}\\
+      $\Psi_{u\to t}\circ\Psi_{s\to u} = \Psi_{s\to t}$ ($t=0$: CM; $t\ge 0$: CTM/MF)\\
+      \footnotesize Eliminates ODE discretization error via direct jump.%
+    };
+
+    \draw[monoArrow, dashed] (ode.south) -- (cfg.north);
+    \draw[monoArrow, dashed] (cm.south) -- (flow.north);
+  \end{tikzpicture}
+  \caption{Taxonomy of diffusion acceleration paradigms (from $1000$-NFE Markovian SDEs to $1$-NFE semigroup flow maps) paired with Classifier-Free Guidance score extrapolation.}
+  \label{fig:dsolver:acceleration_taxonomy}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}
+      \begin{axis}[
+        width=\textwidth,
+        height=5.6cm,
+        xmode=log,
+        log basis x={10},
+        xlabel={NFE (log scale)},
+        ylabel={FID ($\downarrow$ better)},
+        xmin=1, xmax=1000,
+        ymin=1.5, ymax=28,
+        grid=both,
+        grid style={line width=0.2pt, draw=gray!25},
+        legend style={font=\scriptsize, at={(0.98,0.98)}, anchor=north east, fill=white, fill opacity=0.88},
+        tick label style={font=\scriptsize},
+        label style={font=\footnotesize}
+      ]
+        % DDPM
+        \addplot[color=monographCrimson, thick, mark=square*, mark size=1.5pt] coordinates {
+          (10, 26.5) (20, 16.0) (50, 7.8) (100, 4.9) (250, 3.6) (1000, 3.17)
+        };
+        \addlegendentry{DDPM}
+        % DDIM
+        \addplot[color=monographNavy, thick, mark=triangle*, mark size=1.7pt] coordinates {
+          (5, 22.0) (10, 11.2) (20, 6.1) (50, 4.2) (100, 3.7) (250, 3.5)
+        };
+        \addlegendentry{DDIM}
+        % DPM-Solver++
+        \addplot[color=monographTeal, thick, mark=*, mark size=1.5pt] coordinates {
+          (5, 11.5) (10, 4.3) (15, 3.2) (20, 2.85) (50, 2.75)
+        };
+        \addlegendentry{DPM-Solver++}
+        % Prog. Distillation
+        \addplot[color=monographIndigo, thick, dashed, mark=diamond*, mark size=1.7pt] coordinates {
+          (1, 9.1) (2, 4.5) (4, 3.0) (8, 2.7)
+        };
+        \addlegendentry{Prog.\ Distill.}
+        % Consistency Model (CD)
+        \addplot[color=black, thick, densely dotted, mark=o, mark size=1.6pt] coordinates {
+          (1, 3.55) (2, 2.93)
+        };
+        \addlegendentry{CM (CD)}
+      \end{axis}
+    \end{tikzpicture}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}
+      \begin{axis}[
+        width=\textwidth,
+        height=5.6cm,
+        xlabel={Recall / Diversity ($\to$ higher)},
+        ylabel={Precision / Fidelity ($\to$ higher)},
+        xmin=0.15, xmax=0.79,
+        ymin=0.45, ymax=0.98,
+        grid=both,
+        grid style={line width=0.2pt, draw=gray!25},
+        legend style={font=\scriptsize, at={(0.03,0.03)}, anchor=south west, fill=white, fill opacity=0.88},
+        tick label style={font=\scriptsize},
+        label style={font=\footnotesize}
+      ]
+        % CFG Pareto curve
+        \addplot[color=monographNavy, very thick, mark=*, mark size=1.8pt, nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=south west}] coordinates {
+          (0.69, 0.54) [$\omega=1$]
+          (0.62, 0.72) [$\omega=2$]
+          (0.51, 0.83) [$\omega=4$]
+          (0.36, 0.90) [$\omega=7.5$]
+          (0.22, 0.92) [$\omega=12$]
+        };
+        \addlegendentry{CFG Pareto ($\omega$)}
+        % Classifier Guidance
+        \addplot[color=monographCrimson, thick, dashed, mark=triangle*, mark size=1.8pt] coordinates {
+          (0.67, 0.53) (0.58, 0.67) (0.45, 0.76) (0.31, 0.81) (0.19, 0.82)
+        };
+        \addlegendentry{Classifier Guid.}
+      \end{axis}
+    \end{tikzpicture}
+  \end{minipage}
+  \caption{Illustrative performance trade-offs synthesized from \bookcite{theprinciple_diffusion_models}{Ch.~8--11}. Left: FID vs.\ NFE comparing SDE, exponential-integrator ODE, and distilled/consistency samplers. Right: Precision--Recall Pareto frontier as CFG guidance scale $\omega$ increases.}
+  \label{fig:dsolver:nfe_vs_quality}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:dsolver:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Plain Euler vs.\ Exponential Euler Instability in $\vecb{\epsilon}$-Prediction]
+Applying a naive Euler discretization directly to the $\vecb{\epsilon}$-parameterized PF-ODE \eqref{eq:dsolver:semilinear_ode} approximates the linear drift $f(t)\vecb{x}_t$ numerically rather than analytically, causing severe trajectory drift at large step sizes. \textbf{Remedy:} Always use exponential-integrator updates (DDIM or DPM-Solver++) for $\vecb{\epsilon}$-, $\vecb{x}$-, or $\vecb{s}$-prediction, or parameterize the network in $\vecb{v}$-prediction where plain Euler coincides with DDIM \bookcite{theprinciple_diffusion_models}{Obs.~9.2.1, p.~272}.
+\end{pitfall}
+
+\begin{pitfall}[High-Order Solver Blow-Up Under Large CFG Scales ($\omega \gg 1$)]
+Under strong Classifier-Free Guidance ($\omega \ge 7.5$), $\vecb{\epsilon}$-predicted outputs and their $\lambda$-derivatives amplify, causing higher-order Taylor/multistep solvers (DPM-Solver-2/3, DEIS) to overshoot data bounds and underperform DDIM. \textbf{Remedy:} Switch to DPM-Solver++ in $\vecb{x}$-prediction with dynamic thresholding (clipping $\hat{\vecb{x}}_\phi$ to training-data bounds) \bookcite{theprinciple_diffusion_models}{Sec.~9.5.1--9.5.2, p.~300}.
+\end{pitfall}
+
+\begin{pitfall}[Consistency Training Collapse \& Unbounded Tangent Derivatives]
+Training a Consistency Model without a stop-gradient EMA target $\theta^-$ collapses immediately to the trivial constant solution $f_\theta(\vecb{x}_s, s) \equiv \vecb{c}$ ($\mathcal{L}=0$). Moreover, continuous-time consistency training \eqref{eq:dsolver:cm_cont} suffers exploding gradients when $\dd{}{s}f_{\theta^-}$ is unbounded. \textbf{Remedy:} Enforce stop-gradient EMA updates $\theta^- \gets \mu\theta^- + (1-\mu)\theta$ and adopt the trigonometric sCM parameterization \eqref{eq:dsolver:cm_cont} with bounded $c_{\mathrm{noise}}(s) = s$ \bookcite{theprinciple_diffusion_models}{Sec.~11.3.3, pp.~364--365}.
+\end{pitfall}
+
+\end{document}

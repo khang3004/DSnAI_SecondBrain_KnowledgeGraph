@@ -1,0 +1,208 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Autoencoders, VAEs, Flows, EBMs \& GANs}{GAN Game Dynamics, Mode Collapse, f-GANs \& Wasserstein/OT-GANs}
+  {Push latent noise through a generator $G_\theta$; replace saturating density-ratio critics with $1$-Lipschitz Wasserstein or primal OT distances}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{GANs \& WGANs\\ \footnotesize\mdseries JSD $\cdot$ $f$-GAN $\cdot$ $W_1$ / OT}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize}]
+    % Generator & Critic boxes
+    \node[draw=csD, thick, fill=csD!15, rounded corners=2pt, inner sep=2.5pt] (G) at (-1.55,0) {$G_\theta(\vecb z)$};
+    \node[draw=csA, thick, fill=csA!15, rounded corners=2pt, inner sep=2.5pt] (D) at (1.55,0) {$D_\phi / f_\phi$};
+    \draw[-{Stealth}, thick, csD] (G.north east) to[bend left=28] node[above, font=\tiny] {$\tilde{\vecb x}\sim q_\theta$} (D.north west);
+    \draw[-{Stealth}, thick, csA] (D.south west) to[bend left=28] node[below, font=\tiny] {$\nabla_{\tilde{\vecb x}}f_\phi$} (G.south east);
+    % Small rotational orbit in center
+    \draw[-{Stealth}, csG, thin, dashed] (0,0) circle (0.38);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ minimax game \& JSD equilibrium}{%
+  \csfm{\min_\theta\max_\phi V(\phi,\theta)=\E_{p_{\mathrm{data}}}[\log D_\phi(\vecb x)]+\E_{p_Z}[\log(1-D_\phi(G_\theta(\vecb z)))]}
+  \begin{csbul}
+    \item \textbf{Optimal discriminator} (fixed $q_\theta=(G_\theta)_\# p_Z$):
+      \csfm{D^*_\theta(\vecb x)=\frac{p_{\mathrm{data}}(\vecb x)}{p_{\mathrm{data}}(\vecb x)+q_\theta(\vecb x)},\quad \frac{D^*_\theta(\vecb x)}{1-D^*_\theta(\vecb x)}=\frac{p_{\mathrm{data}}(\vecb x)}{q_\theta(\vecb x)}}
+    \item \textbf{Plug-in value:} $V(G_\theta,D^*_\theta)=2\,\JS{p_{\mathrm{data}}}{q_\theta}-\log 4$ (min $-\log 4$ at $q_\theta=p_{\mathrm{data}}$, $D^*\equiv\frac{1}{2}$)
+    \item \textbf{Non-saturating loss:} $L_G^{\mathrm{NS}}=-\E_{p_Z}[\log D_\phi(G_\theta(\vecb z))]$ fixes $\nabla_\theta\to\zeros$ when $D_\phi\approx 0$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; $f$-GANs $-$ Fenchel conjugate duality}{%
+  \csfm{D_f(p_{\mathrm{data}}\|q_\theta)\ge\sup_{T_\phi}\Bigl\{\E_{\vecb x\sim p_{\mathrm{data}}}[T_\phi(\vecb x)]-\E_{\tilde{\vecb x}\sim q_\theta}[f^\dagger(T_\phi(\tilde{\vecb x}))]\Bigr\}}
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.55cm}@{}}
+    \textbf{\textcolor{csB}{Divergence}} & \textbf{\textcolor{csB}{$f(u)$}} & \textbf{\textcolor{csB}{$f^\dagger(t)$}} & \textbf{\textcolor{csB}{$T^*(r)$}}\\ \hline
+    Forward KL & $u\log u$ & $\exp(t-1)$ & $1+\log r$\\
+    Reverse KL & $-\log u$ & $-1-\log(-t)$ & $-1/r$\\
+    JSD & $u\log u-(u{+}1)\log\frac{u+1}{2}$ & $-\log(2-e^t)$ & $\log\frac{2r}{r+1}$\\
+    Pearson $\chi^2$ & $(u-1)^2$ & $\frac{1}{4}t^2+t$ & $2(r-1)$\\
+  \end{tabular}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ disjoint supports \& $W_1$}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\Wass[1]{p_{\mathrm{data}}}{q_\theta}=\sup_{\norm{f}_{\mathrm{Lip}}\le 1}\bigl\{\E_{p_{\mathrm{data}}}[f(\vecb x)]-\E_{q_\theta}[f(\tilde{\vecb x})]\bigr\}}
+    \begin{csbul}
+      \item \textbf{Parallel lines} $P=(0,U)$, $Q_\theta=(\theta,U)$: $\mathrm{KL}=\infty$, $\mathrm{JSD}=\log 2\cdot\mathbf 1_{\theta\ne 0}$ ($\nabla_\theta=0$!), but $\Wass[1]{P}{Q_\theta}=\abs{\theta}$ ($\nabla_\theta=\pm 1$)
+      \item \textbf{WGAN-GP:} $\eta\E_{\hat{\vecb x}}[(\norm{\nabla_{\hat{\vecb x}}f_\phi(\hat{\vecb x})}_2-1)^2]$
+      \item \textbf{SN-GAN:} $\mat W_l^{\mathrm{SN}}=\mat W_l/\sigma_{\max}(\mat W_l)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[csD, ultra thick] (0,-1.1)--(0,1.1) node[above] {$P$};
+      \draw[csA, ultra thick] (1.6,-1.1)--(1.6,1.1) node[above] {$Q_\theta$};
+      \draw[{Stealth}-{Stealth}, csC, thick] (0,0)--(1.6,0) node[midway, above] {$\abs{\theta}$};
+      \node[csA, align=center] at (0.8,-1.55) {$\mathrm{JSD}=\log 2$\\$W_1=\abs{\theta}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; GAME DYNAMICS $-$ DiracGAN \& collapse}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mat J(0,0)=\begin{bmatrix}0&\ell'(0)\\-\ell'(0)&0\end{bmatrix},\quad \lambda_\pm=\pm i\ell'(0)}
+    \begin{csbul}
+      \item \textbf{DiracGAN} ($D_\phi(x)=\phi x$, $G_\theta=\theta$): $\dd{}{t}(\theta^2+\phi^2)=0\implies$ undamped circular orbits in continuous time; discrete Euler spirals outward!
+      \item \textbf{Mode collapse / hopping:} $G_\theta$ crowds 1 mode as $D_\phi$ rotates
+      \item \textbf{Fix:} Adam $\beta_1\in[0,0.5]$, $R_1$ grad penalty, AdaIN (StyleGAN)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+      \draw[->, gray] (-1.4,0)--(1.4,0) node[right] {$\theta$};
+      \draw[->, gray] (0,-1.4)--(0,1.4) node[above] {$\phi$};
+      \draw[csD, thick, -{Stealth}] (0,0) circle (0.75);
+      \draw[csA, thick, dashed, -{Stealth}] plot[domain=0:5.5, samples=60] ({0.45*exp(0.18*\x)*cos(deg(\x))}, {0.45*exp(0.18*\x)*sin(deg(\x))});
+      \node[csA] at (0,-1.7) {Euler spiral};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; COST \& PRIMAL OT $-$ mOT \& Sliced OT}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{2.05cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Metric}} & \textbf{\textcolor{csE}{Critic / Rule}} & \textbf{\textcolor{csE}{Per-Step Cost}}\\ \hline
+    Minimax / $f$ & $\mathrm{JSD}$ / $D_f$ & $D_\phi\in(0,1)$ & $O(m)$ (saturates)\\
+    WGAN-GP & Dual $W_1$ & $\norm{\nabla_{\hat{\vecb x}}f_\phi}_2\approx 1$ & $O(n_{\mathrm{critic}}m)$ 2nd-ord\\
+    SN-GAN & Hinge / $W_1$ & $\sigma_{\max}(\mat W_l)=1$ & $O(n_{\mathrm{critic}}m)$ 1st-ord\\
+    mOT-GAN & Primal $\mathrm{OT}_c$ & Sinkhorn batch & $O(km^2)$ (misspec.)\\
+    Sliced OT & $\mathrm{SW}_p$ & $L$ 1D sorts & $O(Lm\log m)$\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; CONNECTIONS $-$ ratios, IPMs \& StyleGAN}{%
+  \begin{csbul}
+    \item \textbf{Density-ratio vs.\ IPM:} $f$-divergences test ratios $p_{\mathrm{data}}/q_\theta$ (fail on thin manifolds); Integral Probability Metrics ($\sup_{f\in\mathcal F}\abs{\E_P f-\E_Q f}$) test smooth differences
+    \item \textbf{Minibatch Partial OT ($\mathrm{m\text{-}POT}_s$):} transports fraction $s\in(0,1]$ in $O(k(m+1)^2)$ to drop cross-mode outliers
+    \item \textbf{Convolution Sliced-OT:} replaces flat $\R^d$ random projections with strided/dilated conv slicers
+    \item \textbf{Truncation trick} ($w'=\bar w+\tau(w-\bar w)$): trades diversity for fidelity
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Density Ratios Saturate on Disjoint Manifolds $\cdot$ $1$-Lipschitz Critics Give Smooth Gradients}\\[1pt]
+  \footnotesize\mdseries \textbf{When $\mathrm{supp}(p_{\mathrm{data}})\cap\mathrm{supp}(q_\theta)=\emptyset$, $\mathrm{JSD}=\log 2$ has zero slope, while $W_1=\abs{\theta}$ pulls $q_\theta\to p_{\mathrm{data}}$ at unit speed.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{No BatchNorm in WGAN-GP:} corrupts $\norm{\nabla_{\hat{\vecb x}}f_\phi}_2\to$ LayerNorm / SN
+    \item \textbf{Weight clipping $[-c,c]$:} forces weights to $\pm c$, collapsing capacity
+    \item \textbf{Cycles \& mOT bias:} use Adam $\beta_1\le 0.5$ and $\mathrm{m\text{-}POT}_s$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{GAN Game Dynamics, Mode Collapse, f-GANs \& Wasserstein/OT-GANs}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Optimal Discriminator \& JSD Minimax Equilibrium:
+      \csfm{D^*_\theta(\vecb x)=\frac{p_{\mathrm{data}}(\vecb x)}{p_{\mathrm{data}}(\vecb x)+q_\theta(\vecb x)},\quad V(G_\theta,D^*_\theta)=2\,\JS{p_{\mathrm{data}}}{q_\theta}-\log 4}
+    \item $f$-GAN Variational Lower Bound ($f^\dagger(t)=\sup_u\{ut-f(u)\}$):
+      \csfm{D_f(p_{\mathrm{data}}\|q_\theta)\ge\sup_{T_\phi}\Bigl\{\E_{p_{\mathrm{data}}}[T_\phi(\vecb x)]-\E_{q_\theta}[f^\dagger(T_\phi(\tilde{\vecb x}))]\Bigr\}}
+    \item Kantorovich--Rubinstein $W_1$ Dual:
+      \csfm{\Wass[1]{p_{\mathrm{data}}}{q_\theta}=\inf_{\pi\in\Pi}\E_\pi[\norm{\vecb x-\vecb y}_2]=\sup_{\norm{f}_{\mathrm{Lip}}\le 1}\bigl\{\E_{p_{\mathrm{data}}}[f(\vecb x)]-\E_{q_\theta}[f(\tilde{\vecb x})]\bigr\}}
+    \item WGAN-GP Critic Objective ($\hat{\vecb x}=\epsilon\vecb x+(1-\epsilon)\tilde{\vecb x}$, $\eta=10$):
+      \csfm{L_D^{\mathrm{GP}}=\E_{q_\theta}[f_\phi(\tilde{\vecb x})]-\E_{p_{\mathrm{data}}}[f_\phi(\vecb x)]+\eta\,\E_{\hat{\vecb x}}\!\bigl[(\norm{\nabla_{\hat{\vecb x}}f_\phi(\hat{\vecb x})}_2-1)^2\bigr]}
+    \item Spectral Normalization \& Minibatch OT:
+      \csfm{\mat W_l^{\mathrm{SN}}=\frac{\mat W_l}{\sigma_{\max}(\mat W_l)},\qquad L_{\mathrm{mOT}}(\theta)=\frac{1}{k}\sum_{i=1}^k\mathrm{OT}_c\bigl((G_\theta)_\# P_{z_i^m},P_{X_i^m}\bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ WGAN-GP / SN-GAN TRAINING}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Critic loop ($n_{\mathrm{critic}}=5$ steps):} sample $\vecb x\sim p_{\mathrm{data}}$, $\tilde{\vecb x}=G_\theta(\vecb z)$, $\epsilon\sim\Uniform(0,1)$, form $\hat{\vecb x}=\epsilon\vecb x+(1-\epsilon)\tilde{\vecb x}$
+    \item \textbf{Enforce $1$-Lip:} add GP $\eta(\norm{\nabla_{\hat{\vecb x}}f_\phi}_2-1)^2$ (\emph{no BatchNorm!}) or apply 1-step power iteration $\mat W_l\leftarrow\mat W_l/\sigma_{\max}(\mat W_l)$ (SN-GAN)
+    \item \textbf{Generator step:} minimize $L_G=-\E_{p_Z}[f_\phi(G_\theta(\vecb z))]$ using Adam with low $\beta_1\in[0,0.5]$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    vanishing grad on thin manifolds & WGAN-GP or SN-GAN ($W_1$ / Hinge)\\
+    2nd-order GP is too slow & Spectral Norm (SN-GAN) + $R_1$ reg.\\
+    custom ground cost $c(\vecb x,\vecb y)$ & Primal mOT-GAN with Sinkhorn\\
+    outliers / missing batch modes & Minibatch Partial OT ($\mathrm{m\text{-}POT}_s$)\\
+    fast critic-free OT on images & Convolution Sliced-OT ($\mathrm{SW}_p$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{CONTINUITY \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Arjovsky Theorem:} if $G_\theta$ is continuous in $\theta$, $\Wass[1]{p_{\mathrm{data}}}{q_\theta}$ is continuous everywhere (unlike $\mathrm{KL},\mathrm{JSD}$)
+    \item \textbf{OT scaling:} exact LP $O(m^3)\to$ Sinkhorn $O(km^2)\to$ 1D Sliced OT $O(Lm\log m)$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{DISJOINT SUPPORTS: $\mathrm{KL}$ \& $\mathrm{JSD}$ vs.\ $W_1(P,Q_\theta)=\abs{\theta}$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=-1.5, xmax=1.5, ymin=-0.08, ymax=1.82,
+      xlabel={Support separation $\theta$ between $P=(0,U)$ and $Q_\theta=(\theta,U)$},
+      ylabel={Divergence / Distance},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={0,0.693,1,1.5}, yticklabels={$0$,$\log 2$,$1.0$,$1.5$},
+      grid=both, grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csD, ultra thick, domain=-1.5:1.5, samples=81] {abs(x)};
+      \addplot[csA, ultra thick, domain=-1.5:-0.03, samples=2] {0.6931};
+      \addplot[csA, ultra thick, domain=0.03:1.5, samples=2] {0.6931};
+      \addplot[only marks, mark=*, mark size=2pt, csA] coordinates {(0,0)};
+      \addplot[only marks, mark=o, mark size=2pt, csA] coordinates {(0,0.6931)};
+      \draw[csF, dashed, thick] (axis cs:-1.5,1.55)--(axis cs:1.5,1.55);
+      \node[font=\tiny, csF, anchor=south] at (axis cs:0,1.55) {$\KL{P}{Q_\theta}=+\infty$ ($\theta\ne 0$)};
+      \node[font=\tiny, csA, anchor=south, fill=white, fill opacity=0.85, text opacity=1, inner sep=1pt] at (axis cs:0,0.75) {$\mathrm{JSD}=\log 2$ ($\nabla_\theta=0$)};
+      \node[font=\tiny, csD, anchor=west] at (axis cs:0.55,0.45) {$W_1=\abs{\theta}$ ($\nabla_\theta=\pm 1$)};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Saturating generator loss:} minimizing $\E[\log(1-D_\phi(G_\theta(\vecb z)))]$ gives $\nabla_\theta\approx\zeros$ when $D_\phi\to 0$; use $-\E[\log D_\phi(G_\theta(\vecb z))]$ or $W_1$
+    \item \textbf{Symplectic game rotation:}skew-symmetric off-diagonal blocks in $\mat J(\phi,\theta)$ yield $\lambda_\pm=\pm i\ell'(0)$, causing Euler steps to spiral outward
+    \item \textbf{Mode dropping vs.\ quality:} reverse-KL-like dynamics prefer high-precision samples on a few modes over full support coverage
+    \item \textbf{BatchNorm inside WGAN-GP critic:} turns a pointwise gradient norm constraint into a batch-coupled penalty; use LayerNorm/Spectral Norm
+    \item \textbf{Weight clipping pathology:} $\phi\in[-c,c]$ forces weights to binary extremes $\pm c$ and ruins high-order moments
+    \item \textbf{False minibatch OT pairings:} small batch $m$ pairs unrelated modes; increase $m,k$ or use partial transport $\mathrm{m\text{-}POT}_s$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{GANs} pit a generator $G_\theta(\vecb z)$ against a critic without ever evaluating $q_\theta(\vecb x)$.
+  \textbf{JSD / $f$-GANs} estimate density ratios $p_{\mathrm{data}}/q_\theta$, which saturate ($\nabla_\theta=0$) when low-dimensional manifolds do not overlap.
+  \textbf{WGANs \& OT-GANs} enforce $1$-Lipschitz critics (GP / Spectral Norm) or solve primal transport to provide smooth geometry-aware gradients everywhere.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

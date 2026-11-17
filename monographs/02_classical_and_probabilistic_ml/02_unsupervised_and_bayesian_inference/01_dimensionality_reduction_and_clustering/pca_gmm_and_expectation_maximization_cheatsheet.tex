@@ -1,0 +1,232 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Unsupervised \& Bayesian Inference}{PCA, Probabilistic PCA, K-Means, Gaussian Mixtures \& EM}
+  {Subspaces \& soft clusters via alternating E-step (tighten ELBO) and M-step (climb surrogate)}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{PCA $\cdot$ GMM $\cdot$ EM\\ \footnotesize\mdseries Subspace $\cdot$ Mixture $\cdot$ ELBO}{%
+  \begin{tikzpicture}[scale=0.55]
+    \begin{scope}[xshift=-1.6cm, rotate=28]
+      \draw[csD, very thick, fill=csD!12] (0,0) ellipse (1.25 and 0.45);
+      \draw[-{Stealth}, thick, csA] (-1.35,0)--(1.35,0) node[right, font=\tiny] {$\vecb u_1$};
+    \end{scope}
+    \begin{scope}[xshift=1.4cm, yshift=0.35cm, rotate=-22]
+      \draw[csB, thick, fill=csB!15] (0,0) ellipse (0.85 and 0.42);
+      \fill[csB] (0,0) circle (1.6pt);
+    \end{scope}
+    \begin{scope}[xshift=1.7cm, yshift=-0.45cm, rotate=35]
+      \draw[csF, thick, fill=csF!15] (0,0) ellipse (0.85 and 0.42);
+      \fill[csF] (0,0) circle (1.6pt);
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; PCA $-$ three equivalent views}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mat S = \frac{1}{N}\tilde{\mat X}\T\tilde{\mat X} = \mat U\mat\Lambda\mat U\T}
+    \begin{csbul}
+      \item \textbf{Max variance:} $\max_{\norm{\vecb b}=1}\vecb b\T\mat S\vecb b = \lambda_1$
+      \item \textbf{Min recon.\ error:} $J_M = \sum_{i=M+1}^D \lambda_i$
+      \item \textbf{SVD link:} $\tilde{\mat X}=\mat U_X\mat\Sigma_X\mat V_X\T$, $\lambda_k=\sigma_k^2/N$
+      \item \textbf{Dual Gram ($N\!\ll\!D$):} $\frac{1}{N}\tilde{\mat X}\tilde{\mat X}\T$ in $\mathcal O(N^3)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[gray!60, ->] (-1.8,0)--(1.8,0);
+      \draw[gray!60, ->] (0,-1.4)--(0,1.6);
+      \draw[csA, very thick] (-1.6,-0.96)--(1.6,0.96) node[right] {$\vecb u_1$};
+      \foreach \x/\y in {-1.2/-0.3, -0.5/-0.8, 0.4/0.7, 1.1/0.2}{
+        \pgfmathsetmacro{\px}{0.735*(\x*1.6+\y*0.96)/1.866}
+        \pgfmathsetmacro{\py}{0.441*(\x*1.6+\y*0.96)/1.866}
+        \draw[csB, densely dashed] (\x,\y)--(\px,\py);
+        \fill[csDom] (\x,\y) circle (2.2pt);
+        \fill[csA] (\px,\py) circle (1.8pt);
+      }
+      \node[csB] at (0,-1.7) {orth.\ proj.\ $\hat{\vecb x}_n$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; PPCA \& FACTOR ANALYSIS $-$ generative subspace}{%
+  \csfm{\vecb z_n\sim\Normal(\zeros,\eye_M),\qquad \vecb x_n\mid\vecb z_n\sim\Normal(\mat W\vecb z_n+\vecb\mu,\,\mat\Psi)}
+  \begin{csbul}
+    \item \textbf{Marginal:} $\vecb x_n\sim\Normal(\vecb\mu,\mat C)$ with $\mat C=\mat W\mat W\T+\mat\Psi$
+    \item \textbf{Woodbury:} $\mat C\inv=\sigma^{-2}\eye_D-\sigma^{-2}\mat W\mat M\inv\mat W\T$, $\mat M=\mat W\T\mat W+\sigma^2\eye_M$
+    \item \textbf{PPCA ($\mat\Psi=\sigma^2\eye_D$) MLE:} $\mat W_{\mathrm{ML}}=\mat U_M(\mat\Lambda_M-\sigma^2\eye_M)^{1/2}\mat R$, $\sigma_{\mathrm{ML}}^2=\frac{1}{D-M}\sum_{i>M}\lambda_i$; limit $\sigma^2\!\to\!0$ recovers standard PCA
+    \item \textbf{FA ($\mat\Psi=\diag(\vecb\psi)$):} scale-invariant; fitted via EM in $\mathcal O(TNDM)$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; GENERAL EM $-$ ELBO \& monotone ascent}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\log p(\mat X\mid\vecb\theta) = \mathcal{L}(q,\vecb\theta) + \KL{q(\mat Z)}{p(\mat Z\mid\mat X,\vecb\theta)}}
+    \begin{csbul}
+      \item \textbf{E-step:} $q^{(t+1)}\gets p(\mat Z\mid\mat X,\vecb\theta^{(t)})$ ($\mathrm{KL}=0$, tight contact at $\vecb\theta^{(t)}$)
+      \item \textbf{M-step:} $\vecb\theta^{(t+1)}\gets\argmax_{\vecb\theta} Q(\vecb\theta;\vecb\theta^{(t)})$
+      \item \textbf{Monotone:} $\log p(\mat X\mid\vecb\theta^{(t+1)})\ge\log p(\mat X\mid\vecb\theta^{(t)})$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[csDom, very thick, domain=0.2:3.8, samples=40] plot (\x, {-0.32*(\x-3.1)^2 + 1.8});
+      \draw[csC, thick, dashed, domain=0.3:3.5, samples=30] plot (\x, {0.52 + 1.34*(\x-1.1) - 0.65*(\x-1.1)^2});
+      \fill[csA] (1.1,0.52) circle (2.5pt) node[below left] {$\theta^{(t)}$};
+      \fill[csC] (2.13,1.21) circle (2.5pt);
+      \draw[csA, densely dotted] (2.13,1.21)--(2.13,1.50);
+      \fill[csDom] (2.13,1.50) circle (2.5pt) node[above] {$\theta^{(t+1)}$};
+      \node[csDom] at (2.8,0.15) {$\log p(\mat X\mid\theta)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; GMM vs.\ K-MEANS $-$ soft to hard limit}{%
+  \csfm{r_{nk} = \frac{\pi_k\Normal(\vecb x_n\mid\vecb\mu_k,\mat\Sigma_k)}{\sum_{j=1}^K \pi_j\Normal(\vecb x_n\mid\vecb\mu_j,\mat\Sigma_j)},\qquad N_k = \sum_{n=1}^N r_{nk}}
+  \begin{csbul}
+    \item \textbf{GMM M-step:} $\vecb\mu_k\gets\frac{1}{N_k}\sum_n r_{nk}\vecb x_n$, $\pi_k\gets N_k/N$, and $\mat\Sigma_k\gets\frac{1}{N_k}\sum_n r_{nk}(\vecb x_n-\vecb\mu_k)(\vecb x_n-\vecb\mu_k)\T + \epsilon\eye_D$
+    \item \textbf{$K$-Means limit:} set $\mat\Sigma_k=\epsilon\eye_D$, $\pi_k=1/K$; as $\epsilon\to 0^+$, $r_{nk}\to\mathbb{I}[k=\argmin_j\norm{\vecb x_n-\vecb\mu_j}_2^2]$ (hard Lloyd's algorithm)
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COMPLEXITY \& SCALING $-$ which solver?}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{3.1cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Time}} & \textbf{\textcolor{csE}{Latent / Regime}}\\ \hline
+    Cov.\ PCA & $\mathcal O(ND^2+D^3)$ & exact dense ($D\ll N$)\\
+    Dual / Kernel PCA & $\mathcal O(N^2D+N^3)$ & Gram $\tilde{\mat K}=\mat H\mat K\mat H$ ($N\ll D$)\\
+    Randomized SVD & $\mathcal O(NDM+M^3)$ & fast top-$M$ subspace\\
+    PPCA / EM-PCA & $\mathcal O(TNDM)$ & streaming, missing data\\
+    $K$-Means / GMM & $\mathcal O(TNKD)$ / $\mathcal O(TNKD^2)$ & spherical vs.\ full $\mat\Sigma_k$\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; LATENT TAXONOMY $-$ one shallow template}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Continuous $\vecb z_n\in\R^M$:}
+        \begin{itemize}[leftmargin=0.9em, nosep, label={$\cdot$}]
+          \item $\sigma^2\!\to\!0$: PCA / EM-PCA
+          \item $\mat\Psi=\sigma^2\eye_D$: PPCA (rot.\ $\mat R$)
+          \item $\mat\Psi=\diag(\vecb\psi)$: Factor Analysis
+        \end{itemize}
+      \item \textbf{Discrete $z_n\in\{1,\dots,K\}$:}
+        \begin{itemize}[leftmargin=0.9em, nosep, label={$\cdot$}]
+          \item full $\mat\Sigma_k$: soft GMM
+          \item $\mat\Sigma_k=\epsilon\eye_D\to 0$: hard $K$-Means
+        \end{itemize}
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\scriptsize}]
+      \node[circle, draw=csF, fill=csF!12, thick, minimum size=0.55cm] (z) at (0,1.2) {$\vecb z_n$};
+      \node[circle, draw=csDom, fill=csDom!15, thick, minimum size=0.55cm] (x) at (0,-0.3) {$\vecb x_n$};
+      \draw[-{Stealth}, thick, csF] (z)--(x);
+      \draw[rounded corners=3pt, dashed, gray] (-0.9,-1.0) rectangle (0.9,1.9);
+      \node[font=\tiny] at (0.6,-0.75) {$N$};
+      \node[font=\tiny, csF] at (0,-1.45) {$p(\vecb z_n)\to p(\vecb x_n\mid\vecb z_n)$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Continuous $\vecb z\Rightarrow$ PCA/PPCA;\; Discrete $z\Rightarrow$ GMM/K-Means} \\[1pt]
+  \footnotesize\mdseries \textbf{EM alternates exact posterior $q=p(\mat Z\mid\mat X,\vecb\theta^{(t)})$ with surrogate ascent $\argmax_{\vecb\theta} Q$.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{GMM singularity:} $\vecb\mu_k=\vecb x_n, \sigma_k\to 0 \Rightarrow \mathcal L\to+\infty$; add $+\epsilon\eye_D$ jitter
+    \item \textbf{Underflow in $r_{nk}$:} always use log-sum-exp in E-step
+    \item \textbf{Identifiability:} GMM has $K!$ label switches; PPCA/FA has $\mat W\mat R$ rotation
+    \item \textbf{PCA scale trap:} standardize features when units differ; use Gram if $N<D$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{PCA, Gaussian Mixture Models \& the Expectation-Maximization Algorithm}\;---\;Domain 02 $\cdot$ Unsupervised \& Bayesian Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item PCA projection \& residual:\csfm{\hat{\vecb x}_n = \bar{\vecb x} + \mat U_M\mat U_M\T(\vecb x_n-\bar{\vecb x}),\quad J_M = \sum_{i=M+1}^D \lambda_i}
+    \item PPCA posterior ($\mat M = \mat W\T\mat W + \sigma^2\eye_M$):\csfm{p(\vecb z_n\mid\vecb x_n) = \Normal\!\bigl(\mat M\inv\mat W\T(\vecb x_n-\vecb\mu),\,\sigma^2\mat M\inv\bigr)}
+    \item ELBO decomposition:\csfm{\log p(\mat X\mid\vecb\theta) = \E_q[\log p(\mat X,\mat Z\mid\vecb\theta)] + \Entropy(q) + \KL{q}{p(\mat Z\mid\mat X,\vecb\theta)}}
+    \item Kernel PCA centering ($\mat H = \eye_N - \frac{1}{N}\ones\ones\T$):\csfm{\tilde{\mat K} = \mat H\mat K\mat H,\quad \tilde{\mat K}\vecb\alpha_m = N\lambda_m\vecb\alpha_m}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{LOG-SUM-EXP STABILIZED GMM-EM}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Seed:} $\{\vecb\mu_k^{(0)}\}$ via $k$-means++ ($p\propto \min_{j<t}\norm{\vecb x_n-\vecb\mu_j}_2^2$)
+    \item \textbf{E-step:} $\beta_{nk}=\log\pi_k+\log\Normal(\vecb x_n\mid\vecb\mu_k,\mat\Sigma_k)$, $m_n=\max_j\beta_{nj}$, $\log r_{nk}=\beta_{nk}-m_n-\log\sum_j e^{\beta_{nj}-m_n}$
+    \item \textbf{M-step:} update $N_k$, $\pi_k=N_k/N$, $\vecb\mu_k$, and $\mat\Sigma_k + \epsilon\eye_D$
+    \item \textbf{Halt:} stop when $\Delta\sum_n\log Z_n < \tau$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    linear subspace, $D\ll N$ & SVD / covariance PCA\\
+    high-dim.\ $N\ll D$ or non-linear & Dual Gram / Kernel PCA\\
+    missing data or $D\gg 1$ top-$M$ & EM-PCA / PPCA ($\mathcal O(TNDM)$)\\
+    heteroscedastic axis noise & Factor Analysis ($\mat\Psi=\diag(\vecb\psi)$)\\
+    fast hard spherical clusters & $K$-Means with $k$-means++\\
+    elliptical multimodal density & Regularized GMM-EM ($+\epsilon\eye_D$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& INVARIANCE CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Woodbury speedup:} $\mat C\inv\in\R^{D\times D}$ in $\mathcal O(M^3)$ via $\mat M\in\R^{M\times M}$
+    \item \textbf{Variance retained:} pick $M$ where $\sum_{m=1}^M\lambda_m/\Tr(\mat S)\ge 0.90$
+    \item \textbf{Scale invariance:} FA is invariant to feature rescaling; PCA/PPCA are \emph{not}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{EM SURROGATE ASCENT \& PCA SCREE CURVE}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, xmin=1, xmax=8, ymin=0, ymax=1.05,
+      xlabel={Component $m$ / EM Iteration $t$}, ylabel={Normalized Value},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={1,...,8}, ytick={0.2,0.5,0.8,0.9,1.0}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.98,0.18)}, anchor=east, font=\tiny, draw=gray!40}]
+      \addplot[csF, very thick, mark=*, mark size=1.4pt] coordinates {(1,0.42)(2,0.66)(3,0.80)(4,0.88)(5,0.93)(6,0.96)(7,0.985)(8,1.0)};
+      \addlegendentry{PCA Cum.\ Var.\ $\sum_{j\le m}\lambda_j/\Tr(\mat S)$}
+      \addplot[csA, very thick, dashed, mark=square*, mark size=1.3pt] coordinates {(1,0.22)(2,0.58)(3,0.79)(4,0.89)(5,0.94)(6,0.965)(7,0.975)(8,0.98)};
+      \addlegendentry{Normalized EM $\mathcal L(q^{(t)},\vecb\theta^{(t)})$}
+      \addplot[csC, dotted, thick, domain=1:8] {0.90};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Covariance collapse ($\det\mat\Sigma_k\to 0$):} a single point $\vecb x_n=\vecb\mu_k$ sends likelihood to $\infty$; always add $\epsilon\eye_D$ or Wishart prior
+    \item \textbf{Raw exp underflow:} $\Normal(\vecb x_n\mid\vecb\mu_k,\mat\Sigma_k)\approx e^{-D/2}$ underflows in high $D$; compute responsibilities in log-space
+    \item \textbf{Unstandardized PCA:} large-unit features dominate $\vecb u_1$; z-score first if units are incommensurate
+    \item \textbf{Supervised blindness:} PCA maximizes total variance, not class separation (use Fisher LDA when labels exist)
+    \item \textbf{Rotational gauge:} PPCA/FA loadings $\mat W$ are only identifiable up to $\mat W\mat R$ ($\mat R\in\mathrm{O}(M)$)
+    \item \textbf{Local optima:} run multiple $k$-means++ restarts for $K$-Means and GMM
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{PCA} projects orthogonally onto the top-$M$ eigenvectors of $\mat S$ ($\sigma^2\to 0$ limit of \textbf{PPCA}).
+  \textbf{GMM} replaces hard \textbf{$K$-Means} Voronoi cells with soft posterior responsibilities $r_{nk}$.
+  \textbf{EM} climbs $\log p(\mat X\mid\vecb\theta)$ monotonically without step sizes by alternating exact posterior inference ($q=p(\mat Z\mid\mat X,\vecb\theta)$) and complete-data MLE ($\argmax_{\vecb\theta} Q$).
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

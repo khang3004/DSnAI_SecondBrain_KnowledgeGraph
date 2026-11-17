@@ -1,0 +1,209 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{7}{Agentic Reasoning, RAG, MCP \& Workflows}{Function Calling, Model Context Protocol (MCP), A2A Interoperability \& Workflow Automation}
+  {Collapse $\mathcal{O}(M\cdot N)$ glue code into $\mathcal{O}(M+N)$ protocol hubs: MCP vertically for tools, A2A horizontally for peer agents}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{MCP $\cdot$ A2A $\cdot$ DAG\\ \footnotesize\mdseries Tools $\cdot$ Peers $\cdot$ Workflows}{%
+  \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny\sffamily}]
+    \node[draw=csF, fill=csF!14, rounded corners=2pt, inner sep=2.5pt] (a1) at (-1.5,0.75) {Agent A};
+    \node[draw=csF, fill=csF!14, rounded corners=2pt, inner sep=2.5pt] (a2) at (1.5,0.75) {Agent B};
+    \node[draw=csE, fill=csE!14, rounded corners=2pt, inner sep=2.5pt] (m1) at (-1.5,-0.75) {MCP Srv};
+    \node[draw=csE, fill=csE!14, rounded corners=2pt, inner sep=2.5pt] (m2) at (1.5,-0.75) {MCP Srv};
+    \draw[<->, very thick, csF, dashed] (a1)--(a2) node[midway, above=1pt, fill=white, inner sep=1pt] {A2A};
+    \draw[-{Stealth}, very thick, csE] (a1)--(m1) node[midway, fill=white, inner sep=1pt] {MCP};
+    \draw[-{Stealth}, very thick, csE] (a2)--(m2) node[midway, fill=white, inner sep=1pt] {MCP};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ $\mathcal{O}(MN)\to\mathcal{O}(M+N)$ protocol hub}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{C_{\text{bespoke}}=\mathcal{O}(MN)\;\longrightarrow\;C_{\text{proto}}=\mathcal{O}(M+N)}
+    \begin{csbul}
+      \item \textbf{Reduction:} $\rho(M,N)=\frac{MN}{M+N}$ ($N/2$ when $M{=}N$)
+      \item \textbf{Trace:} $\tau=(x_0,a_1,o_1,\dots,a_K,o_K,y_{\text{final}})$
+      \item \textbf{MCP (Vertical):} Host $\mathcal{H}\to$ Client $\mathcal{C}\to$ Server $\mathcal{S}$
+      \item \textbf{A2A (Horizontal):} stateful peer task delegation
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csA, fill=csA!12, circle, inner sep=2pt] (hub) at (0,0.8) {\textbf{Hub}};
+      \foreach \x/\l in {-1.4/H1, 0/H2, 1.4/H3}{
+        \node[draw=csDom, rounded corners=1.5pt, inner sep=2pt] (h\l) at (\x,2.1) {\l};
+        \draw[csDom, thick] (h\l)--(hub);
+      }
+      \foreach \x/\l in {-1.4/T1, 0/T2, 1.4/T3}{
+        \node[draw=csE, rounded corners=1.5pt, inner sep=2pt] (t\l) at (\x,-0.5) {\l};
+        \draw[csE, thick] (hub)--(t\l);
+      }
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ Constrained Decoding \& Post-Training}{%
+  \begin{csbul}
+    \item \textbf{Grammar mask} $\mathcal{G}_{\text{JSON}}(\sigma_t)$: mask invalid tokens $\tilde{z}_s(v)=-\infty$ if $v\notin\mathcal{V}(w_{<s})$ so arguments strictly match $\text{inputSchema}$
+    \item \textbf{3-Stage Post-Training:} (1) \emph{SFT} on tool traces (delimiters + JSON), (2) \emph{DPO} $(\tau^+\succ\tau^-)$ on \emph{when} to call tools, (3) \emph{RL} $\E[R(\tau)]-\beta D_{\mathrm{KL}}(\pi_\theta\|\pi_{\text{ref}})$
+    \item \textbf{Provider wire formats:} OpenAI \texttt{tool\_calls} / \texttt{function\_call}; Anthropic \texttt{input\_schema} + \texttt{tool\_use}; Gemini \texttt{AUTO}/\texttt{ANY}/\texttt{NONE}/\texttt{VALIDATED}
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; MCP STACK $-$ Primitives \& JSON-RPC 2.0}{%
+  \renewcommand{\arraystretch}{1.13}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.65cm}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{3.9cm}@{}}
+    \textbf{\textcolor{csC}{Primitive}} & \textbf{\textcolor{csC}{Controller}} & \textbf{\textcolor{csC}{Purpose \& Lifecycle}}\\ \hline
+    \textbf{Tools} & Model ($\pi_\theta$) & executable actions (\texttt{tools/list}, \texttt{tools/call})\\
+    \textbf{Resources} & App ($\mathcal{H}$) & read-only URI context (\texttt{resources/get})\\
+    \textbf{Prompts} & User & parameterized workflow templates\\
+    \textbf{Client-side} & Server$\to$Client & \texttt{Sampling}, \texttt{Elicitation}, workspace \texttt{Roots}\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Transports:} local \texttt{stdio} subprocess vs remote \texttt{Streamable HTTP} (\texttt{POST} commands + optional \texttt{GET} SSE stream).}
+
+\csbranch{4}{D}{4\;\; A2A vs MCP $-$ Two-Tier Interoperability}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{2.85cm}@{}}
+    \textbf{\textcolor{csD}{Axis}} & \textbf{\textcolor{csD}{MCP (Vertical)}} & \textbf{\textcolor{csD}{A2A (Horizontal)}}\\ \hline
+    Contract & ``Do this specific thing'' & ``Achieve this complex goal''\\
+    Discovery & \texttt{tools/list} JSON Schema & \texttt{agent-card.json} manifest\\
+    State & stateless / session RPC & multi-turn Tasks + Trace ID\\
+    Scale rule & $>50$ tools $\to$ Tool Registry & peer \texttt{to\_a2a} / \texttt{RemoteA2a}\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{6 Tool Rules:} specific names, typed params, granular args, \emph{what} not \emph{how}, task-level (not raw REST), actionable \texttt{isError:true}.}
+
+\csbranch{5}{E}{5\;\; WORKFLOW DAGs $-$ Hybrid n8n Reliability}{%
+  \csfm{P_{\text{succ}}=(1-\epsilon_{\text{det}})^{L_{\text{det}}}\prod_{j=1}^{L_{\text{agent}}}\bigl(1-p_{\text{fail},j}^{\,r_j+1}(1-q_{\text{fb},j})\bigr)}
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Hybrid DAG} $G=(V_{\text{det}}\cup V_{\text{agent}},E)$
+      \item Wrap every stochastic AI node $V_{\text{agent}}$ with deterministic validation, $r_j$ retries, and error fallback $q_{\text{fb},j}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny\sffamily}]
+      \node[draw=csE, fill=csE!12, rounded corners=2pt, inner sep=2pt] (tr) at (-1.5,1.2) {Webhook};
+      \node[draw=csF, fill=csF!12, rounded corners=2pt, inner sep=2pt] (ag) at (1.5,1.2) {AI Node};
+      \node[draw=csD, fill=csD!12, rounded corners=2pt, inner sep=2pt] (vl) at (1.5,-0.4) {Validate};
+      \node[draw=csA, fill=csA!12, rounded corners=2pt, inner sep=2pt] (er) at (-1.5,-0.4) {Error Br.};
+      \draw[-{Stealth}, thick, csE] (tr)--(ag);
+      \draw[-{Stealth}, thick, csF] (ag)--(vl);
+      \draw[-{Stealth}, thick, csA, dashed] (vl)--(er);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; SECURITY $-$ Confused Deputy \& Shadowing}{%
+  \begin{csbul}
+    \item \textbf{Confused Deputy:} privileged MCP Server executes injected prompt on behalf of unprivileged user $\to$ enforce per-user scoped OAuth 2.0 tokens via side channel (never in LLM prompt!)
+    \item \textbf{Dynamic Capability Injection / Tool Shadowing:} server mutates \texttt{tools/list} or poisons descriptions $\to$ pin manifest hashes $H_{\text{pin}}$ + API Gateway allowlist $\mathcal{A}_{\text{allow}}$
+    \item \textbf{Untrusted Hints:} never trust \texttt{readOnlyHint} / \texttt{destructiveHint} alone; require explicit user consent on tainted data flows
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{MCP Plumbs Tools Vertically $\cdot$ A2A Delegates Goals Horizontally} \\[1pt]
+  \footnotesize\mdseries \textbf{Constrain JSON decoding, pin manifests, and guard AI nodes in deterministic DAGs.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{No keys in context:} inject OAuth 2.0 tokens out-of-band
+    \item \textbf{No raw 1:1 REST:} design task-oriented MCP tools
+    \item \textbf{Untrusted hints:} \texttt{readOnlyHint} is never a security boundary
+    \item \textbf{Deterministic math:} use Code nodes, not LLMs, to count
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Function Calling, Model Context Protocol (MCP), A2A Interoperability \& Workflow Automation}\;---\;Domain 07 $\cdot$ Agentic AI \& Production ML Systems}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Connector complexity reduction ($M$ hosts, $N$ tools/agents):
+      \csfm{C_{\text{bespoke}}=\kappa_{\text{glue}}MN,\quad C_{\text{proto}}=\kappa_{\text{cli}}M+\kappa_{\text{srv}}N,\quad \rho=\frac{MN}{M+N}}
+    \item Schema-constrained logit masking ($\mathcal{G}_{\text{JSON}}(\sigma_t)$):
+      \csfm{\tilde{z}_s(v)=\begin{cases}z_s(v)&v\in\mathcal{V}(w_{<s})\\-\infty&\text{otherwise}\end{cases},\quad \pi_\theta(v\mid w_{<s})=\mathrm{softmax}(\tilde{z}_s)_v}
+    \item RL post-training objective over multi-step tool trajectories:
+      \csfm{\mathcal{J}(\theta)=\E_{\tau\sim\pi_\theta}[R(\tau)]-\beta\,\KL(\pi_\theta\,\|\,\pi_{\text{ref}})}
+    \item Guarded hybrid DAG reliability ($r_j$ retries, fallback $q_{\text{fb},j}$):
+      \csfm{P_{\text{success}}=(1-\epsilon_{\text{det}})^{L_{\text{det}}}\prod_{j=1}^{L_{\text{agent}}}\Bigl(1-p_{\text{fail},j}^{\,r_j+1}\bigl(1-q_{\text{fb},j}\bigr)\Bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{GUARDED MCP EXECUTION LOOP RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Handshake \& Discover:} open \texttt{stdio} or \texttt{Streamable HTTP}; send JSON-RPC \texttt{initialize} then \texttt{tools/list}.
+    \item \textbf{Pin \& Sanitize:} verify $\mathrm{Hash}(\mathcal{M}_j)=H_{\text{pin}}[j]$, intersect with gateway allowlist $\mathcal{A}_{\text{allow}}$, and strip prompt-injection strings.
+    \item \textbf{Constrained Decode:} sample $a_k\sim\pi_\theta(\cdot\mid x_{k-1})$ under $\mathcal{G}_{\text{JSON}}(\sigma_t)$.
+    \item \textbf{Scoped Dispatch:} check user's OAuth 2.0 scope + consent if tainted/destructive; call \texttt{tools/call} with side-channel credentials.
+    \item \textbf{Validate / Self-Correct:} if $o_k.\text{isError}$, pass actionable error to $\pi_\theta$; else validate $\text{outputSchema}$ and paginate into $x_k$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.16}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    local IDE / filesystem tool & MCP over \texttt{stdio} subprocess\\
+    remote / serverless tool API & MCP \texttt{Streamable HTTP} (\texttt{POST}+SSE)\\
+    $\sim 5{,}000$ enterprise tools & MCP Tool Registry (dynamic subsets)\\
+    cross-framework peer agents & A2A + \texttt{agent-card.json} manifest\\
+    deterministic ETL + AI step & Hybrid n8n DAG + Validator + Error Br.\\
+    privileged write/repo server & per-user OAuth 2.0 (no Confused Deputy)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{PROTOCOL \& SCALE CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{At $M{=}N{=}30$:} Bespoke needs $900$ connectors vs $60$ with MCP/A2A ($15\times$ less)
+    \item \textbf{Tool threshold:} static list $\le 50$ tools; dynamic registry at $\sim 5{,}000$ tools
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{INTEGRATION SCALING ($\mathcal{O}(MN)$ Glue vs $\mathcal{O}(M+N)$ Hub)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.98\linewidth, height=4.8cm, xmin=2, xmax=30, ymin=0, ymax=920,
+      xlabel={Ecosystem Scale $N$ (Tools / Services)}, ylabel={Connectors},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={0,300,600,900}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.96)}, anchor=north west, font=\tiny, fill=white, fill opacity=0.85, draw=gray!40}]
+      \addplot[csA, very thick, domain=2:30, samples=29] {x^2};
+      \addlegendentry{Bespoke ($M{=}N$): $N^2$}
+      \addplot[csF, thick, dashed, domain=2:30, samples=29] {10*x};
+      \addlegendentry{Bespoke ($M{=}10$): $10N$}
+      \addplot[csE, very thick, domain=2:30, samples=29] {2*x};
+      \addlegendentry{MCP/A2A ($M{=}N$): $2N$}
+      \node[font=\tiny, csE, anchor=south east] at (axis cs:29,85) {$2N=60$ at $N{=}30$};
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize Standardized JSON-RPC hubs turn quadratic $N^2$ integration debt into linear $2N$.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Confused Deputy privilege escalation:} MCP server using shared admin credentials executes injected prompts for unprivileged users $\to$ bind short-lived per-user OAuth 2.0 tokens
+    \item \textbf{Dynamic Capability Injection \& Tool Shadowing:} malicious server swaps tools after vetting or hijacks calls via poisoned docstrings $\to$ pin cryptographic hashes $H_{\text{pin}}$
+    \item \textbf{Trusting \texttt{readOnlyHint} / \texttt{destructiveHint}:} tool annotations are unverified hints, never security boundaries
+    \item \textbf{1:1 REST wrapper anti-pattern:} dumping raw REST endpoints overwhelms tool selection $\to$ aggregate into task-oriented tools with actionable \texttt{isError:true} messages
+    \item \textbf{Unbounded tool outputs \& unguarded AI nodes:} paginate bulky responses and wrap stochastic n8n nodes with schema validators and Error Trigger branches
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Constrained decoding} guarantees syntactic JSON validity; \textbf{MCP} standardizes vertical Host$\to$Tool plumbing in $\mathcal{O}(M+N)$; \textbf{A2A} standardizes horizontal Agent$\leftrightarrow$Agent delegation via Agent Cards; and \textbf{hybrid DAGs} wrap stochastic agent steps in deterministic validation and retries.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

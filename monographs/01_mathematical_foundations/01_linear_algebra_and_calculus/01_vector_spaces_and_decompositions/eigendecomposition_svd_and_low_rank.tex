@@ -1,0 +1,575 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Linear Algebra, Matrix Decompositions \& Vector Calculus}{Vector Spaces, Spectral Theory \& Matrix Factorizations}{Spectral Theory, Singular Value Decomposition \& Low-Rank Approximations}{%
+  \bookcite{linear_algebra}{Ch.~5 \& Ch.~7, pp.~267--296, 395--433 (PDF pp.~284--313, 412--450)},
+  \bookcite{mathematics_machine_learning_orienly}{Ch.~4, pp.~108--134 (PDF pp.~114--140)},
+  \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4--7.5, pp.~253--264 (PDF pp.~283--294)},
+  \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.7--2.9, pp.~42--46 (PDF pp.~57--61)},
+  \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~20, pp.~246--253 (PDF pp.~258--265)}%
+}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:svd:formulation}
+% =============================================================================
+
+Matrix factorizations expose the invariant geometric and algebraic structure of linear operators independent of the canonical coordinate axes in which data or weights happen to be recorded. While a square non-defective matrix $\mat{A} \in \R^{n \times n}$ admits an eigendecomposition (EVD) $\mat{A} = \mat{P}\mat{\Lambda}\mat{P}\inv$ over $\C$ \bookcite{mathematics_machine_learning_orienly}{Sec.~4.4, p.~116}, general matrices in machine learning---rectangular feature tables $\mat{X} \in \R^{N \times D}$, weight layers $\mat{W} \in \R^{d_{\text{out}} \times d_{\text{in}}}$, Jacobian operators, and defective transition matrices---need neither be square nor possess $n$ linearly independent eigenvectors. The Spectral Theorem resolves this restriction for real symmetric matrices ($\mat{A} = \mat{A}\T$), guaranteeing real eigenvalues and an orthonormal eigenbasis $\mat{Q}\mat{\Lambda}\mat{Q}\T$. The Singular Value Decomposition (SVD) generalizes orthogonal diagonalization to \emph{every} real rectangular matrix $\mat{A} \in \R^{m \times n}$ by decoupling the domain rotation $\mat{V} \in \R^{n \times n}$ from the codomain rotation $\mat{U} \in \R^{m \times m}$, yielding the canonical factorization $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ and enabling optimal low-rank approximation via the Eckart--Young--Mirsky theorem \bookcite{linear_algebra}{Sec.~7.4, p.~419} \bookcite{mathematics_machine_learning_orienly}{Sec.~4.5--4.6, pp.~119--132}.
+
+Let $\mathbb{S}^n = \{\mat{A} \in \R^{n \times n} : \mat{A} = \mat{A}\T\}$ denote the subspace of real symmetric matrices, and $\mathbb{S}_+^n$ ($\mathbb{S}_{++}^n$) the cone of positive semidefinite (positive definite) matrices. Unless stated otherwise, eigenvalues of $\mat{A} \in \mathbb{S}^n$ are ordered algebraically as $\lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_n$, whereas singular values of $\mat{A} \in \R^{m \times n}$ are ordered non-increasingly as $\sigma_1 \ge \sigma_2 \ge \dots \ge \sigma_r > 0 = \sigma_{r+1} = \dots = \sigma_p$, where $p = \min(m,n)$ and $r = \rank(\mat{A})$.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Across the five synthesized sources, symbol collisions occur between EVD eigenvectors, SVD singular matrices, diagonal eigenvalue/singular-value matrices, and approximation norms. Table~\ref{tab:svd:notation} establishes the unified convention adopted throughout this leaf monograph: $\mat{P}, \mat{Q}$ denote general and orthogonal EVD eigenvector matrices; $\mat{U}, \mat{\Sigma}, \mat{V}$ are reserved strictly for the SVD; and $\mat{A}\pinv$ denotes the Moore--Penrose pseudoinverse. Notice one important typographical discrepancy in the literature: while \bookcite{machine_learning_co_ban_tiep_vu}{Thm.~20.1, p.~250} proves the squared Frobenius error $\norm{\mat{A}-\mat{A}_k}_F^2 = \sum_{i=k+1}^r \sigma_i^2$, \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(7.201), p.~264} prints $\norm{\mat{A}-\hat{\mat{A}}}_F = \sum_{k=K+1}^r \sigma_k$, omitting the square on both sides.
+\end{crossbook}
+
+\begin{table}[H]
+\centering
+\caption{Unified Notation and Cross-Book Convention Reconciliation.}
+\label{tab:svd:notation}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Symbol} & \textbf{Source Textbook Conventions \& Reconciliation} \\
+\midrule
+General EVD & $\mat{A} = \mat{P}\mat{\Lambda}\mat{P}\inv$ & $\mat{P}\mat{D}\mat{P}\inv$ in \bookcite{linear_algebra}{Sec.~7.1} and \bookcite{mathematics_machine_learning_orienly}{Sec.~4.4}; $\mat{U}\mat{\Lambda}\mat{U}\inv$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.2}; $\mat{V}\diag(\vecb{\lambda})\mat{V}\inv$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.7}. \\
+Symmetric EVD & $\mat{A} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ & $\mat{P}\mat{D}\mat{P}\T$ in \bookcite{linear_algebra}{Sec.~7.1} and \bookcite{mathematics_machine_learning_orienly}{Sec.~4.2}; $\mat{U}\mat{\Lambda}\mat{U}\T$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.3}; $\mat{Q}\mat{\Lambda}\mat{Q}\T$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(2.41)}. \\
+Full SVD & $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ & $\mat{U}\mat{\Sigma}\mat{V}\T$ in \bookcite{linear_algebra}{Sec.~7.4}, \bookcite{mathematics_machine_learning_orienly}{Sec.~4.5}, and \bookcite{machine_learning_co_ban_tiep_vu}{Ch.~20}; $\mat{U}\mat{S}\mat{V}\T$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.1}; $\mat{U}\mat{D}\mat{V}\T$ in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.8}. \\
+Thin / Compact / Truncated SVD & $\mat{U}_p\mat{\Sigma}_p\mat{V}_p\T$,\newline $\mat{U}_r\mat{\Sigma}_r\mat{V}_r\T$,\newline $\mat{A}_k = \mat{U}_k\mat{\Sigma}_k\mat{V}_k\T$ & Economy/thin uses $p = \min(m,n)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~7.8}; compact/reduced uses $r = \rank(\mat{A})$ \bookcite{linear_algebra}{Ex.~7, p.~424} \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.2.4}; truncated keeps $k < r$ modes \bookcite{mathematics_machine_learning_orienly}{Eq.~(4.92)}. \\
+Pseudoinverse & $\mat{A}\pinv = \mat{V}_r\mat{\Sigma}_r\inv\mat{U}_r\T$ & $\mat{A}^+$ in \bookcite{linear_algebra}{Eq.~(10), p.~424} and \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(2.47)}; $\mat{A}^\dagger$ in \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.3}. \\
+Eckart--Young Frobenius error & $\norm{\mat{A}-\mat{A}_k}_F =$\newline $\bigl(\sum_{i=k+1}^r \sigma_i^2\bigr)^{1/2}$ & Squared norm $\sum_{i=k+1}^r \sigma_i^2$ proved in \bookcite{machine_learning_co_ban_tiep_vu}{Thm.~20.1}; spectral norm $\norm{\mat{A}-\mat{A}_k}_2 = \sigma_{k+1}$ proved in \bookcite{mathematics_machine_learning_orienly}{Thm.~4.25}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:svd:theory}
+% =============================================================================
+
+\subsection{Spectral Theorem for Real Symmetric Matrices}
+\label{subsec:svd:spectral}
+
+General square matrices over $\R$ may exhibit complex conjugate eigenvalues (e.g., rotation matrices) or fail to span $\R^n$ with eigenvectors when geometric multiplicity falls strictly below algebraic multiplicity (defective matrices, such as $\begin{bsmallmatrix} 2 & 1 \\ 0 & 2 \end{bsmallmatrix}$; \bookcite{mathematics_machine_learning_orienly}{Ex.~4.6, p.~108}). Real symmetry eliminates both pathologies simultaneously.
+
+\begin{coremath}[Theorem: Real Spectral Theorem \& Orthogonal Spectral Decomposition]
+\label{thm:svd:spectral}
+Let $\mat{A} \in \mathbb{S}^n$ be a real symmetric matrix. Then \bookcite{linear_algebra}{Sec.~7.1, Thms.~1--3, pp.~397--400} \bookcite{mathematics_machine_learning_orienly}{Thm.~4.15, p.~111}:
+\begin{enumerate}
+  \item Every eigenvalue $\lambda_i$ of $\mat{A}$ is real ($\lambda_i \in \R$).
+  \item Eigenvectors corresponding to distinct eigenvalues are orthogonal.
+  \item For every eigenvalue $\lambda$, its geometric multiplicity equals its algebraic multiplicity, yielding an orthonormal eigenbasis $\{\vecb{q}_1,\dots,\vecb{q}_n\}$ of $\R^n$.
+  \item With $\mat{Q} = [\vecb{q}_1 \;\cdots\; \vecb{q}_n] \in \R^{n \times n}$ ($\mat{Q}\T\mat{Q} = \mat{Q}\mat{Q}\T = \eye_n$) and $\mat{\Lambda} = \diag(\lambda_1,\dots,\lambda_n)$, $\mat{A}$ admits the orthogonal diagonalization and rank-1 spectral expansion:
+  \begin{equation}
+  \label{eq:svd:spectral}
+    \mat{A} = \mat{Q}\mat{\Lambda}\mat{Q}\T = \sum_{i=1}^n \lambda_i \vecb{q}_i \vecb{q}_i\T.
+  \end{equation}
+\end{enumerate}
+
+\textbf{Proof.}
+\emph{(1) Real eigenvalues:} Suppose $\mat{A}\vecb{z} = \lambda \vecb{z}$ with $\lambda \in \C$ and nonzero $\vecb{z} \in \C^n$. Taking the conjugate transpose $\vecb{z}^H = \overline{\vecb{z}}\T$ and using $\mat{A}^H = \mat{A}\T = \mat{A}$ (since $\mat{A}$ is real symmetric),
+\[
+  \lambda \norm{\vecb{z}}_2^2 = \vecb{z}^H (\mat{A}\vecb{z}) = (\vecb{z}^H \mat{A}\vecb{z}) = (\mat{A}\vecb{z})^H \vecb{z} = \overline{\lambda}\norm{\vecb{z}}_2^2 \implies (\lambda - \overline{\lambda})\norm{\vecb{z}}_2^2 = 0.
+\]
+Since $\norm{\vecb{z}}_2^2 > 0$, $\lambda = \overline{\lambda} \in \R$. Thus a real eigenvector $\vecb{q}_1 \in \R^n$ with $\norm{\vecb{q}_1}_2 = 1$ exists for $\lambda_1$.
+
+\emph{(2) Orthogonality across distinct eigenspaces:} If $\mat{A}\vecb{v}_1 = \lambda_1 \vecb{v}_1$ and $\mat{A}\vecb{v}_2 = \lambda_2 \vecb{v}_2$ with $\lambda_1 \neq \lambda_2$, then
+\[
+  \lambda_1 (\vecb{v}_1\T \vecb{v}_2) = (\mat{A}\vecb{v}_1)\T \vecb{v}_2 = \vecb{v}_1\T \mat{A}\T \vecb{v}_2 = \vecb{v}_1\T \mat{A}\vecb{v}_2 = \lambda_2 (\vecb{v}_1\T \vecb{v}_2).
+\]
+Hence $(\lambda_1 - \lambda_2)(\vecb{v}_1\T \vecb{v}_2) = 0 \implies \vecb{v}_1\T \vecb{v}_2 = 0$.
+
+\emph{(3)--(4) Existence of an orthonormal eigenbasis by induction on $n$:} The base case $n=1$ is immediate. Assume the claim holds for dimension $n-1$. By (1), choose a unit eigenvector $\vecb{q}_1 \in \R^n$ with $\mat{A}\vecb{q}_1 = \lambda_1\vecb{q}_1$, and extend $\{\vecb{q}_1\}$ to an orthonormal basis $[\vecb{q}_1, \mat{W}_1]$ of $\R^n$ where $\mat{W}_1 \in \R^{n \times (n-1)}$ spans $\vecb{q}_1^\perp$. For any $\vecb{w} \in \vecb{q}_1^\perp$, symmetry implies $\vecb{q}_1\T (\mat{A}\vecb{w}) = (\mat{A}\vecb{q}_1)\T \vecb{w} = \lambda_1 (\vecb{q}_1\T \vecb{w}) = 0$, so $\vecb{q}_1^\perp$ is $\mat{A}$-invariant. In this basis,
+\[
+  [\vecb{q}_1, \mat{W}_1]\T \mat{A} [\vecb{q}_1, \mat{W}_1] =
+  \begin{bmatrix} \lambda_1 & \zeros\T \\ \zeros & \mat{W}_1\T \mat{A} \mat{W}_1 \end{bmatrix},
+\]
+where $\mat{B} = \mat{W}_1\T \mat{A} \mat{W}_1 \in \mathbb{S}^{n-1}$ is symmetric. By the induction hypothesis, $\mat{B} = \tilde{\mat{Q}}\tilde{\mat{\Lambda}}\tilde{\mat{Q}}\T$ with $\tilde{\mat{Q}} \in \R^{(n-1)\times(n-1)}$ orthogonal. Setting $\mat{Q} = [\vecb{q}_1, \mat{W}_1\tilde{\mat{Q}}]$ yields $\mat{Q}\T\mat{Q} = \eye_n$ and $\mat{Q}\T\mat{A}\mat{Q} = \diag(\lambda_1,\lambda_2,\dots,\lambda_n) = \mat{\Lambda}$. Expanding $\mat{A} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ via the column--row outer product gives~\eqref{eq:svd:spectral}, where each $\mat{P}_i = \vecb{q}_i\vecb{q}_i\T$ satisfies $\mat{P}_i^2 = \mat{P}_i = \mat{P}_i\T$ and $\mat{P}_i\mat{P}_j = \mat{0}$ for $i \neq j$. \qed
+\end{coremath}
+
+Spectral decomposition immediately diagonalizes any quadratic form $Q(\vecb{x}) = \vecb{x}\T \mat{A} \vecb{x}$ with $\mat{A} \in \mathbb{S}^n$. Under the orthogonal change of coordinates $\vecb{y} = \mat{Q}\T \vecb{x}$ ($\norm{\vecb{y}}_2 = \norm{\vecb{x}}_2$), the Principal Axes Theorem \bookcite{linear_algebra}{Sec.~7.2, pp.~404--407} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.3--7.4.4, pp.~255--256} eliminates all cross-product terms $x_i x_j$:
+\begin{equation}
+\label{eq:svd:quadform}
+  Q(\vecb{x}) = \vecb{x}\T \mat{A} \vecb{x} = \vecb{y}\T \mat{\Lambda} \vecb{y} = \sum_{i=1}^n \lambda_i y_i^2.
+\end{equation}
+Consequently, $\mat{A} \in \mathbb{S}_{++}^n$ (positive definite: $Q(\vecb{x}) > 0$ for all $\vecb{x} \neq \zeros$) iff $\lambda_i > 0$ for all $i$; $\mat{A} \in \mathbb{S}_+^n$ iff $\lambda_i \ge 0$ for all $i$; and indefinite iff $\mat{A}$ has both positive and negative eigenvalues (\bookcite{linear_algebra}{Thm.~5, p.~407}; \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.7, p.~44}). When $\mat{A} \in \mathbb{S}_{++}^n$, the level set $\{ \vecb{x} : \vecb{x}\T \mat{A} \vecb{x} = c \}$ ($c > 0$) defines an $n$-dimensional hyper-ellipsoid aligned with eigenvectors $\vecb{q}_i$ and semi-axis lengths $\sqrt{c/\lambda_i}$.
+
+\begin{intuition}[Rotate--Scale--Rotate for Symmetric Operators]
+In~\eqref{eq:svd:spectral}, applying $\mat{A}$ to $\vecb{x}$ decomposes into three rigid/axis-aligned steps \bookcite{mathematics_machine_learning_orienly}{Fig.~4.7, p.~117} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.3, p.~255}: (i) $\mat{Q}\T \vecb{x}$ orthogonally rotates/reflects $\vecb{x}$ into the principal eigenbasis coordinates $\vecb{y}$, (ii) $\mat{\Lambda}\vecb{y}$ scales each principal axis independently by $\lambda_i$, and (iii) $\mat{Q}(\mat{\Lambda}\vecb{y})$ rotates back into canonical coordinates. For a general non-symmetric diagonalizable matrix $\mat{P}\mat{\Lambda}\mat{P}\inv$, $\mat{P}$ shears coordinates rather than rotating rigidly, and $\mat{P}\inv$ is not $\mat{P}\T$.
+\end{intuition}
+
+\subsection{Rayleigh Quotient \& Courant--Fischer Min-Max Theorem}
+\label{subsec:svd:rayleigh}
+
+In statistical learning (PCA, Fisher discriminant analysis, spectral clustering) and numerical linear algebra, eigenvalues arise directly as constrained stationary values of quadratic forms.
+
+\begin{coremath}[Variational Characterization: Rayleigh Quotient \& Courant--Fischer]
+\label{thm:svd:courant}
+For $\mat{A} \in \mathbb{S}^n$ with eigenvalues $\lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_n$ and orthonormal eigenvectors $\vecb{q}_1, \dots, \vecb{q}_n$, the \emph{Rayleigh quotient} of any nonzero vector $\vecb{x} \in \R^n \setminus \{\zeros\}$ is defined by \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(7.172), p.~258}:
+\begin{equation}
+\label{eq:svd:rayleigh}
+  R(\mat{A}, \vecb{x}) \triangleq \frac{\vecb{x}\T \mat{A} \vecb{x}}{\vecb{x}\T \vecb{x}}.
+\end{equation}
+Then:
+\begin{enumerate}
+  \item \textbf{Sequential Constrained Extrema \bookcite{linear_algebra}{Thms.~6--8, pp.~412--414}:} Stationary points of $R(\mat{A},\vecb{x})$ on the unit sphere $\{\vecb{x} : \norm{\vecb{x}}_2 = 1\}$ are unit eigenvectors of $\mat{A}$. Moreover,
+  \begin{equation}
+  \label{eq:svd:seq_rayleigh}
+    \lambda_k = \max_{\substack{\norm{\vecb{x}}_2 = 1 \\ \vecb{x} \perp \spn(\vecb{q}_1,\dots,\vecb{q}_{k-1})}} \vecb{x}\T \mat{A} \vecb{x}, \qquad k = 1,\dots,n,
+  \end{equation}
+  with maximum attained at $\vecb{x} = \vecb{q}_k$, and $\lambda_n = \min_{\norm{\vecb{x}}_2 = 1} \vecb{x}\T \mat{A} \vecb{x} \le R(\mat{A},\vecb{x}) \le \lambda_1$.
+  \item \textbf{Courant--Fischer Min-Max Principle:} Without explicit reference to prior eigenvectors, the $k$-th eigenvalue satisfies
+  \begin{equation}
+  \label{eq:svd:courant}
+    \lambda_k = \max_{\dim(\mathcal{V}) = k} \; \min_{\vecb{x} \in \mathcal{V} \setminus \{\zeros\}} R(\mat{A}, \vecb{x})
+    = \min_{\dim(\mathcal{W}) = n - k + 1} \; \max_{\vecb{x} \in \mathcal{W} \setminus \{\zeros\}} R(\mat{A}, \vecb{x}).
+  \end{equation}
+\end{enumerate}
+
+\textbf{Proof.}
+\emph{Lagrangian stationarity:} For maximizing $\vecb{x}\T \mat{A} \vecb{x}$ subject to $\vecb{x}\T\vecb{x} = 1$, form $\mathcal{L}(\vecb{x},\lambda) = \vecb{x}\T \mat{A} \vecb{x} + \lambda(1 - \vecb{x}\T\vecb{x})$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.8, p.~259}. Setting $\grad_{\vecb{x}}\mathcal{L} = 2\mat{A}\vecb{x} - 2\lambda\vecb{x} = \zeros$ yields $\mat{A}\vecb{x} = \lambda\vecb{x}$, where $R(\mat{A},\vecb{x}) = \lambda$.
+
+\emph{Sequential extrema via eigenbasis expansion:} Write any $\vecb{x}$ satisfying $\norm{\vecb{x}}_2=1$ and $\vecb{x}\T\vecb{q}_1 = \dots = \vecb{x}\T\vecb{q}_{k-1} = 0$ in the eigenbasis $\vecb{y} = \mat{Q}\T\vecb{x}$, so $y_1 = \dots = y_{k-1} = 0$ and $\sum_{i=k}^n y_i^2 = 1$. Since $\lambda_k \ge \lambda_i$ for all $i \ge k$,
+\[
+  \vecb{x}\T\mat{A}\vecb{x} = \sum_{i=k}^n \lambda_i y_i^2 \le \lambda_k \sum_{i=k}^n y_i^2 = \lambda_k,
+\]
+with equality achieved at $\vecb{x} = \vecb{q}_k$ ($y_k = 1$, $y_{i \neq k} = 0$).
+
+\emph{Courant--Fischer min-max:} Let $\mathcal{W}_0 = \spn(\vecb{q}_k,\dots,\vecb{q}_n)$ (dimension $n-k+1$) and $\mathcal{V}_0 = \spn(\vecb{q}_1,\dots,\vecb{q}_k)$ (dimension $k$). For any subspace $\mathcal{V}$ with $\dim(\mathcal{V}) = k$, Grassmann's dimension formula gives
+\[
+  \dim(\mathcal{V} \cap \mathcal{W}_0) = \dim(\mathcal{V}) + \dim(\mathcal{W}_0) - \dim(\mathcal{V} + \mathcal{W}_0) \ge k + (n-k+1) - n = 1.
+\]
+Hence there exists a unit vector $\vecb{z} \in \mathcal{V} \cap \mathcal{W}_0$. Since $\vecb{z} \in \mathcal{W}_0$, $\vecb{z} = \sum_{i=k}^n y_i \vecb{q}_i$ satisfies $R(\mat{A},\vecb{z}) = \sum_{i=k}^n \lambda_i y_i^2 \le \lambda_k$, so $\min_{\vecb{x} \in \mathcal{V} \setminus \{\zeros\}} R(\mat{A},\vecb{x}) \le \lambda_k$ for every $k$-dimensional $\mathcal{V}$. Conversely, taking $\mathcal{V} = \mathcal{V}_0$ yields $\min_{\vecb{x} \in \mathcal{V}_0 \setminus \{\zeros\}} R(\mat{A},\vecb{x}) = \sum_{i=1}^k \lambda_i y_i^2 \ge \lambda_k$, establishing the $\max\min$ identity. The $\min\max$ identity follows analogously by intersecting any $(n-k+1)$-dimensional $\mathcal{W}$ with $\mathcal{V}_0$. \qed
+\end{coremath}
+
+Applying Courant--Fischer to the symmetric positive semidefinite Gram matrix $\mat{A}\T\mat{A} \in \mathbb{S}_+^n$ gives an immediate variational characterization of singular values:
+\begin{equation}
+\label{eq:svd:var_sv}
+  \sigma_k(\mat{A}) = \sqrt{\lambda_k(\mat{A}\T\mat{A})}
+  = \max_{\dim(\mathcal{V}) = k} \; \min_{\substack{\vecb{x} \in \mathcal{V} \\ \norm{\vecb{x}}_2 = 1}} \norm{\mat{A}\vecb{x}}_2,
+  \qquad \norm{\mat{A}}_2 \triangleq \max_{\norm{\vecb{x}}_2 = 1} \norm{\mat{A}\vecb{x}}_2 = \sigma_1(\mat{A}).
+\end{equation}
+
+\subsection{Constructive Existence of the SVD, Fundamental Subspaces \& Pseudoinverse}
+\label{subsec:svd:existence}
+
+Every matrix $\mat{A} \in \R^{m \times n}$, regardless of aspect ratio or rank deficiency, factorizes into an orthogonal domain transformation, a diagonal non-negative scaling, and an orthogonal codomain transformation.
+
+\begin{coremath}[Theorem: Existence of Full, Reduced, and Compact SVD]
+\label{thm:svd:existence}
+Let $\mat{A} \in \R^{m \times n}$ have rank $r \le p = \min(m,n)$. Then there exist orthogonal matrices $\mat{U} = [\vecb{u}_1 \;\cdots\; \vecb{u}_m] \in \R^{m \times m}$ and $\mat{V} = [\vecb{v}_1 \;\cdots\; \vecb{v}_n] \in \R^{n \times n}$, and an $m \times n$ diagonal-structured matrix
+\[
+  \mat{\Sigma} = \begin{bmatrix} \mat{\Sigma}_r & \mat{0} \\ \mat{0} & \mat{0} \end{bmatrix} \in \R^{m \times n},
+  \qquad
+  \mat{\Sigma}_r = \diag(\sigma_1,\dots,\sigma_r), \quad \sigma_1 \ge \dots \ge \sigma_r > 0,
+\]
+such that $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ \bookcite{linear_algebra}{Thm.~10, p.~419} \bookcite{mathematics_machine_learning_orienly}{Thm.~4.22, p.~119}. Equivalently, with $p = \min(m,n)$:
+\begin{align}
+  \mat{A} &= \mat{U}_p \mat{\Sigma}_p \mat{V}_p\T \quad \text{(Economy / Thin SVD: }\mat{U}_p \in \R^{m\times p},\; \mat{\Sigma}_p \in \R^{p\times p},\; \mat{V}_p \in \R^{n\times p}\text{)}, \label{eq:svd:thin} \\
+  \mat{A} &= \mat{U}_r \mat{\Sigma}_r \mat{V}_r\T = \sum_{i=1}^r \sigma_i \vecb{u}_i \vecb{v}_i\T \quad \text{(Compact SVD / Rank-1 Expansion)}. \label{eq:svd:compact}
+\end{align}
+
+\textbf{Constructive Proof.} Following \bookcite{linear_algebra}{pp.~418--420} and \bookcite{mathematics_machine_learning_orienly}{Sec.~4.5.2, pp.~123--125}, consider the symmetric matrix $\mat{G} = \mat{A}\T\mat{A} \in \mathbb{S}^n$. For every $\vecb{x} \in \R^n$, $\vecb{x}\T \mat{G} \vecb{x} = \norm{\mat{A}\vecb{x}}_2^2 \ge 0$, so $\mat{G} \in \mathbb{S}_+^n$ is positive semidefinite \bookcite{mathematics_machine_learning_orienly}{Thm.~4.14, p.~111}. By Theorem~\ref{thm:svd:spectral}, $\mat{G}$ has an orthonormal eigenbasis $\{\vecb{v}_1,\dots,\vecb{v}_n\}$ of $\R^n$ with real non-negative eigenvalues $\lambda_1 \ge \dots \ge \lambda_n \ge 0$. Because $\norm{\mat{A}\vecb{v}_i}_2^2 = \vecb{v}_i\T (\mat{A}\T\mat{A})\vecb{v}_i = \lambda_i$, define $\sigma_i = \sqrt{\lambda_i} \ge 0$, and let $r$ be the index count of strictly positive singular values ($\sigma_1 \ge \dots \ge \sigma_r > 0$, $\sigma_{r+1}=\dots=\sigma_n=0$).
+
+For $i \neq j$, orthogonality of $\vecb{v}_i, \vecb{v}_j$ induces orthogonality of their images under $\mat{A}$:
+\begin{equation}
+\label{eq:svd:img_orth}
+  (\mat{A}\vecb{v}_i)\T (\mat{A}\vecb{v}_j) = \vecb{v}_i\T (\mat{A}\T\mat{A}) \vecb{v}_j = \lambda_j (\vecb{v}_i\T \vecb{v}_j) = 0.
+\end{equation}
+For $i \in \{1,\dots,r\}$, define unit left-singular vectors $\vecb{u}_i = \frac{1}{\sigma_i}\mat{A}\vecb{v}_i \in \R^m$, so that $\mat{A}\vecb{v}_i = \sigma_i\vecb{u}_i$ and $\vecb{u}_i\T \vecb{u}_j = \delta_{ij}$ by~\eqref{eq:svd:img_orth}. For $j > r$, $\norm{\mat{A}\vecb{v}_j}_2 = \sigma_j = 0 \implies \mat{A}\vecb{v}_j = \zeros$. Extend the orthonormal set $\{\vecb{u}_1,\dots,\vecb{u}_r\}$ to an orthonormal basis $\{\vecb{u}_1,\dots,\vecb{u}_m\}$ of $\R^m$ (for instance via Gram--Schmidt). Assembling $\mat{U} = [\vecb{u}_1 \;\cdots\; \vecb{u}_m]$ and $\mat{V} = [\vecb{v}_1 \;\cdots\; \vecb{v}_n]$ yields
+\[
+  \mat{A}\mat{V} = [\mat{A}\vecb{v}_1 \;\cdots\; \mat{A}\vecb{v}_r \;\; \zeros \;\cdots\; \zeros] = [\sigma_1\vecb{u}_1 \;\cdots\; \sigma_r\vecb{u}_r \;\; \zeros \;\cdots\; \zeros] = \mat{U}\mat{\Sigma}.
+\]
+Right-multiplying by $\mat{V}\T = \mat{V}\inv$ yields $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$. Truncating the zero rows/columns of $\mat{\Sigma}$ directly gives~\eqref{eq:svd:thin} and~\eqref{eq:svd:compact}. \qed
+\end{coremath}
+
+Multiplying $\mat{A}\T\mat{A}$ and $\mat{A}\mat{A}\T$ directly exposes the symmetric eigen-relations linking EVD and SVD \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.2, pp.~260--261}:
+\begin{equation}
+\label{eq:svd:gram_evd}
+  \mat{A}\T\mat{A} = \mat{V}(\mat{\Sigma}\T\mat{\Sigma})\mat{V}\T, \qquad \mat{A}\mat{A}\T = \mat{U}(\mat{\Sigma}\mat{\Sigma}\T)\mat{U}\T.
+\end{equation}
+Thus the right-singular vectors $\mat{V}$ diagonalize $\mat{A}\T\mat{A}$, the left-singular vectors $\mat{U}$ diagonalize $\mat{A}\mat{A}\T$, and both symmetric Gram matrices share the exact same $r$ nonzero eigenvalues $\sigma_1^2, \dots, \sigma_r^2$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.8, p.~45}. Crucially, for any symmetric positive semidefinite matrix $\mat{S} \in \mathbb{S}_+^n$, $\mat{S} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ coincides directly with its SVD (with singular values $\sigma_i = \lambda_i$); for an arbitrary symmetric matrix $\mat{A} \in \mathbb{S}^n$, $\sigma_i = \abs{\lambda_i}$ and $\vecb{u}_i = \sign(\lambda_i)\vecb{v}_i$ (for $\lambda_i \neq 0$).
+
+The SVD simultaneously constructs orthonormal bases for all four fundamental subspaces associated with $\mat{A}$ and $\mat{A}\T$ (\bookcite{linear_algebra}{Sec.~7.4, Eqs.~(5)--(8), pp.~422--423}; see also \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.4, p.~262}):
+\begin{equation}
+\label{eq:svd:subspaces}
+\begin{aligned}
+  \colsp(\mat{A}) &= \spn(\vecb{u}_1,\dots,\vecb{u}_r), &
+  \nullsp(\mat{A}\T) &= \colsp(\mat{A})^\perp = \spn(\vecb{u}_{r+1},\dots,\vecb{u}_m), \\
+  \mathrm{row}(\mat{A}) &= \colsp(\mat{A}\T) = \spn(\vecb{v}_1,\dots,\vecb{v}_r), &
+  \nullsp(\mat{A}) &= \mathrm{row}(\mat{A})^\perp = \spn(\vecb{v}_{r+1},\dots,\vecb{v}_n).
+\end{aligned}
+\end{equation}
+Hence $\dim\colsp(\mat{A}) + \dim\nullsp(\mat{A}) = r + (n-r) = n$ (Rank--Nullity Theorem) and $\rank(\mat{A})$ equals the count of strictly positive singular values. Inverting the $r \times r$ core $\mat{\Sigma}_r$ yields the \emph{Moore--Penrose pseudoinverse} (\bookcite{linear_algebra}{Ex.~7--8, p.~424}; \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.3, p.~261}; \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.9, p.~46}):
+\begin{equation}
+\label{eq:svd:pinv}
+  \mat{A}\pinv = \mat{V}_r \mat{\Sigma}_r\inv \mat{U}_r\T = \sum_{i=1}^r \frac{1}{\sigma_i} \vecb{v}_i \vecb{u}_i\T \in \R^{n \times m}.
+\end{equation}
+By direct substitution using $\mat{U}_r\T\mat{U}_r = \mat{V}_r\T\mat{V}_r = \eye_r$, $\mat{A}\pinv$ uniquely satisfies all four Moore--Penrose axioms: $\mat{A}\mat{A}\pinv\mat{A} = \mat{A}$, $\mat{A}\pinv\mat{A}\mat{A}\pinv = \mat{A}\pinv$, $(\mat{A}\mat{A}\pinv)\T = \mat{A}\mat{A}\pinv$, and $(\mat{A}\pinv\mat{A})\T = \mat{A}\pinv\mat{A}$, where $\mat{A}\mat{A}\pinv = \mat{U}_r\mat{U}_r\T$ is the orthogonal projector onto $\colsp(\mat{A})$ and $\mat{A}\pinv\mat{A} = \mat{V}_r\mat{V}_r\T$ is the orthogonal projector onto $\mathrm{row}(\mat{A})$. Therefore, for any linear system $\mat{A}\vecb{x} = \vecb{b}$, $\hat{\vecb{x}} = \mat{A}\pinv \vecb{b}$ solves $\min_{\vecb{x} \in \R^n} \norm{\mat{A}\vecb{x} - \vecb{b}}_2$ with minimum Euclidean norm $\norm{\hat{\vecb{x}}}_2$:
+\[
+  \norm{\mat{A}\vecb{x} - \vecb{b}}_2^2
+  = \norm{\mat{\Sigma}_r \mat{V}_r\T \vecb{x} - \mat{U}_r\T \vecb{b}}_2^2 + \norm{\mat{U}_{m-r}\T \vecb{b}}_2^2,
+\]
+because orthogonal transformations preserve $\ell_2$ norm; setting $\mat{V}_r\T \hat{\vecb{x}} = \mat{\Sigma}_r\inv \mat{U}_r\T \vecb{b}$ annihilates the first term while setting $\mat{V}_{n-r}\T \hat{\vecb{x}} = \zeros$ minimizes $\norm{\vecb{x}}_2^2 = \norm{\mat{V}_r\T\vecb{x}}_2^2 + \norm{\mat{V}_{n-r}\T\vecb{x}}_2^2$ \bookcite{linear_algebra}{Ex.~8, p.~424} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~2.9, p.~46}.
+
+\begin{intuition}[Geometric Action of SVD: Rotate, Scale/Embed, Rotate]
+Every linear map $\Phi(\vecb{x}) = \mat{A}\vecb{x} = \mat{U}(\mat{\Sigma}(\mat{V}\T\vecb{x}))$ sends the unit sphere $S^{n-1} = \{\vecb{x} \in \R^n : \norm{\vecb{x}}_2 = 1\}$ onto an $r$-dimensional hyper-ellipsoid in $\R^m$ \bookcite{mathematics_machine_learning_orienly}{Fig.~4.8, p.~120} \bookcite{linear_algebra}{Ex.~1, p.~417}. First, $\mat{V}\T$ rotates the unit sphere so the right-singular basis $\{\vecb{v}_i\}$ aligns with canonical axes. Second, $\mat{\Sigma}$ scales each coordinate $i \le r$ by $\sigma_i$, collapses the nullspace coordinates $i > r$ to zero, and embeds/projects from $\R^n$ to $\R^m$. Third, $\mat{U}$ rotates the canonical axes into the left-singular basis $\{\vecb{u}_i\}$, leaving the semi-axes of the image hyper-ellipsoid aligned with $\sigma_1\vecb{u}_1, \dots, \sigma_r\vecb{u}_r$.
+\end{intuition}
+
+\monographfig[0.78\textwidth]{linear_algebra_p434_fig1.png}{Geometric action of a rectangular matrix $\mat{A} \in \R^{2 \times 3}$ mapping the unit sphere $S^2 \subset \R^3$ onto an ellipse in $\R^2$ whose major and minor semi-axes are $\sigma_1\vecb{u}_1 = (18,6)\T$ ($\sigma_1 = 6\sqrt{10}$) and $\sigma_2\vecb{u}_2 = (3,-9)\T$ ($\sigma_2 = 3\sqrt{10}$), while collapsing $\nullsp(\mat{A}) = \spn(\vecb{v}_3)$ to the origin \bookcite{linear_algebra}{Ch.~7, Sec.~7.4, Ex.~1--2, pp.~417--418 (PDF p.~434)}.}{fig:svd:sphere_ellipse}
+
+\subsection{Eckart--Young--Mirsky Best Rank-\texorpdfstring{$k$}{k} Approximation Theorem}
+\label{subsec:svd:eckart}
+
+Truncating the compact outer-product sum~\eqref{eq:svd:compact} after $k < r$ terms produces the rank-$k$ matrix $\mat{A}_k = \sum_{i=1}^k \sigma_i \vecb{u}_i \vecb{v}_i\T = \mat{U}_k \mat{\Sigma}_k \mat{V}_k\T$. Remarkably, $\mat{A}_k$ is simultaneously optimal across \emph{all} unitarily invariant matrix norms (and specifically both spectral and Frobenius norms).
+
+\begin{coremath}[Theorem: Eckart--Young--Mirsky Optimality (Spectral \& Frobenius Norms)]
+\label{thm:svd:eckart}
+Let $\mat{A} \in \R^{m \times n}$ have rank $r$ with SVD $\mat{A} = \sum_{i=1}^r \sigma_i \vecb{u}_i \vecb{v}_i\T$. For any integer $1 \le k < r$, define the truncated SVD $\mat{A}_k = \mat{U}_k\mat{\Sigma}_k\mat{V}_k\T = \sum_{i=1}^k \sigma_i \vecb{u}_i \vecb{v}_i\T$. Then $\mat{A}_k$ solves the constrained non-convex rank-$k$ approximation problem in both the spectral ($\ell_2$ operator) norm and the Frobenius norm \bookcite{mathematics_machine_learning_orienly}{Thm.~4.25, p.~131} \bookcite{machine_learning_co_ban_tiep_vu}{Thm.~20.1 \& Sec.~20.2.6, pp.~250--251}:
+\begin{align}
+  \min_{\rank(\mat{B}) \le k} \norm{\mat{A} - \mat{B}}_2 &= \norm{\mat{A} - \mat{A}_k}_2 = \sigma_{k+1}, \label{eq:svd:ey_spec} \\
+  \min_{\rank(\mat{B}) \le k} \norm{\mat{A} - \mat{B}}_F &= \norm{\mat{A} - \mat{A}_k}_F = \sqrt{\sum_{i=k+1}^r \sigma_i^2}. \label{eq:svd:ey_frob}
+\end{align}
+
+\textbf{Proof.}
+\emph{Part 1 (Spectral Norm \bookcite{mathematics_machine_learning_orienly}{pp.~131--132}):} Since $\mat{A} - \mat{A}_k = \sum_{i=k+1}^r \sigma_i \vecb{u}_i\vecb{v}_i\T$ has largest singular value $\sigma_{k+1}$,~\eqref{eq:svd:var_sv} yields $\norm{\mat{A} - \mat{A}_k}_2 = \sigma_{k+1}$. Now let $\mat{B} \in \R^{m \times n}$ be any matrix with $\rank(\mat{B}) \le k$. By Rank--Nullity, $\dim(\nullsp(\mat{B})) = n - \rank(\mat{B}) \ge n - k$. Let $\mathcal{V}_{k+1} = \spn(\vecb{v}_1,\dots,\vecb{v}_{k+1})$, which has $\dim(\mathcal{V}_{k+1}) = k + 1$. Because $(n-k) + (k+1) = n + 1 > n$, the intersection $\nullsp(\mat{B}) \cap \mathcal{V}_{k+1}$ contains a unit vector $\vecb{z} = \sum_{i=1}^{k+1} c_i \vecb{v}_i$ ($\sum_{i=1}^{k+1} c_i^2 = 1$) with $\mat{B}\vecb{z} = \zeros$. Hence
+\[
+  \norm{\mat{A} - \mat{B}}_2^2 \ge \norm{(\mat{A} - \mat{B})\vecb{z}}_2^2 = \norm{\mat{A}\vecb{z}}_2^2 = \Bigl\lVert \sum_{i=1}^{k+1} c_i \sigma_i \vecb{u}_i \Bigr\rVert_2^2 = \sum_{i=1}^{k+1} c_i^2 \sigma_i^2 \ge \sigma_{k+1}^2 \sum_{i=1}^{k+1} c_i^2 = \sigma_{k+1}^2.
+\]
+Taking square roots gives $\norm{\mat{A} - \mat{B}}_2 \ge \sigma_{k+1} = \norm{\mat{A} - \mat{A}_k}_2$.
+
+\emph{Part 2 (Frobenius Norm \bookcite{machine_learning_co_ban_tiep_vu}{Thm.~20.1, p.~250}):} First verify the error of $\mat{A}_k$ via $\norm{\mat{X}}_F^2 = \Tr(\mat{X}\T\mat{X})$ and cyclic trace invariance:
+\[
+  \norm{\mat{A} - \mat{A}_k}_F^2
+  = \Tr\!\Bigl(\sum_{i=k+1}^r \sigma_i \vecb{v}_i\vecb{u}_i\T \sum_{j=k+1}^r \sigma_j \vecb{u}_j\vecb{v}_j\T\Bigr)
+  = \sum_{i=k+1}^r \sigma_i^2 \Tr(\vecb{v}_i\vecb{v}_i\T)
+  = \sum_{i=k+1}^r \sigma_i^2,
+\]
+using $\vecb{u}_i\T\vecb{u}_j = \delta_{ij}$ and $\Tr(\vecb{v}_i\vecb{v}_i\T) = \vecb{v}_i\T\vecb{v}_i = 1$. In particular, setting $k=0$ gives $\norm{\mat{A}}_F^2 = \sum_{i=1}^r \sigma_i^2$. Next, for any $\mat{B}$ with $\rank(\mat{B}) \le k$, Mirsky's singular-value inequality (a consequence of Weyl's interlacing inequalities and orthogonal invariance of $\norm{\cdot}_F$) states that
+\[
+  \norm{\mat{A} - \mat{B}}_F^2 \ge \sum_{i=1}^p \bigl(\sigma_i(\mat{A}) - \sigma_i(\mat{B})\bigr)^2.
+\]
+(Alternatively, write $\mat{B} = \mat{P}_B\mat{B}$ where $\mat{P}_B \in \R^{m\times m}$ is the orthogonal projector onto $\colsp(\mat{B})$ of rank $\le k$: among matrices sharing column space $\colsp(\mat{B})$, orthogonal projection $\hat{\mat{B}} = \mat{P}_B\mat{A}$ minimizes $\norm{\mat{A}-\mat{B}}_F^2 = \norm{(\eye-\mat{P}_B)\mat{A}}_F^2 + \norm{\mat{P}_B\mat{A}-\mat{B}}_F^2$, leaving $\norm{\mat{A}-\hat{\mat{B}}}_F^2 = \sum_{j=1}^p \sigma_j^2((\eye-\mat{P}_B)\mat{A}) \ge \sum_{i=k+1}^r \sigma_i^2$ by~\eqref{eq:svd:var_sv} and interlacing.) Since $\rank(\mat{B}) \le k$ forces $\sigma_i(\mat{B}) = 0$ for all $i \ge k+1$,
+\[
+  \norm{\mat{A} - \mat{B}}_F^2 \ge \sum_{i=k+1}^p \bigl(\sigma_i(\mat{A}) - 0\bigr)^2 = \sum_{i=k+1}^r \sigma_i^2 = \norm{\mat{A} - \mat{A}_k}_F^2. \qed
+\]
+\end{coremath}
+
+Normalizing~\eqref{eq:svd:ey_frob} by $\norm{\mat{A}}_F^2 = \sum_{j=1}^r \sigma_j^2$ yields the exact relative reconstruction error and cumulative explained spectral energy for selecting truncation rank $k$ \bookcite{machine_learning_co_ban_tiep_vu}{Eqs.~(20.18)--(20.19), p.~251}:
+\begin{equation}
+\label{eq:svd:rel_energy}
+  \frac{\norm{\mat{A} - \mat{A}_k}_F^2}{\norm{\mat{A}}_F^2} = \frac{\sum_{i=k+1}^r \sigma_i^2}{\sum_{j=1}^r \sigma_j^2} = 1 - \rho(k),
+  \qquad \rho(k) \triangleq \frac{\sum_{i=1}^k \sigma_i^2}{\sum_{j=1}^r \sigma_j^2}.
+\end{equation}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:svd:algorithms}
+% =============================================================================
+
+Exact computation of the full SVD of $\mat{A} \in \R^{m \times n}$ via Golub--Kahan Householder bidiagonalization followed by implicit QR iterations (or divide-and-conquer) requires $O(\min(mn^2, m^2n))$ floating-point operations \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.1, p.~260} \bookcite{linear_algebra}{p.~424}. When $m, n \sim 10^5$--$10^9$ (e.g., recommender matrices, web graphs, or high-dimensional embeddings) and only the leading $k \ll \min(m,n)$ singular triplets are required, direct deterministic SVD is prohibitive \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.4, p.~253}.
+
+When $k$ is small and $\mat{A}$ is large or sparse, a classical iterative alternative is \emph{power iteration with deflation} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.6--7.4.7, pp.~258--259}: repeatedly applying $\vecb{v}^{(t)} \propto (\mat{A}\T\mat{A})\vecb{v}^{(t-1)}$ (implemented sequentially as $\vecb{w} \leftarrow \mat{A}\vecb{v}^{(t-1)}$, $\vecb{v}^{(t)} \leftarrow \mat{A}\T\vecb{w}/\norm{\mat{A}\T\vecb{w}}_2$ to avoid forming $\mat{A}\T\mat{A}$) converges geometrically at rate $O((\sigma_2/\sigma_1)^{2t})$, after which rank-1 deflation $\mat{A}^{(2)} = \mat{A} - \sigma_1\vecb{u}_1\vecb{v}_1\T$ reveals subsequent modes. A modern, cache-friendly, single-pass-capable extension of power iteration is \emph{Randomized Subspace Truncated SVD} (Algorithm~\ref{alg:svd:rsvd}), which probes the dominant $k$-dimensional range of $\mat{A}$ simultaneously using $k + p$ Gaussian test vectors ($p \approx 5$--$10$ oversampling) and $q \in \{1,2\}$ subspace power iterations before running a tiny deterministic SVD on a $(k+p) \times n$ sketch.
+
+\begin{algorithm}[htbp]
+\caption{Randomized Truncated SVD with Power Subspace Iteration}
+\label{alg:svd:rsvd}
+\KwIn{Matrix $\mat{A} \in \R^{m \times n}$, target rank $k \ll \min(m,n)$, oversampling $p \ge 5$, power steps $q \ge 0$}
+\KwOut{Approximate rank-$k$ factors $\mat{U}_k \in \R^{m \times k}$, $\mat{\Sigma}_k \in \R^{k \times k}$, $\mat{V}_k \in \R^{n \times k}$}
+$\ell \leftarrow \min(k + p,\, \min(m, n))$\;
+Draw Gaussian test matrix $\mat{\Omega} \in \R^{n \times \ell}$ with i.i.d.\ entries $\Omega_{ij} \sim \Normal(0, 1)$\;
+$\mat{Y} \leftarrow \mat{A}\mat{\Omega} \in \R^{m \times \ell}$ \Comment*{Initial range sketch: $O(mn\ell)$ or $O(\mathrm{nnz}(\mat{A})\ell)$}
+Compute thin QR factorization $\mat{Q}, \mat{R} \leftarrow \mathrm{qr}(\mat{Y})$ \Comment*{Orthonormalize to prevent overflow/collapse}
+\For{$j = 1$ \KwTo $q$}{
+  $\mat{Z}, \sim \leftarrow \mathrm{qr}(\mat{A}\T \mat{Q})$ \Comment*{Power iteration $\approx (\mat{A}\mat{A}\T)^q \mat{A}\mat{\Omega}$ sharpens spectral gap}
+  $\mat{Q}, \sim \leftarrow \mathrm{qr}(\mat{A} \mat{Z})$\;
+}
+$\mat{B} \leftarrow \mat{Q}\T \mat{A} \in \R^{\ell \times n}$ \Comment*{Project $\mat{A}$ onto low-dimensional subspace $\colsp(\mat{Q})$}
+Compute thin deterministic SVD $\tilde{\mat{U}}, \tilde{\mat{\Sigma}}, \tilde{\mat{V}}\T \leftarrow \mathrm{svd}(\mat{B})$ \Comment*{Only $O(\ell^2 n)$ flops}
+$\mat{U}_k \leftarrow \mat{Q}\tilde{\mat{U}}_{:, 1:k}$, \quad $\mat{\Sigma}_k \leftarrow \tilde{\mat{\Sigma}}_{1:k, 1:k}$, \quad $\mat{V}_k \leftarrow \tilde{\mat{V}}_{:, 1:k}$\;
+\Return{$(\mat{U}_k, \mat{\Sigma}_k, \mat{V}_k)$}\;
+\end{algorithm}
+
+Table~\ref{tab:svd:complexity} compares the asymptotic computational cost, memory footprint, and numerical accuracy trade-offs across exact, iterative, and randomized decompositions.
+
+\begin{table}[htbp]
+\centering
+\caption{Computational and Storage Complexity of SVD Solvers for $\mat{A} \in \R^{m \times n}$ ($p=\min(m,n)$, $r=\rank(\mat{A})$, target rank $k \ll p$).}
+\label{tab:svd:complexity}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.45cm}>{\raggedright\arraybackslash}p{3.55cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Time Complexity} & \textbf{Output Storage} & \textbf{Precision} & \textbf{Primary ML Use Case} \\
+\midrule
+Full SVD\newline(Bidiag.\ QR) & $O(mn^2 + m^2n)$ & $m^2 + n^2 + p$ & Machine $\epsilon$ & Small/medium dense operators, full nullspaces \\
+Thin / Economy SVD & $O(\min(mn^2, m^2n))$ & $p(m + n + 1)$ & Machine $\epsilon$ & Least-squares $\mat{A}\pinv$, whitening, medium PCA \\
+Power Method + Deflation & $O(T k\,\mathrm{nnz}(\mat{A}))$ & $k(m + n + 1)$ & $O((\sigma_{k+1}/\sigma_k)^{2T})$ & Sparse graph/PageRank top-$k$ eigenpairs \\
+Randomized Truncated SVD & $O((q{+}1)\,\mathrm{nnz}(\mat{A})(k{+}p)$\newline$\quad +\, (k{+}p)^2 n)$ & $k(m + n + 1)$ & Near-optimal EYM & Large-scale embeddings, streaming/GPU PCA \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: From Matrix Phylogeny to Low-Rank ML Systems]
+The five source books organize spectral decompositions along complementary axes that converge cleanly at low-rank approximation:
+\begin{itemize}
+  \item \textbf{Matrix Phylogeny \bookcite{mathematics_machine_learning_orienly}{Fig.~4.13, Sec.~4.7, p.~134}:} Every real matrix $\mat{A} \in \R^{m\times n}$ admits an SVD and Moore--Penrose pseudoinverse $\mat{A}\pinv$. Specializing to square $\R^{n\times n}$ unlocks determinants and traces; non-defective matrices admit general EVD $\mat{P}\mat{\Lambda}\mat{P}\inv$; symmetric matrices guarantee orthogonal EVD $\mat{Q}\mat{\Lambda}\mat{Q}\T$; symmetric positive definite matrices admit Cholesky $\mat{L}\mat{L}\T$ and equal eigenvalues/singular values.
+  \item \textbf{Statistical Covariance, PCA \& Whitening \bookcite{linear_algebra}{Sec.~7.5, pp.~426--430} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.5, pp.~256--258}:} Given centered observations $\mat{X} \in \R^{N \times D}$ with empirical covariance $\mat{S} = \frac{1}{N}\mat{X}\T\mat{X} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ (note $\frac{1}{N-1}\mat{B}\mat{B}\T$ in Lay), the right-singular vectors of $\mat{X}$ are the principal components with $\sigma_i^2 = N\lambda_i$. PCA whitening scales uncorrelated projections via $\mat{W}_{\text{PCA}} = \mat{\Lambda}^{-1/2}\mat{Q}\T$, whereas ZCA (Mahalanobis) whitening $\mat{W}_{\text{ZCA}} = \mat{Q}\mat{\Lambda}^{-1/2}\mat{Q}\T$ rotates back to minimize $\norm{\mat{W}\vecb{x} - \vecb{x}}_2^2$, preserving spatial image structure \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~7.7, p.~257}.
+  \item \textbf{Compression \& Spectral Decay \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.3, pp.~252--253} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.5, pp.~263--264}:} Storing rank-$k$ factors $(\mat{U}_k, \diag(\mat{\Sigma}_k), \mat{V}_k)$ requires $k(m+n+1)$ scalars compared to $mn$ for $\mat{A}$ (or $4k(m+n+1)/(mn)$ bytes when compressing 8-bit grayscale images into 32-bit floats \bookcite{machine_learning_co_ban_tiep_vu}{Eq.~(20.23)}). Natural images and structured feature matrices exhibit rapid singular decay where $k \ll \min(m,n)$ captures $>90\%$--$99\%$ of $\norm{\mat{A}}_F^2$, whereas randomly permuted entries flatten the spectrum toward a broad bulk.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:svd:visuals}
+% =============================================================================
+
+To cement the algebraic--geometric correspondence, Figure~\ref{fig:svd:blocks} contrasts full, thin/economy, compact, and truncated rank-$k$ matrix factorizations, while Figure~\ref{fig:svd:subspace_action} traces the sequential operator action $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ across the four fundamental subspaces.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\small, node distance=0.35cm]
+  % --- Row 1: Full SVD (m > n, rank r < n) ---
+  \node[anchor=east, font=\small\bfseries, text=monographNavy] (lbl1) at (-0.65, 0) {(a) Full SVD};
+
+  \draw[thick, draw=monographNavy, fill=monographNavyBg] (0, -0.85) rectangle (1.1, 0.85);
+  \node at (0.55, 0) {$\mat{A}$};
+  \node[above, font=\scriptsize, text=monographSlate] at (0.55, 0.85) {$n$};
+  \node[left, font=\scriptsize, text=monographSlate] at (0, 0) {$m$};
+  \node at (1.45, 0) {$=$};
+
+  % U full (m x m)
+  \draw[thick, draw=monographTeal, fill=monographTealBg] (1.8, -0.85) rectangle (2.6, 0.85);
+  \draw[thick, draw=monographSlate, fill=monographCodeBg] (2.6, -0.85) rectangle (3.5, 0.85);
+  \node[text=monographTeal] at (2.2, 0) {$\mat{U}_p$};
+  \node[text=monographSlate] at (3.05, 0) {$\mat{U}_{m-p}$};
+  \node[above, font=\scriptsize, text=monographSlate] at (2.2, 0.85) {$p$};
+  \node[above, font=\scriptsize, text=monographSlate] at (3.05, 0.85) {$m{-}p$};
+
+  \node at (3.75, 0.45) {$\cdot$};
+
+  % Sigma full (m x n)
+  \draw[thick, draw=monographIndigo, fill=monographIndigoBg] (4.0, 0.05) rectangle (4.8, 0.85);
+  \draw[monographIndigo!45, thick] (4.0, 0.85) -- (4.8, 0.05);
+  \draw[thick, draw=monographSlate, fill=monographCodeBg] (4.0, -0.85) rectangle (4.8, 0.05);
+  \node[font=\scriptsize, text=monographIndigo, fill=monographIndigoBg, inner sep=1pt] at (4.4, 0.45) {$\mat{\Sigma}_p$};
+  \node[font=\scriptsize, text=monographSlate] at (4.4, -0.40) {$\mat{0}$};
+  \node[above, font=\scriptsize, text=monographSlate] at (4.4, 0.85) {$n$};
+
+  \node at (5.05, 0.45) {$\cdot$};
+
+  % V^T full (n x n)
+  \draw[thick, draw=monographNavy, fill=monographNavyBg] (5.3, 0.05) rectangle (6.1, 0.85);
+  \node at (5.7, 0.45) {$\mat{V}\T$};
+  \node[above, font=\scriptsize, text=monographSlate] at (5.7, 0.85) {$n$};
+  \node[right, font=\scriptsize, text=monographSlate] at (6.1, 0.45) {$n$};
+
+  \node[anchor=west, font=\scriptsize, text=monographSlate, align=left] at (6.7, 0.0)
+    {Square orthogonal $\mat{U} \in \R^{m\times m}, \mat{V} \in \R^{n\times n}$;\\gray blocks pair with zeros ($p = \min(m,n)$).};
+
+  % --- Row 2: Thin / Economy SVD ---
+  \node[anchor=east, font=\small\bfseries, text=monographTeal] (lbl2) at (-0.65, -2.35) {(b) Thin SVD};
+
+  \draw[thick, draw=monographNavy, fill=monographNavyBg] (0, -3.2) rectangle (1.1, -1.5);
+  \node at (0.55, -2.35) {$\mat{A}$};
+  \node at (1.45, -2.35) {$=$};
+
+  \draw[thick, draw=monographTeal, fill=monographTealBg] (1.8, -3.2) rectangle (2.6, -1.5);
+  \node[text=monographTeal] at (2.2, -2.35) {$\mat{U}_p$};
+  \node[above, font=\scriptsize, text=monographSlate] at (2.2, -1.5) {$p$};
+
+  \node at (2.95, -1.9) {$\cdot$};
+
+  \draw[thick, draw=monographIndigo, fill=monographIndigoBg] (3.3, -2.3) rectangle (4.1, -1.5);
+  \draw[monographIndigo!45, thick] (3.3, -1.5) -- (4.1, -2.3);
+  \node[font=\scriptsize, text=monographIndigo, fill=monographIndigoBg, inner sep=1pt] at (3.7, -1.9) {$\mat{\Sigma}_p$};
+
+  \node at (4.45, -1.9) {$\cdot$};
+
+  \draw[thick, draw=monographNavy, fill=monographNavyBg] (4.8, -2.3) rectangle (5.6, -1.5);
+  \node at (5.2, -1.9) {$\mat{V}_p\T$};
+
+  \node[anchor=west, font=\scriptsize, text=monographSlate, align=left] at (6.7, -2.35)
+    {Drops $\mat{U}_{m-p}$ (and zero rows of $\mat{\Sigma}$);\\exact when $p=n$ ($m \ge n$).};
+
+  % --- Row 3: Truncated Rank-k SVD ---
+  \node[anchor=east, font=\small\bfseries, text=monographCrimson] (lbl3) at (-0.65, -4.45) {(c) Rank-$k$};
+
+  \draw[thick, draw=monographCrimson, fill=monographCrimsonBg] (0, -5.3) rectangle (1.1, -3.6);
+  \node[text=monographCrimson] at (0.55, -4.45) {$\mat{A}_k$};
+  \node at (1.45, -4.45) {$=$};
+
+  \draw[thick, draw=monographTeal, fill=monographTealBg] (1.8, -5.3) rectangle (2.3, -3.6);
+  \node[font=\scriptsize, text=monographTeal] at (2.05, -4.45) {$\mat{U}_k$};
+  \node[above, font=\scriptsize, text=monographSlate] at (2.05, -3.6) {$k$};
+
+  \node at (2.6, -3.85) {$\cdot$};
+
+  \draw[thick, draw=monographIndigo, fill=monographIndigoBg] (2.9, -4.1) rectangle (3.4, -3.6);
+  \draw[monographIndigo!45, thick] (2.9, -3.6) -- (3.4, -4.1);
+  \node[font=\scriptsize, text=monographIndigo, fill=monographIndigoBg, inner sep=1pt] at (3.15, -3.85) {$\mat{\Sigma}_k$};
+
+  \node at (3.7, -3.85) {$\cdot$};
+
+  \draw[thick, draw=monographNavy, fill=monographNavyBg] (4.0, -4.1) rectangle (5.1, -3.6);
+  \node[font=\scriptsize, text=monographNavy] at (4.55, -3.85) {$\mat{V}_k\T$};
+  \node[above, font=\scriptsize, text=monographSlate] at (4.55, -3.6) {$n$};
+
+  \node[anchor=west, font=\scriptsize, text=monographSlate, align=left] at (6.7, -4.45)
+    {Best rank-$k$ approximation $\sum_{i=1}^k \sigma_i\vecb{u}_i\vecb{v}_i\T$\\($k < r \le p$); stores only $k(m+n+1)$ scalars.};
+\end{tikzpicture}
+\caption{Block dimensions across (a) Full SVD, (b) Thin/Economy SVD (shown for tall $m > n$, $p=n$), and (c) Truncated Rank-$k$ SVD ($k < r$). Compact SVD replaces $k$ by exact rank $r = \rank(\mat{A})$ \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~7.8, p.~260} \bookcite{machine_learning_co_ban_tiep_vu}{Fig.~20.2, p.~250}.}
+\label{fig:svd:blocks}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.85cm and 0.92cm]
+  % Top pipeline: Rotate - Scale/Embed - Rotate
+  \node[monoBox, font=\footnotesize, minimum width=2.25cm, minimum height=1.2cm] (dom)
+    {\textbf{Domain} $\R^n$\\$\vecb{x} \in \mathrm{row}(\mat{A}) \oplus \nullsp(\mat{A})$};
+  \node[monoIndigoBox, font=\footnotesize, right=of dom, minimum width=2.0cm, minimum height=1.2cm] (rot1)
+    {\textbf{Coords} $\vecb{c} = \mat{V}\T\vecb{x}$\\$c_i = \vecb{v}_i\T\vecb{x}$};
+  \node[monoTealBox, font=\footnotesize, right=of rot1, minimum width=2.3cm, minimum height=1.2cm] (scale)
+    {\textbf{Scale \& Zero-Pad}\\$(\sigma_1 c_1,\dots,\sigma_r c_r,\zeros)\T$};
+  \node[monoBox, font=\footnotesize, right=of scale, minimum width=2.2cm, minimum height=1.2cm] (cod)
+    {\textbf{Codomain} $\R^m$\\$\mat{A}\vecb{x} = \sum_{i=1}^r \sigma_i c_i \vecb{u}_i$};
+
+  \draw[monoArrow] (dom) -- node[above, font=\scriptsize, text=monographNavy] {$\mat{V}\T$} node[below, font=\scriptsize, text=monographSlate] {Rotate} (rot1);
+  \draw[monoArrow] (rot1) -- node[above, font=\scriptsize, text=monographIndigo] {$\mat{\Sigma}$} node[below, font=\scriptsize, text=monographSlate] {Scale} (scale);
+  \draw[monoArrow] (scale) -- node[above, font=\scriptsize, text=monographTeal] {$\mat{U}$} node[below, font=\scriptsize, text=monographSlate] {Rotate} (cod);
+
+  % Bottom subspace bijection aligned flush to dom.west and cod.east
+  \node[monoTealBox, font=\footnotesize, anchor=north west, minimum width=3.3cm] (rowA)
+    at ([yshift=-0.95cm]dom.south west)
+    {$\mathrm{row}(\mat{A}) = \spn(\vecb{v}_1,\dots,\vecb{v}_r)$\\$\dim = r$};
+  \node[monoWarnBox, font=\footnotesize, below=0.50cm of rowA, minimum width=3.3cm] (nulA)
+    {$\nullsp(\mat{A}) = \spn(\vecb{v}_{r+1},\dots,\vecb{v}_n)$\\$\dim = n - r$};
+
+  \node[monoTealBox, font=\footnotesize, anchor=north east, minimum width=3.3cm] (colA)
+    at ([yshift=-0.95cm]cod.south east)
+    {$\colsp(\mat{A}) = \spn(\vecb{u}_1,\dots,\vecb{u}_r)$\\$\dim = r$};
+  \node[monoWarnBox, font=\footnotesize, below=0.50cm of colA, minimum width=3.3cm] (nulAT)
+    {$\nullsp(\mat{A}\T) = \spn(\vecb{u}_{r+1},\dots,\vecb{u}_m)$\\$\dim = m - r$};
+
+  \node[circle, draw=monographCrimson, fill=monographCrimsonBg, thick, inner sep=2pt, font=\scriptsize\bfseries, text=monographCrimson] (zeroPt)
+    at ([xshift=-0.75cm, yshift=-0.25cm]colA.south west) {$\zeros$};
+
+  \draw[monoArrow, draw=monographTeal, line width=1.1pt] (rowA.east) -- node[above, font=\scriptsize, text=monographTeal, align=center] {Bijection: $\vecb{v}_i \mapsto \sigma_i \vecb{u}_i$\\Inverse $\mat{A}\pinv: \vecb{u}_i \mapsto \sigma_i\inv\vecb{v}_i$} (colA.west);
+  \draw[monoArrow, draw=monographCrimson, dashed, line width=1.0pt] (nulA.east) -- node[below, sloped, font=\scriptsize, text=monographCrimson, yshift=-1pt] {Collapsed: $\vecb{v}_j \mapsto \zeros$ ($j > r$)} (zeroPt.west);
+  \draw[<->, dotted, thick, color=monographSlate] (rowA.south) -- node[right, font=\scriptsize] {$\perp$} (nulA.north);
+  \draw[<->, dotted, thick, color=monographSlate] (colA.south) -- node[right, font=\scriptsize] {$\perp$} (nulAT.north);
+\end{tikzpicture}
+\caption{Top: sequential decomposition of $\Phi(\vecb{x}) = \mat{U}\mat{\Sigma}\mat{V}\T\vecb{x}$ into domain rotation ($\mat{V}\T$), axiswise scaling/dimension mapping ($\mat{\Sigma}$), and codomain rotation ($\mat{U}$). Bottom: orthogonal splitting of $\R^n$ and $\R^m$ into the four fundamental subspaces, showing that $\mat{A}$ acts invertibly between $\mathrm{row}(\mat{A})$ and $\colsp(\mat{A})$ via $\mat{A}\pinv$ \bookcite{linear_algebra}{Fig.~4, p.~423}.}
+\label{fig:svd:subspace_action}
+\end{figure}
+
+Figure~\ref{fig:svd:spectrum_error} quantifies the spectral decay and Eckart--Young error behavior for a rank-$40$ structured low-rank signal ($\sigma_k = 100 k^{-1.1} + 4 e^{-0.08(k-1)}$) contrasted against a shuffled/white-noise spectrum ($\sigma_k^{\text{noise}} = 16 \sqrt{1 - 0.65(k-1)/39}$), reproducing the separation between structured natural data and randomized entries discussed in \bookcite{probabilisticml_kevinmurphy_introduction}{Fig.~7.10, p.~263}. Finally, Figure~\ref{fig:svd:image_compression} demonstrates empirical low-rank image reconstruction via truncated SVD.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=1.55cm
+  },
+  width=0.45\textwidth,
+  height=6.2cm,
+  grid=both,
+  grid style={monographRule!55, dashed},
+  tick label style={font=\scriptsize, color=monographSlate},
+  label style={font=\small, color=monographNavy},
+  title style={font=\small\bfseries, color=monographNavy},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.92}
+]
+
+% Left panel: Singular Value Decay Spectrum (log-y)
+\nextgroupplot[
+  title={(a) Singular Value Decay ($\log_{10}$ scale)},
+  xlabel={Singular index $k$},
+  ylabel={Singular value $\sigma_k$},
+  ymode=log,
+  xmin=1, xmax=40,
+  ymin=1, ymax=150,
+  legend pos=north east
+]
+\addplot[color=monographNavy, very thick, mark=*, mark size=1.4pt] coordinates {
+  (1,104.00) (2,50.34) (3,33.27) (4,24.91) (5,19.93) (7,14.23) (9,11.03)
+  (12,8.16) (15,6.39) (18,5.19) (22,4.08) (26,3.32) (30,2.77) (35,2.27) (40,1.91)
+};
+\addlegendentry{Structured ($\sigma_k$)}
+
+\addplot[color=monographCrimson, thick, dashed, mark=triangle*, mark size=1.5pt] coordinates {
+  (1,16.00) (2,15.87) (3,15.73) (4,15.59) (5,15.46) (7,15.18) (9,14.90)
+  (12,14.46) (15,14.01) (18,13.54) (22,12.90) (26,12.22) (30,11.50) (35,10.53) (40,9.47)
+};
+\addlegendentry{Shuffled / Noise}
+
+% Right panel: Relative Approximation Error & Cumulative Energy
+\nextgroupplot[
+  title={(b) Eckart--Young Error \& Energy},
+  xlabel={Truncation rank $k$},
+  ylabel={Normalized ratio},
+  xmin=1, xmax=40,
+  ymin=0, ymax=1.05,
+  legend style={at={(0.97,0.50)}, anchor=east}
+]
+\addplot[color=monographTeal, very thick, mark=square*, mark size=1.3pt] coordinates {
+  (1,0.6389) (2,0.7886) (3,0.8540) (4,0.8906) (5,0.9141) (7,0.9424) (9,0.9587)
+  (12,0.9731) (15,0.9817) (18,0.9871) (22,0.9919) (26,0.9949) (30,0.9970) (35,0.9988) (40,1.0000)
+};
+\addlegendentry{Energy $\rho(k)$}
+
+\addplot[color=monographCrimson, thick, mark=*, mark size=1.3pt] coordinates {
+  (1,0.6009) (2,0.4598) (3,0.3821) (4,0.3307) (5,0.2931) (7,0.2401) (9,0.2033)
+  (12,0.1640) (15,0.1355) (18,0.1134) (22,0.0902) (26,0.0713) (30,0.0549) (35,0.0351) (40,0.0000)
+};
+\addlegendentry{$\norm{\mat{A}{-}\mat{A}_k}_F / \norm{\mat{A}}_F$}
+
+\addplot[color=monographIndigo, thick, dashed, mark=diamond*, mark size=1.4pt] coordinates {
+  (1,0.4841) (2,0.3199) (3,0.2395) (4,0.1916) (5,0.1597) (7,0.1196) (9,0.0951)
+  (12,0.0720) (15,0.0571) (18,0.0468) (22,0.0372) (26,0.0304) (30,0.0255) (35,0.0210) (40,0.0000)
+};
+\addlegendentry{$\sigma_{k+1}/\sigma_1$}
+
+\addplot[color=monographSlate, dotted, thick, domain=1:40] {0.90};
+\node[anchor=north east, font=\scriptsize, text=monographSlate] at (axis cs:39,0.88) {$90\%$ energy ($k \ge 5$)};
+
+\end{groupplot}
+\end{tikzpicture}
+\caption{(a) Comparison of rapid algebraic singular-value decay for structured low-rank data against a flat noise/shuffled bulk \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.5, Fig.~7.10, p.~263}. (b) Relative Frobenius reconstruction error $\norm{\mat{A}-\mat{A}_k}_F/\norm{\mat{A}}_F = \sqrt{1-\rho(k)}$, relative spectral error $\sigma_{k+1}/\sigma_1$, and cumulative captured energy $\rho(k)$ from~\eqref{eq:svd:ey_spec}--\eqref{eq:svd:rel_energy} \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.2.5, p.~251}.}
+\label{fig:svd:spectrum_error}
+\end{figure}
+
+\monographfig[0.72\textwidth]{probabilisticml_kevinmurphy_introduction_p293_fig1.png}{Truncated SVD image compression of a $200 \times 320$ grayscale image (original rank $200$, $64{,}000$ pixels) using ranks $K \in \{2, 5, 20\}$. At $K=20$, storage drops to $K(N+D+1) = 10{,}420$ parameters ($16.3\%$ of raw pixels) while faithfully preserving facial structure \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.5, Fig.~7.9, pp.~263--264}.}{fig:svd:image_compression}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:svd:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Pitfall 1: Squaring the Condition Number via Normal Equations $\mat{A}\T\mat{A}$]
+Constructing the SVD by explicitly forming $\mat{A}\T\mat{A}$ and calling a symmetric eigensolver (the naive textbook hand-calculation recipe) squares the spectral condition number:
+\[
+  \kappa_2(\mat{A}\T\mat{A}) = \frac{\lambda_1(\mat{A}\T\mat{A})}{\lambda_r(\mat{A}\T\mat{A})} = \left(\frac{\sigma_1}{\sigma_r}\right)^2 = \bigl[\kappa_2(\mat{A})\bigr]^2.
+\]
+In IEEE-754 double precision ($\epsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$), any matrix with $\kappa_2(\mat{A}) \gtrsim 10^8$ causes $\sigma_r^2/\sigma_1^2 < \epsilon_{\text{mach}}$, completely obliterating small singular values and corrupting their singular vectors \bookcite{linear_algebra}{Numerical Note, p.~424} \bookcite{mathematics_machine_learning_orienly}{Sec.~4.5.2, p.~126}. \textbf{Remedy:} Compute the SVD directly via Householder bidiagonalization + implicit QR (LAPACK \texttt{dgesdd}/\texttt{dgesvd}) or QR-stabilized subspace iterations (Algorithm~\ref{alg:svd:rsvd}).
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 2: Naive Pseudoinverse vs.\ Truncated SVD under Ill-Conditioned Spectra]
+Consider solving a noisy linear inverse problem $\vecb{b} = \mat{A}\vecb{x}_\star + \vecb{\eta}$ ($\norm{\vecb{\eta}}_2 \le \delta$) using the exact Moore--Penrose pseudoinverse~\eqref{eq:svd:pinv} versus naive normal inversion $(\mat{A}\T\mat{A})\inv\mat{A}\T\vecb{b}$. Expanding the reconstruction error in the singular bases gives
+\[
+  \hat{\vecb{x}} - \vecb{x}_\star = \mat{A}\pinv\vecb{b} - \mat{V}_r\mat{V}_r\T\vecb{x}_\star = \sum_{i=1}^r \frac{\vecb{u}_i\T \vecb{\eta}}{\sigma_i} \vecb{v}_i
+  \implies \norm{\hat{\vecb{x}} - \vecb{x}_\star}_2 \le \frac{\delta}{\sigma_r}.
+\]
+When $\mat{A}$ is severely ill-conditioned ($\sigma_r \ll \delta$), unregularized inversion amplifies measurement noise and roundoff error by $1/\sigma_r \gg 1$, producing catastrophic oscillatory solutions; naive matrix inversion fails outright whenever $m \neq n$ or $\rank(\mat{A}) < n$. \textbf{Remedy:} Use \emph{Truncated SVD (TSVD)} regularization $\mat{A}_k\pinv = \sum_{\sigma_i > \tau} \sigma_i\inv \vecb{v}_i\vecb{u}_i\T$ with cutoff $\tau \ge \max(m,n)\epsilon_{\text{mach}}\sigma_1$ (the \texttt{rcond} tolerance in numerical libraries) or \emph{Tikhonov/Ridge damping} $\sum_{i=1}^r \frac{\sigma_i}{\sigma_i^2 + \alpha}\vecb{v}_i\vecb{u}_i\T$ aligned with $\lim_{\alpha \to 0^+} (\mat{A}\T\mat{A}+\alpha\eye)\inv\mat{A}\T$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~(2.46), p.~46}.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 3: Rank Determination by Pivots \& Defective Non-Symmetric Matrices]
+Gaussian elimination / row-echelon pivot counting is numerically unstable for rank determination: tiny roundoff perturbations of order $\epsilon_{\text{mach}}$ turn exact zeros into nonzero pivots, falsely reporting full rank \bookcite{linear_algebra}{Numerical Note, p.~419}. Likewise, applying symmetric spectral formulas to a non-symmetric matrix fails when eigenvalues are complex or the matrix is defective (fewer than $n$ linearly independent eigenvectors; \bookcite{mathematics_machine_learning_orienly}{Sec.~4.7, p.~134}). \textbf{Remedy:} Always determine \emph{effective numerical rank} by counting singular values satisfying $\sigma_i > \tau$, and use SVD rather than EVD whenever $\mat{A} \neq \mat{A}\T$.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall 4: Sign Ambiguity, Degenerate Subspaces \& API Transpose Traps]
+Even for distinct singular values, $(\vecb{u}_i, \vecb{v}_i)$ and $(-\vecb{u}_i, -\vecb{v}_i)$ satisfy $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ identically; when singular values coincide ($\sigma_i = \sigma_{i+1}$), singular vectors are unique only up to an arbitrary orthogonal rotation inside the degenerate subspace \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.2.1, p.~247} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.4.1, p.~254}. Furthermore, \texttt{numpy.linalg.svd(A)} returns $(\mat{U}, \vecb{\sigma}, \mat{V}\T)$---returning the transpose $\mat{V}\T$ rather than $\mat{V}$ and a 1D array $\vecb{\sigma}$ \bookcite{machine_learning_co_ban_tiep_vu}{Sec.~20.2.2, p.~249}---whereas \texttt{eig} does not guarantee sorted eigenvalues \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~7.5.2, p.~260}. \textbf{Remedy:} Canonicalize signs (e.g., force the largest-magnitude entry of each $\vecb{u}_i$ positive) for deterministic downstream features, and verify transpose conventions before matrix multiplication.
+\end{pitfall}
+
+\end{document}

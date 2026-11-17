@@ -1,0 +1,88 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Neural Architectures, Representations \& Regularization}{Computer Vision, Image Formation \& 3D Scene Understanding}{Image Formation, Fourier Filtering, Pyramids \& 3D Geometry}{Multiscale Pyramids, Optical Flow, Epipolar Geometry, Stereo \& Radiance Fields}{\bookcite{foundations_computer_vision_mit}{Ch. 21--23, 38--45, 48}, \bookcite{understandingdl_simonprince}{Ch. 10, 12}}
+
+\section{Problem Formulation \& Unified Notation}
+
+Recovering 3D structure and motion from 2D images requires analyzing visual signals across spatial scales, tracking pixel displacement across time, and inverting projective multi-view geometry \bookcite{foundations_computer_vision_mit}{Ch. 23, 39--40, 48}. We unify multiscale image pyramids, differential optical flow $(u, v)\T$, homogeneous camera projection $\mat{P} = \mat{K}[\mat{R} \mid \vecb{t}]$, epipolar constraints $(\vecb{x}')\T \mat{F} \vecb{x} = 0$, and continuous volumetric rendering (NeRF) \bookcite{foundations_computer_vision_mit}{Ch. 39--45, pp. 777--935}.
+
+\begin{crossbook}[Cross-Book Notation: Pyramids, Camera Matrices \& Epipolar Geometry]
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{MIT Vision Book} & \textbf{Unified Monograph} \\
+\midrule
+Homogeneous 3D/2D Point & $\tilde{\vecb{X}} = [X,Y,Z,1]\T$, $\tilde{\vecb{x}} = [x,y,1]\T$ & $\tilde{\vecb{X}} \in \R^4$, $\tilde{\vecb{x}} \in \R^3$ \\
+Intrinsics \& Extrinsics & $\mat{K}$ (3x3), $[\mat{R} \mid \vecb{t}]$ (3x4) & $\mat{P} = \mat{K}[\mat{R} \mid \vecb{t}]$ \\
+Epipolar Matrices & Essential $\mat{E}$, Fundamental $\mat{F}$ & $\mat{E} = [\vecb{t}]_\times \mat{R}$, $\mat{F} = (\mat{K}')^{-\top}\mat{E}\mat{K}\inv$ \\
+Optical Flow & $(u, v) = (\dot{x}, \dot{y})$ & $\vecb{u} = (u, v)\T$ via $I_x u + I_y v + I_t = 0$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Unified 3D vision and motion notation from \bookcite{foundations_computer_vision_mit}{Ch. 38--41, 45, 48}.}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations}
+
+\subsection{Multiscale Image Pyramids \& Optical Flow}
+
+\begin{coremath}[Gaussian/Laplacian Pyramids \& Brightness Constancy Optical Flow]
+A \emph{Gaussian pyramid} repeatedly applies anti-aliasing smoothing and $\downarrow_2$ subsampling: $G_0 = I$, $G_{\ell+1} = \downarrow_2(g_\sigma * G_\ell)$ \bookcite{foundations_computer_vision_mit}{Ch. 23, pp. 466--478}. The \emph{Laplacian pyramid} stores bandpass residuals $L_\ell = G_\ell - \uparrow_2(G_{\ell+1})$, enabling exact reconstruction ($I = \sum_\ell \uparrow_2^\ell L_\ell$) and seamless spline blending with total memory overhead $\sum_{\ell=0}^\infty 4^{-\ell} = \frac{4}{3}$ \bookcite{foundations_computer_vision_mit}{Ch. 23, pp. 475--485}.
+
+For video motion, the \emph{brightness constancy assumption} $I(x+u, y+v, t+1) \approx I(x,y,t)$ yields the linearized \emph{optical flow constraint equation} \bookcite{foundations_computer_vision_mit}{Ch. 48, pp. 961--970}:
+\begin{equation}
+  I_x u + I_y v + I_t = \nabla I\T \vecb{u} + I_t = 0.
+\end{equation}
+Because one scalar equation cannot determine two unknowns (the \emph{aperture problem}, recovering only motion normal to edges), \emph{Lucas--Kanade} assumes constant flow in a local window $W$ and solves the $2\times 2$ structure-tensor system $(\sum_W \nabla I \nabla I\T)\vecb{u} = -\sum_W \nabla I\, I_t$, while \emph{Horn--Schunck} minimizes a global smoothness functional $\int [(\nabla I\T\vecb{u}+I_t)^2 + \alpha(\norm{\nabla u}_2^2 + \norm{\nabla v}_2^2)]\,\mathrm{d}\vecb{x}$ \bookcite{foundations_computer_vision_mit}{Ch. 48, pp. 964--972}.
+\end{coremath}
+
+\subsection{Projective Geometry, Homographies, Stereo \& Neural Radiance Fields}
+
+\begin{coremath}[Camera Projection, Epipolar Constraint, Stereo Disparity \& NeRF Rendering]
+A calibrated perspective camera maps 3D world points $\tilde{\vecb{X}}$ to homogeneous pixels $\tilde{\vecb{x}} \sim \mat{K}[\mat{R} \mid \vecb{t}]\tilde{\vecb{X}}$, where $\mat{K}$ encodes focal lengths $(f_x, f_y)$ and principal point $(c_x, c_y)$ \bookcite{foundations_computer_vision_mit}{Ch. 39, pp. 777--795}. For planar scenes or pure camera rotation, two views are related by a $3\times 3$ \emph{homography} $\tilde{\vecb{x}}' \sim \mat{H}\tilde{\vecb{x}}$ (8 DoF, estimated via DLT + RANSAC) \bookcite{foundations_computer_vision_mit}{Ch. 41, pp. 827--843}.
+
+For general 3D scenes observed from two views with relative pose $(\mat{R}, \vecb{t})$, coplanarity of the baseline $\vecb{t}$ and viewing rays gives the \emph{epipolar constraint} \bookcite{foundations_computer_vision_mit}{Ch. 44, pp. 889--910}:
+\begin{equation}
+  (\hat{\vecb{x}}')\T \mat{E} \hat{\vecb{x}} = 0 \quad (\mat{E} = [\vecb{t}]_\times \mat{R}), \qquad (\tilde{\vecb{x}}')\T \mat{F} \tilde{\vecb{x}} = 0 \quad (\mat{F} = (\mat{K}')^{-\top}\mat{E}\mat{K}\inv).
+\end{equation}
+In rectified parallel stereo with baseline $B$ and focal length $f$, horizontal disparity $d = x_L - x_R$ yields depth via triangulation: $Z = \frac{f B}{d}$ \bookcite{foundations_computer_vision_mit}{Ch. 40, pp. 804--820}. Moving from discrete point clouds to continuous 3D representations, \emph{Neural Radiance Fields (NeRF)} parameterize volume density $\sigma(\vecb{x})$ and view-dependent color $\vecb{c}(\vecb{x}, \vecb{d})$ with an MLP, rendering pixel color along ray $\vecb{r}(t)=\vecb{o}+t\vecb{d}$ via differentiable quadrature \bookcite{foundations_computer_vision_mit}{Ch. 45, pp. 921--935}:
+\begin{equation}
+  \hat{\vecb{C}}(\vecb{r}) = \int_{t_n}^{t_f} T(t)\,\sigma(\vecb{r}(t))\,\vecb{c}(\vecb{r}(t),\vecb{d})\,\mathrm{d}t, \qquad T(t) = \exp\!\left(-\int_{t_n}^{t} \sigma(\vecb{r}(s))\,\mathrm{d}s\right).
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Why Epipolar Geometry Collapses 2D Search to 1D and Why Pyramids Solve Large Motion]
+In uncalibrated stereo, matching a pixel in image 1 would require searching all $H\times W$ pixels in image 2. The fundamental matrix $\mat{F}$ restricts the match to the 1D \emph{epipolar line} $\vecb{l}' = \mat{F}\tilde{\vecb{x}}$ \bookcite{foundations_computer_vision_mit}{Ch. 44, pp. 892--898}. Similarly, Taylor-based optical flow fails for displacements larger than ~1 pixel; coarse-to-fine Gaussian pyramids shrink large motions into sub-pixel steps at coarse levels before refining at fine levels \bookcite{foundations_computer_vision_mit}{Ch. 48, pp. 968--971}.
+\end{intuition}
+
+\section{Visual Diagnostics \& 3D Geometry}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85, every node/.style={font=\scriptsize}]
+  % Epipolar geometry
+  \coordinate (O1) at (-2.6,0);
+  \coordinate (O2) at (2.6,0);
+  \coordinate (X) at (0.3,2.4);
+  \draw[very thick, monographNavy] (O1) -- (O2) node[midway, below] {Baseline $\vecb{t}$};
+  \draw[thick, monographTeal, ->] (O1) -- (X) node[above] {3D Point $\vecb{X}$};
+  \draw[thick, monographTeal, ->] (O2) -- (X);
+  \fill[monographCrimson] (O1) circle (2.2pt) node[below left] {$\vecb{O}_L$};
+  \fill[monographCrimson] (O2) circle (2.2pt) node[below right] {$\vecb{O}_R$};
+  % Image planes
+  \draw[thick] (-2.2,0.5) -- (-1.1,1.3);
+  \draw[thick] (2.2,0.5) -- (1.1,1.3);
+  \fill[monographIndigo] (-1.52,0.99) circle (2pt) node[left] {$\vecb{x}$};
+  \fill[monographIndigo] (1.66,0.90) circle (2pt) node[right] {$\vecb{x}'$};
+  \node[above, monographNavy] at (0,2.65) {Epipolar Plane: $(\tilde{\vecb{x}}')\T \mat{F} \tilde{\vecb{x}} = 0$};
+\end{tikzpicture}
+\caption{Two-view epipolar geometry: camera centers $\vecb{O}_L, \vecb{O}_R$ and 3D point $\vecb{X}$ span the epipolar plane, constraining correspondences $\tilde{\vecb{x}} \leftrightarrow \tilde{\vecb{x}}'$ to 1D epipolar lines.}
+\end{figure}
+
+\begin{pitfall}[Aperture Problem, Ill-Conditioned Triangulation \& Spectral Bias in NeRFs]
+Lucas--Kanade fails inside textureless regions or along straight edges where $\mat{J} = \sum_W \nabla I\nabla I\T$ is rank-deficient ($\lambda_{\min} \approx 0$) \bookcite{foundations_computer_vision_mit}{Ch. 48, pp. 965--967}. In stereo, depth error scales quadratically with distance ($\Delta Z \propto Z^2 / (fB)$), degrading rapidly when baseline $B$ is small \bookcite{foundations_computer_vision_mit}{Ch. 40, pp. 808--812}. Finally, standard MLPs in NeRF suffer from low-frequency spectral bias unless coordinates $\vecb{x}$ are lifted via sinusoidal positional encoding (Fourier features) \bookcite{foundations_computer_vision_mit}{Ch. 45, pp. 928--932}.
+\end{pitfall}
+
+\end{document}

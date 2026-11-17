@@ -1,0 +1,218 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Diffusion, Score SDEs \& Flow Matching}{Classifier/Classifier-Free Guidance, DDIM/DPM-Solver ODEs \& Consistency Models}
+  {Steer scores with CFG, integrate semilinear ODEs in log-SNR, and jump in 1 step via semigroup flow maps}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Guidance \& Solvers\\ \footnotesize\mdseries CFG $\cdot$ DPM++ $\cdot$ CM}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny}]
+    % Curved PF-ODE trajectory from x_s to x_0
+    \draw[csE, thick, dashed] (-2.0,-0.4) to[out=55,in=180] (0.0,0.55) to[out=0,in=125] (2.0,-0.4);
+    \fill[csA] (-2.0,-0.4) circle (2.2pt) node[below] {$\vecb x_s$};
+    \fill[csE] (0.0,0.55) circle (2.2pt) node[above] {$\vecb x_u$};
+    \fill[csD] (2.0,-0.4) circle (2.2pt) node[below] {$\vecb x_0$};
+    % CFG vector at x_s
+    \draw[-{Stealth[length=4pt]}, very thick, csA] (-2.0,-0.4) -- (-0.9,0.75) node[ left, xshift=-1pt] {$\vecb s^{\mathrm{CFG}}(\omega)$};
+    % Semigroup 1-step jump at bottom
+    \draw[-{Stealth[length=4pt]}, very thick, csD] (-1.75,-0.45) -- node[midway, below] {$\Psi_{s\to 0}=f_\theta(\vecb x_s,s)$ (1 NFE)} (1.75,-0.45);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; GUIDANCE $-$ CG, CFG \& Diffusion-DPO}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\vecb s_\phi^{\mathrm{CFG}}(\vecb x_t,t,\vecb c;\omega)=\omega\vecb s_\phi(\vecb x_t,t,\vecb c)+(1-\omega)\vecb s_\phi(\vecb x_t,t,\emptyset)}
+    \begin{csbul}
+      \item \textbf{Bayes:} $\grad\log p_t(\vecb x_t\mid\vecb c)=\grad\log p_t(\vecb x_t)+\grad\log p_t(\vecb c\mid\vecb x_t)$
+      \item \textbf{CFG:} drop $\vecb c\gets\emptyset$ ($10$--$20\%$) during training; $\omega>1$ extrapolates toward $\vecb c$ without external classifier $p_\psi$
+      \item \textbf{Diffusion-DPO:} implicit reward $r_\pi=\beta\log\frac{\pi}{\pi_{\mathrm{ref}}}+\beta\log Z(\vecb c)$ cancels $Z(\vecb c)$ on $(\vecb x^w,\vecb x^l)$ pairs
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \coordinate (O) at (0,0);
+      \coordinate (U) at (0.6,1.7);
+      \coordinate (C) at (1.9,1.1);
+      \coordinate (G) at (3.2,0.5);
+      \draw[-{Stealth[length=3.5pt]}, thick, gray] (O) -- (U) node[above left] {$\vecb s(\emptyset)$};
+      \draw[-{Stealth[length=3.5pt]}, thick, csB] (O) -- node[pos=0.68, below right, inner sep=1pt] {$\vecb s(\vecb c)$} (C);
+      \draw[-{Stealth[length=3.5pt]}, dashed, csA] (U) -- node[pos=0.32, above right, inner sep=1pt] {$\omega(\vecb s(\vecb c)\!-\!\vecb s(\emptyset))$} (G);
+      \draw[-{Stealth[length=4pt]}, very thick, csA] (O) -- (G) node[below] {$\vecb s^{\mathrm{CFG}}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; SEMILINEAR ODE $-$ DDIM = Exponential Euler}{%
+  \csfm{\dd{\vecb x_t}{t}=\underbrace{\frac{\alpha_t'}{\alpha_t}\vecb x_t}_{\text{linear drift}}+\underbrace{\frac{g^2(t)}{2\sigma_t}\boldsymbol\epsilon_\phi(\vecb x_t,t)}_{\text{nonlinear residual}}}
+  \begin{csbul}
+    \item Integrating factor $\alpha_t/\alpha_s$ integrates linear drift \textbf{analytically}
+    \item Constant $\boldsymbol\epsilon_\phi(\tilde{\vecb x}_s,s)$ on $[t,s]$ yields \textbf{DDIM}:
+      \csfm{\tilde{\vecb x}_t=\frac{\alpha_t}{\alpha_s}\tilde{\vecb x}_s-\alpha_t\!\left(\frac{\sigma_s}{\alpha_s}-\frac{\sigma_t}{\alpha_t}\right)\boldsymbol\epsilon_\phi(\tilde{\vecb x}_s,s)=\alpha_t\hat{\vecb x}_0+\sigma_t\boldsymbol\epsilon_\phi}
+    \item $\vecb v$-pred: Euler $=$ DDIM; $\boldsymbol\epsilon/\vecb x/\vecb s$-pred: \textbf{Exp.\ Euler $=$ DDIM $\ne$ Euler}!
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; HIGH-ORDER SOLVERS $-$ Log-SNR \& DPM-Solver++}{%
+  \begin{csbul}
+    \item \textbf{Half-log SNR change of variables:} $\lambda_t=\log(\alpha_t/\sigma_t)$ simplifies the exact ODE integral to
+      \csfm{\tilde\Psi_{s\to t}(\vecb x_s)=\frac{\alpha_t}{\alpha_s}\vecb x_s-\alpha_t\int_{\lambda_s}^{\lambda_t}e^{-\lambda}\hat{\boldsymbol\epsilon}_\phi(\hat{\vecb x}_\lambda,\lambda)\,\mathrm{d}\lambda}
+    \item \textbf{DPM-Solver-$n$:} $(n-1)$-th Taylor expansion in $\lambda$ gives global error $\mathcal O(h^n)$ ($h=\lambda_t-\lambda_s$)
+    \item \textbf{DPM-Solver++ ($\vecb x$-pred + dynamic thresholding):} stabilizes large CFG $\omega\gg 1$:
+      \csfm{\tilde\Psi_{s\to t}(\vecb x_s)=\frac{\sigma_t}{\sigma_s}\vecb x_s+\sigma_t\int_{\lambda_s}^{\lambda_t}e^{\lambda}\hat{\vecb x}_\phi(\hat{\vecb x}_\lambda,\lambda)\,\mathrm{d}\lambda}
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; DISTILLATION $-$ Progressive Distillation \& Consistency}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Progressive Distill.\ (PD):} match 2 teacher steps ($s\to u\to t$) in 1 step via $\tilde{\vecb x}=\frac{\sigma_s\tilde{\vecb x}_t-\sigma_t\vecb x_s}{\alpha_t\sigma_s-\alpha_s\sigma_t}$
+      \item \textbf{Consistency (CM):} $f_\theta(\vecb x_s,s)\approx\Psi_{s\to 0}(\vecb x_s)$, $f_\theta(\vecb x_0,0)=\vecb x_0$
+      \item \textbf{CD vs.\ CT:} $\mathcal L_{\mathrm{CM}}=\mathcal L_{\mathrm{CT}}+\mathcal O(\Delta s^2)$
+      \item \textbf{sCM ($\Delta s\to 0$):} $\vecb x_s=\cos(s)\vecb x_0+\sin(s)\vecb z$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[csD, thick] (0,2.2) .. controls (1.5,2.0) and (2.5,1.0) .. (3.6,0);
+      \fill[csA] (0.3,2.14) circle (2.5pt) node[above] {$\vecb x_{s_{i+1}}$};
+      \fill[csB] (1.6,1.65) circle (2.5pt) node[above right] {$\vecb x_{s_i}$};
+      \fill[csD] (3.6,0) circle (2.5pt) node[right] {$\vecb x_0$};
+      \draw[-{Stealth[length=3.5pt]}, csA, thick, dashed] (0.3,2.14) to[bend right=22] node[left] {$f_\theta$} (3.45,0.05);
+      \draw[-{Stealth[length=3.5pt]}, csB, thick] (1.6,1.65) to[bend right=15] node[above] {$f_{\theta^-}$} (3.5,0.1);
+      \node[csD, align=center] at (1.5,-0.55) {self-consistency\\$f_\theta(\vecb x_{s_{i+1}})\approx f_{\theta^-}(\vecb x_{s_i})$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; GENERAL FLOW MAPS $-$ Semigroup, CTM \& Mean Flow}{%
+  \csfm{\Psi_{u\to t}\circ\Psi_{s\to u}=\Psi_{s\to t},\qquad \Psi_{s\to s}=\mathrm{Id}\qquad(\forall\, s\ge u\ge t\ge 0)}
+  \begin{csbul}
+    \item \textbf{Two-time flow map ($s\to t$):} bridges instantaneous velocity ($s=t$) and 1-step jump ($t=0$):
+      \csfm{\Psi_{s\to t}(\vecb x_s)\approx\underbrace{\frac{t}{s}\vecb x_s+\frac{s-t}{s}g_\theta(\vecb x_s,s,t)}_{\text{CTM}}=\underbrace{\vecb x_s+(t-s)h_\theta(\vecb x_s,s,t)}_{\text{Mean Flow (MF)}}}
+    \item \textbf{Discrete state spaces (D3PM):} categorical transition matrices $q(\vecb x_t\mid\vecb x_0)=\Cat(\vecb x_0\bar{\mat Q}_t)$
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; COST \& TAXONOMY $-$ From 1000 NFEs to 1 NFE}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{1.0cm}>{\raggedright\arraybackslash}p{1.9cm}@{}}
+    \textbf{\textcolor{csF}{Method}} & \textbf{\textcolor{csF}{Mechanism}} & \textbf{\textcolor{csF}{NFEs}} & \textbf{\textcolor{csF}{Retrain?}}\\ \hline
+    DDPM & Euler-Maruyama SDE & $500$--$1000$ & No\\
+    DDIM & Exp.\ Euler ODE ($\mathcal O(h)$) & $25$--$100$ & No\\
+    DPM-Solver++ & Exp.\ RK/AB in $\lambda_t$ ($\mathcal O(h^2)$) & $10$--$20$ & No\\
+    Prog.\ Distill.\ (PD) & $2\to 1$ teacher halving & $2$--$8$ & $\log_2 N$ stages\\
+    CM / CTM / MF & Semigroup flow map $\Psi_{s\to t}$ & $1$--$2$ & Yes (CD or CT)\\
+  \end{tabular}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Extrapolate scores for guidance; integrate in log-SNR for speed; learn $\Psi_{s\to 0}$ for 1 step} \\[1pt]
+  \footnotesize\mdseries \textbf{Exact linear drift integration + $\vecb x$-prediction thresholding unlocks stable 10-step CFG; semigroup consistency unlocks 1-step generation.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item plain Euler on $\boldsymbol\epsilon$-PF-ODE drifts $\to$ always use Exp.\ Euler (DDIM)
+    \item large CFG ($\omega\ge 7.5$) blows up $\boldsymbol\epsilon$-DPM-Solver $\to$ use DPM-Solver++
+    \item CT without stop-grad EMA $\theta^-$ collapses to $f_\theta\equiv\vecb c$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Classifier/Classifier-Free Guidance, DDIM/DPM-Solver ODEs \& Consistency Models}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Classifier-Free Guidance (with $w=\omega-1$):
+      \csfm{\vecb s_\phi^{\mathrm{CFG}}(\vecb x_t,t,\vecb c;\omega)=\vecb s_\phi(\vecb x_t,t,\emptyset)+\omega\bigl(\vecb s_\phi(\vecb x_t,t,\vecb c)-\vecb s_\phi(\vecb x_t,t,\emptyset)\bigr)}
+    \item DDIM update ($s\to t$, exact on linear drift $\frac{\alpha_t'}{\alpha_t}\vecb x_t$):
+      \csfm{\tilde{\vecb x}_t=\frac{\alpha_t}{\alpha_s}\tilde{\vecb x}_s-\alpha_t\!\left(\frac{\sigma_s}{\alpha_s}-\frac{\sigma_t}{\alpha_t}\right)\boldsymbol\epsilon_\phi(\tilde{\vecb x}_s,s)=\alpha_t\hat{\vecb x}_0+\sigma_t\boldsymbol\epsilon_\phi}
+    \item DPM-Solver-$n$ Taylor expansion in $\lambda_t=\log(\alpha_t/\sigma_t)$ ($h=\lambda_t-\lambda_s$):
+      \csfm{\tilde{\vecb x}_t=\frac{\alpha_t}{\alpha_s}\tilde{\vecb x}_s-\alpha_t\sum_{k=0}^{n-1}\hat{\boldsymbol\epsilon}_\phi^{(k)}(\hat{\vecb x}_{\lambda_s},\lambda_s)\int_{\lambda_s}^{\lambda_t}e^{-\lambda}\frac{(\lambda-\lambda_s)^k}{k!}\mathrm{d}\lambda}
+    \item Progressive Distillation 2-in-1 pseudo-clean target:
+      \csfm{\tilde{\vecb x}=\frac{\sigma_s\tilde{\vecb x}_t-\sigma_t\vecb x_s}{\alpha_t\sigma_s-\alpha_s\sigma_t}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ DPM-SOLVER++(2S) \& CONSISTENCY SAMPLING}
+  \textbf{DPM-Solver++(2S) Midpoint Step} ($t_{i-1}\to t_i$, $h_i=\lambda_{t_i}-\lambda_{t_{i-1}}$):
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Midpoint $s_{\mathrm{mid}}=t_\lambda(\frac{1}{2}(\lambda_{t_{i-1}}+\lambda_{t_i}))$; threshold $\hat{\vecb x}_0=\hat{\vecb x}_\phi(\tilde{\vecb x}_{t_{i-1}},t_{i-1})$
+    \item $\vecb u_i\gets\frac{\sigma_{s_{\mathrm{mid}}}}{\sigma_{t_{i-1}}}\tilde{\vecb x}_{t_{i-1}}-\alpha_{s_{\mathrm{mid}}}(e^{-h_i/2}-1)\hat{\vecb x}_0$
+    \item $\tilde{\vecb x}_{t_i}\gets\frac{\sigma_{t_i}}{\sigma_{t_{i-1}}}\tilde{\vecb x}_{t_{i-1}}-\alpha_{t_i}(e^{-h_i}-1)\hat{\vecb x}_\phi(\vecb u_i,s_{\mathrm{mid}})$
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Multi-Step Consistency Sampling} ($\tau_1>\dots>\tau_{K-1}$):
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Draw $\hat{\vecb x}_T\sim\Normal(\zeros,\sigma_T^2\eye)$, predict $\hat{\vecb x}_0\gets f_\theta(\hat{\vecb x}_T,T)$
+    \item Repeat: re-noise $\hat{\vecb x}_{\tau_k}\gets\alpha_{\tau_k}\hat{\vecb x}_0+\sigma_{\tau_k}\boldsymbol\epsilon$, denoise $\hat{\vecb x}_0\gets f_\theta(\hat{\vecb x}_{\tau_k},\tau_k)$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    pretrained model, $15$--$20$ NFE budget & DPM-Solver++(2M) + dynamic thresh.\\
+    strong CFG ($\omega\ge 7.5$) & $\vecb x$-prediction solver, never $\boldsymbol\epsilon$-DPM-Solver\\
+    test-time differentiable loss $\ell(\vecb x_0,\vecb c)$ & training-free guidance via $\grad_{\vecb x_t}\hat{\vecb x}_0(\vecb x_t)$\\
+    paired human preferences $(\vecb x^w,\vecb x^l)$ & Diffusion-DPO (no reward model / RL)\\
+    real-time $1$--$2$ NFE latency target & Consistency Distillation (CD) / CTM / MF\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{CONVERGENCE \& EQUIVALENCE CHEAT-LINE}
+  \begin{csbul}
+    \item Solver global error: DDPM $\mathcal O(h^{1/2})$, DDIM $\mathcal O(h)$, DPM-Solver++(2S/2M) $\mathcal O(h^2)$
+    \item CD vs.\ CT gap: $\mathcal L_{\mathrm{CM}}(\theta,\theta^-)=\mathcal L_{\mathrm{CT}}(\theta,\theta^-)+\mathcal O(\Delta s^2)$ (via shared $(\vecb x_0,\boldsymbol\epsilon)$)
+    \item Continuous CM tangent: $\dd{}{s}f_{\theta^-}=\partial_s f_{\theta^-}+\partial_{\vecb x}f_{\theta^-}\,\vecb v^*$
+    \item CTM $\leftrightarrow$ Mean Flow link: $g_\theta(\vecb x_s,s,t)=\vecb x_s-s\,h_\theta(\vecb x_s,s,t)$ (losses differ by $1/s^2$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{FID vs.\ NFE ACCELERATION FRONTIER}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmode=log, log basis x={10},
+      xmin=1, xmax=1000, ymin=1.8, ymax=28,
+      xlabel={Neural Function Evaluations (NFE, log scale)}, ylabel={FID ($\downarrow$ better)},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      ytick={3,10,20}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.98,0.98)}, anchor=north east, fill=white, fill opacity=0.85}]
+      \addplot[csA, thick, mark=square*, mark size=1.3pt] coordinates {(10,26.5)(20,16.0)(50,7.8)(100,4.9)(250,3.6)(1000,3.17)};
+      \addlegendentry{DDPM (SDE)}
+      \addplot[csB, thick, mark=triangle*, mark size=1.5pt] coordinates {(5,22.0)(10,11.2)(20,6.1)(50,4.2)(100,3.7)(250,3.5)};
+      \addlegendentry{DDIM (Exp.\ Euler)}
+      \addplot[csE, very thick, mark=*, mark size=1.4pt] coordinates {(5,11.5)(10,4.3)(15,3.2)(20,2.85)(50,2.75)};
+      \addlegendentry{DPM-Solver++}
+      \addplot[csD, very thick, dashed, mark=diamond*, mark size=1.6pt] coordinates {(1,3.55)(2,2.93)(4,2.75)};
+      \addlegendentry{Consistency / PD}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Plain Euler $\ne$ DDIM in $\boldsymbol\epsilon$-space:} naive Euler discretizes the stiff linear term $\frac{\alpha_t'}{\alpha_t}\vecb x_t$ numerically and diverges at $N\le 50$; always use exponential integrators
+    \item \textbf{CFG doubles per-step NFE:} evaluating $\vecb s_\phi(\vecb x_t,t,\vecb c)$ and $\vecb s_\phi(\vecb x_t,t,\emptyset)$ requires $2\times$ batch pass unless distilled into an $\omega$-conditioned student
+    \item \textbf{High-order overshoot at large $\omega$:} Taylor derivatives $\hat{\boldsymbol\epsilon}_\phi^{(k)}$ explode when $\omega\gg 1$ $\to$ switch to $\vecb x$-prediction (DPM-Solver++) with dynamic percentile clipping
+    \item \textbf{Consistency collapse without stop-grad:} omitting $\mathrm{sg}(\theta^-)$ lets $f_\theta(\vecb x,s)$ collapse to a constant vector in 1 step
+    \item \textbf{Trigonometric sCM scaling:} continuous-time CT requires bounded $c_{\mathrm{noise}}(s)=s$ and trig schedule $\cos(s)\vecb x_0+\sin(s)\vecb z$ to prevent tangent explosion
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Control + Speed = Semilinear ODE + Semigroup Flow Map.}
+  \textbf{CFG} steers trajectories via $\vecb s(\emptyset)+\omega(\vecb s(\vecb c)-\vecb s(\emptyset))$; \textbf{DDIM \& DPM-Solver++} integrate the linear drift analytically and expand in half-log SNR $\lambda_t$ to reach $10$--$20$ steps; and \textbf{Consistency / Flow-Map models} enforce $\Psi_{u\to t}\circ\Psi_{s\to u}=\Psi_{s\to t}$ to jump straight to clean data in $1$--$2$ steps.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

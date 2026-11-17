@@ -1,0 +1,231 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Probability \& Information Theory}{Shannon Entropy, KL/f-Divergences, Mutual Information \& Cross-Entropy}
+  {Measure uncertainty in nats/bits, compare densities via convex ratios, and squeeze nuisance via bottlenecks}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Info Theory\\ \footnotesize\mdseries $\Entropy(X)\cdot \KL{p}{q}\cdot \MI(X;Y)$}{%
+  \begin{tikzpicture}[scale=0.55]
+    \fill[csA!20] (-0.80,0) circle (1.15);
+    \fill[csF!20] (0.80,0) circle (1.15);
+    \draw[csA, very thick] (-0.80,0) circle (1.15);
+    \draw[csF, very thick] (0.80,0) circle (1.15);
+    \node[font=\tiny\bfseries, csA] at (-1.15,0) {$\Entropy(X|Y)$};
+    \node[font=\tiny\bfseries, csF] at (1.15,0) {$\Entropy(Y|X)$};
+    \node[font=\tiny\bfseries, csDom, fill=white, inner sep=1pt, rounded corners=1pt] at (0,0) {$\MI$};
+    \node[font=\tiny, csDom] at (0,-1.45) {$\Entropy(X,Y)=\Entropy(X)+\Entropy(Y)-\MI$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; ENTROPY \& MAXENT $-$ uncertainty \& coding}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\Entropy(X)=-\sum_{x}p(x)\ln p(x)}
+    \begin{csbul}
+      \item \textbf{Surprisal:} $\iota(x)=-\ln p(x)$ ($1\text{ nat}\approx 1.443\text{ bits}$)
+      \item \textbf{Multiplicity:} $\frac{1}{N}\ln\frac{N!}{\prod_k n_k!}\to \Entropy(p)$
+      \item \textbf{Diff.\ $h$:} $-\int p\ln p\,\mathrm{d}x$; $\Entropy_\Delta\approx h(X)-d\ln\Delta$
+      \item \textbf{MaxEnt:} $\le\ln K$; fixed $(\vecb\mu,\mat\Sigma)\Rightarrow\Normal$, $\frac12\ln\det(2\pi e\mat\Sigma)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[->] (0,0) -- (4.4,0) node[right] {$p$};
+      \draw[->] (0,0) -- (0,3.4) node[above] {$H_2(p)$};
+      \draw[csA, very thick, domain=0.02:0.98, samples=40] plot ({4*\x}, {-3.0*(\x*ln(\x)+(1-\x)*ln(1-\x))/ln(2)});
+      \draw[csDom, dashed] (2,0) -- (2,3.0);
+      \fill[csA] (2,3.0) circle (2.5pt) node[above] {$1\text{ bit}$};
+      \node at (2,-0.45) {$p=0.5$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; KL \& CROSS-ENTROPY $-$ M- vs.\ I-projection}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{H_{\mathrm{ce}}(p,q)=\Entropy(p)+\KL{p}{q},\quad \KL{p}{q}\ge 0}
+    \begin{csbul}
+      \item \textbf{Fwd KL} $\min_q\KL{p}{q}$ (\textbf{M-proj}): moment-matching, \emph{zero-avoiding} (mode-covering, MLE)
+      \item \textbf{Rev KL} $\min_q\KL{q}{p}$ (\textbf{I-proj}): ELBO / VI, \emph{zero-forcing} (mode-seeking)
+      \item \textbf{Bivariate $\Normal$}: M-proj $v_i^\star=\Sigma_{ii}$ vs.\ I-proj $v_i^\star=(\Lambda_{ii})\inv\le\Sigma_{ii}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \draw[csDom, thick, domain=-2.4:2.4, samples=45] plot (\x, {1.7*exp(-1.5*(\x+1.0)^2)+1.7*exp(-1.5*(\x-1.0)^2)});
+      \draw[csB, very thick, dashed, domain=-2.4:2.4, samples=35] plot (\x, {1.25*exp(-0.35*\x*\x)});
+      \draw[csF, very thick, domain=-2.4:2.4, samples=35] plot (\x, {1.75*exp(-1.6*(\x-1.0)^2)});
+      \node[csDom] at (-1.55,1.98) {$p(x)$};
+      \node[csB] at (0,2.02) {Fwd $\KL{p}{q}$};
+      \node[csF] at (1.55,2.05) {Rev $\KL{q}{p}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; MUTUAL INFO, DPI \& FANO $-$ channel limits}{%
+  \csfm{\MI(X;Y)=\KL{p(x,y)}{p(x)p(y)}=\Entropy(X)-\Entropy(X|Y)\ge 0}
+  \begin{csbul}
+    \item \textbf{Bivariate Gaussian}: $\MI(X;Y)=-\frac{1}{2}\ln(1-\rho^2)$
+    \item \textbf{Data Processing Inequality (DPI)}: $X\to Y\to Z \implies \MI(X;Y)\ge\MI(X;Z)$ (equality iff $Z$ is a sufficient statistic: $\MI(X;Y\mid Z)=0$)
+    \item \textbf{$f$-Divergence contraction}: Markov kernel $t(y|x)$ gives $D_f(p(x)\|q(x))\ge D_f(p(y)\|q(y))$
+    \item \textbf{Fano's inequality}: $P_e=\Prob(\hat Y\ne Y) \ge \frac{\Entropy(Y|X)-\ln 2}{\ln\abs{\mathcal Y}} = \frac{\Entropy(Y)-\MI(X;Y)-\ln 2}{\ln\abs{\mathcal Y}}$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; $f$-DIVERGENCES \& PINSKER $-$ ratio geometry}{%
+  \renewcommand{\arraystretch}{0.94}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{2.1cm}@{}}
+    \textbf{\textcolor{csD}{Divergence}} & \textbf{\textcolor{csD}{Canonical $\tilde f(u)$}} & \textbf{\textcolor{csD}{Range / Note}}\\ \hline
+    Fwd KL $\KL{p}{q}$ & $u\ln u - u + 1$ & $[0,\infty]$, Bregman\\
+    Rev KL $\KL{q}{p}$ & $-\ln u + u - 1$ & $[0,\infty]$, VI/ELBO\\
+    Jensen--Shannon & $\frac12[u\ln u-(u{+}1)\ln\frac{u+1}{2}]$ & $[0,\ln 2]$, $\sqrt{\mathrm{JS}}$ metric\\
+    Sq.\ Hellinger $D_H^2$ & $\frac12(\sqrt u-1)^2$ & $[0,1]$, symmetric\\
+    Total Var.\ $D_{\mathrm{TV}}$ & $\frac12\abs{u-1}$ & $[0,1]$, $f$-div $\cap$ IPM\\
+  \end{tabular}\par\vspace{0pt}
+  \scriptsize\textbf{Pinsker:} $D_{\mathrm{TV}}\le\sqrt{\tfrac12\KL{p}{q}}$;\;
+  \textbf{Local:} $D_f(p_\theta\|p_{\theta+\delta})=\frac{f''(1)}{2}\delta\T\mat F\delta+O(\norm{\delta}^3)$.}
+
+\csbranch{5}{E}{5\;\; INFORMATION BOTTLENECK $-$ IB, VIB \& CEB}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\min_{e(t|x)}\;\mathcal L_{\mathrm{IB}}=\beta\,\MI(X;T)-\MI(T;Y)}
+    \begin{csbul}
+      \item \textbf{Markov}: $Y\leftrightarrow X\to T\to\hat Y$
+      \item \textbf{Blahut--Arimoto}: $O(\abs{\mathcal X}\abs{\mathcal T}\abs{\mathcal Y})$/iter:\par
+        {\scriptsize $e(t|x)\propto p(t)e^{-\beta\inv\KL{p(y|x)}{p(y|t)}}$}
+      \item \textbf{VIB}: $-\E[\ln d_\phi(y|t)]+\beta\KL{e_\theta(t|x)}{m(t)}$
+      \item \textbf{CEB}: $\MI(X;T\mid Y)=\MI(X;T)-\MI(T;Y)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.37, every node/.style={font=\tiny}]
+      \draw[->] (0,0) -- (4.3,0) node[right] {$\MI(X;T)$};
+      \draw[->] (0,0) -- (0,3.3) node[above] {$\MI(T;Y)$};
+      \draw[csE!40, fill=csE!12] (0,0) .. controls (1.0,2.5) and (2.2,2.8) .. (4.0,2.85) -- (4.0,0) -- cycle;
+      \draw[csE, very thick] (0,0) .. controls (1.0,2.5) and (2.2,2.8) .. (4.0,2.85);
+      \draw[csA, dashed] (0,2.85) -- (4.0,2.85) node[pos=0.55, above] {$\MI(X;Y)$};
+      \node[csE] at (2.2,1.2) {feasible};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; ML CONNECTIONS $-$ one variational root}{%
+  \begin{csbul}
+    \item \textbf{Classifier Cross-Entropy} = MLE = minimizing forward $\KL{p_{\mathcal D}}{q_\theta}$
+    \item \textbf{$\beta$-VAE \& Rate--Distortion}: $h(X)-D \le \MI(X;Z) \le R$; $\beta=1$ recovers exact ELBO
+    \item \textbf{$f$-GANs \& Donsker--Varadhan}: $D_f(p\|q)=\sup_t \{\E_p[t(X)]-\E_q[f^\dagger(t(X))]\}$
+    \item \textbf{InfoNCE / Contrastive}: $\MI(X;Y)\ge \MI_{\mathrm{NCE}}$, saturated by $\ln K$ (batch negatives $K$)
+    \item \textbf{Natural Gradient}: $\KL{p_\theta}{p_{\theta+\delta}}\approx\frac12\delta\T\mat F(\theta)\delta$ defines Fisher--Rao metric
+    \item \textbf{Exp.\ family}: $\KL{p_{\eta_1}}{p_{\eta_2}} = B_A(\eta_2\|\eta_1)$ (unique $f$-div $\cap$ Bregman divergence)
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Forward KL covers all modes $\cdot$ Reverse KL locks onto one $\cdot$ DPI says post-processing never adds info}\\[1pt]
+  \footnotesize\mdseries \textbf{Cross-entropy, ELBO, $f$-GANs, and VIB are all density-ratio variational bounds.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Disjoint support:} $p>0, q=0 \implies \KL{p}{q}=+\infty$, $\JS{p}{q}=\ln 2$ (zero grad)
+    \item \textbf{Diff.\ $h(X)$:} can be $<0$ and shifts by $+\E[\ln\abs{\det\jac_g}]$ ($\KL{}{}$ \& $\MI$ invariant)
+    \item \textbf{Deterministic IB:} $T=g_\theta(X)\implies\MI(X;T)=+\infty$; need stochastic $e_\theta(t|x)$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Shannon Entropy, KL Divergence, $f$-Divergences \& Information Bottleneck}\;---\;Domain 01 $\cdot$ Probability \& Information Theory}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Entropy, Cross-Entropy \& KL Decomposition:
+      \csfm{H_{\mathrm{ce}}(p,q)=-\E_p[\ln q(X)]=\Entropy(p)+\KL{p}{q},\quad \KL{p}{q}=\E_p[\ln(p/q)]\ge 0}
+    \item Gaussian $h(p)=\frac12\ln\det(2\pi e\mat\Sigma_1)$ \& KL ($\Delta\vecb\mu=\vecb\mu_2-\vecb\mu_1$):
+      \csfm{\KL{p}{q}=\frac12\Bigl[\Tr(\mat\Sigma_2\inv\mat\Sigma_1)+\Delta\vecb\mu\T\mat\Sigma_2\inv\Delta\vecb\mu-d+\ln(\det\mat\Sigma_2/\det\mat\Sigma_1)\Bigr]}
+    \item Csisz\'ar $f$-Divergence \& Fenchel Dual ($f$ convex, $f(1)=0$, $t^\star=f'(p/q)$):
+      \csfm{D_f(p\|q)=\E_q[f(p(X)/q(X))]=\sup_{t}\bigl\{\E_p[t(X)]-\E_q[f^\dagger(t(X))]\bigr\}}
+    \item Pinsker's Inequality \& Local Fisher--Rao Expansion:
+      \csfm{D_{\mathrm{TV}}(p,q)\le\sqrt{\tfrac12\KL{p}{q}},\qquad D_f(p_\theta\|p_{\theta+\delta})=\frac{f''(1)}{2}\delta\T\mat F(\theta)\delta+O(\norm{\delta}^3)}
+    \item Variational Information Bottleneck (VIB) Loss:
+      \csfm{\mathcal L_{\mathrm{VIB}}(\theta,\phi)=-\E_{p_{\mathcal D}(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)]+\beta\,\E_{p_{\mathcal D}(x)}\bigl[\KL{e_\theta(t|x)}{m(t)}\bigr]}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{BLAHUT--ARIMOTO IB ALGORITHM (DISCRETE)}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Initialize $e^{(0)}(t|x)\in\Delta^{\abs{\mathcal T}-1}$; compute $p(x)$ and $p(y|x)$.
+    \item Marginal: $p^{(k)}(t)\leftarrow\sum_x p(x)e^{(k)}(t|x)$.
+    \item Decoder: $p^{(k)}(y|t)\leftarrow\frac{1}{p^{(k)}(t)}\sum_x p(x)e^{(k)}(t|x)p(y|x)$.
+    \item Encoder: $e^{(k+1)}(t|x)\leftarrow\frac{p^{(k)}(t)}{Z(x,\beta)}e^{-\beta\inv\KL{p(y|x)}{p^{(k)}(y|t)}}$.
+    \item Repeat until $\max_{x,t}\abs{e^{(k+1)}(t|x)-e^{(k)}(t|x)}<\varepsilon$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    samples from $p$, fit $q_\theta$ & Forward KL $\KL{p}{q_\theta}$ (MLE / M-proj)\\
+    unnormalized target $\tilde p(z)$ & Reverse KL $\KL{q_\phi}{p}$ (ELBO / I-proj)\\
+    disjoint / noisy supports & Jensen--Shannon, Hellinger, or $W_1$\\
+    need a true metric $\in[0,1]$ & $D_{\mathrm{TV}}$, $D_H$, or $\sqrt{\JS{p}{q}/\ln 2}$\\
+    continuous IB representation & VIB with Gaussian encoder $e_\theta(t|x)$\\
+    strip nuisance cleanly & CEB ($\min \beta\MI(X;T|Y)-\MI(T;Y)$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY IDENTITIES \& BOUNDS CHEAT-LINE}
+  \begin{csbul}
+    \item KL Chain Rule: $\KL{p(x,y)}{q(x,y)}=\KL{p(x)}{q(x)}+\E_{p(x)}[\KL{p(y|x)}{q(y|x)}]$
+    \item Typical Set (AEP): $\abs{A_\epsilon^{(N)}}\approx e^{N\Entropy(p)}$, $p(\vecb x_{1:N})\approx e^{-N\Entropy(p)}$
+    \item Donsker--Varadhan: $\KL{p}{q}=\sup_\phi\{\E_p[\phi(X)]-\ln\E_q[e^{\phi(X)}]\}$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CANONICAL $f$-DIVERGENCE GENERATORS $\tilde f(u)$ ($u=p/q$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.7cm, xmin=0.08, xmax=2.8, ymin=-0.28, ymax=1.95,
+      xlabel={Likelihood ratio $u=p(x)/q(x)$}, ylabel={$\tilde f(u)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0.5,1.0,1.5,2.0,2.5}, ytick={0,0.5,1.0,1.5},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, draw=gray!40, fill=white, fill opacity=0.92, at={(0.97,0.97)}, anchor=north east, legend columns=2}]
+      \addplot[csA, very thick, domain=0.08:2.8, samples=80] {x*ln(x) - x + 1};
+      \addlegendentry{Fwd KL: $u\ln u-u+1$}
+      \addplot[csB, very thick, dashed, domain=0.08:2.8, samples=80] {-ln(x) + x - 1};
+      \addlegendentry{Rev KL: $-\ln u+u-1$}
+      \addplot[csD, very thick, dashdotted, domain=0.08:2.8, samples=80] {0.5*(x*ln(x) - (x+1)*ln((x+1)/2))};
+      \addlegendentry{JS: $\tilde f_{\mathrm{JS}}(u)$}
+      \addplot[csF, very thick, dotted, domain=0.08:2.8, samples=80] {0.5*(sqrt(x)-1)^2};
+      \addlegendentry{Hellinger: $\frac12(\sqrt u-1)^2$}
+      \fill[csDom] (axis cs:1,0) circle (1.8pt);
+      \node[font=\tiny, csDom, anchor=north] at (axis cs:1.05,-0.02) {$\tilde f(1)=\tilde f'(1)=0$};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Disjoint-support blowup}: When $p^*$ and $q_\theta$ lie on distinct low-dimensional manifolds, $\KL{p^*}{q_\theta}=+\infty$ and $\nabla_\theta\JS{p^*}{q_\theta}=\vecb 0$. Remedy: add Gaussian noise jitter, label smoothing, or switch to Wasserstein IPMs.
+    \item \textbf{Differential entropy traps}: $h(X)$ can be negative (e.g.\ $\Normal(0,\sigma^2)$ for $\sigma^2<(2\pi e)^{-1}$) and changes under scaling $h(aX)=h(X)+\ln\abs{a}$. Never minimize raw $h(T)$ without a reference prior $m(T)$ ($\KL{e(t|x)}{m(t)}$).
+    \item \textbf{Deterministic continuous IB}: If $T=g_\theta(X)$ is deterministic on continuous $X$, $\MI(X;T)=+\infty$ and IB breaks. Always inject encoder stochasticity $e_\theta(t|x)=\Normal(\vecb\mu_\theta(x),\diag(\vecb\sigma_\theta^2(x)))$.
+    \item \textbf{Log-domain NaN \& InfoNCE saturation}: Compute $-\E_p[\ln\softmax(\vecb z)]$ via $\mathrm{LogSumExp}$, mask $0\ln 0\mapsto 0$, and remember $\MI_{\mathrm{NCE}}\le\ln K$ (requires large negative batch size $K$).
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Entropy} $\Entropy(p)$ counts log-microstates and sets the source-coding floor.
+  \textbf{KL divergence} $\KL{p}{q}$ measures excess coding cost: forward $\KL{p}{q}$ matches moments and covers modes (MLE), while reverse $\KL{q}{p}$ seeks a single mode (VI).
+  \textbf{DPI \& IB} show that Markov layers only lose information ($\MI(X;Y)\ge\MI(T;Y)$), so optimal representations compress nuisance $\MI(X;T\mid Y)\to 0$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,539 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf
+  {Mathematical Foundations for Machine Intelligence}
+  {Probability Theory, Information Theory \& Optimal Transport}
+  {Information Theory, Divergences \& Optimal Transport}
+  {Monge-Kantorovich Optimal Transport, Wasserstein Metrics \& Sinkhorn Scaling}
+  {\bookcite{optimal_transport}{Slides~16--39, 45--97}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7, 6.8, 26.2}, \bookcite{theprinciple_diffusion_models}{Ch.~7, Sec.~7.1--7.5}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:ot:formulation}
+% =============================================================================
+
+Whereas information-theoretic $f$-divergences quantify discrepancy vertically through pointwise density ratios $\mathrm{d}\mu / \mathrm{d}\nu$ and therefore blow up or saturate when measures have disjoint supports, optimal transport (OT) compares probability distributions \emph{horizontally} by lifting a ground metric on the sample space to a variational cost over probability measures \bookcite{optimal_transport}{Slides~46--49} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8, p.~314}.
+
+Let $(\mathcal{X}, d)$ be a Polish metric space (canonically Euclidean space $\R^d$ with $d(\vecb{x}, \vecb{y}) = \norm{\vecb{x} - \vecb{y}}_2$), and let $\mathcal{P}(\mathcal{X})$ denote the space of Borel probability measures on $\mathcal{X}$. Given a measurable non-negative ground cost $c : \mathcal{X} \times \mathcal{X} \to \R_{\ge 0}$ (typically $c(\vecb{x}, \vecb{y}) = d(\vecb{x}, \vecb{y})^p$ for $p \ge 1$, or $\frac{1}{2}\norm{\vecb{x}-\vecb{y}}_2^2$), we seek the least-cost transformation coupling a source measure $\mu \in \mathcal{P}(\mathcal{X})$ to a target measure $\nu \in \mathcal{P}(\mathcal{X})$ \bookcite{theprinciple_diffusion_models}{Sec.~7.2.1, pp.~194--195}. For $p$-Wasserstein distances, we restrict to $\mathcal{P}_p(\mathcal{X}) \triangleq \{ \rho \in \mathcal{P}(\mathcal{X}) : \int_{\mathcal{X}} d(\vecb{x}, \vecb{x}_0)^p\,\mathrm{d}\rho(\vecb{x}) < \infty \}$ for an arbitrary anchor $\vecb{x}_0 \in \mathcal{X}$.
+
+In computational and empirical machine learning settings, $\mu$ and $\nu$ are supported on finite point clouds $\{\vecb{x}_i\}_{i=1}^n \subset \mathcal{X}$ and $\{\vecb{y}_j\}_{j=1}^m \subset \mathcal{X}$ with probability weights $\vecb{a} \in \Delta_n$ and $\vecb{b} \in \Delta_m$ on the unit simplices ($\sum_{i=1}^n a_i = \sum_{j=1}^m b_j = 1$, $a_i, b_j > 0$):
+\begin{equation}
+\label{eq:ot:discrete_measures}
+  \mu = \sum_{i=1}^n a_i \delta_{\vecb{x}_i}, \qquad
+  \nu = \sum_{j=1}^m b_j \delta_{\vecb{y}_j}, \qquad
+  C_{ij} \triangleq c(\vecb{x}_i, \vecb{y}_j) \in \R_{\ge 0}^{n \times m}.
+\end{equation}
+Admissible joint couplings form the \textbf{transportation polytope} \bookcite{optimal_transport}{Slide~27} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.192, p.~316}:
+\begin{equation}
+\label{eq:ot:polytope}
+  \Pi(\vecb{a}, \vecb{b}) \triangleq \bigl\{ \mat{\pi} \in \R_{\ge 0}^{n \times m} : \mat{\pi}\ones_m = \vecb{a},\; \mat{\pi}\T\ones_n = \vecb{b} \bigr\}.
+\end{equation}
+When $n = m$ and $\vecb{a} = \vecb{b} = \frac{1}{n}\ones_n$, scaling by $n$ maps $\Pi(\frac{1}{n}\ones_n, \frac{1}{n}\ones_n)$ bijectively onto the \textbf{Birkhoff polytope} $\mathcal{B}_n$ of $n \times n$ doubly stochastic matrices, whose extreme points are the $n!$ permutation matrices $\mat{P}_\sigma$ ($\sigma \in S_n$) by the Birkhoff--von Neumann theorem \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.1, p.~314}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{cb:ot:notation}
+The three synthesized sources originate in statistical optimization, scalable ML systems, and continuous-time diffusion theory; the table below reconciles their distinct symbol sets into a single consistent monograph notation.
+\vspace{4pt}
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Monograph} & \textbf{Source Variants} & \textbf{Reconciliation} \\
+\midrule
+Source / target measures & $\mu, \nu \in \mathcal{P}(\mathcal{X})$; weights $\vecb{a}, \vecb{b}$ & $\mu, \nu$ ($\vecb{a}, \vecb{b}$) in Murphy; $P, Q$ ($\vecb{p}, \vecb{q}$) in Ho; $p_{\mathrm{src}}, p_{\mathrm{tgt}}$ in Diffusion Models & Continuous $\mu, \nu$ generalize both densities $p_{\mathrm{src}}, p_{\mathrm{tgt}}$ and discrete $\sum a_i \delta_{\vecb{x}_i}$. \\
+Support atoms & $\vecb{x}_i, \vecb{y}_j \in \R^d$ & $\vecb{x}_i, \vecb{y}_j$ in Murphy; $\eta_i, \theta_j$ (or $B_i, R_j$) in Ho; $\vecb{x}^{(i)}, \vecb{y}^{(j)}$ in Diffusion Models & Subscripts index support elements; boldface denotes vectors in $\R^d$. \\
+Coupling \& feasible set & $\pi \in \Pi(\mu, \nu)$ (discrete $\mat{\pi} \in \Pi(\vecb{a}, \vecb{b})$) & $P \in \R_+^{n\times m}$ / $\pi \in \Pi(\mu,\nu)$ in Murphy; $\pi \in \mathcal{P}(\vecb{p},\vecb{q})$ in Ho; $\gamma \in \Gamma(p_{\mathrm{src}},p_{\mathrm{tgt}})$ in Diffusion Models & Avoids collision with probability densities $p, q$ and Euler--Maruyama steps $\gamma$. \\
+Entropic regularizer & $\varepsilon > 0$ & $\gamma > 0$ in Murphy; $\eta > 0$ in Ho; $\varepsilon > 0$ in Diffusion Models & Matches Brownian diffusivity $\mathrm{d}\vecb{x}_t = \sqrt{\varepsilon}\,\mathrm{d}\vecb{w}_t$ in Schr\"odinger bridges. \\
+Entropy penalty form & $\varepsilon\,\KL{\pi}{\mu \otimes \nu}$ & $\gamma\,\KL{\pi}{\mu \otimes \nu}$ in Murphy; $-\eta H(\pi)$ in Ho; $\varepsilon\,\KL{\gamma}{p_{\mathrm{src}} \otimes p_{\mathrm{tgt}}}$ in Diffusion Models & Discrete identity $\KL{\mat{\pi}}{\vecb{a}\vecb{b}\T} = -H(\mat{\pi}) + H(\vecb{a}) + H(\vecb{b})$ differs only by a marginal constant. \\
+Dual potentials & $(\vecb{f}, \vecb{g}) \in \R^n \times \R^m$; scaled $(u, v) = (e^{f/\varepsilon}, e^{g/\varepsilon})$ & $(f, g)$ with $\diag(e^{f/\gamma})\mat{K}\diag(e^{g/\gamma})$ in Murphy; dimensionless $(u, v) = (f/\eta, g/\eta)$ in Ho; $(\Psi, \widehat{\Psi})$ in Diffusion Models & Log-potentials $(f,g)$ carry cost units; dimensionless $(u,v) = (f/\varepsilon, g/\varepsilon)$ are log-scalings. \\
+Quadratic cost factor & $c(\vecb{x}, \vecb{y}) = \norm{\vecb{x}-\vecb{y}}_2^2$ (for $W_2^2$); $\frac{1}{2}\norm{\vecb{x}-\vecb{y}}_2^2$ in Brenier & Both forms in Murphy; $\norm{\vecb{x}-\vecb{y}}_2^2$ in Ho; $\norm{\vecb{x}-\vecb{y}}_2^2$ and $\frac{\norm{\vecb{y}-\vecb{x}}^2}{2T}$ in Diffusion Models & Factor $\frac{1}{2}$ cancels the $2$ in $\nabla(\frac{1}{2}\norm{\cdot}^2) = \mathrm{Id}$, yielding $T^\star = \nabla u$. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\vspace{2pt}
+\footnotesize\emph{Synthesized Sources:} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.2, 6.8, 26.2.4, pp.~57--58, 314--322, 900--901}, \bookcite{optimal_transport}{Slides~16--39, 46--97}, and \bookcite{theprinciple_diffusion_models}{Ch.~7, Sec.~7.1--7.5, pp.~191--223}.
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:ot:derivations}
+% =============================================================================
+
+\subsection{From Monge Pushforward Maps to Kantorovich Relaxation}
+\label{sec:ot:monge_kantorovich}
+
+Consider first matching two unweighted clouds $\{\vecb{x}_i\}_{i=1}^n$ and $\{\vecb{y}_j\}_{j=1}^n$ of equal cardinality. Any one-to-one assignment corresponds to a permutation $\sigma \in S_n$ minimizing $\frac{1}{n}\sum_{i=1}^n C_{i,\sigma(i)}$ \bookcite{optimal_transport}{Slide~17} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.191, p.~315}. Exhaustive enumeration requires $n!$ evaluations, whereas the Hungarian algorithm solves this bipartite matching in $O(n^3)$ time \bookcite{optimal_transport}{Slide~18}. Extending this bijection to general measures requires the \textbf{pushforward} operator: a measurable map $T : \mathcal{X} \to \mathcal{X}$ satisfies $T_\sharp \mu = \nu$ iff $\mu(T^{-1}(A)) = \nu(A)$ for every Borel set $A \subseteq \mathcal{X}$, or equivalently $\int_{\mathcal{X}} \varphi(T(\vecb{x}))\,\mathrm{d}\mu(\vecb{x}) = \int_{\mathcal{X}} \varphi(\vecb{y})\,\mathrm{d}\nu(\vecb{y})$ for all bounded measurable test functions $\varphi$ \bookcite{optimal_transport}{Slides~20--21}. When $T$ is a diffeomorphism on $\R^d$ and $\mu, \nu$ admit Lebesgue densities $p, q$, the change-of-variables formula enforces
+\begin{equation}
+\label{eq:ot:pushforward_jacobian}
+  q\bigl(T(\vecb{x})\bigr)\,\abs{\det \jac_T(\vecb{x})} = p(\vecb{x}) \quad \text{almost everywhere,}
+\end{equation}
+where $\jac_T(\vecb{x}) = \nabla T(\vecb{x}) \in \R^{d \times d}$ denotes the Jacobian of $T$ \bookcite{theprinciple_diffusion_models}{Eq.~7.2.4, p.~197} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.193, p.~317}.
+
+\begin{coremath}[Monge Problem, Obstructions \& Kantorovich Linear Program]
+\label{cm:ot:monge_kantorovich}
+\textbf{1. Monge's Deterministic Formulation.} Given $(\mu, \nu)$ and ground cost $c$, Monge's problem seeks a measurable transport map $T : \mathcal{X} \to \mathcal{X}$ achieving \bookcite{optimal_transport}{Eq.~(2), Slide~21} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.194, p.~317}:
+\begin{equation}
+\label{eq:ot:monge}
+  \mathrm{Monge}_c(\mu, \nu) \triangleq \inf_{T : T_\sharp \mu = \nu} \int_{\mathcal{X}} c\bigl(\vecb{x}, T(\vecb{x})\bigr)\,\mathrm{d}\mu(\vecb{x}).
+\end{equation}
+Two structural obstructions limit Eq.~\eqref{eq:ot:monge}: (i) \emph{non-existence}---because $T$ cannot split mass at a single point, mapping $\mu = \delta_{\vecb{x}_0}$ to $\nu = \frac{1}{2}\delta_{\vecb{y}_1} + \frac{1}{2}\delta_{\vecb{y}_2}$ ($\vecb{y}_1 \ne \vecb{y}_2$) yields an empty feasible set since $\mu(T^{-1}(\{\vecb{y}_1\})) \in \{0, 1\} \ne \frac{1}{2}$ \bookcite{optimal_transport}{Slide~22}; and (ii) \emph{non-convexity}---even when $T_\sharp \mu = \nu$ and $T'_\sharp \mu = \nu$, the convex combination $(\frac{1}{2}T + \frac{1}{2}T')_\sharp \mu \ne \nu$ in general \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.2.2, p.~317}.
+
+\textbf{2. Kantorovich's Probabilistic Relaxation.} Kantorovich replaced deterministic maps with probabilistic couplings $\pi \in \Pi(\mu, \nu) \subset \mathcal{P}(\mathcal{X} \times \mathcal{X})$ satisfying the marginal constraints $\pi(A \times \mathcal{X}) = \mu(A)$ and $\pi(\mathcal{X} \times B) = \nu(B)$ for all Borel $A, B \subseteq \mathcal{X}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.195--6.196, p.~317} \bookcite{theprinciple_diffusion_models}{Eq.~7.2.1, p.~195}:
+\begin{equation}
+\label{eq:ot:kantorovich}
+  \mathrm{OT}_c(\mu, \nu) \triangleq \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} c(\vecb{x}, \vecb{y})\,\mathrm{d}\pi(\vecb{x}, \vecb{y}).
+\end{equation}
+Unlike Monge's feasible set, $\Pi(\mu, \nu)$ is always non-empty (containing $\mu \otimes \nu$), convex, and weakly compact on Polish spaces when $c$ is lower semicontinuous and bounded below, guaranteeing attainment of an optimal coupling $\pi^\star$. Every Monge map $T$ induces a deterministic coupling $\pi_T = (\mathrm{Id}, T)_\sharp \mu \in \Pi(\mu, \nu)$ with identical cost, so $\mathrm{OT}_c(\mu, \nu) \le \mathrm{Monge}_c(\mu, \nu)$.
+
+\textbf{3. Discrete Linear Program \& Birkhoff Vertices.} For discrete measures \eqref{eq:ot:discrete_measures}, Eq.~\eqref{eq:ot:kantorovich} becomes the finite-dimensional linear program \bookcite{optimal_transport}{Eq.~(5), Slide~27} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.192, p.~316}:
+\begin{equation}
+\label{eq:ot:discrete_lp}
+  \mathrm{OT}_{\mat{C}}(\vecb{a}, \vecb{b}) = \min_{\mat{\pi} \in \Pi(\vecb{a}, \vecb{b})} \inner{\mat{C}}{\mat{\pi}} \triangleq \sum_{i=1}^n \sum_{j=1}^m C_{ij}\pi_{ij}.
+\end{equation}
+When $n = m$ and $\vecb{a} = \vecb{b} = \frac{1}{n}\ones_n$, the Birkhoff--von Neumann theorem characterizes the extreme points of $\Pi(\frac{1}{n}\ones_n, \frac{1}{n}\ones_n)$ as the scaled permutation matrices $\{\frac{1}{n}\mat{P}_\sigma : \sigma \in S_n\}$. Because a linear program attains its minimum at an extreme point of its feasible polytope, Eq.~\eqref{eq:ot:discrete_lp} admits an optimal permutation vertex, proving exact equivalence between Monge assignment and Kantorovich relaxation in the balanced uniform discrete case.
+\end{coremath}
+
+\subsection{Kantorovich Duality, $c$-Transforms, and Wasserstein-$p$ Metrics}
+\label{sec:ot:duality_wasserstein}
+
+Because Eq.~\eqref{eq:ot:kantorovich} is an infinite-dimensional linear program, strong duality transforms constrained mass transport over couplings $\pi$ into maximization over dual potential pairs $(f, g)$ satisfying a pointwise cost inequality \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.1, p.~318}.
+
+\begin{coremath}[Kantorovich Duality, $c$-Concavity \& Kantorovich--Rubinstein Theorem]
+\label{cm:ot:duality}
+\textbf{1. Primal-to-Dual Lagrangian Derivation.} In discrete form~\eqref{eq:ot:discrete_lp}, enforce the marginal constraints $\mat{\pi}\ones_m = \vecb{a}$ and $\mat{\pi}\T\ones_n = \vecb{b}$ via unconstrained Lagrange multipliers $\vecb{f} \in \R^n$ and $\vecb{g} \in \R^m$ while retaining $\mat{\pi} \ge \zeros$:
+\begin{equation}
+\label{eq:ot:lagrangian_lp}
+  \min_{\mat{\pi} \ge \zeros} \sup_{\vecb{f} \in \R^n,\, \vecb{g} \in \R^m}
+  \vecb{f}\T\vecb{a} + \vecb{g}\T\vecb{b} + \sum_{i=1}^n \sum_{j=1}^m \bigl(C_{ij} - f_i - g_j\bigr)\pi_{ij}.
+\end{equation}
+By Slater's condition ($\mat{\pi} = \vecb{a}\vecb{b}\T > \zeros$ lies in the relative interior of the non-negative orthant), strong duality permits swapping $\min$ and $\sup$. Minimizing over $\pi_{ij} \ge 0$ yields $-\infty$ unless $f_i + g_j \le C_{ij}$ for all $(i,j)$, in which case the infimum occurs at $(C_{ij} - f_i - g_j)\pi_{ij} = 0$. Passing to continuous measures $(\mu, \nu)$ gives the \textbf{Kantorovich dual} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.198--6.199, p.~318}:
+\begin{equation}
+\label{eq:ot:dual}
+  \mathrm{OT}_c(\mu, \nu) = \sup_{\substack{f \in L^1(\mu),\, g \in L^1(\nu) \\ f(\vecb{x}) + g(\vecb{y}) \le c(\vecb{x},\vecb{y})}}
+  \int_{\mathcal{X}} f(\vecb{x})\,\mathrm{d}\mu(\vecb{x}) + \int_{\mathcal{X}} g(\vecb{y})\,\mathrm{d}\nu(\vecb{y}),
+\end{equation}
+with complementary slackness $f^\star(\vecb{x}) + g^\star(\vecb{y}) = c(\vecb{x}, \vecb{y})$ holding $\pi^\star$-almost everywhere on $\mathrm{supp}(\pi^\star)$.
+
+\textbf{2. The $c$-Transform \& Semi-Dual Reduction.} Fixing $f$, the pointwise tightest admissible $g$ in Eq.~\eqref{eq:ot:dual} is its \textbf{$c$-transform} $f^c$ (and symmetrically $g^{\bar{c}}$ for fixed $g$, where $f^c = f^{\bar{c}}$ for symmetric $c$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.200--6.203, p.~318}:
+\begin{equation}
+\label{eq:ot:ctransform}
+  f^c(\vecb{y}) \triangleq \inf_{\vecb{x} \in \mathcal{X}} \bigl[ c(\vecb{x}, \vecb{y}) - f(\vecb{x}) \bigr], \qquad
+  g^{\bar{c}}(\vecb{x}) \triangleq \inf_{\vecb{y} \in \mathcal{X}} \bigl[ c(\vecb{x}, \vecb{y}) - g(\vecb{y}) \bigr].
+\end{equation}
+By definition, $f(\vecb{x}) + f^c(\vecb{y}) \le c(\vecb{x},\vecb{y}) \implies f(\vecb{x}) \le (f^c)^{\bar{c}}(\vecb{x})$. Taking the $c$-transform again flips order, giving $(f^{c\bar{c}})^c(\vecb{y}) \le f^c(\vecb{y})$, while substituting $g = f^c$ gives $(f^c)^{\bar{c}}(\vecb{x}) + f^c(\vecb{y}) \le c(\vecb{x},\vecb{y}) \implies f^c(\vecb{y}) \le (f^{c\bar{c}})^c(\vecb{y})$. Hence $f^{c\bar{c}c} = f^c$ identically: double conjugation is idempotent. Restricting to the class of \textbf{$c$-concave functions} $\mathcal{F}_c \triangleq \{ f : f = (f^c)^{\bar{c}} \}$ eliminates $g$ and yields the semi-dual problem:
+\begin{equation}
+\label{eq:ot:semidual}
+  \mathrm{OT}_c(\mu, \nu) = \sup_{f \in \mathcal{F}_c} \int_{\mathcal{X}} f(\vecb{x})\,\mathrm{d}\mu(\vecb{x}) + \int_{\mathcal{X}} f^c(\vecb{y})\,\mathrm{d}\nu(\vecb{y}).
+\end{equation}
+
+\textbf{3. Wasserstein-$p$ Distance \& Kantorovich--Rubinstein Duality ($p = 1$).} For any $p \in [1, \infty)$ and metric $d$, the \textbf{Wasserstein-$p$ distance} on $\mathcal{P}_p(\mathcal{X})$ is \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.197, p.~317}:
+\begin{equation}
+\label{eq:ot:wasserstein_p}
+  \Wass[p]{\mu}{\nu} \triangleq \left( \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} d(\vecb{x}, \vecb{y})^p\,\mathrm{d}\pi(\vecb{x}, \vecb{y}) \right)^{1/p}.
+\end{equation}
+Symmetry and definiteness ($\Wass[p]{\mu}{\nu} = 0 \iff \mu = \nu$) follow directly from metric axioms of $d$, while the triangle inequality $\Wass[p]{\mu}{\rho} \le \Wass[p]{\mu}{\nu} + \Wass[p]{\nu}{\rho}$ follows by gluing optimal plans $(\pi_{12}, \pi_{23})$ over the intermediate marginal $\nu$ (the \emph{gluing lemma}) and applying Minkowski's inequality in $L^p$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.2.4, p.~317}.
+
+Specializing to $p = 1$ ($c(\vecb{x}, \vecb{y}) = d(\vecb{x}, \vecb{y})$), suppose $f$ is $d$-concave, so $f(\vecb{x}) = \inf_{\vecb{z}} [d(\vecb{x}, \vecb{z}) - g(\vecb{z})]$. For any $\vecb{x}, \vecb{y} \in \mathcal{X}$, the triangle inequality $d(\vecb{x}, \vecb{z}) \le d(\vecb{x}, \vecb{y}) + d(\vecb{y}, \vecb{z})$ implies $f(\vecb{x}) - f(\vecb{y}) \le d(\vecb{x}, \vecb{y})$; by symmetry, $\abs{f(\vecb{x}) - f(\vecb{y})} \le d(\vecb{x}, \vecb{y})$, so $f$ is $1$-Lipschitz ($\norm{f}_{\mathrm{Lip}} \le 1$). Conversely, if $\norm{f}_{\mathrm{Lip}} \le 1$, then $f(\vecb{x}) - f(\vecb{y}) \le d(\vecb{x}, \vecb{y}) \implies -f(\vecb{y}) \le d(\vecb{x}, \vecb{y}) - f(\vecb{x})$ for all $\vecb{x}$, with equality at $\vecb{x} = \vecb{y}$; thus $f^d(\vecb{y}) = -f(\vecb{y})$ identically! Substituting $f^d = -f$ into Eq.~\eqref{eq:ot:semidual} proves the \textbf{Kantorovich--Rubinstein duality} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~2.297, 6.204, 26.29, pp.~58, 319, 900} \bookcite{optimal_transport}{Eq.~(11), Slide~51}:
+\begin{equation}
+\label{eq:ot:kr_duality}
+  \Wass[1]{\mu}{\nu} = \sup_{\norm{f}_{\mathrm{Lip}} \le 1} \left( \int_{\mathcal{X}} f(\vecb{x})\,\mathrm{d}\mu(\vecb{x}) - \int_{\mathcal{X}} f(\vecb{y})\,\mathrm{d}\nu(\vecb{y}) \right),
+\end{equation}
+identifying $\Wass[1]{\cdot}{\cdot}$ as an Integral Probability Metric (IPM) over the unit Lipschitz ball.
+\end{coremath}
+
+Two tractable closed forms allow computing $\Wass[p]{\cdot}{\cdot}$ explicitly without iterative optimization \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.4, pp.~320--321}:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Univariate Distributions ($d = 1$):} With generalized quantile functions $Q_\mu(u) = F_\mu^{-1}(u)$ and $Q_\nu(u) = F_\nu^{-1}(u)$ on $u \in [0, 1]$, any convex cost $h(x - y)$ yields $\mathrm{OT}_h(\mu, \nu) = \int_0^1 h(Q_\mu(u) - Q_\nu(u))\,\mathrm{d}u$, so $\Wass[p]{\mu}{\nu} = \norm{Q_\mu - Q_\nu}_{L^p([0,1])}$ and the optimal Monge map (for atomless $\mu$) is $T^\star = Q_\nu \circ F_\mu$ (computable on $n$ uniform points in $O(n \log n)$ via sorting \bookcite{optimal_transport}{Slide~18}).
+  \item \textbf{Multivariate Gaussians (Bures--Wasserstein-2):} For $\mu = \Normal(\vecb{m}_1, \mat{\Sigma}_1)$ and $\nu = \Normal(\vecb{m}_2, \mat{\Sigma}_2)$ on $\R^d$, $\Wass[2]{\mu}{\nu}^2$ splits into mean displacement plus the Bures metric on SPD matrices \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.210--6.212, pp.~320--321}:
+  \begin{equation}
+  \label{eq:ot:bures}
+    \Wass[2]{\Normal(\vecb{m}_1, \mat{\Sigma}_1)}{\Normal(\vecb{m}_2, \mat{\Sigma}_2)}^2
+    = \norm{\vecb{m}_1 - \vecb{m}_2}_2^2 + \Tr\!\left(\mat{\Sigma}_1 + \mat{\Sigma}_2 - 2\bigl(\mat{\Sigma}_1^{1/2}\mat{\Sigma}_2\mat{\Sigma}_1^{1/2}\bigr)^{1/2}\right),
+  \end{equation}
+  with linear Monge map $T^\star(\vecb{x}) = \mat{A}(\vecb{x} - \vecb{m}_1) + \vecb{m}_2$ where $\mat{A} = \mat{\Sigma}_1^{-1/2}\bigl(\mat{\Sigma}_1^{1/2}\mat{\Sigma}_2\mat{\Sigma}_1^{1/2}\bigr)^{1/2}\mat{\Sigma}_1^{-1/2} \succ \zeros$ whenever $\mat{\Sigma}_1 \succ \zeros$.
+\end{enumerate}
+
+\begin{intuition}[Horizontal Metric Geometry vs.\ Vertical $f$-Divergences]
+\label{int:ot:shifted_diracs}
+Consider two point masses $\mu = \delta_0$ and $\nu_\theta = \delta_\theta$ on $\R$ (or parallel 1D uniform lines $P = (0, \Uniform(0,1))$ and $Q_\theta = (\theta, \Uniform(0,1))$ in $\R^2$ \bookcite{optimal_transport}{Slides~46--49}). Whenever $\theta \ne 0$, the supports are completely disjoint, causing $\KL{\mu}{\nu_\theta} = +\infty$, $D_{\mathrm{TV}}(\mu, \nu_\theta) = 1$, and $\JS{\mu}{\nu_\theta} = \ln 2$ with zero gradient $\nabla_\theta \JS{\mu}{\nu_\theta} = 0$. In stark contrast, Wasserstein metrics scale smoothly with displacement: $\Wass[1]{\mu}{\nu_\theta} = \abs{\theta}$ (gradient $\mathrm{sgn}(\theta)$) and $\Wass[2]{\mu}{\nu_\theta}^2 = \theta^2$ (gradient $2\theta$). Thus $\Wass[p]{\cdot}{\cdot}$ metrizes weak convergence of measures plus convergence of $p$-th moments, furnishing informative gradients for generator learning on low-dimensional manifolds \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~26.2.4, p.~900}.
+\end{intuition}
+
+\subsection{Brenier's Theorem, McCann Interpolation, and Benamou--Brenier Dynamics}
+\label{sec:ot:brenier_dynamic}
+
+When the ground cost is quadratic $c(\vecb{x}, \vecb{y}) = \frac{1}{2}\norm{\vecb{x} - \vecb{y}}_2^2$ on $\R^d$, complementary slackness in Eq.~\eqref{eq:ot:dual} collapses Kantorovich couplings onto the gradient of a convex scalar potential, bridging static transport to fluid dynamics and generative flows \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.3, pp.~319--320} \bookcite{theprinciple_diffusion_models}{Sec.~7.2.1 \& 7.5, pp.~195--197, 217--223}.
+
+\begin{coremath}[Brenier's Theorem, Monge--Amp\`ere PDE \& Benamou--Brenier Fluid Action]
+\label{cm:ot:brenier_bb}
+\textbf{1. Brenier's Polar Factorization.} Suppose $\mu, \nu \in \mathcal{P}_2(\R^d)$ and $\mu$ gives zero mass to $(d-1)$-dimensional sets (in particular, $\mu$ admits a Lebesgue density $p_{\mathrm{src}}$) \bookcite{theprinciple_diffusion_models}{p.~195, Thm.~7.1 p.~217}. Let $(f^\star, (f^\star)^c)$ optimize Eq.~\eqref{eq:ot:semidual} for $c(\vecb{x},\vecb{y}) = \frac{1}{2}\norm{\vecb{x}-\vecb{y}}_2^2$. For any $(\vecb{x}_0, \vecb{y}_0) \in \mathrm{supp}(\pi^\star)$, complementary slackness gives $f^\star(\vecb{x}_0) + (f^\star)^c(\vecb{y}_0) = \frac{1}{2}\norm{\vecb{x}_0 - \vecb{y}_0}_2^2$, whereas $(f^\star)^c(\vecb{y}_0) = \inf_{\vecb{x}} [\frac{1}{2}\norm{\vecb{x} - \vecb{y}_0}_2^2 - f^\star(\vecb{x})]$. Therefore $\vecb{x}_0$ minimizes $\vecb{x} \mapsto \frac{1}{2}\norm{\vecb{x}-\vecb{y}_0}_2^2 - f^\star(\vecb{x})$, so first-order stationarity yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.206--6.208, pp.~319--320}:
+\begin{equation}
+\label{eq:ot:brenier_grad}
+  \vecb{y}_0 - \vecb{x}_0 - \nabla f^\star(\vecb{x}_0) = \zeros \implies
+  \vecb{y}_0 = T^\star(\vecb{x}_0) = \nabla u(\vecb{x}_0), \qquad
+  u(\vecb{x}) \triangleq \frac{1}{2}\norm{\vecb{x}}_2^2 - f^\star(\vecb{x}).
+\end{equation}
+Unfolding the $c$-transform shows $u^\ast(\vecb{y}) = \sup_{\vecb{x}} \{\inner{\vecb{x}}{\vecb{y}} - u(\vecb{x})\} = \frac{1}{2}\norm{\vecb{y}}_2^2 - (f^\star)^c(\vecb{y})$, so $u = u^{\ast\ast}$ is convex iff $f^\star$ is $c$-concave. Hence the unique optimal coupling is deterministic, $\pi^\star = (\mathrm{Id}, \nabla u)_\sharp \mu$, and combining $\nabla T^\star = \nabla^2 u \succeq \zeros$ with Eq.~\eqref{eq:ot:pushforward_jacobian} yields the nonlinear \textbf{Monge--Amp\`ere PDE} \bookcite{theprinciple_diffusion_models}{Eq.~7.2.4, p.~197}:
+\begin{equation}
+\label{eq:ot:monge_ampere}
+  p_{\mathrm{tgt}}\bigl(\nabla u(\vecb{x})\bigr)\,\det\nabla^2 u(\vecb{x}) = p_{\mathrm{src}}(\vecb{x}).
+\end{equation}
+
+\textbf{2. McCann Displacement Interpolation \& Benamou--Brenier Action.} Along $t \in [0, 1]$, particles following $T^\star$ trace constant-velocity straight lines $T_t^\star(\vecb{x}) = (1 - t)\vecb{x} + t T^\star(\vecb{x})$, defining \textbf{McCann's displacement interpolation} $p_t^{\mathrm{OT}} = (T_t^\star)_\sharp p_{\mathrm{src}}$---the constant-speed geodesic in $(\mathcal{P}_2(\R^d), W_2)$ \bookcite{theprinciple_diffusion_models}{p.~197}. Benamou and Brenier (2000) proved that this geodesic minimizes kinetic energy over all Eulerian density--velocity paths $(p_t, \vecb{v}_t)$ solving the continuity equation \bookcite{theprinciple_diffusion_models}{Eq.~7.2.3, p.~197}:
+\begin{equation}
+\label{eq:ot:benamou_brenier}
+\begin{aligned}
+  \Wass[2]{p_{\mathrm{src}}}{p_{\mathrm{tgt}}}^2
+  &= \inf_{(p_t, \vecb{v}_t)} \int_0^1 \int_{\R^d} \norm{\vecb{v}_t(\vecb{x})}_2^2\, p_t(\vecb{x})\,\mathrm{d}\vecb{x}\,\mathrm{d}t \\
+  &\quad \text{s.t.} \quad \partial_t p_t + \nabla \cdot (p_t \vecb{v}_t) = 0,\;\; p_0 = p_{\mathrm{src}},\;\; p_1 = p_{\mathrm{tgt}}.
+\end{aligned}
+\end{equation}
+Optimal pairs satisfy $\vecb{v}_t(\vecb{x}) = \nabla \varphi_t(\vecb{x})$ where $\varphi_t$ solves the Hamilton--Jacobi equation $\partial_t \varphi_t + \frac{1}{2}\norm{\nabla\varphi_t}_2^2 = 0$, guaranteeing zero vorticity and non-crossing trajectories.
+
+\textbf{3. Conditional-Flow Upper Bound vs.\ Non-Optimality of Diffusion PF-ODEs.} For any coupling $\pi \in \Pi(p_{\mathrm{src}}, p_{\mathrm{tgt}})$ and conditional bridge $\Psi_t(\vecb{x}_0, \vecb{x}_1)$ with $\Psi_0 = \vecb{x}_0, \Psi_1 = \vecb{x}_1$, Jensen's inequality bounds Eq.~\eqref{eq:ot:benamou_brenier} from above; uniquely minimizing the conditional energy yields straight interpolants $\Psi_t^\star(\vecb{x}_0, \vecb{x}_1) = (1-t)\vecb{x}_0 + t\vecb{x}_1$ \bookcite{theprinciple_diffusion_models}{Prop.~7.5.1, p.~221}:
+\begin{equation}
+\label{eq:ot:flow_upper_bound}
+  \Wass[2]{p_{\mathrm{src}}}{p_{\mathrm{tgt}}}^2
+  \le \E_{(\vecb{X}_0, \vecb{X}_1)\sim \pi}\!\left[\int_0^1 \norm{\Psi'_t(\vecb{X}_0, \vecb{X}_1)}_2^2\,\mathrm{d}t\right]
+  \ge \E_{(\vecb{X}_0, \vecb{X}_1)\sim \pi}\!\left[\norm{\vecb{X}_1 - \vecb{X}_0}_2^2\right].
+\end{equation}
+However, equality holds only when $\pi$ itself is optimal and trajectories induce a potential flow: in general, neither variance-preserving diffusion PF-ODEs (violating the Lavenant--Santambrogio commutation condition between $\nabla^2\ln p_0$ and $\nabla^2 u$ \bookcite{theprinciple_diffusion_models}{Eq.~7.5.1, p.~219}) nor iterative potential rectification $\mathrm{Rectify}^\perp$ (Hertrich et al.\ counterexamples \bookcite{theprinciple_diffusion_models}{pp.~222--223}) guarantee recovery of the exact $W_2$ Brenier map.
+\end{coremath}
+
+\subsection{Entropic Regularization, Schr\"odinger Bridges, and Sinkhorn Divergences}
+\label{sec:ot:entropic_sinkhorn}
+
+Solving the unregularized LP~\eqref{eq:ot:discrete_lp} on $n$ points via network simplex requires $O(n^3 \log n)$ operations, suffers from non-unique optimal faces under small cost perturbations, and exhibits slow $O(n^{-1/d})$ sample convergence in $\R^d$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.5, p.~321} \bookcite{optimal_transport}{Slide~28} \bookcite{theprinciple_diffusion_models}{p.~198}. Adding an entropic barrier $\varepsilon\,\KL{\pi}{\mu \otimes \nu}$ ($\varepsilon > 0$) restores strict convexity, smoothness, and $O(n^2)$ GPU-parallelizable scaling \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.6, p.~322}.
+
+\begin{coremath}[Entropic OT, Primal--Dual Structure, Schr\"odinger Bridges \& Sinkhorn Divergences]
+\label{cm:ot:entropic_sinkhorn}
+\textbf{1. Primal Formulation.} For $\varepsilon > 0$, define the \textbf{entropic optimal transport (EOT)} objective \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~6.213--6.214, p.~322} \bookcite{theprinciple_diffusion_models}{Eq.~7.2.5, p.~198}:
+\begin{equation}
+\label{eq:ot:eot_primal}
+  \mathrm{EOT}_\varepsilon(\mu, \nu) \triangleq \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} c(\vecb{x}, \vecb{y})\,\mathrm{d}\pi(\vecb{x}, \vecb{y}) + \varepsilon\,\KL{\pi}{\mu \otimes \nu}.
+\end{equation}
+On discrete measures~\eqref{eq:ot:discrete_measures}, $\KL{\mat{\pi}}{\vecb{a}\vecb{b}\T} = -H(\mat{\pi}) + H(\vecb{a}) + H(\vecb{b})$ where $H(\mat{\pi}) = -\sum_{i,j} \pi_{ij}\ln \pi_{ij}$ (with $0\ln 0 \triangleq 0$), matching Ho's entropy-penalized form $\min_{\mat{\pi} \in \Pi(\vecb{a},\vecb{b})} \inner{\mat{C}}{\mat{\pi}} - \varepsilon H(\mat{\pi})$ up to the constant $\varepsilon(H(\vecb{a}) + H(\vecb{b}))$ \bookcite{optimal_transport}{Eq.~(6), Slide~30}. Because $-H(\mat{\pi})$ is $1$-strongly convex in the $L^1$ norm on $\Pi(\vecb{a},\vecb{b})$ (by Pinsker's inequality), $\mathrm{EOT}_\varepsilon(\vecb{a},\vecb{b})$ is $\varepsilon$-strongly convex and admits a \emph{unique} optimizer $\mat{\pi}_\varepsilon^\star$.
+
+\textbf{2. Unconstrained Dual \& Gibbs Kernel Factorization.} Forming the Lagrangian of discrete Eq.~\eqref{eq:ot:eot_primal} with multipliers $(\tilde{\vecb{f}}, \tilde{\vecb{g}}) \in \R^n \times \R^m$ and applying $\sum_{i,j}\pi_{ij} = \sum_{i,j} a_i b_j = 1$ gives
+\begin{equation}
+\label{eq:ot:eot_lagrangian}
+  \mathcal{L}_\varepsilon(\mat{\pi}, \tilde{\vecb{f}}, \tilde{\vecb{g}})
+  = \sum_{i,j} C_{ij}\pi_{ij} + \varepsilon \sum_{i,j}\pi_{ij}\!\left(\ln\frac{\pi_{ij}}{a_i b_j} - 1\right) + \varepsilon
+  + \tilde{\vecb{f}}\T(\vecb{a} - \mat{\pi}\ones_m) + \tilde{\vecb{g}}\T(\vecb{b} - \mat{\pi}\T\ones_n).
+\end{equation}
+Setting $\partial_{\pi_{ij}}\mathcal{L}_\varepsilon = C_{ij} + \varepsilon\ln\frac{\pi_{ij}}{a_i b_j} - \tilde{f}_i - \tilde{g}_j = 0$ yields the strictly positive Gibbs-scaled coupling
+\begin{equation}
+\label{eq:ot:gibbs_factorization}
+  \pi_{\varepsilon, ij}^\star = a_i b_j \exp\!\left(\frac{\tilde{f}_i^\star + \tilde{g}_j^\star - C_{ij}}{\varepsilon}\right)
+  = \exp\!\left(\frac{f_i^\star}{\varepsilon}\right) K_{ij} \exp\!\left(\frac{g_j^\star}{\varepsilon}\right), \qquad
+  K_{ij} \triangleq \exp\!\left(-\frac{C_{ij}}{\varepsilon}\right),
+\end{equation}
+where absorbing marginal logs via $f_i \triangleq \tilde{f}_i + \varepsilon\ln a_i$ and $g_j \triangleq \tilde{g}_j + \varepsilon\ln b_j$ recovers Murphy's matrix-scaling form $\mat{\pi}_\varepsilon^\star = \diag(e^{\vecb{f}^\star/\varepsilon})\mat{K}\diag(e^{\vecb{g}^\star/\varepsilon})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.216, p.~322}. Substituting Eq.~\eqref{eq:ot:gibbs_factorization} back into Eq.~\eqref{eq:ot:eot_lagrangian} yields the smooth unconstrained concave dual \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.215, p.~322} \bookcite{optimal_transport}{Eq.~(7), Slide~33}:
+\begin{equation}
+\label{eq:ot:eot_dual}
+  \mathrm{EOT}_\varepsilon(\vecb{a}, \vecb{b})
+  = \max_{\vecb{f} \in \R^n,\, \vecb{g} \in \R^m}
+  \vecb{f}\T\vecb{a} + \vecb{g}\T\vecb{b} - \varepsilon \bigl(e^{\vecb{f}/\varepsilon}\bigr)\T \mat{K} e^{\vecb{g}/\varepsilon} + \varepsilon\bigl(1 + H(\vecb{a}) + H(\vecb{b})\bigr).
+\end{equation}
+Holding $\vecb{g}$ fixed and setting $\nabla_{\vecb{f}}(\cdot) = \zeros$ (and symmetrically for $\vecb{g}$) yields block-coordinate ascent (\textbf{Sinkhorn updates}) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.217, p.~322} \bookcite{optimal_transport}{Slide~34}:
+\begin{equation}
+\label{eq:ot:sinkhorn_updates}
+  f_i \leftarrow \varepsilon\ln a_i - \varepsilon\ln\sum_{j=1}^m \exp\!\left(\frac{g_j - C_{ij}}{\varepsilon}\right), \qquad
+  g_j \leftarrow \varepsilon\ln b_j - \varepsilon\ln\sum_{i=1}^n \exp\!\left(\frac{f_i - C_{ij}}{\varepsilon}\right).
+\end{equation}
+
+\textbf{3. Asymptotic Limits ($\varepsilon \to 0^+$ and $\varepsilon \to \infty$) \& Dynamic Schr\"odinger Bridge Equivalence.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Zero-temperature limit ($\varepsilon \to 0^+$):} Because $\KL{\pi}{\mu \otimes \nu} \ge 0$, $\mathrm{EOT}_\varepsilon(\mu,\nu) \ge \mathrm{OT}_c(\mu,\nu)$; conversely, comparing against any optimal $\pi^\star$ with finite KL gives $\mathrm{EOT}_\varepsilon(\mu,\nu) \le \mathrm{OT}_c(\mu,\nu) + \varepsilon\,\KL{\pi^\star}{\mu\otimes\nu}$, establishing $\lim_{\varepsilon\to 0^+}\mathrm{EOT}_\varepsilon(\mu,\nu) = \mathrm{OT}_c(\mu,\nu)$ and weak convergence $\pi_\varepsilon^\star \rightharpoonup \argmax_{\pi \in \Pi^\star(\mu,\nu)} H(\pi)$ \bookcite{optimal_transport}{Thm.~2(a), Slide~32} \bookcite{theprinciple_diffusion_models}{Thm.~7.3.1, pp.~209--210}.
+  \item \emph{High-temperature limit ($\varepsilon \to \infty$):} As $\varepsilon \to \infty$, the KL penalty dominates, forcing $\pi_\varepsilon^\star \to \mu \otimes \nu$ and $\mathrm{EOT}_\varepsilon(\mu,\nu) \to \int c\,\mathrm{d}(\mu \otimes \nu)$ \bookcite{optimal_transport}{Thm.~2(b), Slide~32}.
+  \item \emph{Schr\"odinger Bridge (SB) duality:} Minimizing path-space KL $\mathrm{SB}_\varepsilon(\mu, \nu) \triangleq \min_{P : P_0 = \mu,\, P_T = \nu} \KL{P}{R^\varepsilon}$ against a Brownian reference $R^\varepsilon$ ($\mathrm{d}\vecb{x}_t = \sqrt{\varepsilon}\,\mathrm{d}\vecb{w}_t$, transition kernel $-\varepsilon\ln p_T(\vecb{y}|\vecb{x}) = \frac{\norm{\vecb{y}-\vecb{x}}_2^2}{2T} + \text{const}$) is affinely equivalent to $\mathrm{EOT}_\varepsilon(\mu,\nu)$ for $c(\vecb{x},\vecb{y}) = \frac{1}{2T}\norm{\vecb{x}-\vecb{y}}_2^2$, with endpoint law $(X_0, X_T) \sim \pi_\varepsilon^\star$ and controlled drift $\vecb{v}_t^\star(\vecb{x}) = \varepsilon \nabla \ln \Psi(\vecb{x}, t)$ solving the Benamou--Brenier problem via $\Gamma$-convergence as $\varepsilon \to 0^+$ \bookcite{theprinciple_diffusion_models}{Sec.~7.2.3 \& 7.3, Eqs.~7.2.9--7.3.1, Thm.~7.3.2, pp.~202--211}.
+\end{itemize}
+
+\textbf{4. Debiased Sinkhorn Divergence.} Because entropic smoothing diffuses self-transport mass away from the diagonal $\vecb{x}=\vecb{y}$, $\mathrm{EOT}_\varepsilon(\mu, \mu) > 0$ whenever $\mu$ is non-atomic (in fact $\argmin_\mu \mathrm{EOT}_\varepsilon(\mu, \nu)$ collapses $\mu$ toward a shrunk mean of $\nu$). Subtracting the symmetric self-transport biases defines the \textbf{Sinkhorn divergence} (Genevay et al., 2018; cited in \bookcite{theprinciple_diffusion_models}{p.~205}):
+\begin{equation}
+\label{eq:ot:sinkhorn_divergence}
+  S_\varepsilon(\mu, \nu) \triangleq \mathrm{EOT}_\varepsilon(\mu, \nu) - \frac{1}{2}\mathrm{EOT}_\varepsilon(\mu, \mu) - \frac{1}{2}\mathrm{EOT}_\varepsilon(\nu, \nu).
+\end{equation}
+Debiasing restores $S_\varepsilon(\mu, \mu) = 0$, $S_\varepsilon(\mu, \nu) \ge 0$, and convexity/metrization properties for positive-definite Gibbs kernels $K = e^{-C/\varepsilon}$, while smoothly interpolating between $\mathrm{OT}_c(\mu, \nu)$ as $\varepsilon \to 0^+$ and squared MMD ($\frac{1}{2}\norm{\mu - \nu}_{-c}^2$ for quadratic $c(\vecb{x},\vecb{y}) = \norm{\vecb{x}-\vecb{y}}_2^2$, equal to $\norm{\E_\mu[X] - \E_\nu[Y]}_2^2$) as $\varepsilon \to \infty$, achieving dimension-free $O(n^{-1/2}\varepsilon^{-d/2})$ empirical sample complexity \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.6, p.~322}.
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:ot:algorithms}
+% =============================================================================
+
+Direct multiplicative Sinkhorn updates $\vecb{u} \leftarrow \vecb{a} \oslash (\mat{K}\vecb{v})$ and $\vecb{v} \leftarrow \vecb{b} \oslash (\mat{K}\T\vecb{u})$ suffer catastrophic floating-point underflow in $\mat{K} = e^{-\mat{C}/\varepsilon}$ whenever $\varepsilon \ll \norm{\mat{C}}_\infty$. Algorithm~\ref{alg:ot:sinkhorn} executes the dual updates~\eqref{eq:ot:sinkhorn_updates} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~6.217, p.~322} strictly in log-space via max-shifted $\mathrm{LogSumExp}$, followed by Altschuler--Weed--Rigollet (2017) feasibility rounding \bookcite{optimal_transport}{Slides~34--37} to project $\tilde{\mat{\pi}}$ onto $\Pi(\vecb{a}, \vecb{b})$ when an exact plan is needed.
+
+\begin{algorithm}[htbp]
+\caption{Log-Domain Stabilized Sinkhorn--Knopp Scaling with Feasibility Rounding \& Debiasing}
+\label{alg:ot:sinkhorn}
+\KwIn{Marginals $\vecb{a} \in \Delta_n$, $\vecb{b} \in \Delta_m$ ($a_i, b_j > 0$); cost $\mat{C} \in \R_{\ge 0}^{n \times m}$; regularization $\varepsilon > 0$; tolerance $\delta > 0$; max iterations $T_{\max}$.}
+\KwOut{Rounded plan $\bar{\mat{\pi}} \in \Pi(\vecb{a}, \vecb{b})$, entropic value $\widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{b})$, and (optionally) Sinkhorn divergence $\widehat{S}_\varepsilon(\vecb{a},\vecb{b})$.}
+Define $\mathrm{LSE}_j(z_{ij}) \triangleq m_i + \ln\sum_{j=1}^m \exp(z_{ij} - m_i)$ where $m_i \triangleq \max_j z_{ij}$\;
+Initialize log-potentials $\vecb{f}^{(0)} \leftarrow \zeros_n$, $\vecb{g}^{(0)} \leftarrow \zeros_m$, $t \leftarrow 0$\;
+\While{$t < T_{\max}$}{
+  \For{$i = 1, \dots, n$}{
+    $f_i^{(t+1)} \leftarrow \varepsilon \ln a_i - \varepsilon\,\mathrm{LSE}_{j=1}^m\!\left(\dfrac{g_j^{(t)} - C_{ij}}{\varepsilon}\right)$ \Comment*{Row marginal projection}
+  }
+  \For{$j = 1, \dots, m$}{
+    $g_j^{(t+1)} \leftarrow \varepsilon \ln b_j - \varepsilon\,\mathrm{LSE}_{i=1}^n\!\left(\dfrac{f_i^{(t+1)} - C_{ij}}{\varepsilon}\right)$ \Comment*{Column marginal projection}
+  }
+  Compute primal matrix $\tilde{\pi}_{ij}^{(t+1)} \leftarrow \exp\!\left(\dfrac{f_i^{(t+1)} + g_j^{(t+1)} - C_{ij}}{\varepsilon}\right)$\;
+  \If{$\norm{\tilde{\mat{\pi}}^{(t+1)}\ones_m - \vecb{a}}_1 + \norm{(\tilde{\mat{\pi}}^{(t+1)})\T\ones_n - \vecb{b}}_1 \le \delta$}{
+    \textbf{break}\;
+  }
+  $t \leftarrow t + 1$\;
+}
+\tcp{Altschuler--Weed--Rigollet Feasibility Rounding onto $\Pi(\vecb{a}, \vecb{b})$}
+Set $\vecb{r} \leftarrow \tilde{\mat{\pi}}\ones_m$, $x_i \leftarrow \min\{a_i / \max(r_i, 10^{-30}),\, 1\}$, and $\mat{\pi}' \leftarrow \diag(\vecb{x})\tilde{\mat{\pi}}$\;
+Set $\vecb{c} \leftarrow (\mat{\pi}')\T\ones_n$, $y_j \leftarrow \min\{b_j / \max(c_j, 10^{-30}),\, 1\}$, and $\mat{\pi}'' \leftarrow \mat{\pi}'\diag(\vecb{y})$\;
+Compute deficits $\vecb{e}_r \leftarrow \vecb{a} - \mat{\pi}''\ones_m \ge \zeros$, $\vecb{e}_c \leftarrow \vecb{b} - (\mat{\pi}'')\T\ones_n \ge \zeros$, and $\bar{\mat{\pi}} \leftarrow \mat{\pi}'' + \frac{\vecb{e}_r \vecb{e}_c\T}{\max(\norm{\vecb{e}_r}_1,\, 10^{-30})}$\;
+Evaluate $\widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{b}) \leftarrow \inner{\mat{C}}{\bar{\mat{\pi}}} + \varepsilon\,\KL{\bar{\mat{\pi}}}{\vecb{a}\vecb{b}\T}$ (or dual Eq.~\eqref{eq:ot:eot_dual} at convergence)\;
+\tcp{Optional Sinkhorn divergence via two symmetric self-calls}
+Run symmetric updates on $(\vecb{a}, \vecb{a}, \mat{C}_{\mu\mu})$ and $(\vecb{b}, \vecb{b}, \mat{C}_{\nu\nu})$ to obtain $\widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{a})$, $\widehat{\mathrm{EOT}}_\varepsilon(\vecb{b},\vecb{b})$\;
+$\widehat{S}_\varepsilon(\vecb{a}, \vecb{b}) \leftarrow \widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{b}) - \frac{1}{2}\widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{a}) - \frac{1}{2}\widehat{\mathrm{EOT}}_\varepsilon(\vecb{b},\vecb{b})$\;
+\Return{$\bar{\mat{\pi}}$, $\widehat{\mathrm{EOT}}_\varepsilon(\vecb{a},\vecb{b})$, $\widehat{S}_\varepsilon(\vecb{a},\vecb{b})$}\;
+\end{algorithm}
+
+Under the regularization choice $\varepsilon = \frac{\epsilon}{4\ln(\max\{n,m\})}$, Altschuler, Weed, and Rigollet (2017) guarantee primal error $\inner{\mat{C}}{\bar{\mat{\pi}}} \le \mathrm{OT}_{\mat{C}}(\vecb{a},\vecb{b}) + \epsilon$ within $t = O\bigl(\norm{\mat{C}}_\infty^2 \ln(\max\{n,m\}) / \epsilon^2\bigr)$ iterations, costing $O(nm)$ arithmetic operations per step \bookcite{optimal_transport}{Thm.~3, Slides~37--38}. Table~\ref{tab:ot:complexity} contrasts classical exact solvers, entropic scaling, minibatch approximations, and sliced projections.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.24}
+\caption{Computational complexity, statistical sample rates ($N$ i.i.d.\ samples in $\R^d$), and structural trade-offs across optimal transport solvers \bookcite{optimal_transport}{Slides~18, 28, 37--39, 62, 70, 84} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.5--6.8.3.6, pp.~321--322}.}
+\label{tab:ot:complexity}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.75cm}>{\raggedright\arraybackslash}p{4.15cm}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash\hsize=1.0\hsize}X@{}}
+\toprule
+\textbf{Solver / Variant} & \textbf{Time Complexity} & \textbf{Sample Rate} & \textbf{Characteristics \& Failure Regimes} \\
+\midrule
+1D Quantile Sort ($d=1$) & $O(n \log n)$ & $O(N^{-1/2})$ & Exact $W_p$ and Monge map $Q_\nu \circ F_\mu$; limited to univariate measures. \\
+Hungarian Assignment & $O(n^3)$ & $O(N^{-1/d})$ & Exact bijection; restricted to $n = m$ with uniform weights. \\
+Network Simplex LP & $O((n+m)nm\ln(n+m)\cdot$ \newline $\ln((n+m)\norm{\mat{C}}_\infty))$ & $O(N^{-1/d})$ & Exact vertex of $\Pi(\vecb{a},\vecb{b})$ ($O(n^3\ln n)$ for $n=m$); non-parallelizable and non-differentiable. \\
+Sinkhorn--Knopp + Round ($\epsilon$-approx) & $O(\max\{n,m\}^2 \norm{\mat{C}}_\infty^2 \cdot$ \newline $\ln(\max\{n,m\}) / \epsilon^2)$ & $O(N^{-1/2}\varepsilon^{-d/2})$ & $O(nm)$ per step; GPU-parallel, smooth, and auto-differentiable; degrades as $\varepsilon \to 0$. \\
+Greenkhorn / Accel.\ Sinkhorn & $O(nm)$ per greedy/mirror step & $O(N^{-1/2}\varepsilon^{-d/2})$ & Faster empirical convergence than cyclic Sinkhorn on sparse/skewed plans. \\
+Minibatch OT (\texttt{m-OT}) / Partial (\texttt{m-POT}) & $O(k m^2)$ ($k$ batches of size $m \ll n$) & Biased wrt full OT & Scales to millions of points; \texttt{m-OT} induces cross-mode errors mitigated by \texttt{m-POT} / \texttt{BoMb-OT}. \\
+Sliced Wasserstein $\mathrm{SW}_p$ & $O(L n \log n)$ ($L$ projections on $\mathbb{S}^{d-1}$) & $O(N^{-1/2})$ & Dimension-free statistical rate and $O(n\log n)$ speed; vectorization loses 2D spatial structure unless convolutional. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Static Geometry, Computational Scaling \& Generative Bridges]
+\label{cb:ot:synthesis}
+Uniting the three source perspectives reveals how static transport geometry, scalable matrix scaling, and continuous-time generative dynamics interlock:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Duality \& Implicit Generative Critics:} Murphy and Cuturi formulate $W_1$ as a $1$-Lipschitz IPM and $W_2$ through Brenier's convex potential $T^\star = \nabla u$, motivating Wasserstein GANs ($1$-Lipschitz critic regularization) and Input-Convex Neural Networks (ICNNs) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.2--6.8.3.3, 26.2.4, pp.~319--320, 900}. Ho emphasizes why WGANs avoid Jensen--Shannon gradient vanishing on disjoint manifolds, while exposing the $O(n^3 \ln n)$ combinatorial barrier of exact LP solvers and the curse of dimensionality ($O(n^{-1/d})$) \bookcite{optimal_transport}{Slides~28, 46--58, 82}.
+  \item \textbf{Minibatch \& Sliced Approximations:} Rather than computing global $n \times n$ couplings or unreliable neural duals for general costs, Ho develops $O(k m^2)$ minibatch OT (\texttt{m-OT}), partial/hierarchical fixes (\texttt{m-POT}, \texttt{BoMb-OT}) to suppress wrong cross-mode matchings, and $O(L n \log n)$ Sliced and Convolution-Sliced Wasserstein metrics $\mathrm{SW}_p(\mu, \nu) = \bigl(\int_{\mathbb{S}^{d-1}} \Wass[p]{\theta_\sharp\mu}{\theta_\sharp\nu}^p\,\mathrm{d}\theta\bigr)^{1/p}$ \bookcite{optimal_transport}{Slides~60--91}.
+  \item \textbf{Diffusion Models, Flow Matching \& Schr\"odinger Bridges:} The Diffusion Models monograph establishes that $\mathrm{EOT}_\varepsilon$ is the static marginal projection of a Brownian Schr\"odinger Bridge $\mathrm{SB}_\varepsilon$, which collapses via $\Gamma$-convergence to Benamou--Brenier dynamic OT as $\varepsilon \to 0^+$ \bookcite{theprinciple_diffusion_models}{Sec.~7.3, Fig.~7.3, pp.~206--211}. Standard score-based diffusion models correspond to the zero-control limit ($\Psi \equiv 1$) solving only a one-sided Schr\"odinger half-bridge ($p_T \approx p_{\mathrm{prior}}$ only as $T \to \infty$), whereas Flow Matching straight-line paths optimize a conditional upper bound on kinetic energy without guaranteeing global $W_2$ optimality \bookcite{theprinciple_diffusion_models}{Sec.~7.4--7.5, pp.~212--223}.
+\end{enumerate}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:ot:visuals}
+% =============================================================================
+
+Figure~\ref{fig:ot:murphy_monge_kantorovich} contrasts the three canonical regimes of mass transport: one-to-one permutation matching on equal unweighted sets, mass-splitting Kantorovich couplings on unequal weighted discrete measures, and continuous pushforward maps \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~6.18, p.~315}.
+
+\monographfig[0.92\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p349_fig1.png}{Unified taxonomy of static optimal transport formulations. \textbf{Left:} Optimal bijection $\sigma^\star \in S_n$ minimizing $\sum_i \norm{\vecb{x}_i - \vecb{y}_{\sigma(i)}}$ over $n=5$ unweighted points (versus a suboptimal permutation $\sigma$). \textbf{Middle:} Kantorovich mass-splitting matrix $\mat{P}^\star \in \Pi(\vecb{a}, \vecb{b})$ coupling weighted Dirac clouds of unequal cardinalities ($n=6$, $m=4$). \textbf{Right:} Continuous Monge pushforward map $T^\star_\sharp \mu = \nu$ associating each $\vecb{x} \in \mathrm{supp}(\mu)$ to a unique destination $T^\star(\vecb{x})$. Reproduced from \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~6, Fig.~6.18, p.~315}.}{fig:ot:murphy_monge_kantorovich}
+
+Figure~\ref{fig:ot:geometry_birkhoff_dynamics} illustrates the convex geometry of entropic regularization inside the transportation polytope alongside the dynamic transition from deterministic Benamou--Brenier geodesics ($\varepsilon = 0$) to controlled Schr\"odinger bridges ($\varepsilon > 0$).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    % --- Panel (a): Birkhoff / Transportation Polytope ---
+    \node[font=\small\bfseries, color=monographNavy] at (3.15, 5.55) {(a) Polytope $\Pi(\vecb{a}, \vecb{b})$ \& Entropic Path};
+
+    % Outer convex polygon representing Pi(a, b)
+    \fill[monographNavyBg, opacity=0.75] (0.90, 1.35) -- (0.45, 3.00) -- (1.95, 4.55) -- (4.70, 4.40) -- (5.95, 2.75) -- (4.85, 1.05) -- cycle;
+    \draw[monographNavy, very thick] (0.90, 1.35) -- (0.45, 3.00) -- (1.95, 4.55) -- (4.70, 4.40) -- (5.95, 2.75) -- (4.85, 1.05) -- cycle;
+
+    % Linear cost gradient iso-lines
+    \draw[monographRule, dashed, thick] (0.65, 4.20) -- (2.85, 0.85);
+    \draw[monographRule, dashed, thick] (1.35, 4.72) -- (3.65, 1.08);
+    \node[font=\scriptsize, color=monographSlate, rotate=-54, fill=monographNavyBg, fill opacity=0.88, text opacity=1, inner sep=1pt] at (1.18, 2.75) {$\inner{\mat{C}}{\mat{\pi}} = \text{const}$};
+
+    % Optimal vertex (Monge / LP extreme point)
+    \fill[monographCrimson] (0.90, 1.35) circle (3.2pt);
+    \node[monoWarnBox, font=\scriptsize, inner sep=3.5pt, text width=2.35cm] (vtx) at (1.90, 0.40) {$\mat{\pi}_0^\star$: LP Vertex\\($\frac{1}{n}\mat{P}_\sigma$, sparse)};
+    \draw[->, thick, monographCrimson] (vtx.north west) -- (0.98, 1.25);
+
+    % Product measure ab^T in interior
+    \fill[monographIndigo] (3.95, 3.05) circle (3.2pt);
+    \node[monoIndigoBox, font=\scriptsize, inner sep=3.5pt, text width=2.35cm] (prod) at (5.00, 3.92) {$\vecb{a}\vecb{b}\T$ ($\varepsilon \to \infty$)\\Max-entropy blur};
+    \draw[->, thick, monographIndigo] (prod.south west) -- (4.05, 3.12);
+
+    % Central entropic path from vertex to ab^T
+    \draw[monographTeal, ultra thick, ->] (0.95, 1.40) .. controls (1.75, 2.25) and (2.85, 2.78) .. (3.86, 3.03);
+    \fill[monographTeal] (2.25, 2.38) circle (3.0pt);
+    \node[monoTealBox, font=\scriptsize, inner sep=3.5pt, text width=3.20cm] (peps) at (4.55, 1.48) {$\mat{\pi}_\varepsilon^\star = \diag(e^{\vecb{f}/\varepsilon})\mat{K}\diag(e^{\vecb{g}/\varepsilon})$\\Strictly convex ($\varepsilon > 0$)};
+    \draw[->, thick, monographTeal] (peps.north west) -- (2.35, 2.32);
+
+    % Cost minimization arrow cleanly away from boxes
+    \draw[->, thick, monographCrimson] (2.08, 4.12) -- (1.42, 3.50) node[midway, right, xshift=2pt, yshift=1pt, font=\scriptsize, color=monographCrimson, fill=monographNavyBg, fill opacity=0.85, text opacity=1, inner sep=1pt] {$-\nabla \inner{\mat{C}}{\mat{\pi}}$};
+
+    % --- Panel (b): Static vs Dynamic OT vs SB ---
+    \begin{scope}[shift={(7.10, 0.0)}]
+      \node[font=\small\bfseries, color=monographNavy] at (3.35, 5.55) {(b) Geodesics vs.\ Schr\"odinger Bridges};
+
+      % Source and Target vertical densities
+      \draw[monographNavy, very thick, fill=monographNavyBg, fill opacity=0.85]
+        (0.65, 0.65) -- plot[smooth, tension=0.7] coordinates {(0.65, 0.80) (0.22, 1.40) (0.65, 2.05) (0.15, 3.25) (0.65, 4.35)} -- (0.65, 4.65) -- cycle;
+      \node[font=\footnotesize\bfseries, color=monographNavy] at (0.55, 4.95) {$\mu$ ($t=0$)};
+
+      \draw[monographIndigo, very thick, fill=monographIndigoBg, fill opacity=0.85]
+        (5.95, 0.65) -- plot[smooth, tension=0.7] coordinates {(5.95, 0.80) (6.42, 1.85) (6.20, 2.85) (6.48, 3.85) (5.95, 4.55)} -- (5.95, 4.65) -- cycle;
+      \node[font=\footnotesize\bfseries, color=monographIndigo] at (6.05, 4.95) {$\nu$ ($t=1$)};
+
+      % Intermediate t slice
+      \draw[monographRule, dashed, thick] (3.30, 0.60) -- (3.30, 4.72);
+      \node[font=\scriptsize\bfseries, color=monographSlate] at (3.30, 4.95) {$p_t = (T_t^\star)_\sharp\mu$};
+
+      % McCann straight geodesics (OT, eps=0)
+      \draw[->, very thick, monographTeal] (0.65, 3.55) -- (5.95, 3.95);
+      \draw[->, very thick, monographTeal] (0.65, 2.95) -- (5.95, 3.20);
+      \draw[->, very thick, monographTeal] (0.65, 1.35) -- (5.95, 1.85);
+      \fill[monographTeal] (3.30, 3.75) circle (2.2pt);
+      \fill[monographTeal] (3.30, 3.075) circle (2.2pt);
+      \fill[monographTeal] (3.30, 1.60) circle (2.2pt);
+
+      % Stochastic SB fluctuating trajectories (eps > 0)
+      \draw[monographCrimson, thick, densely dashed]
+        (0.65, 3.25) .. controls (1.60, 3.65) and (2.35, 2.95) .. (3.30, 3.40) .. controls (4.25, 3.85) and (5.05, 3.25) .. (5.95, 3.58);
+      \draw[monographCrimson, thick, densely dashed]
+        (0.65, 1.35) .. controls (1.50, 0.95) and (2.40, 1.95) .. (3.30, 1.50) .. controls (4.20, 1.15) and (5.00, 2.15) .. (5.95, 1.85);
+
+      % Annotations cleanly separated below
+      \node[monoTealBox, font=\scriptsize, inner sep=3.5pt, text width=2.95cm] at (1.58, 0.12) {\textbf{Benamou--Brenier ($\varepsilon = 0$)}\\$T_t^\star(\vecb{x}) = (1-t)\vecb{x} + t\nabla u(\vecb{x})$};
+      \node[monoWarnBox, font=\scriptsize, inner sep=3.5pt, text width=2.95cm] at (4.98, 0.12) {\textbf{Schr\"odinger Bridge ($\varepsilon > 0$)}\\$\mathrm{d}\vecb{x}_t = \vecb{v}_t^\varepsilon\mathrm{d}t + \sqrt{\varepsilon}\,\mathrm{d}\vecb{w}_t$};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Geometric structure of static and dynamic optimal transport. \textbf{(a)} Inside the transportation polytope $\Pi(\vecb{a},\vecb{b})$ (a scaled Birkhoff polytope for uniform weights), unregularized LP solutions sit at sparse permutation vertices $\mat{\pi}_0^\star$, whereas entropic regularization $-\varepsilon H(\mat{\pi})$ curves the unique optimum $\mat{\pi}_\varepsilon^\star$ smoothly through the interior toward the product measure $\vecb{a}\vecb{b}\T$ as $\varepsilon \to \infty$. \textbf{(b)} In $\R^d$, $W_2$ transport evolves along non-crossing straight-line McCann geodesics driven by potential gradients $\vecb{v}_t = \nabla\varphi_t$, whereas $\mathrm{SB}_\varepsilon$ adds Brownian noise $\sqrt{\varepsilon}\,\mathrm{d}\vecb{w}_t$ whose endpoint law reproduces $\mat{\pi}_\varepsilon^\star$.}
+  \label{fig:ot:geometry_birkhoff_dynamics}
+\end{figure}
+
+Figure~\ref{fig:ot:pgf_divergences_sinkhorn} provides an exact quantitative verification of both core motivations for optimal transport and Sinkhorn debiasing. In Panel~(a), comparing $\mu = \delta_0$ and $\nu_\theta = \delta_\theta$ across shift $\theta \in [-1.4, 1.4]$ confirms that $D_{\mathrm{TV}}$ and $\JS{\mu}{\nu_\theta}$ jump discontinuously at $\theta = 0$ and remain flat everywhere $\theta \ne 0$, whereas $\Wass[1]{\mu}{\nu_\theta} = \abs{\theta}$ and $\Wass[2]{\mu}{\nu_\theta}^2 = \theta^2$ vary smoothly with non-vanishing gradients. In Panel~(b), evaluating the closed-form two-point problem $\mu = \frac{1}{2}\delta_0 + \frac{1}{2}\delta_2$ and $\nu = \frac{1}{2}\delta_0 + \frac{1}{2}\delta_1$ under $c(x,y) = (x-y)^2$ yields cost matrix $\mat{C} = \bigl[\begin{smallmatrix} 0 & 1 \\ 4 & 1 \end{smallmatrix}\bigr]$ (with $\mathrm{OT}(\mu,\nu) = \frac{1}{2}$, mean cross-cost $\inner{\mat{C}}{\vecb{a}\vecb{b}\T} = \frac{3}{2}$, and $\mat{\pi}_\varepsilon^\star = \frac{1}{2}\bigl[\begin{smallmatrix} 1-p_\varepsilon & p_\varepsilon \\ p_\varepsilon & 1-p_\varepsilon \end{smallmatrix}\bigr]$ where $p_\varepsilon = (1 + e^{2/\varepsilon})^{-1}$), yielding exact closed-form curves:
+\begin{equation}
+\label{eq:ot:two_point_closed}
+  \mathrm{EOT}_\varepsilon(\mu,\nu) = \frac{1}{2} + \varepsilon \ln\!\left(\frac{2}{1 + e^{-2/\varepsilon}}\right), \qquad
+  S_\varepsilon(\mu,\nu) = \mathrm{EOT}_\varepsilon(\mu,\nu) - \frac{\varepsilon}{2}\ln\!\left(\frac{4}{(1 + e^{-4/\varepsilon})(1 + e^{-1/\varepsilon})}\right).
+\end{equation}
+As $\varepsilon \to 0^+$, $\mathrm{EOT}_\varepsilon(\mu,\nu)$ deviates upward with slope $\ln 2$ while $S_\varepsilon(\mu,\nu)$ cancels this self-bias to track $\mathrm{OT}(\mu,\nu) = 0.5$ to high accuracy; as $\varepsilon \to \infty$, $\mathrm{EOT}_\varepsilon$ saturates at the independent coupling cost $1.5$ whereas $S_\varepsilon(\mu,\nu) \to (\E_\mu[X] - \E_\nu[Y])^2 = 0.25$.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{groupplot}[
+      group style={group size=2 by 1, horizontal sep=1.55cm},
+      width=0.43\textwidth,
+      height=5.6cm,
+      grid=major,
+      grid style={monographRule, dashed, line width=0.35pt},
+      tick label style={font=\footnotesize, color=monographSlate},
+      label style={font=\small, color=monographNavy},
+      title style={font=\small\bfseries, color=monographNavy},
+      legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.92, text opacity=1}
+    ]
+    % --- Panel (a): Disjoint-Support Continuity ---
+    \nextgroupplot[
+      title={(a) Shifted Diracs: $\delta_0$ vs.\ $\delta_\theta$},
+      xlabel={Shift parameter $\theta$},
+      ylabel={Metric / Divergence value},
+      xmin=-1.4, xmax=1.4,
+      ymin=-0.08, ymax=2.15,
+      xtick={-1.0, -0.5, 0, 0.5, 1.0},
+      ytick={0, 0.5, 0.6931, 1.0, 1.5, 2.0},
+      yticklabels={$0$, $0.5$, $\ln 2$, $1.0$, $1.5$, $2.0$},
+      legend style={at={(0.5,0.97)}, anchor=north}
+    ]
+      \addplot[monographNavy, very thick, domain=-1.4:1.4, samples=101] {abs(x)};
+      \addlegendentry{$W_1(\delta_0,\delta_\theta) = |\theta|$}
+      \addplot[monographTeal, very thick, dashdotted, smooth, domain=-1.4:1.4, samples=101] {x^2};
+      \addlegendentry{$W_2^2(\delta_0,\delta_\theta) = \theta^2$}
+      \addplot[monographCrimson, very thick, dashed, domain=-1.4:-0.015, samples=2] {ln(2)};
+      \addplot[monographCrimson, very thick, dashed, domain=0.015:1.4, samples=2, forget plot] {ln(2)};
+      \addlegendentry{$D_{\mathrm{JS}}(\delta_0\|\delta_\theta)$}
+      \addplot[monographIndigo, very thick, dotted, domain=-1.4:-0.015, samples=2] {1.0};
+      \addplot[monographIndigo, very thick, dotted, domain=0.015:1.4, samples=2, forget plot] {1.0};
+      \addlegendentry{$D_{\mathrm{TV}}(\delta_0,\delta_\theta)$}
+      % Discontinuity markers at theta = 0
+      \addplot[only marks, mark=*, mark size=1.8pt, monographCrimson, forget plot] coordinates {(0, 0)};
+      \addplot[only marks, mark=o, mark size=2.1pt, monographCrimson, fill=white, forget plot] coordinates {(0, 0.6931)};
+      \addplot[only marks, mark=o, mark size=2.1pt, monographIndigo, fill=white, forget plot] coordinates {(0, 1.0)};
+
+    % --- Panel (b): Entropic Regularization & Debiasing Trade-off ---
+    \nextgroupplot[
+      title={(b) Sinkhorn $\varepsilon$-Trade-off ($\mu \ne \nu$, Eq.~\eqref{eq:ot:two_point_closed})},
+      xlabel={Entropic regularization $\varepsilon$ (log scale)},
+      ylabel={Cost / Divergence},
+      xmode=log,
+      xmin=0.05, xmax=12.0,
+      ymin=-0.05, ymax=1.92,
+      xtick={0.05, 0.2, 1.0, 5.0},
+      xticklabels={$0.05$, $0.2$, $1$, $5$},
+      ytick={0, 0.25, 0.5, 1.0, 1.5},
+      legend pos=north west
+    ]
+      \addplot[monographNavy, very thick, smooth, domain=0.05:12.0, samples=120]
+        {0.5 + x*(ln(2) - ln(1 + exp(-2/x)))};
+      \addlegendentry{$\mathrm{EOT}_\varepsilon(\mu,\nu)$}
+      \addplot[monographTeal, very thick, dashdotted, smooth, domain=0.05:12.0, samples=120]
+        {0.5 + 2.0/(1 + exp(2/x))};
+      \addlegendentry{Primal $\langle \mat{C}, \mat{\pi}_\varepsilon^\star \rangle$}
+      \addplot[monographIndigo, very thick, smooth, domain=0.05:12.0, samples=120]
+        {0.5 + x*(ln(2) - ln(1 + exp(-2/x))) - 0.5*x*(2*ln(2) - ln(1 + exp(-4/x)) - ln(1 + exp(-1/x)))};
+      \addlegendentry{Sinkhorn div.\ $S_\varepsilon(\mu,\nu)$}
+      \addplot[monographCrimson, very thick, dashed, smooth, domain=0.05:12.0, samples=120]
+        {0.5*x*(2*ln(2) - ln(1 + exp(-4/x)) - ln(1 + exp(-1/x)))};
+      \addlegendentry{Self-bias $\frac{1}{2}(\mathrm{EOT}_{\mu,\mu}+\mathrm{EOT}_{\nu,\nu})$}
+      \addplot[monographSlate, dotted, thick, domain=0.05:12.0, samples=2, forget plot] {0.5};
+      \node[anchor=south east, font=\scriptsize, color=monographSlate, fill=white, fill opacity=0.85, text opacity=1, inner sep=1pt] at (axis cs:11.0, 0.53) {$\mathrm{OT}(\mu,\nu)=0.5$};
+    \end{groupplot}
+  \end{tikzpicture}
+  \caption{Analytical behavior of Wasserstein distances and Sinkhorn regularization. \textbf{(a)} On disjoint Diracs $\delta_0, \delta_\theta$, $D_{\mathrm{TV}}$ and $D_{\mathrm{JS}}$ experience a jump discontinuity at $\theta=0$ with zero derivative elsewhere, whereas $W_1$ and $W_2^2$ remain continuous with informative gradients \bookcite{optimal_transport}{Slides~46--49}. \textbf{(b)} On $\mu = \frac{1}{2}\delta_0 + \frac{1}{2}\delta_2$ and $\nu = \frac{1}{2}\delta_0 + \frac{1}{2}\delta_1$ ($c(x,y) = (x-y)^2$), un-debiased $\mathrm{EOT}_\varepsilon(\mu,\nu)$ incurs linear self-entropy bias near $\varepsilon=0$ and blurs toward $\inner{\mat{C}}{\vecb{a}\vecb{b}\T}=1.5$ as $\varepsilon\to\infty$, while debiased $S_\varepsilon(\mu,\nu)$ recovers $\mathrm{OT}(\mu,\nu)=0.5$ as $\varepsilon \to 0^+$ and $\mathrm{MMD}^2=0.25$ as $\varepsilon \to \infty$.}
+  \label{fig:ot:pgf_divergences_sinkhorn}
+\end{figure}
+
+Complementing the static curves above, Figures~\ref{fig:ot:dynamic_mccann} and~\ref{fig:ot:minibatch_plans} showcase continuous-time Benamou--Brenier displacement interpolation and empirical coupling matrices in large-scale discrete transport.
+
+\monographfig[0.72\textwidth]{theprinciple_diffusion_models_p201_fig1.png}{Continuous-time Benamou--Brenier dynamic optimal transport and McCann displacement interpolation $p_t^{\mathrm{OT}} = (T_t^\star)_\sharp p_{\mathrm{src}}$ ($t \in [0, 1]$). Mass flows deterministically along non-crossing straight-line characteristics minimizing kinetic energy $\int_0^1 \E_{p_t}[\norm{\vecb{v}_t}_2^2]\,\mathrm{d}t$. Reproduced from \bookcite{theprinciple_diffusion_models}{Ch.~7, Fig.~7.1, p.~196}.}{fig:ot:dynamic_mccann}
+
+\monographfig[0.92\textwidth]{optimal_transport_p73_fig1.png}{Empirical transportation plans between two 10-atom Gaussian mixtures ($n=10$). \textbf{Left:} Minibatch OT (\texttt{m-OT}, batch size $m=6$, $k=32$) creates spurious cross-mode couplings (off-block diagonals in heatmap) because unmatched batches force high-cost pairings. \textbf{Middle:} Minibatch Partial OT (\texttt{m-POT}, transport fraction $s=0.6$) prunes forced cross-cluster pairings. \textbf{Right:} Exact \texttt{full-OT} recovers the clean block-sparse permutation coupling. Reproduced from \bookcite{optimal_transport}{Slide~73}.}{fig:ot:minibatch_plans}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:ot:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Small-$\varepsilon$ Kernel Underflow vs.\ Large-$\varepsilon$ Entropic Blurring Bias]
+\label{pit:ot:eps_tradeoff}
+Evaluating the Gibbs kernel $\mat{K} = \exp(-\mat{C}/\varepsilon)$ directly in multiplicative Sinkhorn updates underflows to exact floating-point zero whenever $\min_{i,j} C_{ij} / \varepsilon \gtrsim 88$ (IEEE-754 float32) or $\gtrsim 709$ (float64), yielding $0 / 0 = \mathrm{NaN}$ in $\vecb{a} \oslash (\mat{K}\vecb{v})$. Conversely, choosing overly large $\varepsilon$ induces severe \textbf{entropic blurring}, pushing $\mat{\pi}_\varepsilon^\star \to \vecb{a}\vecb{b}\T$ \bookcite{optimal_transport}{Thm.~2(b), Slide~32}, while taking $\varepsilon \to 0^+$ requires $O(\norm{\mat{C}}_\infty^2 \ln n / \epsilon^2)$ iterations as the Hilbert projective metric contraction factor approaches $1$ \bookcite{optimal_transport}{Slide~37} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.6, p.~322}.
+\textbf{Remedy:} Always execute updates in log-space using max-shifted $\mathrm{LogSumExp}$ (Algorithm~\ref{alg:ot:sinkhorn}), rescale $\mat{C}$ by $\mathrm{median}(\mat{C})$ or $\norm{\mat{C}}_\infty$ prior to selecting $\varepsilon$, and apply $\varepsilon$-scaling (annealing $\varepsilon$ geometrically from $\varepsilon_0 \sim \mathrm{median}(\mat{C})$ down to the target $\varepsilon$ while warm-starting $(\vecb{f}, \vecb{g})$).
+\end{pitfall}
+
+\begin{pitfall}[Un-Debiased Self-Transport Bias, Mode Shrinking \& Premature Stopping Asymmetry]
+\label{pit:ot:debiasing}
+Although $\mathrm{EOT}_\varepsilon(\mu, \nu)$ is symmetric for symmetric costs, $\mathrm{EOT}_\varepsilon(\mu, \mu) > 0$ for every non-Dirac measure because entropic regularization spreads self-coupling mass onto off-diagonal neighbors (Figure~\ref{fig:ot:pgf_divergences_sinkhorn}(b)). Consequently, minimizing un-debiased $\mu \mapsto \mathrm{EOT}_\varepsilon(\mu, \nu)$ biases $\mu$ toward a collapsed Dirac spike at the barycenter of $\nu$ in order to drive its internal self-entropy cost down. Furthermore, halting Sinkhorn after finite $t$ steps leaves the primal iterate $\tilde{\mat{\pi}}^{(t)} \notin \Pi(\vecb{a}, \vecb{b})$ violating one marginal constraint \bookcite{optimal_transport}{Slide~36}, which breaks symmetry and biases gradients when differentiating through unrolled steps.
+\textbf{Remedy:} Use the debiased Sinkhorn divergence $S_\varepsilon(\mu, \nu)$ (Eq.~\eqref{eq:ot:sinkhorn_divergence}) as any generative or barycentric loss, and apply the Altschuler--Weed--Rigollet feasibility rounding operator (Algorithm~\ref{alg:ot:sinkhorn}) whenever an exact marginal-preserving plan $\bar{\mat{\pi}} \in \Pi(\vecb{a}, \vecb{b})$ is required.
+\end{pitfall}
+
+\begin{pitfall}[Discrete Support Mismatch, Unbalanced Marginals \& Minibatch Misspecification]
+\label{pit:ot:support_minibatch}
+Several structural failure modes arise when applying idealized OT formulations directly to raw empirical datasets:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \emph{Monge Non-Existence \& Unbalanced Mass:} Discrete measures with incompatible atom weights cannot satisfy $T_\sharp \mu = \nu$ \bookcite{optimal_transport}{Slide~22}, and Kantorovich LP constraints fail immediately if $\sum_i a_i \ne \sum_j b_j$ or if outliers distort marginal budgets.
+  \item \emph{Curse of Dimensionality:} Unregularized empirical Wasserstein estimation $\Wass[p]{\hat{\mu}_n}{\mu}$ converges only at rate $O(n^{-1/d})$ for $d > 2p$, so exact LP solves on high-dimensional point clouds overfit sample noise \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.5, p.~321} \bookcite{optimal_transport}{Slide~82}.
+  \item \emph{Minibatch Misspecified Matchings:} Evaluating OT independently on random $m$-sample minibatches (\texttt{m-OT}) forces pairings between far-apart modes whenever batch realizations imbalance cluster proportions (Figure~\ref{fig:ot:minibatch_plans}, left) \bookcite{optimal_transport}{Slides~65--67}.
+\end{enumerate}
+\textbf{Remedy:} Replace hard marginal constraints with KL-penalized Unbalanced OT or Partial OT (\texttt{m-POT} / hierarchical \texttt{BoMb-OT}, \bookcite{optimal_transport}{Slides~68--79}) to reject cross-mode outliers, and adopt Sliced Wasserstein $\mathrm{SW}_p$ (or convolutional $\mathrm{SW}_p$ on images) to restore $O(n^{-1/2})$ sample efficiency at $O(L n \log n)$ cost \bookcite{optimal_transport}{Slides~83--89}.
+\end{pitfall}
+
+\begin{pitfall}[Lipschitz Enforcement Fragility \& Flow Non-Optimality in Deep Generative Models]
+\label{pit:ot:wgan_flow}
+Approximating the $W_1$ Kantorovich--Rubinstein dual~\eqref{eq:ot:kr_duality} with neural critics $D_\phi$ via naive parameter clipping $[-c, c]$ induces capacity collapse or gradient explosion, whereas gradient penalties enforce $\norm{\nabla D_\phi}_2 \approx 1$ only along sampled line segments rather than globally on $\R^d$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~26.2.4, p.~900}. Similarly, training continuous-time probability-flow ODEs or iteratively applying Rectified Flow ($\mathrm{Rectify}^\perp$) does not generally yield the global $W_2$ Brenier map $\nabla u$, failing under disconnected intermediate supports or non-commuting density Hessians \bookcite{theprinciple_diffusion_models}{Sec.~7.5, pp.~216--223}.
+\textbf{Remedy:} Pair spectral normalization with two-sided gradient penalties for $W_1$ critics, parametrize $W_2$ potentials directly via Input-Convex Neural Networks (ICNNs, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~6.8.3.3, p.~320}), or pair conditional Flow Matching with minibatch OT couplings rather than assuming uncontrolled Reflow converges to optimal transport.
+\end{pitfall}
+
+\end{document}

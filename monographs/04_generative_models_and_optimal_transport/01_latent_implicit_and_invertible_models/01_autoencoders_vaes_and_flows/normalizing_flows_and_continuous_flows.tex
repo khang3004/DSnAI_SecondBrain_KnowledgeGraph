@@ -1,0 +1,314 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Autoencoders, VAEs, Normalizing Flows, EBMs \& GANs}{Autoencoders, Variational Autoencoders \& Normalizing Flows}{Change-of-Variables, Coupling/Autoregressive Normalizing Flows \& Neural ODEs}{Murphy Adv. Ch.~23, Bishop Ch.~18, Prince Ch.~16, Diffusion Principles Sec.~B.4.1 \& App.}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}\label{sec:flow:formulation}
+% =============================================================================
+
+Unlike variational autoencoders (VAEs), which optimize a variational lower bound on the marginal log-likelihood, or generative adversarial networks (GANs), which bypass explicit density evaluation altogether, \emph{normalizing flows} (NFs) construct tractable generative models that support both exact likelihood evaluation and fast ancestral sampling \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~829 (PDF p.~863)}, \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~547 (PDF p.~559)}. A normalizing flow models a complex target distribution $p_X(\vecb{x})$ over $\R^D$ by transforming a simple, analytically tractable base distribution $p_Z(\vecb{z})$ (typically an isotropic Gaussian $\Normal(\zeros, \eye_D)$) through a smooth, invertible diffeomorphism $f_\theta : \R^D \to \R^D$:
+\begin{equation}\label{eq:flow:generative_map}
+  \vecb{x} = f_\theta(\vecb{z}), \qquad \vecb{z} \sim p_Z(\vecb{z}), \qquad \vecb{z} = f_\theta\inv(\vecb{x}) = g_\theta(\vecb{x}).
+\end{equation}
+The term \emph{normalizing flow} reflects the dual directionality of the map: the \emph{generative} (forward) direction $f_\theta$ pushes base samples $\vecb{z}$ toward data $\vecb{x}$, while the \emph{normalizing} (inverse) direction $g_\theta = f_\theta\inv$ maps complex data $\vecb{x}$ back to a normalized base distribution $p_Z$ \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~549 (PDF p.~561)}, \bookcite{understandingdl_simonprince}{Ch.~16, p.~305 (PDF p.~319)}.
+
+Because $f_\theta$ is a bijection with $\dim(\vecb{z}) = \dim(\vecb{x}) = D$, the exact log-density of any observation $\vecb{x} \in \R^D$ is given by the change-of-variables formula:
+\begin{equation}\label{eq:flow:cov_basic}
+  \log p_X(\vecb{x}; \theta) = \log p_Z\!\left(f_\theta\inv(\vecb{x})\right) + \log \abs{\det \jac_{f_\theta\inv}(\vecb{x})} = \log p_Z(\vecb{z}) - \log \abs{\det \jac_{f_\theta}(\vecb{z})},
+\end{equation}
+where $\jac_{f_\theta}(\vecb{z}) = \pd{f_\theta(\vecb{z})}{\vecb{z}} \in \R^{D \times D}$ denotes the Jacobian matrix. Given i.i.d.\ training data $\mathcal{D} = \{\vecb{x}^{(n)}\}_{n=1}^N$, parameters $\theta$ are learned by exact maximum likelihood estimation (MLE), minimizing the forward Kullback--Leibler divergence $\KL{p_{\mathrm{data}}}{p_X(\cdot; \theta)}$ \bookcite{understandingdl_simonprince}{Ch.~16, p.~320 (PDF p.~334)}, \bookcite{theprinciple_diffusion_models}{Sec.~5.1.1, p.~130 (PDF p.~135)}:
+\begin{equation}\label{eq:flow:mle}
+  \theta^\star = \argmax_\theta \frac{1}{N}\sum_{n=1}^N \left[ \log p_Z\!\left(f_\theta\inv(\vecb{x}^{(n)})\right) + \log \abs{\det \jac_{f_\theta\inv}(\vecb{x}^{(n)})} \right].
+\end{equation}
+To make \eqref{eq:flow:mle} computationally viable in high dimensions, an invertible architecture must satisfy two structural criteria: (i) $f_\theta$ and $f_\theta\inv$ must be closed-form or numerically tractable, and (ii) $\log \abs{\det \jac_{f_\theta}}$ must be computable in $O(D)$ or $O(D^2)$ time rather than the generic $O(D^3)$ cost of dense matrix determinants \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~548 (PDF p.~560)}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Source textbooks adopt distinct conventions for latent variables, forward versus inverse directions, and continuous-time indexing. Table~\ref{tab:flow:notation} reconciles these conventions into the unified notation used throughout this monograph.
+\par\vspace{4pt}
+\noindent{\footnotesize\begin{tabularx}{\textwidth}{@{} >{\bfseries\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Murphy Adv.} & \textbf{Bishop} & \textbf{Prince} & \textbf{Unified Notation} \\
+\midrule
+Base latent & $\vecb{u} \sim p(\vecb{u})$ & $\vecb{z} \sim p_z(\vecb{z})$ & $\vecb{z} \sim \Pr(\vecb{z})$ & $\vecb{z} \sim p_Z(\vecb{z})$ \\
+Forward / Inverse & $\vecb{x} = f(\vecb{u})$, $\vecb{u} = g(\vecb{x})$ & $\vecb{x} = f(\vecb{z}, \vecb{w})$, $\vecb{z} = g(\vecb{x}, \vecb{w})$ & $\vecb{x} = \mathrm{f}[\vecb{z}, \boldsymbol{\phi}]$, $\vecb{z} = \mathrm{f}\inv[\vecb{x}, \boldsymbol{\phi}]$ & $\vecb{x} = f_\theta(\vecb{z})$, $\vecb{z} = f_\theta\inv(\vecb{x})$ \\
+Coupling split & $\vecb{u} = (\vecb{u}_A, \vecb{u}_B)$, $\Theta(\vecb{u}_B)$ & $\vecb{z} = (\vecb{z}_A, \vecb{z}_B)$, $s(\vecb{z}_A), b(\vecb{z}_A)$ & $\vecb{h} = [\vecb{h}_1\T, \vecb{h}_2\T]\T$, $\boldsymbol{\beta}, \boldsymbol{\gamma}$ & $\vecb{z} = (\vecb{z}_A, \vecb{z}_B)$, $\vecb{s}(\vecb{z}_A), \vecb{t}(\vecb{z}_A)$ \\
+ODE vector field & $\dd{\vecb{x}}{t} = F(\vecb{x}(t), t)$ & $\dd{\vecb{z}(t)}{t} = f(\vecb{z}(t), \vecb{w})$ & --- & $\dd{\vecb{z}(t)}{t} = \vecb{v}_\theta(\vecb{z}(t), t)$ \\
+Time convention & $t=0$ base $\to$ $t=T$ data & $t=0$ base $\to$ $t=T$ data & --- & $t=0$ base $\to$ $t=T$ data \\
+\bottomrule
+\end{tabularx}}
+\captionof{table}{Reconciliation of normalizing flow and Neural ODE notation across Murphy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23}, Bishop \bookcite{deep_learning_foundations_concepts}{Ch.~18}, Prince \bookcite{understandingdl_simonprince}{Ch.~16}, and Diffusion Principles \bookcite{theprinciple_diffusion_models}{Sec.~5.1.2, p.~133 (PDF p.~138)}. Note that Diffusion Principles occasionally flips $t=0$ (data) and $t=1$ (prior) when bridging to diffusion PF-ODEs; we fix $t=0$ as $p_Z$ and $t=T$ as $p_X$ for consistency.}\label{tab:flow:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}\label{sec:flow:derivations}
+% =============================================================================
+
+\begin{coremath}[Change-of-Variables Theorem \& Compositional Additivity]
+Let $f : \R^D \to \R^D$ be a $C^1$-diffeomorphism with inverse $g = f\inv$, and let $\vecb{z} \sim p_Z(\vecb{z})$. For any measurable subset $\mathcal{A} \subseteq \R^D$, conservation of probability mass requires
+\begin{equation}\label{eq:flow:mass_conservation}
+  \int_{\mathcal{A}} p_X(\vecb{x})\,\mathrm{d}\vecb{x} = \int_{g(\mathcal{A})} p_Z(\vecb{z})\,\mathrm{d}\vecb{z}.
+\end{equation}
+Applying the multivariate substitution $\vecb{z} = g(\vecb{x})$ with infinitesimal volume element $\mathrm{d}\vecb{z} = \abs{\det \jac_g(\vecb{x})}\,\mathrm{d}\vecb{x}$ yields
+\begin{equation}\label{eq:flow:cov_proof}
+  \int_{\mathcal{A}} p_X(\vecb{x})\,\mathrm{d}\vecb{x} = \int_{\mathcal{A}} p_Z(g(\vecb{x})) \abs{\det \jac_g(\vecb{x})}\,\mathrm{d}\vecb{x} \implies p_X(\vecb{x}) = p_Z(g(\vecb{x})) \abs{\det \jac_g(\vecb{x})}.
+\end{equation}
+By the inverse function theorem, differentiating $f(g(\vecb{x})) = \vecb{x}$ gives $\jac_f(g(\vecb{x}))\,\jac_g(\vecb{x}) = \eye_D$, whence $\det \jac_g(\vecb{x}) = \left(\det \jac_f(\vecb{z})\right)\inv$ \bookcite{deep_learning_foundations_concepts}{Ch.~18, Ex.~18.1, p.~559 (PDF p.~571)}.
+
+Furthermore, if $f = f_L \circ \dots \circ f_1$ is a composition of $L$ bijections with $\vecb{h}_0 = \vecb{z}$, $\vecb{h}_k = f_k(\vecb{h}_{k-1})$, and $\vecb{h}_L = \vecb{x}$, then $g = f_1\inv \circ \dots \circ f_L\inv$, and by the chain rule and multiplicativity of determinants:
+\begin{equation}\label{eq:flow:chain_rule}
+  \log p_X(\vecb{x}) = \log p_Z(\vecb{z}) - \sum_{k=1}^L \log \abs{\det \jac_{f_k}(\vecb{h}_{k-1})} = \log p_Z(\vecb{z}) + \sum_{k=1}^L \log \abs{\det \jac_{f_k\inv}(\vecb{h}_k)}.
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Jacobian Expansion, Compression \& Density Conservation]
+In 1D, \eqref{eq:flow:cov_proof} reduces to $p_X(x) = p_Z(z)\,\abs{f'(z)}\inv$. Because total probability mass is conserved, stretching a local interval ($\abs{f'(z)} > 1$) dilutes the probability density ($p_X(x) < p_Z(z)$), whereas compressing an interval ($\abs{f'(z)} < 1$) concentrates probability mass ($p_X(x) > p_Z(z)$) \bookcite{understandingdl_simonprince}{Ch.~16, p.~304 (PDF p.~318)}. In $\R^D$, $\abs{\det \jac_f(\vecb{z})}$ measures the local $D$-dimensional volume scaling factor of the parallelotope spanned by the columns of $\jac_f(\vecb{z})$.
+\end{intuition}
+
+\subsection{Affine Coupling Layers \& Invertible Convolutions (RealNVP \& Glow)}
+
+Linear transformations $\vecb{x} = \mat{A}\vecb{z} + \vecb{b}$ are invertible when $\det\mat{A} \ne 0$, yet closed under composition: any stack of affine maps preserves Gaussianity \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~832}, \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~549}. To introduce arbitrary non-linearities while retaining a triangular Jacobian, \emph{RealNVP} (Real-valued Non-Volume-Preserving) partitions $\vecb{z} = (\vecb{z}_A, \vecb{z}_B) \in \R^d \times \R^{D-d}$, leaving $\vecb{z}_A$ unchanged and applying an elementwise affine map to $\vecb{z}_B$ conditioned on $\vecb{z}_A$ \bookcite{deep_learning_foundations_concepts}{Ch.~18, pp.~549--551}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~835}:
+
+\begin{coremath}[Affine Coupling Layer \& Glow $1\times 1$ LU Convolution]
+For a partition $\vecb{z} = (\vecb{z}_A, \vecb{z}_B)$, the forward and inverse RealNVP coupling transformations are
+\begin{equation}\label{eq:flow:realnvp}
+  \begin{cases}
+    \vecb{x}_A = \vecb{z}_A, \\
+    \vecb{x}_B = \exp(\vecb{s}(\vecb{z}_A)) \odot \vecb{z}_B + \vecb{t}(\vecb{z}_A),
+  \end{cases}
+  \Longleftrightarrow
+  \begin{cases}
+    \vecb{z}_A = \vecb{x}_A, \\
+    \vecb{z}_B = \exp(-\vecb{s}(\vecb{x}_A)) \odot (\vecb{x}_B - \vecb{t}(\vecb{x}_A)),
+  \end{cases}
+\end{equation}
+where $\vecb{s}, \vecb{t} : \R^d \to \R^{D-d}$ are arbitrary (non-invertible) neural networks and $\odot$ is the Hadamard product. Differentiating \eqref{eq:flow:realnvp} yields a block lower-triangular Jacobian:
+\begin{equation}\label{eq:flow:realnvp_jac}
+  \jac_f(\vecb{z}) = \begin{bmatrix} \eye_d & \zeros \\ \pd{\vecb{x}_B}{\vecb{z}_A} & \diag\!\left(\exp(\vecb{s}(\vecb{z}_A))\right) \end{bmatrix} \implies \log \abs{\det \jac_f(\vecb{z})} = \sum_{j=1}^{D-d} s_j(\vecb{z}_A).
+\end{equation}
+Notice that the off-diagonal block $\pd{\vecb{x}_B}{\vecb{z}_A}$ never enters the determinant, so $\vecb{s}$ and $\vecb{t}$ require neither invertibility nor Jacobian evaluation, and both $f$ and $f\inv$ execute in a single parallel pass \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~551 (PDF p.~563)}.
+
+Because $\vecb{z}_A$ is copied verbatim, coupling layers must alternate partitions (e.g., via index reversal or learned channel mixing). \emph{Glow} replaces fixed permutations on $H \times W \times C$ tensors with an invertible $1\times 1$ convolution $\vecb{x}_{h,w,:} = \mat{W}\vecb{z}_{h,w,:}$ ($\mat{W} \in \R^{C \times C}$), whose log-determinant is $HW \log\abs{\det \mat{W}}$ \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~551 (PDF p.~563)}, \bookcite{understandingdl_simonprince}{Ch.~16, p.~318 (PDF p.~332)}. Parameterizing $\mat{W}$ via an LU decomposition
+\begin{equation}\label{eq:flow:glow_lu}
+  \mat{W} = \mat{P}\mat{L}\left(\mat{U} + \diag(\vecb{s})\right),
+\end{equation}
+where $\mat{P}$ is a fixed permutation matrix, $\mat{L}$ is lower-triangular with ones on the diagonal, and $\mat{U}$ is strictly upper-triangular, reduces the determinant cost from $O(C^3)$ to $O(C)$ via $\log\abs{\det \mat{W}} = \sum_{c=1}^C \log\abs{s_c}$.
+\end{coremath}
+
+\subsection{Autoregressive Flows: MAF versus IAF Duality}
+
+Instead of splitting dimensions into two blocks, an \emph{autoregressive flow} applies a scalar bijection $h(\cdot; \theta_i) : \R \to \R$ to each coordinate $i \in \{1, \dots, D\}$ conditioned on all preceding coordinates \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, pp.~837--841 (PDF pp.~871--875)}, \bookcite{deep_learning_foundations_concepts}{Ch.~18, pp.~552--553 (PDF pp.~564--565)}. For an affine scalar bijection with log-scale $\alpha_i$ and shift $\mu_i$, two dual parameterizations arise:
+
+\begin{coremath}[MAF vs. IAF Equations \& Triangular Jacobian]
+\textbf{Masked Autoregressive Flow (MAF):} Conditions on the \emph{data} prefix $\vecb{x}_{1:i-1}$:
+\begin{equation}\label{eq:flow:maf}
+  x_i = z_i \exp(\alpha_i(\vecb{x}_{1:i-1})) + \mu_i(\vecb{x}_{1:i-1}) \Longleftrightarrow z_i = \left(x_i - \mu_i(\vecb{x}_{1:i-1})\right)\exp(-\alpha_i(\vecb{x}_{1:i-1})).
+\end{equation}
+\textbf{Inverse Autoregressive Flow (IAF):} Conditions on the \emph{latent} prefix $\vecb{z}_{1:i-1}$:
+\begin{equation}\label{eq:flow:iaf}
+  x_i = z_i \exp(\alpha_i(\vecb{z}_{1:i-1})) + \mu_i(\vecb{z}_{1:i-1}) \Longleftrightarrow z_i = \left(x_i - \mu_i(\vecb{z}_{1:i-1})\right)\exp(-\alpha_i(\vecb{z}_{1:i-1})).
+\end{equation}
+In both cases, $\pd{x_i}{z_j} = 0$ for all $j > i$, so $\jac_f$ is lower-triangular and $\log\abs{\det\jac_f} = \sum_{i=1}^D \alpha_i$ in $O(D)$ operations once the conditioner outputs are computed. Using masked MLPs (MADE), \emph{MAF} evaluates all $\alpha_i(\vecb{x}_{1:i-1}), \mu_i(\vecb{x}_{1:i-1})$ in $O(1)$ parallel forward passes (fast density evaluation for MLE) but requires $D$ sequential steps to sample $\vecb{x}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~840 (PDF p.~874)}. Conversely, \emph{IAF} samples $\vecb{x}$ in $O(1)$ parallel pass (ideal for variational posteriors and WaveNet distillation) but requires $D$ sequential steps to invert $\vecb{x} \to \vecb{z}$ for arbitrary data density evaluation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~841 (PDF p.~875)}, \bookcite{understandingdl_simonprince}{Ch.~16, p.~313 (PDF p.~327)}.
+\end{coremath}
+
+\subsection{Continuous Normalizing Flows, Neural ODEs \& Continuity Equation}
+
+Consider a residual flow layer $\vecb{z}_{k+1} = \vecb{z}_k + \Delta t\,\vecb{v}_\theta(\vecb{z}_k, t_k)$ \bookcite{theprinciple_diffusion_models}{Sec.~5.1.2, p.~132 (PDF p.~137)}. Taking the continuous-time limit $\Delta t \to 0$ yields a \emph{Neural Ordinary Differential Equation (Neural ODE)}:
+\begin{equation}\label{eq:flow:node}
+  \dd{\vecb{z}(t)}{t} = \vecb{v}_\theta(\vecb{z}(t), t), \qquad t \in [0, T], \qquad \vecb{z}(0) \sim p_Z, \quad \vecb{x} = \vecb{z}(T).
+\end{equation}
+By the Picard--Lindel\"of theorem, if $\vecb{v}_\theta(\cdot, t)$ is uniformly Lipschitz continuous in $\vecb{z}$ and continuous in $t$, then \eqref{eq:flow:node} admits a unique solution trajectory $\vecb{z}(t) = \Psi_{0 \to t}(\vecb{z}(0))$ for all $t \in [0, T]$, and the time-$T$ flow map $f_\theta = \Psi_{0 \to T}$ is guaranteed to be a diffeomorphism whose inverse $f_\theta\inv = \Psi_{T \to 0}$ is obtained by integrating \eqref{eq:flow:node} backward from $T$ to $0$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~845 (PDF p.~879)}.
+
+\begin{coremath}[Instantaneous Change of Variables \& Continuity Equation Equivalence]
+Discretizing \eqref{eq:flow:node} over a small step $\Delta t > 0$ via forward Euler gives $\vecb{z}_{t+\Delta t} = \vecb{z}_t + \Delta t\,\vecb{v}_\theta(\vecb{z}_t, t) + O(\Delta t^2)$, whose Jacobian is $\jac = \eye_D + \Delta t\,\grad_{\vecb{z}}\vecb{v}_\theta(\vecb{z}_t, t) + O(\Delta t^2)$ \bookcite{theprinciple_diffusion_models}{App.~B.1, p.~405 (PDF p.~410)}. Using the first-order determinant expansion $\det(\eye_D + \Delta t\,\mat{A}) = 1 + \Delta t\Tr(\mat{A}) + O(\Delta t^2)$ and $\log(1 + u) = u + O(u^2)$:
+\begin{align}
+  \log p_{t+\Delta t}(\vecb{z}_{t+\Delta t}) &= \log p_t(\vecb{z}_t) - \log \abs{\det\!\left(\eye_D + \Delta t\,\grad_{\vecb{z}}\vecb{v}_\theta(\vecb{z}_t, t)\right)} + O(\Delta t^2) \nonumber \\
+  &= \log p_t(\vecb{z}_t) - \Delta t\,\Tr\!\left(\grad_{\vecb{z}}\vecb{v}_\theta(\vecb{z}_t, t)\right) + O(\Delta t^2). \label{eq:flow:euler_logp}
+\end{align}
+Dividing by $\Delta t$ and taking $\Delta t \to 0$ yields the \emph{Instantaneous Change-of-Variables Formula} \bookcite{deep_learning_foundations_concepts}{Ch.~18, Eq.~(18.28), p.~557 (PDF p.~569)}, \bookcite{theprinciple_diffusion_models}{Sec.~5.1.2, p.~133 (PDF p.~138)}:
+\begin{equation}\label{eq:flow:inst_cov}
+  \dd{}{t}\log p_t(\vecb{z}(t)) = -\Tr\!\left(\pd{\vecb{v}_\theta(\vecb{z}(t), t)}{\vecb{z}(t)}\right) = -\grad_{\vecb{z}} \cdot \vecb{v}_\theta(\vecb{z}(t), t).
+\end{equation}
+Integrating from $t=0$ to $t=T$ gives the exact log-likelihood without any determinant or architectural restriction on $\vecb{v}_\theta$:
+\begin{equation}\label{eq:flow:cnf_loglik}
+  \log p_X(\vecb{x}) = \log p_Z(\vecb{z}(0)) - \int_0^T \grad_{\vecb{z}} \cdot \vecb{v}_\theta(\vecb{z}(t), t)\,\mathrm{d}t.
+\end{equation}
+\textbf{Link to Continuity \& Fokker--Planck Equations:} Expanding the total derivative $\dd{}{t}\log p_t(\vecb{z}(t)) = \partial_t \log p_t + \vecb{v}_\theta\T \grad_{\vecb{z}}\log p_t$ in \eqref{eq:flow:inst_cov} and multiplying by $p_t$ yields the \emph{Continuity Equation} (Liouville's theorem for probability conservation) \bookcite{theprinciple_diffusion_models}{App.~B.1--B.2, pp.~404--411 (PDF pp.~409--416)}:
+\begin{equation}\label{eq:flow:continuity}
+  \frac{\partial p_t(\vecb{z})}{\partial t} + \grad_{\vecb{z}} \cdot \left(p_t(\vecb{z})\,\vecb{v}_\theta(\vecb{z}, t)\right) = 0,
+\end{equation}
+which is precisely the zero-diffusion ($g(t)=0$) deterministic limit of the Fokker--Planck equation $\partial_t p_t = -\grad \cdot (\vecb{v}_\theta p_t) + \frac{1}{2}g^2(t)\Delta p_t$.
+\end{coremath}
+
+\textbf{Adjoint Sensitivity Method:} Backpropagating through adaptive ODE solver steps incurs $O(\text{NFE})$ memory. Instead, the \emph{adjoint sensitivity method} defines the adjoint state $\vecb{a}(t) = \pd{\mathcal{L}}{\vecb{z}(t)}$, which evolves backward via $\dd{\vecb{a}(t)}{t} = -\vecb{a}(t)\T \pd{\vecb{v}_\theta(\vecb{z}(t), t)}{\vecb{z}(t)}$, allowing parameter gradients $\grad_\theta \mathcal{L} = -\int_T^0 \vecb{a}(t)\T \pd{\vecb{v}_\theta}{\theta}\,\mathrm{d}t$ to be computed in $O(1)$ memory \bookcite{deep_learning_foundations_concepts}{Ch.~18, pp.~555--556 (PDF pp.~567--568)}.
+
+\textbf{Hutchinson Trace Estimator (FFJORD):} Computing the exact divergence $\Tr(\jac_{\vecb{v}_\theta})$ requires $D$ reverse-mode automatic differentiation passes ($O(D^2)$ cost). \emph{FFJORD} reduces this to $O(D)$ via Hutchinson's unbiased trace estimator (\bookcite{deep_learning_foundations_concepts}{Ch.~18, Eq.~(18.29), p.~558}; \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~845}):
+\begin{equation}\label{eq:flow:hutchinson}
+  \Tr\!\left(\jac_{\vecb{v}_\theta}(\vecb{z}, t)\right) = \E_{\boldsymbol{\epsilon} \sim p(\boldsymbol{\epsilon})}\!\left[\boldsymbol{\epsilon}\T \jac_{\vecb{v}_\theta}(\vecb{z}, t)\,\boldsymbol{\epsilon}\right] \approx \frac{1}{M}\sum_{m=1}^M \boldsymbol{\epsilon}_m\T \left(\jac_{\vecb{v}_\theta}(\vecb{z}, t)\,\boldsymbol{\epsilon}_m\right),
+\end{equation}
+where $\E[\boldsymbol{\epsilon}] = \zeros$ and $\Cov(\boldsymbol{\epsilon}) = \eye_D$ (e.g., Rademacher $\{\pm 1\}^D$ or $\Normal(\zeros, \eye_D)$), and the vector-Jacobian product $\boldsymbol{\epsilon}\T \jac_{\vecb{v}_\theta}$ is evaluated in a single reverse-mode AD pass.
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:flow:algorithms}
+% =============================================================================
+
+Algorithm~\ref{alg:flow:ffjord} details one training iteration of an unconstrained FFJORD Continuous Normalizing Flow, integrating the augmented state $(\vecb{z}(t), \Delta\log p(t))$ backward from data $\vecb{x}$ to base $\vecb{z}(0)$ and computing gradients via the adjoint ODE.
+
+\begin{algorithm}[htbp]
+\caption{FFJORD Continuous Normalizing Flow Training Step \bookcite{deep_learning_foundations_concepts}{Ch.~18, pp.~556--558}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~845}}\label{alg:flow:ffjord}
+\KwIn{Data batch $\{\vecb{x}^{(n)}\}_{n=1}^B$, neural velocity field $\vecb{v}_\theta(\vecb{z}, t)$, horizon $T$, base density $p_Z$, Hutchinson samples $M$.}
+\KwOut{Updated parameters $\theta$.}
+Sample noise vectors $\boldsymbol{\epsilon}^{(n,m)} \sim \Normal(\zeros, \eye_D)$ (or Rademacher) for $n \in [B], m \in [M]$\;
+\For{each sample $\vecb{x}^{(n)}$ in parallel}{
+  Define augmented dynamics $\mathcal{F}(\vecb{z}, t) = \left[\vecb{v}_\theta(\vecb{z}, t),\; -\frac{1}{M}\sum_{m=1}^M (\boldsymbol{\epsilon}^{(n,m)})\T \grad_{\vecb{z}}(\vecb{v}_\theta(\vecb{z}, t)\T \boldsymbol{\epsilon}^{(n,m)})\right]$\;
+  Integrate backward from $t=T$ to $t=0$ with initial state $[\vecb{x}^{(n)},\, 0]$:
+  $[\vecb{z}^{(n)}(0),\, \Delta\ell^{(n)}] \leftarrow \mathrm{ODESolve}([\vecb{x}^{(n)}, 0], \mathcal{F}, T \to 0)$\;
+  Compute exact log-likelihood: $\log p_\theta(\vecb{x}^{(n)}) = \log p_Z(\vecb{z}^{(n)}(0)) - \Delta\ell^{(n)}$\;
+}
+Form negative log-likelihood loss $\mathcal{L}(\theta) = -\frac{1}{B}\sum_{n=1}^B \log p_\theta(\vecb{x}^{(n)})$\;
+Solve adjoint ODE backward/forward with $\vecb{a}(0) = \pd{\mathcal{L}}{\vecb{z}(0)}$ to obtain $\grad_\theta \mathcal{L}$ in $O(1)$ memory\;
+Update $\theta \leftarrow \mathrm{OptimizerStep}(\theta, \grad_\theta \mathcal{L})$\;
+\end{algorithm}
+
+For high-resolution images, discrete flows (RealNVP, Glow) avoid ODE solvers by employing a \emph{multiscale architecture} \bookcite{understandingdl_simonprince}{Ch.~16, pp.~316--318 (PDF pp.~330--332)}: at each scale, a squeeze operation trades spatial resolution ($2\times 2$ patches) for $4\times$ channel depth, followed by alternating ActNorm, $1\times 1$ invertible convolutions, and affine coupling layers; half of the channels are periodically factored out directly into $\vecb{z}$ to reduce memory and computation.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Flow Family} & \textbf{Sampling $\vecb{z} \to \vecb{x}$} & \textbf{Density $\vecb{x} \to \vecb{z}$} & \textbf{Log-Det Cost} & \textbf{Key Trade-Off} \\
+\midrule
+Coupling (RealNVP / Glow) & $O(1)$ parallel pass & $O(1)$ parallel pass & $O(D)$ (diag) + $O(C)$ ($1{\times}1$ LU) & Symmetric speed; requires deep stacking for cross-dim mixing \\
+MAF & $O(D)$ sequential & $O(1)$ parallel pass & $O(D)$ (triangular) & Fast MLE training; slow $O(D)$ ancestral sampling \\
+IAF & $O(1)$ parallel pass & $O(D)$ sequential & $O(D)$ (triangular) & Fast sampling (VAE/distillation); slow MLE on data \\
+Residual Flow (iResNet) & $O(K)$ fixed-point & $O(1)$ forward pass & Unbiased power series & Unconstrained layers; requires Lipschitz $< 1$ spectral norm \\
+Continuous (FFJORD) & $O(\text{NFE})$ ODE solve & $O(\text{NFE})$ ODE solve & $O(D)$ per NFE (Hutchinson) & Free-form $\vecb{v}_\theta$, $O(1)$ memory; high NFE if stiff \\
+\bottomrule
+\end{tabularx}
+\caption{Computational and structural comparison of exact-likelihood normalizing flow families \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, pp.~835--845}, \bookcite{deep_learning_foundations_concepts}{Ch.~18, pp.~549--558}.}\label{tab:flow:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Likelihood Objectives \& Bridge to Flow Matching]
+\textbf{Forward vs.\ Reverse KL Training:} As shown in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, pp.~831--832} and \bookcite{understandingdl_simonprince}{Ch.~16, p.~320}, flows support two complementary objectives. Given data samples $\vecb{x} \sim p_{\mathrm{data}}$, MLE minimizes $\KL{p_{\mathrm{data}}}{p_\theta}$, requiring fast inverse evaluation $f_\theta\inv(\vecb{x})$ (favoring RealNVP, Glow, MAF). Conversely, when approximating an unnormalized target density $q(\vecb{x})$ (e.g., a VAE posterior or WaveNet teacher), one minimizes the reverse KL $\KL{p_\theta}{q}$ using reparameterized samples $\vecb{x} = f_\theta(\vecb{z})$, requiring fast forward sampling (favoring IAF).
+
+\textbf{From CNFs to Flow Matching \& Diffusion:} Both Bishop \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~558} and Diffusion Principles \bookcite{theprinciple_diffusion_models}{Sec.~5.1.2, pp.~133--135} highlight that FFJORD suffers from costly ODE integration during training. \emph{Flow Matching} resolves this bottleneck by regressing $\vecb{v}_\theta(\vecb{z}_t, t)$ directly onto conditional vector fields along prescribed probability paths $p_t$ satisfying the continuity equation \eqref{eq:flow:continuity}, eliminating ODE solves during training while retaining exact likelihood evaluation at inference.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:flow:visuals}
+% =============================================================================
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=0.55cm and 0.95cm]
+    % Top Panel: Affine Coupling Layer
+    \node[font=\small\bfseries\color{monographNavy}] (titleL) at (0, 2.35)
+      {(a) RealNVP Affine Coupling Layer ($O(1)$ Parallel Forward \& Inverse)};
+
+    \node[monoBox, minimum width=1.1cm] (zA) at (-4.5, 1.45) {$\vecb{z}_A$};
+    \node[monoBox, minimum width=1.1cm] (zB) at (-4.5, 0.15) {$\vecb{z}_B$};
+    \node[monoIndigoBox, minimum width=2.2cm] (nn) at (-1.75, 0.80) {$\vecb{s}(\vecb{z}_A),\; \vecb{t}(\vecb{z}_A)$};
+    \node[monoTealBox, minimum width=2.7cm] (aff) at (1.75, 0.15) {$\exp(\vecb{s})\odot\vecb{z}_B + \vecb{t}$};
+    \node[monoBox, minimum width=1.1cm] (xA) at (4.5, 1.45) {$\vecb{x}_A$};
+    \node[monoBox, minimum width=1.1cm] (xB) at (4.5, 0.15) {$\vecb{x}_B$};
+
+    \draw[monoArrow] (zA) -- (xA);
+    \draw[monoArrow] (zA) -| (nn.north);
+    \draw[monoArrow] (nn.south) |- ([yshift=2pt]aff.west);
+    \draw[monoArrow] (zB) -- (aff);
+    \draw[monoArrow] (aff) -- (xB);
+
+    \node[draw=monographRule, fill=monographCodeBg, rounded corners=2pt, inner sep=5pt, font=\scriptsize] (jacL) at (0, -0.95) {%
+      $\jac_f(\vecb{z}) = \begin{bmatrix} \eye_d & \zeros \\ \pd{\vecb{x}_B}{\vecb{z}_A} & \diag(\exp(\vecb{s}(\vecb{z}_A))) \end{bmatrix} \implies \log\abs{\det\jac_f(\vecb{z})} = \sum_{j=1}^{D-d} s_j(\vecb{z}_A)$%
+    };
+
+    % Bottom Panel: MAF vs IAF Asymmetry
+    \node[font=\small\bfseries\color{monographNavy}] (titleR) at (0, -2.15)
+      {(b) Autoregressive Duality (Lower-Triangular $\jac_f$, $O(D)$ Log-Det)};
+
+    \node[monoTealBox, text width=5.4cm, align=left, font=\scriptsize] (maf) at (-3.1, -3.35) {%
+      \textbf{MAF} ($\theta_i = \Theta_i(\vecb{x}_{1:i-1})$):\\
+      $\triangleright$ Density $\vecb{x} \to \vecb{z}$: \textbf{$O(1)$ parallel} (MLE)\\
+      $\triangleright$ Sample $\vecb{z} \to \vecb{x}$: \textbf{$O(D)$ sequential}%
+    };
+    \node[monoIndigoBox, text width=5.4cm, align=left, font=\scriptsize] (iaf) at (3.1, -3.35) {%
+      \textbf{IAF} ($\theta_i = \Theta_i(\vecb{z}_{1:i-1})$):\\
+      $\triangleright$ Sample $\vecb{z} \to \vecb{x}$: \textbf{$O(1)$ parallel} (VI)\\
+      $\triangleright$ Density $\vecb{x} \to \vecb{z}$: \textbf{$O(D)$ sequential}%
+    };
+  \end{tikzpicture}
+  \caption{Architectural comparison of (a) an affine coupling layer with block-triangular Jacobian and symmetric $O(1)$ parallel forward/inverse passes, and (b) the computational asymmetry between Masked Autoregressive Flows (MAF) and Inverse Autoregressive Flows (IAF).}\label{fig:flow:coupling_architecture}
+\end{figure}
+
+Figure~\ref{fig:flow:density_warp} illustrates the 1D change-of-variables mechanism for the smooth global diffeomorphism $x = f(z) = z + 0.45\sin(1.8z)$, whose derivative $f'(z) = 1 + 0.81\cos(1.8z) \ge 0.19 > 0$ guarantees strict monotonicity. Where $f'(z) > 1$ (near $z=0$), the base Gaussian $\Normal(0,1)$ is stretched, depressing $p_X(0)$ below $p_Z(0)$; where $f'(z) < 1$ (near $z \approx \pm 1.75$), probability mass is compressed, creating two symmetric modes in $p_X(x)$.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.86\textwidth,
+      height=5.6cm,
+      xlabel={$z$ or $x$},
+      ylabel={Probability Density / Derivative},
+      xmin=-3.2, xmax=3.2,
+      ymin=0, ymax=1.95,
+      grid=major,
+      grid style={monographRule!50, dashed},
+      legend pos=north east,
+      legend style={font=\scriptsize, fill=white, fill opacity=0.9, draw=monographRule},
+      tick label style={font=\scriptsize},
+      label style={font=\small\color{monographNavy}}
+    ]
+      % Base Gaussian p_Z(z)
+      \addplot[monographTeal, thick, dashed, domain=-3.2:3.2, samples=160]
+        {exp(-0.5*x^2)/sqrt(2*pi)};
+      \addlegendentry{Base $p_Z(z) = \Normal(0,1)$}
+
+      % Warped density p_X(x) plotted parametrically as (f(z), p_Z(z)/f'(z))
+      \addplot[monographNavy, very thick, domain=-3.2:3.2, samples=220]
+        ({x + 0.45*sin(deg(1.8*x))}, {(exp(-0.5*x^2)/sqrt(2*pi)) / (1 + 0.81*cos(deg(1.8*x)))});
+      \addlegendentry{Warped $p_X(x) = p_Z(f\inv(x)) / \abs{f'(f\inv(x))}$}
+
+      % Derivative f'(z)
+      \addplot[monographCrimson, thick, dotted, domain=-3.2:3.2, samples=160]
+        {1 + 0.81*cos(deg(1.8*x))};
+      \addlegendentry{Local stretch $\abs{f'(z)} = 1 + 0.81\cos(1.8z)$}
+
+      \node[font=\scriptsize\color{monographNavy}, align=center] at (axis cs:0, 0.58) {Expansion\\($f'>1 \Rightarrow p_X < p_Z$)};
+      \node[font=\scriptsize\color{monographCrimson}, align=center] at (axis cs:1.85, 0.88) {Compression\\($f'<1 \Rightarrow p_X$ peaks)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{1D change-of-variables density warping under the $C^\infty$ diffeomorphism $x = f(z) = z + 0.45\sin(1.8z)$. Stretching near the origin ($f'(0)=1.81$) splits the unimodal Gaussian base into a bimodal target density via local Jacobian compression around $z \approx \pm 1.75$.}\label{fig:flow:density_warp}
+\end{figure}
+
+In two dimensions, Figure~\ref{fig:flow:realnvp_moons} shows how composing RealNVP affine coupling layers progressively deforms an isotropic Gaussian into a nonlinear, multimodal two-moons distribution. Figure~\ref{fig:flow:multiscale} illustrates the multiscale factor-out architecture used in RealNVP and Glow to scale to high-dimensional images, and Figure~\ref{fig:flow:cnf_evolution} visualizes a Continuous Normalizing Flow smoothly transporting probability mass along non-crossing ODE integral curves.
+
+\monographfig[0.64\textwidth]{deep_learning_foundations_concepts_p564_fig1.png}{RealNVP normalizing flow applied to the two-moons dataset, showing the base Gaussian (a), intermediate warped densities across stacked coupling layers (b--e), and empirical target samples (f) \bookcite{deep_learning_foundations_concepts}{Ch.~18, Fig.~18.3, p.~552 (PDF p.~564)}.}{fig:flow:realnvp_moons}
+
+\monographfig[0.80\textwidth]{understandingdl_simonprince_p331_fig1.png}{Multiscale flow architecture: latent dimensions are partitioned into blocks and progressively factored out at coarser scales, reducing intermediate tensor dimensionality while preserving exact invertibility \bookcite{understandingdl_simonprince}{Ch.~16, Fig.~16.10, p.~317 (PDF p.~331)}.}{fig:flow:multiscale}
+
+\monographfig[0.64\textwidth]{deep_learning_foundations_concepts_p570_fig1.png}{Continuous normalizing flow (Neural ODE) smoothly transforming a unimodal Gaussian $p(z(0))$ into a multimodal distribution $p(z(T))$ along non-crossing flow lines; density decreases where trajectories diverge ($\grad\cdot\vecb{v}_\theta > 0$) and increases where they converge ($\grad\cdot\vecb{v}_\theta < 0$) \bookcite{deep_learning_foundations_concepts}{Ch.~18, Fig.~18.6, p.~558 (PDF p.~570)}.}{fig:flow:cnf_evolution}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:flow:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Discrete Data \& Dequantization Singularity]
+Training a continuous density model $p_X(\vecb{x})$ via MLE on discrete data (e.g., 8-bit quantized pixel intensities $\vecb{x} \in \{0, \dots, 255\}^D$) is ill-posed: the flow can place arbitrarily narrow Dirac-like spikes on discrete lattice points, driving $\log p_X(\vecb{x}) \to +\infty$ while collapsing between grid points \bookcite{understandingdl_simonprince}{Ch.~16, p.~318 (PDF p.~332)}. \textbf{Remedy:} Add continuous noise $\vecb{u} \in [0, 1)^D$ to form $\tilde{\vecb{x}} = \vecb{x} + \vecb{u}$ (\emph{uniform dequantization}), or learn a conditional flow $q(\vecb{u}|\vecb{x})$ (\emph{variational dequantization}) so that $\E_{q(\vecb{u}|\vecb{x})}[\log p_X(\vecb{x}+\vecb{u}) - \log q(\vecb{u}|\vecb{x})]$ lower-bounds the discrete log-probability.
+\end{pitfall}
+
+\begin{pitfall}[Exponential Scale Explosion \& Floating-Point Non-Invertibility]
+In RealNVP/MAF, unconstrained log-scales $s_j(\vecb{z}_A)$ can grow large, causing $\exp(s_j)$ to overflow to $\infty$ or underflow to $0$ in float32, which destroys numerical invertibility ($f_\theta\inv(f_\theta(\vecb{z})) \ne \vecb{z}$) \bookcite{deep_learning_foundations_concepts}{Ch.~18, p.~550}. \textbf{Remedy:} Bound the scale via $s_j = \alpha \tanh(\tilde{s}_j)$ or replace $\exp(s_j)$ with $\sigmoid(\tilde{s}_j + 2)$ (Glow), and initialize coupling layers as identity maps using \emph{ActNorm} (data-dependent per-channel shift/scale initialized on the first minibatch).
+\end{pitfall}
+
+\begin{pitfall}[Stiff ODEs, Adjoint Reversibility Drift \& High NFE]
+In CNFs, an unregularized neural velocity field $\vecb{v}_\theta(\vecb{z}, t)$ may learn convoluted, high-curvature trajectories, causing adaptive Runge--Kutta solvers to take hundreds of function evaluations (NFE) and inducing numerical drift between forward and backward ODE trajectories in the adjoint pass. \textbf{Remedy:} Add kinetic energy ($\int_0^T \norm{\vecb{v}_\theta}_2^2\,\mathrm{d}t$) and Jacobian Frobenius norm ($\int_0^T \norm{\jac_{\vecb{v}_\theta}}_F^2\,\mathrm{d}t$) regularization (RNODE), or replace MLE-based CNF training with Simulation-Free Flow Matching \bookcite{theprinciple_diffusion_models}{Sec.~5.1.2, p.~134}.
+\end{pitfall}
+
+\begin{pitfall}[Topological Obstructions \& Out-of-Distribution Likelihood Paradox]
+Because diffeomorphisms preserve topological invariants (connectedness, homotopy), mapping a unimodal Gaussian $\Normal(\zeros, \eye)$ to a disconnected multi-mode target forces $\norm{\jac_{f_\theta}}$ to blow up in low-density bridges between modes. Moreover, deep flows trained on high-dimensional images (e.g., CIFAR-10) famously assign \emph{higher} exact likelihoods to simpler out-of-distribution datasets (e.g., SVHN) because local Jacobian volume terms $\log\abs{\det\jac_{f_\theta\inv}(\vecb{x})}$ dominate the latent prior term $\log p_Z(\vecb{z})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~23, p.~846 (PDF p.~880)}. \textbf{Remedy:} Never threshold raw flow likelihoods $\log p_X(\vecb{x})$ alone for OOD detection; use likelihood ratios against a background model or typicality tests $\abs{\log p_X(\vecb{x}) + H(p_X)}$.
+\end{pitfall}
+
+\end{document}

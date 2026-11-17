@@ -1,0 +1,216 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Probability \& Information Theory}{LLN, CLT, Concentration Inequalities \& MLE/MAP/Bayes Estimation}
+  {Sample means concentrate exponentially; rescaled errors turn Gaussian; priors shrink variance}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Concentration\\ \& Estimation\\ \footnotesize\mdseries Tails $\cdot$ CLT $\cdot$ MLE/Bayes}{%
+  \begin{tikzpicture}[scale=0.55]
+    % Bell curve + tail shade + shrinkage arrow
+    \fill[csA!30] (1.1,0) -- plot[domain=1.1:2.2, samples=25] (\x, {1.45*exp(-0.9*\x*\x)}) -- (2.2,0) -- cycle;
+    \fill[csA!30] (-2.2,0) -- plot[domain=-2.2:-1.1, samples=25] (\x, {1.45*exp(-0.9*\x*\x)}) -- (-1.1,0) -- cycle;
+    \draw[csDom, very thick, smooth, domain=-2.2:2.2, samples=50] plot (\x, {1.45*exp(-0.9*\x*\x)});
+    \draw[csB, thick, dashed] (0,0) -- (0,1.55) node[above, font=\tiny] {$\theta^*\!/\!\mu$};
+    \draw[csA, thick] (1.1,0) -- (1.1,0.65) node[above right, font=\tiny] {$+\varepsilon$};
+    \draw[-{Stealth}, csD, very thick] (1.75,1.05) -- (0.35,1.05) node[midway, above, font=\tiny] {shrink};
+    \draw[gray, thin] (-2.3,0) -- (2.3,0);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; CONCENTRATION $-$ finite-$N$ tail bounds}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Markov} ($X\!\ge\!0$): $\Prob[X\!\ge\!\varepsilon]\le \E[X]/\varepsilon$
+      \item \textbf{Chebyshev}: $\Prob[\abs{\bar X_N\!-\!\mu}\!\ge\!\varepsilon]\le \sigma^2/(N\varepsilon^2)$
+      \item \textbf{Chernoff}: $\Prob[\bar X_N\!\ge\!\varepsilon]\le e^{-N\psi_X^*(\varepsilon)}$
+      \item \textbf{Sub-Gaussian}: $\le 2e^{-N\varepsilon^2/(2\sigma^2)}$
+      \item \textbf{Hoeffding} ($[a,b]$): $\le 2e^{-2N\varepsilon^2/(b-a)^2}$
+      \item \textbf{PAC union}: $\varepsilon \le \sqrt{\log(2\abs{\mathcal H}/\delta)/(2N)}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[->] (0,0) -- (4.8,0) node[right] {$\varepsilon$};
+      \draw[->] (0,0) -- (0,3.8) node[above] {tail};
+      \draw[csB, very thick, domain=0.4:4.5, samples=30] plot (\x, {min(3.5, 1.3/(\x*\x))});
+      \draw[csA, very thick, domain=0.2:4.5, samples=35] plot (\x, {3.4*exp(-0.55*\x*\x)});
+      \node[csB, anchor=west] at (2.1,1.6) {$O(N^{-1}\varepsilon^{-2})$};
+      \node[csA, anchor=west] at (2.1,0.55) {$e^{-cN\varepsilon^2}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; LIMIT THEOREMS $-$ $N\to\infty$ laws}{%
+  \begin{csbul}
+    \item \textbf{Modes}: $Y_N\xrightarrow{a.s.}Y \implies Y_N\xrightarrow{p}Y \implies Y_N\xrightarrow{d}Y$
+    \item \textbf{WLLN / SLLN}: $\bar X_N \xrightarrow{p} \mu$ and $\bar X_N \xrightarrow{a.s.} \mu$ once $\E[\abs{X}]<\infty$
+    \item \textbf{Lindeberg--L\'evy CLT}: $Z_N = \frac{\sqrt N(\bar X_N - \mu)}{\sigma} \xrightarrow{d} \Normal(0,1)$ via $\varphi_{Z_N}(t)=[\varphi_{\tilde X}(t/\sqrt N)]^N\to e^{-t^2/2}$
+    \item \textbf{Berry--Esseen}: $\sup_z\abs{F_{Z_N}(z)-\Phi(z)} \le \frac{C\rho}{\sigma^3\sqrt N}$ ($C<0.4748$)
+    \item \textbf{Bulk vs.\ tail}: CLT holds at $O(N^{-1/2})$; use Chernoff at $\varepsilon=\Theta(1)$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; FISHER \& CRLB $-$ curvature \& efficiency}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mat F(\theta)=\Cov_\theta[\vecb s]=-\E_\theta[\hess_\theta\log p(X\mid\theta)]}
+    \begin{csbul}
+      \item \textbf{Score}: $\vecb s(\theta;x)=\grad_\theta\log p(x\mid\theta)$, $\E[\vecb s]=\vecb 0$
+      \item \textbf{CRLB}: $\Cov_\theta[\hat\theta_N] \succeq (N\mat F(\theta))^{-1}$
+      \item \textbf{MLE law}: $\sqrt N(\hat\theta_{\mathrm{MLE}}-\theta^*)\xrightarrow{d}\Normal(\vecb 0,\mat F^{-1})$
+      \item \textbf{Invariance}: $\widehat{h(\theta)}_{\mathrm{MLE}} = h(\hat\theta_{\mathrm{MLE}})$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[csC, very thick, domain=-1.8:1.8, samples=35] plot (\x, {0.75*\x*\x});
+      \draw[csE, thick, dashed, domain=-2.1:2.1, samples=35] plot (\x, {0.22*\x*\x});
+      \draw[<->, csC] (-0.9,0.6) -- (0.9,0.6);
+      \node[csC] at (0,2.8) {high $\mat F\Rightarrow$ narrow};
+      \node[csE] at (0,-0.5) {low $\mat F\Rightarrow$ wide};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; MLE vs.\ MAP vs.\ BAYES $-$ point \& posterior}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csD}{Rule}} & \textbf{\textcolor{csD}{Objective / Form}} & \textbf{\textcolor{csD}{Link / Prior}}\\ \hline
+    MLE & $\argmax_\theta \ell(\theta)=\argmin_\theta \KL{\hat p_{\mathcal D}}{p_\theta}$ & unregularized ERM\\
+    MAP & $\argmax_\theta [\ell(\theta)+\log p(\theta)]$ & $\ell_2\!\leftrightarrow\!\Normal$, $\ell_1\!\leftrightarrow\!\text{Lap}$\\
+    Bayes & $p(\theta\mid\mathcal D)\propto p(\mathcal D\mid\theta)p(\theta)$ & BMA $\int p(y\mid\theta)p(\theta\mid\mathcal D)$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Gaussian shrinkage}: $\hat m = \frac{N\kappa\bar y+\breve\lambda\breve m}{N\kappa+\breve\lambda}$, $\hat\lambda=\breve\lambda+N\kappa$.\\
+  \textbf{Beta--Binomial}: $\hat\theta_{\mathrm{MAP}}=\frac{N_1+\alpha-1}{N+\alpha+\beta-2}$, $\E[\theta\mid\mathcal D]=\frac{N_1+\alpha}{N+\alpha+\beta}$.}
+
+\csbranch{5}{E}{5\;\; DECISION \& TESTING $-$ loss, LRT \& Bayes}{%
+  \begin{csbul}
+    \item \textbf{Posterior loss} $\rho(a\mid\mathcal D)=\E_{\theta\mid\mathcal D}[\ell(\theta,a)]$: $\ell_2\Rightarrow\E[\theta\mid\mathcal D]$ (MMSE), $\ell_1\Rightarrow\text{median}$, $0\text{-}1\Rightarrow\hat\theta_{\mathrm{MAP}}$
+    \item \textbf{MSE split}: $\E[\norm{\hat\theta-\theta^*}_2^2]=\Tr\Cov[\hat\theta]+\norm{\mathrm{bias}(\hat\theta)}_2^2$
+    \item \textbf{Neyman--Pearson / Wilks}: $2\log\tilde\Lambda \xrightarrow{d} \chi^2_{\Delta D}$ under $H_0$
+    \item \textbf{Bayes factor}: $B_{1,0}=\frac{p(\mathcal D\mid M_1)}{p(\mathcal D\mid M_0)}$; $\mathrm{BIC}=\ell(\hat\theta_{\mathrm{MLE}})-\frac{D}{2}\log N$
+    \item \textbf{HPD vs.\ ROPE}: accept equivalence if $95\%$ HPD $\subset [\theta_0\!\pm\!\epsilon]$
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; COST \& SOLVERS $-$ how to compute}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csF}{Method}} & \textbf{\textcolor{csF}{Time}} & \textbf{\textcolor{csF}{Uncertainty}}\\ \hline
+    Conjugate Bayes & $O(ND)$ & exact posterior\\
+    Fisher scoring & $O(T(ND^2+D^3))$ & $(N\mat F+\mat P_{\mathrm{prior}})^{-1}$\\
+    Bootstrap ($B$) & $O(B\cdot C_{\mathrm{fit}})$ & empirical quantiles\\
+    MCMC / VI ($S$) & $O(S\cdot C_{\mathrm{grad}})$ & multimodal / approx.\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Fisher scoring}: replaces indefinite $-\hess\ell$ with SPD $N\mat F(\theta)+\mat P_{\mathrm{prior}}$.
+  \textbf{Bootstrap}: each draw covers $1-(1-\tfrac1N)^N\approx 63.2\%$ unique points.}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{MGFs crush tails $\cdot$ Fisher curvature sets the $\sqrt{N}$ floor $\cdot$ Priors trade bias for variance}\\[1pt]
+  \footnotesize\mdseries \textbf{MLE minimizes empirical KL; Bayes integrates out $\theta$ to match your decision loss.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{MAP not reparam-invariant:} $\hat\phi_{\mathrm{MAP}}\ne g(\hat\theta_{\mathrm{MAP}})$; use Jeffreys or posterior mean
+    \item \textbf{Small-$N$ MLE:} $\hat\sigma^2$ biased by $\frac{N-1}{N}$; $\hat{\mat\Sigma}$ singular for $N\le D$; zero counts $\Rightarrow\hat\theta=0$
+    \item \textbf{Heavy tails:} Cauchy has no LLN; CLT fails at $\varepsilon=\Theta(1)$; $p$-val $\ne \Prob(H_0\mid\mathcal D)$
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Concentration Inequalities, Limit Theorems \& Statistical Estimation (MLE/MAP)}\;---\;Domain 01 $\cdot$ Probability \& Information Theory}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Chernoff / Legendre rate ($\psi_X(s)=\log\E[e^{sX}]$):
+      \csfm{\Prob[\bar X_N\ge\varepsilon]\le e^{-N\psi_X^*(\varepsilon)},\quad \psi_X^*(\varepsilon)=\sup_{s>0}(s\varepsilon-\psi_X(s))}
+    \item Hoeffding ($X_n\in[a_n,b_n]$) \& Sub-Gaussian ($\sigma^2$):
+      \csfm{\Prob\bigl[\abs{\bar X_N-\mu}\ge\varepsilon\bigr]\le 2\exp\!\left(-\frac{2N^2\varepsilon^2}{\sum_{n=1}^N(b_n-a_n)^2}\right)\;\text{or}\;\;2e^{-N\varepsilon^2/(2\sigma^2)}}
+    \item Fisher Information \& Cram\'er--Rao Lower Bound:
+      \csfm{\mat F(\theta)=\Cov_\theta[\grad\log p(X\mid\theta)]=-\E_\theta[\hess\log p],\quad \Cov_\theta[\hat\theta_N]\succeq(N\mat F)^{-1}}
+    \item Conjugate Gaussian--Gaussian precision pooling:
+      \csfm{\hat\lambda=\breve\lambda+N\kappa,\qquad \hat m=\frac{N\kappa\bar y+\breve\lambda\breve m}{N\kappa+\breve\lambda}=(1-w)\bar y+w\breve m}
+    \item Bayes Decision Rule ($\ell_2,\ell_1,\ell_{01}$):
+      \csfm{a^*=\argmin_a\E_{\theta\mid\mathcal D}[\ell(\theta,a)]\implies \E[\theta\mid\mathcal D],\;\mathrm{med}(\theta\mid\mathcal D),\;\hat\theta_{\mathrm{MAP}}}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{DAMPED FISHER SCORING + BOOTSTRAP RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Set objective $\mathcal J(\theta)=\ell(\theta;\mathcal D)+\log p(\theta)$, $\theta^{(0)}\in\mathrm{int}(\Theta)$.
+    \item Score: $\vecb g^{(t)}=\sum_{n=1}^N\grad_\theta\log p(x_n\mid\theta^{(t)})+\grad_\theta\log p(\theta^{(t)})$.
+    \item Curvature: $\mat G^{(t)}=N\mat F(\theta^{(t)})-\hess_\theta\log p(\theta^{(t)})+\epsilon_d\eye_D\succ\mat 0$.
+    \item Solve $\mat G^{(t)}\Delta\theta=\vecb g^{(t)}$; Armijo line search $\theta^{(t+1)}=\theta^{(t)}+\eta\Delta\theta$.
+    \item Return $\hat\theta$, $\hat{\mat\Sigma}_{\mathrm{asy}}=(\mat G)^{{-1}}$, or resample $\mathcal D^{(b)}$ ($B$ times) for $\hat{\mat\Sigma}_{\mathrm{boot}}$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    only $\E[X],\Var[X]$ known & Markov / Chebyshev ($O(N^{-1}\varepsilon^{-2})$)\\
+    bounded $X_n\in[a,b]$ & Hoeffding ($2e^{-2N\varepsilon^2/(b-a)^2}$)\\
+    small $\sigma^2 \ll (b-a)^2/4$ & Sub-Gaussian / Bernstein Chernoff\\
+    large $N$, well-specified $p_\theta$ & MLE + $(N\mat F(\hat\theta))^{-1}$ normal CIs\\
+    small $N$ or $D\gtrsim N$ & MAP / conjugate Bayes shrinkage\\
+    non-Gaussian finite-$N$ stat & Nonparametric bootstrap ($B\ge 200$)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& CONVERGENCE CHEAT-LINE}
+  \begin{csbul}
+    \item PAC sample complexity ($1-\delta$): $N = O\bigl(\varepsilon^{-2}\log(\abs{\mathcal H}/\delta)\bigr)$
+    \item Berry--Esseen CDF rate: $\sup_z\abs{F_{Z_N}(z)-\Phi(z)} \le 0.4748\,\rho/(\sigma^3\sqrt N)$
+    \item Local KL curvature: $\KL{p_{\theta^*}}{p_{\theta^*+\delta}} = \frac{1}{2}\delta\T\mat F(\theta^*)\delta + O(\norm{\delta}^3)$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{TAIL BOUNDS CROSSOVER ($N=50$, $\mathrm{Unif}[0,1]$, $\sigma^2=1/12$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{semilogyaxis}[width=0.96\linewidth, height=5.1cm, xmin=0.04, xmax=0.30, ymin=1e-9, ymax=2.0,
+      xlabel={Deviation $\varepsilon$}, ylabel={Upper bound on $\Prob[\abs{\bar X_N-\mu}\ge\varepsilon]$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0.05,0.10,0.15,0.20,0.25,0.30}, ytick={1e-8,1e-6,1e-4,1e-2,1},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, draw=gray!40, fill=white, fill opacity=0.92, at={(0.03,0.08)}, anchor=south west}]
+      \addplot[csB, very thick, domain=0.04:0.30, samples=80] {min(1, 1/(600*x*x))};
+      \addlegendentry{Chebyshev $\sigma^2/(N\varepsilon^2)$}
+      \addplot[csA, very thick, domain=0.04:0.30, samples=80] {min(1, 2*exp(-100*x*x))};
+      \addlegendentry{Hoeffding $2e^{-2N\varepsilon^2}$}
+      \addplot[csF, very thick, dashed, domain=0.04:0.30, samples=80] {min(1, 2*exp(-300*x*x))};
+      \addlegendentry{Sub-Gaussian $2e^{-N\varepsilon^2/(2\sigma^2)}$}
+      \node[font=\tiny, csDom, anchor=south] at (axis cs:0.196,0.065) {crossover $\varepsilon\approx 0.196$};
+    \end{semilogyaxis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{MAP mode shifts under $\phi=g(\theta)$}: $p_\phi(\phi\mid\mathcal D)=p_\theta(g^{-1}(\phi)\mid\mathcal D)\abs{\det\jac_{g^{-1}}(\phi)}$. Use posterior expectations, quantiles, or Jeffreys prior $p_J(\theta)\propto\sqrt{\det\mat F(\theta)}$.
+    \item \textbf{MLE finite-sample traps}: Gaussian $\hat\sigma^2_{\mathrm{MLE}}=\frac{1}{N}\sum(x_n-\bar x)^2$ underestimates $\sigma^2$ (use $\frac{1}{N-1}$); $\hat{\mat\Sigma}_{\mathrm{MLE}}$ is rank $\le N-1$ when $N\le D$; Bernoulli $\hat\theta_{\mathrm{MLE}}=N_1/N$ gives $0$ on unseen events (use Laplace $\frac{N_1+1}{N+2}$).
+    \item \textbf{CLT tail \& moment failures}: Cauchy $\bar X_N\stackrel{d}{=}X_1$ never concentrates; heavy tails lack MGFs; CLT errors blow up relatively at $\varepsilon=\Theta(1)$.
+    \item \textbf{NHST $p$-value \& stopping traps}: $p=\Prob(t(\tilde{\mathcal D})\ge t(\mathcal D)\mid H_0)\ne\Prob(H_0\mid\mathcal D)$; optional stopping inflates Type I error; $M$ tests inflate FWER to $\approx M\alpha$ (use Bonferroni $\alpha/M$, FDR, or Bayes factors).
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Concentration} bounds finite-$N$ risk via MGFs ($e^{-N\psi^*(\varepsilon)}$), enabling $O(\sqrt{\log\abs{\mathcal H}/N})$ generalization.
+  \textbf{Asymptotics} turn $\sqrt N(\hat\theta_{\mathrm{MLE}}-\theta^*)$ into $\Normal(\vecb 0, \mat F(\theta^*)^{-1})$, hitting the Cram\'er--Rao floor.
+  \textbf{Bayesian priors} turn MLE into regularized ERM (MAP) and shrinkage posteriors whose optimal point summary ($\E$, median, mode) is dictated by your decision loss ($\ell_2, \ell_1, 0\text{-}1$).
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

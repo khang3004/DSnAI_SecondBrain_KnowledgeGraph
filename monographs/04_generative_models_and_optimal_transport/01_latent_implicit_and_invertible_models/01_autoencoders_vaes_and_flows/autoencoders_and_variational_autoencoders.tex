@@ -1,0 +1,343 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Autoencoders, VAEs, Normalizing Flows, EBMs \& GANs}{Autoencoders, Variational Autoencoders \& Normalizing Flows}{Autoencoders, Variational Autoencoders (VAEs), Reparameterization \& VQ-VAE}{Murphy Adv. Ch.~21, Bishop Ch.~19, Prince Ch.~17, Goodfellow Ch.~14, Chan Sec.~1}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}\label{sec:vae:formulation}
+% =============================================================================
+
+Representation learning and deep latent-variable generative modeling seek a low-dimensional latent code $\vecb{z} \in \mathcal{Z}$ that captures the salient factors of variation underlying high-dimensional observations $\vecb{x} \in \R^D$ drawn from an unknown data distribution $p_{\mathrm{data}}(\vecb{x})$. Deterministic autoencoders learn a direct bottleneck mapping $\vecb{x} \mapsto \vecb{z} = e_\phi(\vecb{x}) \mapsto \hat{\vecb{x}} = d_\theta(\vecb{z})$ by minimizing reconstruction distortion \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~574}; see also \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, p.~517}. Because deterministic autoencoders impose no probabilistic prior over $\mathcal{Z}$, arbitrary samples $\vecb{z} \sim p(\vecb{z})$ do not decode to valid data points.
+
+Variational Autoencoders (VAEs) resolve this by formulating a deep latent-variable model (DLVM) with joint density
+\begin{equation}\label{eq:vae:joint_model}
+  p_\theta(\vecb{x}, \vecb{z}) = p_\theta(\vecb{z})\,p_\theta(\vecb{x} \mid \vecb{z}),
+\end{equation}
+where $p_\theta(\vecb{z})$ is a tractable prior (canonically $\Normal(\zeros, \eye_M)$) and $p_\theta(\vecb{x} \mid \vecb{z})$ is an exponential-family decoder parameterized by a neural network $d_\theta(\vecb{z})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~825}. Maximum likelihood estimation requires evaluating the marginal likelihood
+\begin{equation}\label{eq:vae:marginal}
+  p_\theta(\vecb{x}) = \int_{\mathcal{Z}} p_\theta(\vecb{x} \mid \vecb{z})\,p_\theta(\vecb{z})\,\mathrm{d}\vecb{z},
+\end{equation}
+which is analytically intractable for nonlinear decoders, as is the exact posterior $p_\theta(\vecb{z} \mid \vecb{x}) = p_\theta(\vecb{x}, \vecb{z})/p_\theta(\vecb{x})$ \bookcite{understandingdl_simonprince}{Ch.~17, p.~344} \bookcite{theprinciple_diffusion_models}{Sec.~2.1, p.~39}. Rather than performing per-datum iterative variational optimization, VAEs introduce an \emph{amortized} inference (recognition) network $q_\phi(\vecb{z} \mid \vecb{x})$ that maps each observation $\vecb{x}$ to variational posterior parameters $(\vecb{\mu}_\phi(\vecb{x}), \vecb{\sigma}_\phi(\vecb{x}))$, enabling joint optimization of $(\theta, \phi)$ via the Evidence Lower Bound (ELBO). Vector-Quantized VAEs (VQ-VAEs) replace the continuous Gaussian bottleneck with a discrete codebook $\mathcal{E} = \{\vecb{e}_1, \dots, \vecb{e}_K\} \subset \R^d$ and nearest-neighbor quantization \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~849}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]\label{tab:vae:notation}
+Source textbooks adopt swapped parameter symbols $(\theta, \phi)$ and different latent variable letters ($\vecb{z}$ vs.\ $\vecb{h}$). Throughout this monograph, we standardize on $\theta$ for generative/decoder parameters and $\phi$ for amortized encoder parameters (matching Murphy and Chan).
+\vspace{4pt}
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified} & \textbf{Murphy / Chan} & \textbf{Bishop / Prince / Princ.} & \textbf{Goodfellow et al.} \\
+\midrule
+Input / Latent & $\vecb{x} \in \R^D,\; \vecb{z} \in \R^M$ & $\vecb{x},\; \vecb{z}$ & $\vecb{x},\; \vecb{z}$ & $\vecb{x},\; \vecb{h}$ (code) \\
+Encoder / Params & $q_\phi(\vecb{z}\mid\vecb{x}),\; \phi$ & $q_\phi(\vecb{z}\mid\vecb{x}),\; \phi$ & $q(\vecb{z}\mid\vecb{x},\phi)$ / $q_\theta(\vecb{z}\mid\vecb{x})$ & $f(\vecb{x})$ / $p_{\mathrm{enc}}(\vecb{h}\mid\vecb{x})$ \\
+Decoder / Params & $p_\theta(\vecb{x}\mid\vecb{z}),\; \theta$ & $p_\theta(\vecb{x}\mid\vecb{z}),\; \theta$ & $p(\vecb{x}\mid\vecb{z},\vecb{w})$ / $p_\phi(\vecb{x}\mid\vecb{z})$ & $g(\vecb{h})$ / $p_{\mathrm{dec}}(\vecb{x}\mid\vecb{h})$ \\
+Reconstruction & $\hat{\vecb{x}} = d_\theta(\vecb{z})$ & $\hat{\vecb{x}} = d_\theta(\vecb{z})$ & $\vecb{y}(\vecb{z})$ / $f[\vecb{z},\phi]$ & $\vecb{r} = g(\vecb{h})$ \\
+Pedagogical Focus & Unified synthesis & $\beta$-VAE, collapse, VQ-VAE & Linear AE--PCA, ELBO geom. & DAE score, CAE Jacobian \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}\label{sec:vae:derivations}
+% =============================================================================
+
+\subsection{Linear Autoencoders, PCA Equivalence, and Regularized Score Interpretations}
+
+Before introducing stochastic latent variables, we establish the geometric baseline of deterministic undercomplete and regularized autoencoders.
+
+\begin{coremath}[Linear Autoencoder--PCA Equivalence \& Regularized Autoencoders]
+\textbf{1. Linear Autoencoder--PCA Equivalence} \bookcite{deep_learning_foundations_concepts}{Ch.~19, pp.~575--576}: Consider a two-layer linear autoencoder with encoder $\vecb{z}_n = \mat{W}_1\vecb{x}_n \in \R^M$ and decoder $\hat{\vecb{x}}_n = \mat{W}_2\vecb{z}_n \in \R^D$ ($M < D$) minimizing the sum-of-squares loss
+\begin{equation}\label{eq:vae:linear_ae}
+  \mathcal{E}(\mat{W}_1, \mat{W}_2) = \frac{1}{2}\sum_{n=1}^N \norm{\mat{W}_2 \mat{W}_1 \vecb{x}_n - \vecb{x}_n}_2^2.
+\end{equation}
+At the unique global minimum (up to an invertible $M \times M$ basis change), the column space of $\mat{W}_2$ spans the exact $M$-dimensional principal subspace of the empirical covariance $\mat{S} = \frac{1}{N}\sum_{n=1}^N \tilde{\vecb{x}}_n \tilde{\vecb{x}}_n\T$ (for centered data $\tilde{\vecb{x}}_n$). Even with a single nonlinear hidden layer, if the decoder remains linear and squared error is used, the optimal projection still spans the linear PCA subspace \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~576} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, p.~518}.
+
+\textbf{2. Denoising Autoencoders (DAE) as Score Estimators} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, pp.~525--529}: Let $C(\tilde{\vecb{x}} \mid \vecb{x}) = \Normal(\tilde{\vecb{x}}; \vecb{x}, \sigma^2 \eye_D)$ corrupt clean data $\vecb{x} \sim p_{\mathrm{data}}(\vecb{x})$. Training $r_\psi(\tilde{\vecb{x}}) = d_\theta(e_\phi(\tilde{\vecb{x}}))$ under squared error
+\begin{equation}\label{eq:vae:dae_loss}
+  \mathcal{L}_{\mathrm{DAE}}(\psi) = \E_{\vecb{x} \sim p_{\mathrm{data}}} \E_{\tilde{\vecb{x}} \sim C(\cdot\mid\vecb{x})}\!\left[ \norm{r_\psi(\tilde{\vecb{x}}) - \vecb{x}}_2^2 \right]
+\end{equation}
+yields the Bayes-optimal denoiser $r^*(\tilde{\vecb{x}}) = \E[\vecb{x} \mid \tilde{\vecb{x}}]$. By Tweedie's formula for isotropic Gaussian corruption, the residual displacement estimates the Stein score of the smoothed data density $p_\sigma(\tilde{\vecb{x}}) = \int p_{\mathrm{data}}(\vecb{x})\Normal(\tilde{\vecb{x}};\vecb{x},\sigma^2\eye)\,\mathrm{d}\vecb{x}$:
+\begin{equation}\label{eq:vae:dae_score}
+  r^*(\tilde{\vecb{x}}) - \tilde{\vecb{x}} = \sigma^2 \nabla_{\tilde{\vecb{x}}} \log p_\sigma(\tilde{\vecb{x}}) + o(\sigma^2).
+\end{equation}
+
+\textbf{3. Contractive Autoencoders (CAE):} As shown in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, pp.~536--538}, a CAE penalizes the Frobenius norm of the encoder Jacobian $\mat{J}_{e}(\vecb{x}) = \partial e_\phi(\vecb{x}) / \partial \vecb{x}$:
+\begin{equation}\label{eq:vae:cae_loss}
+  \mathcal{L}_{\mathrm{CAE}}(\theta, \phi) = \mathcal{L}_{\mathrm{rec}}(\vecb{x}, d_\theta(e_\phi(\vecb{x}))) + \lambda \norm{\mat{J}_e(\vecb{x})}_F^2.
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Manifold Tangent Geometry vs.\ Orthogonal Projection]
+In a DAE, the vector field $r^*(\tilde{\vecb{x}}) - \tilde{\vecb{x}}$ points orthogonally back toward the high-density data manifold, directly prefiguring score-based diffusion models~\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, p.~529}. Conversely, the CAE penalty $\norm{\mat{J}_e(\vecb{x})}_F^2$ forces the encoder to be locally invariant along directions orthogonal to the data manifold while preserving sensitivity along the leading singular vectors of $\mat{J}_e(\vecb{x})$, which span the local tangent plane~\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, p.~537}.
+\end{intuition}
+
+\subsection{The Variational ELBO, KL Decomposition, and Amortized Inference Gap}
+
+\begin{coremath}[Exact ELBO Derivation and Augmented-Space Divergence]
+For any observation $\vecb{x}$ and any variational distribution $q_\phi(\vecb{z} \mid \vecb{x})$ whose support covers $p_\theta(\vecb{z} \mid \vecb{x})$, we derive the ELBO via Jensen's inequality \bookcite{understandingdl_simonprince}{Ch.~17, pp.~345--346} \bookcite{theprinciple_diffusion_models}{Sec.~2.1.2, p.~40}:
+\begin{align}
+  \log p_\theta(\vecb{x})
+  &= \log \int q_\phi(\vecb{z} \mid \vecb{x})\,\frac{p_\theta(\vecb{x}, \vecb{z})}{q_\phi(\vecb{z} \mid \vecb{x})}\,\mathrm{d}\vecb{z}
+  \ge \E_{q_\phi(\vecb{z} \mid \vecb{x})}\!\left[\log \frac{p_\theta(\vecb{x}, \vecb{z})}{q_\phi(\vecb{z} \mid \vecb{x})}\right] \nonumber \\
+  &= \underbrace{\E_{q_\phi(\vecb{z}\mid\vecb{x})}\!\left[\log p_\theta(\vecb{x}\mid\vecb{z})\right]}_{\text{Reconstruction (Likelihood)}}
+  - \underbrace{\KL{q_\phi(\vecb{z}\mid\vecb{x})}{p_\theta(\vecb{z})}}_{\text{Prior Matching (Rate)}}
+  =: \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \vecb{x}). \label{eq:vae:elbo}
+\end{align}
+Equivalently, multiplying and dividing inside the expectation by $p_\theta(\vecb{z} \mid \vecb{x})$ yields the exact identity \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~584} \bookcite{diffusionmodels_stanleychan}{Sec.~1.2, p.~5}:
+\begin{equation}\label{eq:vae:elbo_gap}
+  \log p_\theta(\vecb{x}) = \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \vecb{x}) + \KL{q_\phi(\vecb{z}\mid\vecb{x})}{p_\theta(\vecb{z}\mid\vecb{x})}.
+\end{equation}
+Averaging over the empirical data distribution $q_{\mathcal{D}}(\vecb{x})$ reveals that maximizing the ELBO jointly over $(\theta,\phi)$ minimizes the joint KL divergence in the augmented $(\vecb{x},\vecb{z})$ space \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~828, p.~831}:
+\begin{equation}\label{eq:vae:augmented_kl}
+  \E_{q_{\mathcal{D}}(\vecb{x})}\!\left[\log q_{\mathcal{D}}(\vecb{x}) - \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \vecb{x})\right]
+  = \KL{q_{\mathcal{D},\phi}(\vecb{x}, \vecb{z})}{p_\theta(\vecb{x}, \vecb{z})}
+  \ge \KL{q_{\mathcal{D}}(\vecb{x})}{p_\theta(\vecb{x})},
+\end{equation}
+where $q_{\mathcal{D},\phi}(\vecb{x}, \vecb{z}) = q_{\mathcal{D}}(\vecb{x})\,q_\phi(\vecb{z} \mid \vecb{x})$.
+
+\textbf{Closed-Form Gaussian KL} \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~585} \bookcite{diffusionmodels_stanleychan}{Sec.~1.4, p.~9}: When $p_\theta(\vecb{z}) = \Normal(\zeros, \eye_M)$ and $q_\phi(\vecb{z} \mid \vecb{x}) = \Normal(\vecb{z}; \vecb{\mu}_\phi(\vecb{x}), \diag(\vecb{\sigma}_\phi^2(\vecb{x})))$, the KL term integrates analytically:
+\begin{equation}\label{eq:vae:gaussian_kl}
+  \KL{q_\phi(\vecb{z}\mid\vecb{x})}{p_\theta(\vecb{z})}
+  = \frac{1}{2}\sum_{j=1}^{M}\!\left( \mu_{\phi,j}^2(\vecb{x}) + \sigma_{\phi,j}^2(\vecb{x}) - 1 - \log \sigma_{\phi,j}^2(\vecb{x}) \right).
+\end{equation}
+\end{coremath}
+
+\subsection{The Pathwise Reparameterization Trick \& Variance Reduction}
+
+To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\vecb{x})$ via stochastic gradient ascent, we require gradients with respect to $\phi$, which appears inside the expectation measure $q_\phi(\vecb{z}\mid\vecb{x})$.
+
+\begin{coremath}[Pathwise Reparameterization vs.\ Score-Function (REINFORCE) Estimators]
+If we draw $\vecb{z} \sim q_\phi(\vecb{z}\mid\vecb{x})$ directly, the sampling node blocks backpropagation to $\phi$. The \emph{score-function} (REINFORCE) identity
+\begin{equation}\label{eq:vae:reinforce}
+  \nabla_\phi \E_{q_\phi(\vecb{z}\mid\vecb{x})}[f(\vecb{z})]
+  = \E_{q_\phi(\vecb{z}\mid\vecb{x})}\!\left[f(\vecb{z})\,\nabla_\phi \log q_\phi(\vecb{z}\mid\vecb{x})\right]
+\end{equation}
+is unbiased for any $f(\vecb{z}) = \log p_\theta(\vecb{x}\mid\vecb{z})$, but suffers from prohibitively high Monte Carlo variance \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~586}.
+
+For continuous location-scale families, the \emph{reparameterization trick} expresses $\vecb{z} \sim q_\phi(\vecb{z}\mid\vecb{x})$ as a deterministic differentiable transformation $g_\phi(\vecb{\epsilon}, \vecb{x})$ of an auxiliary parameter-free noise variable $\vecb{\epsilon} \sim p(\vecb{\epsilon}) = \Normal(\zeros, \eye_M)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~827} \bookcite{understandingdl_simonprince}{Ch.~17, p.~352} \bookcite{diffusionmodels_stanleychan}{Sec.~1.3, p.~8}:
+\begin{equation}\label{eq:vae:reparam}
+  \vecb{z} = g_\phi(\vecb{\epsilon}, \vecb{x}) = \vecb{\mu}_\phi(\vecb{x}) + \vecb{\sigma}_\phi(\vecb{x}) \odot \vecb{\epsilon}, \qquad \vecb{\epsilon} \sim \Normal(\zeros, \eye_M).
+\end{equation}
+Applying the law of the unconscious statistician transfers the $\phi$-dependence from the measure into the integrand, enabling low-variance pathwise differentiation:
+\begin{equation}\label{eq:vae:pathwise_grad}
+  \nabla_\phi \E_{q_\phi(\vecb{z}\mid\vecb{x})}[f(\vecb{z})]
+  = \E_{\vecb{\epsilon} \sim \Normal(\zeros, \eye_M)}\!\left[ \left(\nabla_{\vecb{z}} f(\vecb{z})\big|_{\vecb{z}=g_\phi(\vecb{\epsilon},\vecb{x})}\right)\T \nabla_\phi g_\phi(\vecb{\epsilon}, \vecb{x}) \right]
+  \approx \frac{1}{L}\sum_{l=1}^L \nabla_\phi f\!\left(g_\phi(\vecb{\epsilon}^{(l)}, \vecb{x})\right),
+\end{equation}
+where $L=1$ per datum in a mini-batch typically suffices for stochastic gradient optimization \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~587}.
+\end{coremath}
+
+\subsection{Rate--Distortion Trade-Off ($\beta$-VAE), VQ-VAE, and Hierarchical Diffusion Bridge}
+
+\begin{coremath}[$\beta$-VAE Rate--Distortion Objective and VQ-VAE Quantization]
+\textbf{1. $\beta$-VAE and Total Correlation} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, pp.~831--832}: Weighting the KL term by $\beta \ge 0$ yields the $\beta$-VAE loss:
+\begin{equation}\label{eq:vae:beta_vae}
+  \mathcal{L}_\beta(\theta, \phi; \vecb{x})
+  = \underbrace{-\E_{q_\phi(\vecb{z}\mid\vecb{x})}[\log p_\theta(\vecb{x}\mid\vecb{z})]}_{\text{Distortion } D}
+  + \beta\,\underbrace{\KL{q_\phi(\vecb{z}\mid\vecb{x})}{p_\theta(\vecb{z})}}_{\text{Rate } R}.
+\end{equation}
+Setting $\beta=1$ recovers the negative ELBO; $\beta=0$ recovers a noisy autoencoder. Setting $\beta > 1$ penalizes the latent channel capacity $R$, which upper-bounds the mutual information $I(\vecb{x}; \vecb{z})$ and suppresses Total Correlation $\mathrm{TC}(\vecb{z}) = \KL{q_\phi(\vecb{z})}{\prod_j q_\phi(z_j)}$, encouraging disentangled factors (subject to inductive bias, as nonlinear latent models are fundamentally unidentifiable without structural priors) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~832} \bookcite{understandingdl_simonprince}{Ch.~17, p.~355}.
+
+\textbf{2. Vector-Quantized VAE (VQ-VAE)} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, pp.~849--851}: To avoid posterior collapse and learn discrete representations, VQ-VAE maintains a codebook $\mathcal{E} = \{\vecb{e}_1, \dots, \vecb{e}_K\} \subset \R^d$. Given continuous encoder output $\vecb{z}_e(\vecb{x})$, nearest-neighbor lookup assigns
+\begin{equation}\label{eq:vae:vq_lookup}
+  k^* = \argmin_{k \in \{1,\dots,K\}} \norm{\vecb{z}_e(\vecb{x}) - \vecb{e}_k}_2, \qquad \vecb{z}_q(\vecb{x}) = \vecb{e}_{k^*}.
+\end{equation}
+Because $\argmin$ has zero gradient almost everywhere, the backward pass uses the \emph{straight-through estimator} (STE), copying gradients directly from $\vecb{z}_q$ to $\vecb{z}_e$: $\nabla_{\vecb{z}_e} \mathcal{L}_{\mathrm{rec}} \approx \nabla_{\vecb{z}_q} \mathcal{L}_{\mathrm{rec}}$. Codebook vectors and encoder outputs are aligned via stop-gradient ($\operatorname{sg}[\cdot]$) MSE terms:
+\begin{equation}\label{eq:vae:vq_loss}
+  \mathcal{L}_{\mathrm{VQ}}(\theta, \phi, \mathcal{E}; \vecb{x})
+  = -\log p_\theta(\vecb{x} \mid \vecb{z}_q(\vecb{x}))
+  + \norm{\operatorname{sg}[\vecb{z}_e(\vecb{x})] - \vecb{e}_{k^*}}_2^2
+  + \beta_{\mathrm{com}} \norm{\vecb{z}_e(\vecb{x}) - \operatorname{sg}[\vecb{e}_{k^*}]}_2^2,
+\end{equation}
+where the middle term updates the codebook (or is replaced by an exponential moving average with $\gamma=0.9$), and the final commitment term ($\beta_{\mathrm{com}} \approx 0.25$) prevents $\vecb{z}_e(\vecb{x})$ from drifting unboundedly \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~851}.
+\end{coremath}
+
+\begin{crossbook}[Cross-Book Synthesis: From 1-Step VAE to Hierarchical Diffusion ELBO]
+Both \bookcite{theprinciple_diffusion_models}{Sec.~2.1.5, pp.~44--45} and \bookcite{diffusionmodels_stanleychan}{Sec.~1--2, pp.~9--10} emphasize that a flat 1-step VAE is the $T=1$ special case of a Hierarchical VAE (HVAE) with latent chain $\vecb{z}_{1:T}$ (or $\vecb{x}_{1:T}$). In a top-down HVAE, $p_\theta(\vecb{x}, \vecb{z}_{1:L}) = p_\theta(\vecb{z}_L)\prod_{l=2}^L p_\theta(\vecb{z}_{l-1}\mid \vecb{z}_l)\,p_\theta(\vecb{x}\mid \vecb{z}_1)$, and the ELBO decomposes into a reconstruction term plus $L$ step-wise KL divergences between generative conditionals and variational posteriors \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~843} \bookcite{theprinciple_diffusion_models}{Sec.~2.1.5, p.~45}. Denoising Diffusion Probabilistic Models (DDPMs) specialize this HVAE by fixing the encoder $q(\vecb{x}_{1:T}\mid \vecb{x}_0)$ to a non-learned Gaussian Markov noising chain and keeping latent dimensionality equal to $\R^D$, thereby eliminating the amortization gap and enabling high-fidelity progressive synthesis \bookcite{understandingdl_simonprince}{Ch.~17, p.~355}.
+\end{crossbook}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:vae:algorithms}
+% =============================================================================
+
+Algorithm~\ref{alg:vae:sgvb_vq} unifies Stochastic Gradient Variational Bayes (SGVB) training for continuous Gaussian VAEs and discrete VQ-VAE training with EMA codebook updates.
+
+\begin{algorithm}[htbp]
+\DontPrintSemicolon
+\caption{Amortized SGVB (Continuous $\beta$-VAE) and VQ-VAE Training}\label{alg:vae:sgvb_vq}
+\KwIn{Dataset $\mathcal{D}$, encoder $e_\phi$, decoder $d_\theta$, mode $\in \{\text{VAE}, \text{VQ-VAE}\}$, hyperparameters $\beta$ (KL weight) or $(\beta_{\mathrm{com}}, \gamma)$ (commitment, EMA decay), learning rate $\eta$.}
+\KwOut{Trained parameters $(\theta, \phi)$ (and codebook $\mathcal{E}$ for VQ-VAE).}
+Initialize $\theta, \phi$ (and $\mathcal{E}=\{\vecb{e}_k\}_{k=1}^K$, counts $N_k^{(0)} \leftarrow 1$, sums $\vecb{m}_k^{(0)} \leftarrow \vecb{e}_k$ if VQ-VAE)\;
+\While{not converged}{
+  Sample mini-batch $\{\vecb{x}^{(b)}\}_{b=1}^B \sim \mathcal{D}$\;
+  \eIf{mode is \textup{VAE}}{
+    $(\vecb{\mu}^{(b)}, \log \vecb{\sigma}^{2(b)}) \leftarrow e_\phi(\vecb{x}^{(b)})$ \tcp*{Clamp $\log \vecb{\sigma}^2 \in [-20, 10]$}
+    Sample $\vecb{\epsilon}^{(b)} \sim \Normal(\zeros, \eye_M)$ and set $\vecb{z}^{(b)} \leftarrow \vecb{\mu}^{(b)} + \exp(\tfrac{1}{2}\log \vecb{\sigma}^{2(b)}) \odot \vecb{\epsilon}^{(b)}$\;
+    Compute $\mathcal{L}_{\mathrm{ELBO}}^{(b)} \leftarrow -\log p_\theta(\vecb{x}^{(b)} \mid d_\theta(\vecb{z}^{(b)})) + \beta\,\KL{q_\phi(\vecb{z}\mid\vecb{x}^{(b)})}{p(\vecb{z})}$ via \eqref{eq:vae:gaussian_kl}\;
+  }{
+    Compute $\vecb{z}_e^{(b)} \leftarrow e_\phi(\vecb{x}^{(b)})$ and assign $k^*(b) \leftarrow \argmin_k \norm{\vecb{z}_e^{(b)} - \vecb{e}_k}_2$\;
+    Set $\vecb{z}_q^{(b)} \leftarrow \vecb{e}_{k^*(b)}$; in backward pass apply STE: $\vecb{z}_q^{(b)} \leftarrow \vecb{z}_e^{(b)} + \operatorname{sg}[\vecb{e}_{k^*(b)} - \vecb{z}_e^{(b)}]$\;
+    Compute $\mathcal{L}_{\mathrm{VQ}}^{(b)} \leftarrow -\log p_\theta(\vecb{x}^{(b)} \mid d_\theta(\vecb{z}_q^{(b)})) + \beta_{\mathrm{com}}\norm{\vecb{z}_e^{(b)} - \operatorname{sg}[\vecb{e}_{k^*(b)}]}_2^2$\;
+    Update EMA codebook: $N_k \leftarrow \gamma N_k + (1-\gamma) n_k$, $\;\vecb{m}_k \leftarrow \gamma \vecb{m}_k + (1-\gamma)\sum_{b:k^*(b)=k}\vecb{z}_e^{(b)}$, $\;\vecb{e}_k \leftarrow \vecb{m}_k / N_k$\;
+  }
+  Update $(\theta, \phi) \leftarrow (\theta, \phi) - \eta \nabla_{\theta,\phi}\!\left(\frac{1}{B}\sum_{b=1}^B \mathcal{L}^{(b)}\right)$\;
+}
+\end{algorithm}
+
+Table~\ref{tab:vae:comparison} synthesizes the structural, probabilistic, and computational trade-offs across the autoencoder family.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative synthesis of deterministic, regularized, variational, and quantized autoencoders.}\label{tab:vae:comparison}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.55cm} >{\raggedright\arraybackslash}p{2.20cm} >{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{1.90cm} >{\raggedright\sloppy\arraybackslash}X@{}}
+\toprule
+\textbf{Model} & \textbf{Latent Space} & \textbf{Objective} & \textbf{Generative?} & \textbf{Primary Limitation / Inductive Bias} \\
+\midrule
+Linear AE & $\R^M$ ($M < D$) & MSE \eqref{eq:vae:linear_ae} & No & Spans linear PCA subspace only \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~575} \\
+DAE / CAE & $\R^M$ (overcomp.) & DAE \eqref{eq:vae:dae_loss} / CAE \eqref{eq:vae:cae_loss} & Implicit (MCMC) & Estimates local score/tangents; no $p(\vecb{z})$ \newline\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~14, p.~529} \\
+Standard VAE & $\R^M$, $\Normal(\zeros,\eye)$ & ELBO \eqref{eq:vae:elbo} ($\beta=1$) & Yes ($\vecb{z}\sim p(\vecb{z})$) & Blurry samples; amortization gap \bookcite{theprinciple_diffusion_models}{Sec.~2.1.4, p.~43} \\
+$\beta$-VAE & $\R^M$, factorized & Rate--dist.\ \eqref{eq:vae:beta_vae} & Yes & Sharpness vs.\ disentanglement trade-off \newline\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~832} \\
+VQ-VAE & $\{1,\dots,K\}^{H\times W}$ & STE + commit.\ \eqref{eq:vae:vq_loss} & With prior & Needs post-hoc prior (PixelCNN/Transf.) \newline\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~851} \\
+HVAE & $\vecb{z}_{1:L}$ top-down & Multi-layer ELBO & Yes (progr.) & Needs residual/skip paths for stability \newline\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~844} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:vae:visuals}
+% =============================================================================
+
+Figure~\ref{fig:vae:reparam_tikz} contrasts the continuous reparameterization computational graph against the discrete VQ-VAE straight-through quantization bottleneck. Figure~\ref{fig:vae:rate_distortion} plots the theoretical rate--distortion frontier governed by $\beta$ in~\eqref{eq:vae:beta_vae}. Figures~\ref{fig:vae:prince_graph}, \ref{fig:vae:bishop_em}, and~\ref{fig:vae:murphy_vqvae} present the canonical source visualizations of the VAE computational graph, EM-vs-ELBO optimization geometry, and VQ-VAE codebook architecture.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.65cm and 0.65cm, >=Stealth]
+  % --- Top branch: Continuous Reparameterized VAE ---
+  \node[monoBox, minimum width=0.95cm] (x1) {$\vecb{x}$};
+  \node[monoTealBox, right=of x1, minimum width=1.6cm] (enc1) {Encoder $e_\phi$};
+  \node[monoBox, right=of enc1, minimum width=1.4cm] (params) {$\vecb{\mu}_\phi,\; \vecb{\sigma}_\phi$};
+  \node[monoIndigoBox, right=of params, minimum width=2.7cm] (reparam) {$\vecb{z} = \vecb{\mu}_\phi + \vecb{\sigma}_\phi \odot \vecb{\epsilon}$};
+  \node[monoBox, above=0.55cm of reparam, minimum width=1.9cm] (eps) {$\vecb{\epsilon} \sim \Normal(\zeros, \eye)$};
+  \node[monoTealBox, right=of reparam, minimum width=1.6cm] (dec1) {Decoder $d_\theta$};
+  \node[monoBox, right=of dec1, minimum width=0.95cm] (xhat1) {$\hat{\vecb{x}}$};
+
+  \draw[monoArrow] (x1) -- (enc1);
+  \draw[monoArrow] (enc1) -- (params);
+  \draw[monoArrow] (params) -- (reparam);
+  \draw[monoArrow] (eps) -- (reparam);
+  \draw[monoArrow] (reparam) -- (dec1);
+  \draw[monoArrow] (dec1) -- (xhat1);
+
+  % Gradient path annotation (top)
+  \draw[->, thick, dashed, color=monographIndigo]
+    ([yshift=-6pt]dec1.south west) -- node[below, font=\scriptsize\color{monographIndigo}] {Differentiable pathwise grad $\nabla_\phi \vecb{z}$} ([yshift=-6pt]params.south east);
+
+  % --- Bottom branch: Discrete VQ-VAE with Straight-Through ---
+  \node[monoBox, below=2.6cm of x1, minimum width=0.95cm] (x2) {$\vecb{x}$};
+  \node[monoTealBox, right=of x2, minimum width=1.6cm] (enc2) {Encoder $e_\phi$};
+  \node[monoBox, right=of enc2, minimum width=1.4cm] (ze) {$\vecb{z}_e(\vecb{x})$};
+  \node[monoWarnBox, right=of ze, minimum width=2.7cm] (vq) {$\vecb{z}_q = \vecb{e}_{k^*},\; k^* = \argmin_k \norm{\vecb{z}_e - \vecb{e}_k}_2$};
+  \node[monoBox, below=0.55cm of vq, minimum width=2.5cm] (cb) {Codebook $\mathcal{E} = \{\vecb{e}_1,\dots,\vecb{e}_K\}$};
+  \node[monoTealBox, right=of vq, minimum width=1.6cm] (dec2) {Decoder $d_\theta$};
+  \node[monoBox, right=of dec2, minimum width=0.95cm] (xhat2) {$\hat{\vecb{x}}$};
+
+  \draw[monoArrow] (x2) -- (enc2);
+  \draw[monoArrow] (enc2) -- (ze);
+  \draw[monoArrow] (ze) -- (vq);
+  \draw[monoArrow] (cb) -- (vq);
+  \draw[monoArrow] (vq) -- (dec2);
+  \draw[monoArrow] (dec2) -- (xhat2);
+
+  % Straight-through estimator arc
+  \draw[->, thick, dashed, color=monographCrimson]
+    ([yshift=6pt]dec2.north west) to[out=164, in=16] node[above, font=\scriptsize\color{monographCrimson}] {STE: copy $\nabla_{\vecb{z}_q}\mathcal{L} \to \nabla_{\vecb{z}_e}\mathcal{L}$} ([yshift=6pt]ze.north east);
+\end{tikzpicture}%
+}
+\caption{Comparison of continuous pathwise reparameterization (top) versus discrete VQ-VAE nearest-neighbor quantization with the Straight-Through Estimator (bottom).}\label{fig:vae:reparam_tikz}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.82\textwidth,
+  height=6.6cm,
+  xlabel={Rate $R = \E_{q_{\mathcal{D}}(\vecb{x})}[\KL{q_\phi(\vecb{z}\mid\vecb{x})}{p(\vecb{z})}]$ (nats)},
+  ylabel={Distortion $D = -\E[\log p_\theta(\vecb{x}\mid\vecb{z})]$},
+  xmin=0, xmax=12,
+  ymin=0, ymax=10,
+  grid=both,
+  grid style={monographRule!40},
+  axis lines=left,
+  legend pos=north east,
+  legend style={font=\footnotesize, fill=white, draw=monographRule},
+  tick label style={font=\footnotesize, color=monographSlate},
+  label style={font=\small, color=monographNavy}
+]
+  % Pareto Rate-Distortion Frontier D(R) = 1.2 + 7.5 * exp(-0.35 * R)
+  \addplot[domain=0:11.5, samples=120, ultra thick, color=monographNavy]
+    {1.2 + 7.5*exp(-0.35*x)};
+  \addlegendentry{Pareto Frontier $D(R)$}
+
+  % Tangent at beta = 4 (high penalty -> posterior collapse regime, R ~ 0.0)
+  \addplot[domain=0:2.2, samples=20, thick, dashed, color=monographCrimson]
+    {8.7 - 2.625*x};
+  \addlegendentry{$\beta = 4$ (Collapse / High Compression)}
+
+  % Tangent at beta = 1 (standard VAE ELBO, R ~ 2.75)
+  % D'(2.75) = -7.5*0.35*exp(-0.35*2.75) = -1.003; D(2.75) = 1.2 + 2.86 = 4.06
+  \addplot[domain=0.8:5.0, samples=20, thick, dashed, color=monographTeal]
+    {4.06 - 1.003*(x - 2.75)};
+  \addlegendentry{$\beta = 1$ (Standard ELBO)}
+
+  % Tangent at beta = 0.1 (low KL penalty -> near deterministic AE, R ~ 9.33)
+  % D'(9.33) = -0.100; D(9.33) = 1.486
+  \addplot[domain=6.0:11.5, samples=20, thick, dashed, color=monographIndigo]
+    {1.486 - 0.100*(x - 9.33)};
+  \addlegendentry{$\beta = 0.1$ (Near-AE / Low Distortion)}
+
+  % Highlight operating points
+  \addplot[only marks, mark=*, mark size=2.8pt, color=monographCrimson] coordinates {(0.0, 8.7)};
+  \addplot[only marks, mark=*, mark size=2.8pt, color=monographTeal] coordinates {(2.75, 4.06)};
+  \addplot[only marks, mark=*, mark size=2.8pt, color=monographIndigo] coordinates {(9.33, 1.486)};
+
+  \node[font=\scriptsize\color{monographCrimson}, anchor=west] at (axis cs:0.25,8.9) {Posterior Collapse ($R \to 0$)};
+  \node[font=\scriptsize\color{monographTeal}, anchor=south west] at (axis cs:2.9,4.2) {Standard VAE};
+  \node[font=\scriptsize\color{monographIndigo}, anchor=south] at (axis cs:9.33,1.75) {Sharp Rec. ($\beta \ll 1$)};
+\end{axis}
+\end{tikzpicture}
+\caption{Rate--distortion frontier $D(R)$ for the $\beta$-VAE objective~\eqref{eq:vae:beta_vae}. At optimality, operating points satisfy $\partial D / \partial R = -\beta$: large $\beta$ drives the model toward posterior collapse ($R \to 0$), whereas $\beta \to 0$ approaches a deterministic autoencoder with minimal distortion \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~832}.}\label{fig:vae:rate_distortion}
+\end{figure}
+
+\monographfig[0.78\textwidth]{understandingdl_simonprince_p351_fig1.png}{Amortized VAE encoder--decoder computational graph illustrating how the ELBO balances prior matching $\KL{q(\vecb{z}\mid\vecb{x},\theta)}{p(\vecb{z})}$ against data likelihood $\log p(\vecb{x}\mid\vecb{z}^*,\phi)$ \bookcite{understandingdl_simonprince}{Ch.~17, p.~351}.}{fig:vae:prince_graph}
+
+\monographfig[0.78\textwidth]{deep_learning_foundations_concepts_p585_fig1.png}{Geometric comparison between (a) classical EM (exact E-step closes the gap to $\log p(\vecb{x}\mid\vecb{w})$) and (b) VAE joint gradient ascent on the ELBO, where a residual amortization gap remains \bookcite{deep_learning_foundations_concepts}{Ch.~19, p.~585}.}{fig:vae:bishop_em}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p850_fig1.png}{VQ-VAE architecture mapping encoder outputs $\vecb{z}_e(\vecb{x})$ to discrete codebook embeddings $\vecb{e}_k$ via nearest-neighbor lookup, with red straight-through gradient flow $\nabla_{\vecb{z}}\mathcal{L}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~850}.}{fig:vae:murphy_vqvae}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:vae:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Posterior Collapse (Variational Over-Pruning) in Expressive Decoders]
+\textbf{Failure Mode:} When the decoder $p_\theta(\vecb{x} \mid \vecb{z})$ is highly expressive (e.g., an autoregressive PixelCNN or Transformer), it can model $p_\theta(\vecb{x} \mid \vecb{z}) \approx p_{\mathrm{data}}(\vecb{x})$ independently of $\vecb{z}$. The encoder then collapses to the prior, $q_\phi(\vecb{z} \mid \vecb{x}) = p(\vecb{z})$, driving $\KL{q_\phi(\vecb{z}\mid\vecb{x})}{p(\vecb{z})} \to 0$ and rendering the latent code uninformative \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, pp.~840--841}.
+
+\textbf{Remedies:} (1) \emph{Cyclical KL annealing}: ramp $\beta$ from $0 \to 1$ over training cycles; (2) \emph{Free bits}: replace the per-dimension KL with $\sum_{j=1}^M \max(\lambda, \KL{q_\phi(z_j\mid\vecb{x})}{p(z_j)})$ to guarantee a minimum rate $\lambda$ per dimension; (3) \emph{Architectural}: add skip connections from $\vecb{z}$ to all decoder layers (Skip-VAE) or weaken the autoregressive receptive field \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, pp.~841--843}.
+\end{pitfall}
+
+\begin{pitfall}[Blurry Generations, Prior--Aggregated Posterior Mismatch \& Codebook Collapse]
+\textbf{Failure Mode:} Under a fixed-variance Gaussian decoder $p_\theta(\vecb{x}\mid\vecb{z}) = \Normal(\vecb{x}; d_\theta(\vecb{z}), \sigma_{\mathrm{dec}}^2\eye)$, the optimal decoder predicts the conditional mean $d^*(\vecb{z}) = \E[\vecb{x} \mid \vecb{z}]$ over all inputs whose posteriors overlap at $\vecb{z}$, causing characteristic blurriness \bookcite{theprinciple_diffusion_models}{Sec.~2.1.4, p.~43} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~831}. Furthermore, sampling $\vecb{z} \sim p(\vecb{z})$ mismatches the aggregated posterior $q_\phi(\vecb{z}) = \frac{1}{N}\sum_{n=1}^N q_\phi(\vecb{z}\mid\vecb{x}_n)$, while in VQ-VAE unused codebook vectors can suffer dead-code collapse.
+
+\textbf{Remedies:} Sample from a learned prior matching $q_\phi(\vecb{z})$ (e.g., PixelCNN/Transformer over VQ-VAE tokens, or VampPrior), adopt hierarchical latents (HVAE/Diffusion), and reset inactive VQ-VAE codebook entries to randomly perturbed encoder outputs $\vecb{z}_e(\vecb{x})$ \bookcite{understandingdl_simonprince}{Ch.~17, p.~355} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~21, p.~851}.
+\end{pitfall}
+
+\begin{pitfall}[Log-Variance Explosion and Numerical Underflow in Gaussian KL]
+\textbf{Failure Mode:} Parameterizing the encoder variance directly via $\exp(\vecb{\ell}_\phi(\vecb{x}))$ where $\vecb{\ell}_\phi = \log \vecb{\sigma}_\phi^2$ can overflow $\exp(\cdot)$ in float16/bfloat16 or underflow $\log \sigma_{\phi,j}^2$ in~\eqref{eq:vae:gaussian_kl} during early training.
+
+\textbf{Remedy:} Clamp the predicted log-variance $\vecb{\ell}_\phi(\vecb{x}) \in [-20, 10]$ (or parameterize $\vecb{\sigma}_\phi = \operatorname{softplus}(\vecb{s}_\phi) + 10^{-6}$) before computing $\exp(\tfrac{1}{2}\vecb{\ell}_\phi)$ and evaluate the KL term in float32 precision.
+\end{pitfall}
+
+\end{document}

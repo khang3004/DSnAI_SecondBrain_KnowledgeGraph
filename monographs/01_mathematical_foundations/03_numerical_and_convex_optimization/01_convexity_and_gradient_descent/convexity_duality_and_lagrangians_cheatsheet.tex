@@ -1,0 +1,243 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Numerical \& Convex Optimization}{Convex Sets/Functions, Fenchel Conjugate, Lagrangians \& KKT Duality}
+  {Epigraph tangents dualize functions; active outward normals balance the objective gradient}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Convex Duality\\ \footnotesize\mdseries Fenchel $\cdot$ Lagrange $\cdot$ KKT}{%
+  \begin{tikzpicture}[scale=0.52, >=Stealth]
+    % Convex epigraph & supporting tangent on left
+    \fill[csD!18] plot[domain=-1.2:1.2, samples=25] (\x,{0.45*\x*\x+0.2}) -- (1.2,1.1) -- (-1.2,1.1) -- cycle;
+    \draw[csDom, very thick, domain=-1.2:1.2, samples=25] plot (\x,{0.45*\x*\x+0.2});
+    \draw[csA, very thick] (-0.9,-0.45) -- (1.3,0.95);
+    \node[font=\tiny, csDom] at (0,0.85) {$\operatorname{epi}f$};
+    % Arrow to KKT normal cone on right
+    \draw[->, thick, csDom] (1.45,0.4) -- (2.15,0.4);
+    \begin{scope}[xshift=3.1cm, yshift=0.3cm]
+      \fill[csF!18, draw=csF, thick] (-0.9,0.55) -- (0,0) -- (-0.9,-0.55) -- cycle;
+      \fill[csC!22] (0,0) -- (0.85,0.55) -- (0.85,-0.55) -- cycle;
+      \draw[->, csB, thick] (0,0) -- (0.75,0.48) node[above=2pt, font=\tiny] {$\grad f_1$};
+      \draw[->, csB, thick] (0,0) -- (0.75,-0.48) node[below=2pt, font=\tiny] {$\grad f_2$};
+      \draw[->, csA, very thick] (0,0) -- (0.95,0) node[right, font=\tiny] {$-\grad f_0$};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ sets, epigraphs \& convex criteria}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{f(\theta\vecb x+(1-\theta)\vecb y)\le \theta f(\vecb x)+(1-\theta)f(\vecb y)}
+    \begin{csbul}
+      \item \textbf{Epigraph:} $f$ convex $\iff \operatorname{epi}f=\{(\vecb x,t):f(\vecb x)\le t\}$ is convex set
+      \item \textbf{1st-order:} $f(\vecb y)\ge f(\vecb x)+\grad f(\vecb x)\T(\vecb y-\vecb x)$
+      \item \textbf{2nd-order:} $\hess f(\vecb x)\succeq\zeros$ ($\succeq m\eye_n$ for $m$-strong)
+      \item \textbf{Jensen:} $f(\E[\vecb X])\le\E[f(\vecb X)] \implies \KL{p}{q}\ge 0$
+      \item \textbf{Opt:} local $=$ global; $-\grad f_0(\vecb x^*)\in\mathcal N_{\mathcal X}(\vecb x^*)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \fill[csA!12] plot[domain=-1.3:1.3, samples=25] (\x,{0.45*\x*\x}) -- (1.3,1.2) -- (-1.3,1.2) -- cycle;
+      \draw[csDom, very thick, domain=-1.3:1.3, samples=25] plot (\x,{0.45*\x*\x});
+      \draw[csA, thick, dashed] (-1.0,0.45) -- (1.2,0.65);
+      \draw[csB, very thick] (-0.6,-0.32) -- (1.35,0.80);
+      \fill[csDom] (0.6,0.162) circle (2.2pt);
+      \node[csDom] at (0,0.92) {$\operatorname{epi}f$};
+      \node[csB, anchor=north] at (0.35,-0.32) {tangent $\le f$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; FENCHEL CONJUGATE $-$ slope-to-intercept dual}{%
+  \csfm{f^*(\vecb y)=\sup_{\vecb x\in\operatorname{dom}f}\bigl(\inner{\vecb y}{\vecb x}-f(\vecb x)\bigr)\quad\text{(always convex!)}}
+  \renewcommand{\arraystretch}{1.12}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{3.6cm}@{}}
+    \textbf{\textcolor{csB}{Primal $f(\vecb x)$}} & \textbf{\textcolor{csB}{Conjugate $f^*(\vecb y)$ / Property}}\\ \hline
+    Fenchel--Young gap & $f(\vecb x)+f^*(\vecb y)\ge\inner{\vecb y}{\vecb x}$ ($=$ iff $\vecb y\in\partial f(\vecb x)$)\\
+    Biconjugate $f^{**}$ & $f^{**}=f$ iff proper, convex, l.s.c.\ (else $\operatorname{conv}\operatorname{epi}f$)\\
+    $\frac{\lambda}{2}\vecb y\T\mat K\inv\vecb y$ ($\mat K\succ\zeros$) & $\frac{1}{2\lambda}\vecb\alpha\T\mat K\vecb\alpha$ \quad\textbar\quad $\norm{\vecb x} \leftrightarrow I_{\{\norm{\cdot}_*\le 1\}}(\vecb y)$\\
+    $\sum_i x_i\ln x_i$ on $\Simplex^{n-1}$ & $\ln\sum_{i=1}^n e^{y_i}$ (log-sum-exp / Gibbs softmax)\\
+  \end{tabular}}
+
+\csbranch{3}{C}{3\;\; LAGRANGIAN DUALITY \& SLATER'S THEOREM}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{L(\vecb x,\vecb\lambda,\vecb\nu)=f_0(\vecb x)+\vecb\lambda\T\vecb f(\vecb x)+\vecb\nu\T\vecb h(\vecb x),\;\;\vecb\lambda\succeq\zeros}
+    \begin{csbul}
+      \item \textbf{Dual fn:} $g(\vecb\lambda,\vecb\nu)=\inf_{\vecb x\in\mathcal D}L(\vecb x,\vecb\lambda,\vecb\nu)$ (\textbf{always concave})
+      \item \textbf{Weak duality:} $d^*=\sup_{\vecb\lambda\succeq\zeros,\vecb\nu}g(\vecb\lambda,\vecb\nu)\le p^*$ always
+      \item \textbf{Slater CQ:} convex problem + $\exists\,\tilde{\vecb x}\in\operatorname{relint}\mathcal D$ with $f_i(\tilde{\vecb x})<0$ (non-affine), $\mat A\tilde{\vecb x}=\vecb b \implies d^*=p^*$
+      \item \textbf{Saddle:} $L(\vecb x^*,\vecb\lambda,\vecb\nu)\le L(\vecb x^*,\vecb\lambda^*,\vecb\nu^*)\le L(\vecb x,\vecb\lambda^*,\vecb\nu^*)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, gray] (-1.2,0)--(1.6,0) node[right] {$u$};
+      \draw[->, gray] (0,-0.4)--(0,2.1) node[above] {$t$};
+      \fill[csC!20] (-0.9,1.9)..controls(-0.6,0.9)and(0,0.65)..(1.4,0.45)--(1.4,1.9)--cycle;
+      \draw[csC!80!black, very thick] (-0.9,1.9)..controls(-0.6,0.9)and(0,0.65)..(1.4,0.45);
+      \draw[csA, very thick] (-1.0,1.05)--(1.5,0.30);
+      \fill[csA] (0,0.75) circle (2.5pt) node[below left=1pt] {$p^*=d^*$};
+      \fill[csDom] (-0.5,1.35) circle (2pt) node[left] {$\tilde{\vecb x}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; KKT OPTIMALITY $-$ the 4 laws at $(\vecb x^*,\vecb\lambda^*,\vecb\nu^*)$}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{1.\ Primal/Dual:} $f_i(\vecb x^*)\le 0$, $h_j(\vecb x^*)=0$, $\lambda_i^*\ge 0$
+      \item \textbf{2.\ Slackness:} $\lambda_i^* f_i(\vecb x^*)=0$ (active or $\lambda_i^*=0$)
+      \item \textbf{3.\ Stationarity:}
+    \end{csbul}
+    \csfm{-\grad f_0(\vecb x^*)=\sum_{i=1}^m\lambda_i^*\grad f_i(\vecb x^*)+\sum_{j=1}^p\nu_j^*\grad h_j(\vecb x^*)}
+    {\scriptsize \textbf{Convex + Slater:} KKT is \emph{necessary \& sufficient} for global opt.}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.46, >=Stealth, every node/.style={font=\tiny}]
+      \fill[csD!18, draw=csD, thick] (-1.2,0.8)--(0,0)--(-1.2,-0.8)--cycle;
+      \node[csD!70!black] at (-0.75,0) {$\mathcal X$};
+      \fill[csF!18] (0,0)--(1.2,0.8)--(1.2,-0.8)--cycle;
+      \draw[->, csD!80!black, thick] (0,0)--(1.0,0.68) node[above=2pt] {$\grad f_1$};
+      \draw[->, csD!80!black, thick] (0,0)--(1.0,-0.68) node[below=2pt] {$\grad f_2$};
+      \draw[->, csA, very thick] (0,0)--(1.25,0.1) node[right] {$-\grad f_0$};
+      \fill[csA] (0,0) circle (2.5pt);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; SOLVERS \& COMPLEXITY $-$ which engine?}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csE}{Solver}} & \textbf{\textcolor{csE}{Step Cost / Rate}} & \textbf{\textcolor{csE}{Best Use}}\\ \hline
+    Projected GD & $O(n)+\operatorname{proj}_{\mathcal X}$; $O(1/\varepsilon)$ & box, ball, simplex\\
+    Dual Ascent & $O(n{+}m)$; $O(1/\varepsilon^2)$ & separable constraints\\
+    Aug.\ Lagr.\ (ALM) & inner L-BFGS; linear & non-strictly convex $f_0$\\
+    Primal--Dual IPM & $O((n{+}p)^3)$; $O(\sqrt m\log\frac{m}{\varepsilon})$ & dense LP/QP/GP ($\le 10^4$)\\
+  \end{tabular}\par\vspace{2pt}
+  \small \textbf{IPM gap:} $t f_0(\vecb x)-\sum_i\ln(-f_i(\vecb x))$ has central-path gap $m/t$.}
+
+\csbranch{6}{F}{6\;\; ML INSTANTIATIONS $-$ where duality shines}{%
+  \begin{csbul}
+    \item \textbf{Eq.-QP KKT saddle:} $\begin{bmatrix}\mat P & \mat A\T\\ \mat A & \zeros\end{bmatrix}\begin{bmatrix}\vecb x^*\\ \vecb\nu^*\end{bmatrix}=\begin{bmatrix}-\vecb q\\ \vecb b\end{bmatrix}$ ($\mat P\succeq\zeros$)
+    \item \textbf{Ineq.-QP / SVM dual:} $\max_{\vecb\lambda\succeq\zeros}-\frac{1}{2}(\vecb c+\mat A\T\vecb\lambda)\T\mat Q\inv(\vecb c+\mat A\T\vecb\lambda)-\vecb\lambda\T\vecb b$
+    \item \textbf{Fenchel--Rockafellar:} $\min_{\vecb x}f(\mat A\vecb x)+g(\vecb x)=\max_{\vecb u}[-f^*(\vecb u)-g^*(-\mat A\T\vecb u)]$
+    \item \textbf{Geometric Program (GP):} $y_\ell=\ln x_\ell$ turns posynomials into convex log-sum-exp $\ln\sum_k\exp(\vecb a_{ik}\T\vecb y+\ln c_{ik})\le 0$
+    \item \textbf{Rayleigh quotient:} $\max_{\norm{\vecb x}_2=1}\vecb x\T\mat A\T\mat A\vecb x \implies \lambda^*=\lambda_{\max}(\mat A\T\mat A)=\norm{\mat A}_2^2$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Epigraphs = intersection of supporting halfspaces ($f^{**}=f$);} \\[1pt]
+  \footnotesize\mdseries \textbf{At a KKT optimum, $-\grad f_0(\vecb x^*)$ is locked inside the cone of active outward normals.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Sign flip:} $h_k\ge 0$ uses $-\sum\mu_k h_k$ ($\mu_k\ge 0$); $f_i\le 0$ uses $+\sum\lambda_i f_i$
+    \item \textbf{Failed Slater:} $\min e^{-x}$ s.t.\ $x^2/y\le 0$ ($y>0$) has strict gap $p^*-d^*=1$
+    \item \textbf{Quasiconvex $\neq$ convex:} convex sublevels $\not\Rightarrow$ convex $\operatorname{epi}f$ (e.g.\ $-e^{x+y}$)
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Convex Sets, Fenchel/Lagrange Duality \& KKT Conditions}\;---\;Domain 01 $\cdot$ Numerical \& Convex Optimization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Fenchel--Legendre conjugate \& Fenchel--Young:
+      \csfm{f^*(\vecb y)=\sup_{\vecb x}\bigl(\inner{\vecb y}{\vecb x}-f(\vecb x)\bigr),\quad f(\vecb x)+f^*(\vecb y)\ge\inner{\vecb y}{\vecb x}}
+    \item Lagrangian \& concave dual function ($\vecb\lambda\succeq\zeros$):
+      \csfm{g(\vecb\lambda,\vecb\nu)=\inf_{\vecb x\in\mathcal D}\Bigl(f_0(\vecb x)+\sum_{i=1}^m\lambda_i f_i(\vecb x)+\sum_{j=1}^p\nu_j h_j(\vecb x)\Bigr)}
+    \item KKT system (primal, dual, slackness, stationarity):
+      \csfm{f_i(\vecb x^*)\le 0,\;\;\lambda_i^*\ge 0,\;\;\lambda_i^*f_i(\vecb x^*)=0}
+      \csfm{\grad f_0(\vecb x^*)+\sum_{i=1}^m\lambda_i^*\grad f_i(\vecb x^*)+\sum_{j=1}^p\nu_j^*\grad h_j(\vecb x^*)=\zeros}
+    \item Augmented Lagrangian (Rockafellar--Wets):
+      \csfm{\mathcal L_\rho=f_0+\vecb\nu\T(\mat A\vecb x-\vecb b)+\frac{\rho}{2}\norm{\mat A\vecb x-\vecb b}_2^2+\frac{1}{2\rho}\sum_{i=1}^m\bigl((\lambda_i+\rho f_i)_+^2-\lambda_i^2\bigr)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ PRIMAL--DUAL IPM vs.\ ALM}
+  \textbf{Path-Following Interior-Point (IPM):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Start strictly feasible: $\vecb f(\vecb x^{(0)})\prec\zeros$, $\vecb\lambda^{(0)}\succ\zeros$.
+    \item Set surrogate gap $\hat\eta=-\vecb f(\vecb x)\T\vecb\lambda$ and barrier $t=\mu m/\hat\eta$.
+    \item Solve perturbed KKT Newton system $\mat H_{\mathrm{KKT}}(\Delta\vecb x,\Delta\vecb\lambda,\Delta\vecb\nu)\T=-\vecb r_t$ with $-\diag(\vecb\lambda)\vecb f(\vecb x)=\frac{1}{t}\ones_m$.
+    \item Fraction-to-boundary step $\alpha\le 0.99\min_{\Delta\lambda_i<0}(-\lambda_i/\Delta\lambda_i)$ + backtrack.
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Method of Multipliers (ALM):}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Inner solve: $\vecb x^{k+1}=\argmin_{\vecb x}\mathcal L_\rho(\vecb x,\vecb\lambda^k,\vecb\nu^k)$.
+    \item Dual ascent: $\vecb\nu^{k+1}=\vecb\nu^k+\rho(\mat A\vecb x^{k+1}-\vecb b)$, $\lambda_i^{k+1}=(\lambda_i^k+\rho f_i(\vecb x^{k+1}))_+$.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    quadratic $f_0$ + $\mat A\vecb x=\vecb b$ & block saddle KKT linear solve\\
+    small/med LP, QP, GP & Primal--Dual IPM ($O(\sqrt m\log(m/\varepsilon))$)\\
+    simple box / ball / $\Simplex$ & Projected GD ($\operatorname{proj}_{\mathcal X}$)\\
+    linear $f_0$ or huge $n$ & Augmented Lagrangian (ALM / ADMM)\\
+    $m\ll n$ or kernel trick & solve concave dual $\max_{\vecb\lambda\succeq\zeros}g(\vecb\lambda)$\\
+    posynomial constraints & log transform $y_\ell=\ln x_\ell \to$ convex GP\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS \& DUALITY CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Duality gap:} $\Delta_{\mathrm{gap}}=p^*-d^*\ge 0$; any dual-feasible $(\vecb\lambda,\vecb\nu)$ certifies $f_0(\vecb x)-p^*\le f_0(\vecb x)-g(\vecb\lambda,\vecb\nu)$
+    \item \textbf{Log-barrier path:} $\vecb x^*(t)$ satisfies $\lambda_i^*(t)=-1/(tf_i(\vecb x^*(t)))$ and $f_0(\vecb x^*(t))-p^*\le m/t$
+    \item \textbf{Strong convexity:} $f(\vecb x)-\frac{m}{2}\norm{\vecb x}_2^2$ convex $\iff \hess f(\vecb x)\succeq m\eye_n \iff f^*$ is $(1/m)$-smooth
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{FENCHEL ENVELOPE \& DUALITY GAP GEOMETRY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=-1.65, xmax=1.65, ymin=-0.45, ymax=1.45,
+      xlabel={$x$ (primal variable)}, ylabel={Value}, label style={font=\scriptsize},
+      tick label style={font=\scriptsize}, xtick={-1.5,-1,0,1,1.5}, ytick={-0.4,0,0.5,1.0},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.02,0.97)}, anchor=north west, draw=none, fill=white, fill opacity=0.85}]
+      \addplot[csDom, very thick, domain=-1.6:1.6, samples=60] {0.5*x^2};
+      \addlegendentry{convex $f(x)=\tfrac{1}{2}x^2=f^{**}(x)$}
+      \addplot[csA, very thick, domain=-1.55:1.55, samples=70] {0.5*(x^2-1)^2};
+      \addlegendentry{non-convex $f_{\mathrm{nc}}(x)=\tfrac{1}{2}(x^2-1)^2$}
+      \addplot[csF, very thick, dash dot, domain=-1.55:1.55, samples=80] {(abs(x)<=1 ? 0 : 0.5*(x^2-1)^2)};
+      \addlegendentry{biconjugate $f_{\mathrm{nc}}^{**}(x)$ (convex hull)}
+      \addplot[csD, thick, dashed, domain=-0.3:1.6] {x - 0.5};
+      \node[font=\tiny, csA, anchor=west] at (axis cs:-1.55,-0.25) {dent $f_{\mathrm{nc}}>f_{\mathrm{nc}}^{**}\Rightarrow$ gap};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Inequality orientation trap:} before writing $L$, move all inequalities to $f_i(\vecb x)\le 0$ so multipliers stay $\lambda_i\ge 0$ with $+\lambda_i f_i(\vecb x)$
+    \item \textbf{Missing KKT multipliers:} if Slater fails (e.g.\ $\min x$ s.t.\ $x^2\le 0$), $\grad f_0(0)+2\lambda\cdot 0=1\neq 0$ has \emph{no} finite KKT multiplier $\lambda^*$
+    \item \textbf{Dual kinks \& oscillation:} when $f_0$ is not strictly convex, $g(\vecb\lambda)$ has non-differentiable kinks; use ALM ($\rho>0$) instead of naive dual ascent
+    \item \textbf{Quadratic penalty ill-conditioning:} sending $\rho\to\infty$ in $\frac{\rho}{2}\norm{\mat A\vecb x-\vecb b}_2^2$ without multiplier updates $\vecb\nu^{k+1}$ blows up $\kappa(\hess)\propto\rho$
+    \item \textbf{Non-convex KKT sufficiency:} on non-convex problems, KKT points can be saddle points or local maxima ($\hess_{\vecb x}L\not\succeq\zeros$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Convexity} means chords lie above the graph and tangents lie below ($\operatorname{epi}f$ is convex, so every local minimum is global).
+  \textbf{Fenchel conjugation} $f^*(\vecb y)$ records the negative intercepts of supporting tangents ($f^{**}=f$).
+  \textbf{Lagrange duality} relaxes hard barriers into linear prices $\vecb\lambda\succeq\zeros$: weak duality $d^*\le p^*$ always holds, \textbf{Slater's interior point} guarantees $d^*=p^*$, and \textbf{KKT} states that $-\grad f_0(\vecb x^*)$ is balanced by nonnegative forces from \emph{active} constraints ($\lambda_i^* f_i(\vecb x^*)=0$).
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

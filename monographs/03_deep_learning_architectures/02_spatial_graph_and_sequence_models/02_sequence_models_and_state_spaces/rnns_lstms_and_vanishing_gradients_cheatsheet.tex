@@ -1,0 +1,219 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{CNNs, GNNs, RNNs \& State-Space Models}{Recurrent Neural Networks, BPTT, LSTMs/GRUs \& Long-Range Gradient Flow}
+  {Share weights across time; replace multiplicative $\mat W_{hh}^T$ decay with an additive gated memory highway}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{RNN $\cdot$ LSTM $\cdot$ GRU\\ \footnotesize\mdseries BPTT $\cdot$ Vanishing Gradients $\cdot$ CEC}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize}]
+    \draw[-{Stealth}, very thick, csD] (-1.8,0.55) -- (1.8,0.55) node[midway, above] {\tiny $\vecb c_{t-1}\xrightarrow{\odot\vecb f_t\;\oplus}\vecb c_t$};
+    \node[draw=csDom, fill=csDom!12, rounded corners=2pt, minimum width=1.6cm, minimum height=0.65cm] (cell) at (0,-0.35) {$\vecb h_t$};
+    \draw[-{Stealth}, thick, csA] (-1.8,-0.35) -- (cell.west) node[midway, below] {\tiny $\vecb h_{t-1}$};
+    \draw[-{Stealth}, thick, csA] (cell.east) -- (1.8,-0.35);
+    \draw[-{Stealth}, thick, csB] (0,-1.25) -- (cell.south) node[pos=0, below] {\tiny $\vecb x_t$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ stateful recurrence \& BPTT}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\vecb h_t = \phi(\mat W_{hh}\vecb h_{t-1}+\mat W_{hx}\vecb x_t+\vecb b_h)}
+    \begin{csbul}
+      \item \textbf{Output:} $\vecb o_t=\mat W_{oh}\vecb h_t+\vecb b_o$, $\hat{\vecb y}_t=\softmax(\vecb o_t)$
+      \item \textbf{BPTT step:} $\nabla_{\vecb h_t}\mathcal L = \jac_{t+1}\T\nabla_{\vecb h_{t+1}}\mathcal L + \mat W_{oh}\T\nabla_{\vecb o_t}\mathcal L$
+      \item \textbf{Jacobian chain:} $\pd{\vecb h_t}{\vecb h_k} = \prod_{j=k+1}^t \diag(\phi'(\vecb a_j))\mat W_{hh}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \foreach \i/\x in {1/0, 2/2.0, 3/4.0}{
+        \node[circle, draw=csA, fill=csA!12, inner sep=1.5pt] (h\i) at (\x,0) {$\vecb h_{\i}$};
+        \node (x\i) at (\x,-1.35) {$\vecb x_{\i}$};
+        \node (y\i) at (\x,1.45) {$\ell_{\i}$};
+        \draw[-{Stealth}, csA] (x\i)--(h\i);
+        \draw[-{Stealth}, csA] (h\i)--(y\i);
+      }
+      \draw[-{Stealth}, thick, csDom] (h1)--(h2);
+      \draw[-{Stealth}, thick, csDom] (h2)--(h3);
+      \draw[-{Stealth}, dashed, csB, bend right=30] (h3) to node[above, fill=white, inner sep=0.5pt] {$\jac_3\T$} (h2);
+      \draw[-{Stealth}, dashed, csB, bend right=30] (h2) to node[above, fill=white, inner sep=0.5pt] {$\jac_2\T$} (h1);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; SPECTRAL RADIUS $-$ vanish vs explode}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\norm[\Big]{\pd{\vecb h_t}{\vecb h_k}}_2 \le \bigl(\gamma\,\sigma_{\max}(\mat W_{hh})\bigr)^{t-k}}
+    \begin{csbul}
+      \item $\gamma=\sup_z|\phi'(z)|$: $\gamma=1$ ($\tanh$), $\gamma=\tfrac{1}{4}$ ($\sigma$)
+      \item $|\lambda|<1 \Rightarrow |\lambda|^{t-k}\to 0$ (\textbf{vanishing}: forgets past)
+      \item $|\lambda|>1 \Rightarrow |\lambda|^{t-k}\to \infty$ (\textbf{exploding}: loss cliffs)
+      \item Vanilla $\vecb h_t$ cannot both \emph{compute locally} \& \emph{store globally}
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[->] (0,0)--(3.8,0) node[right] {$\Delta$};
+      \draw[->] (0,0)--(0,2.8) node[above] {$|\lambda|^\Delta$};
+      \draw[csA, very thick, domain=0:3.3] plot (\x, {0.35*exp(0.6*\x)});
+      \draw[csD, very thick] (0,1.0)--(3.5,1.0) node[right] {$1$};
+      \draw[csE, very thick, domain=0:3.5] plot (\x, {1.0*exp(-0.7*\x)});
+      \node[csA] at (2.1,2.4) {$|\lambda|>1$};
+      \node[csE] at (2.3,0.45) {$|\lambda|<1$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; KEY MECHANISM $-$ LSTM \& CEC highway}{%
+  \csfm{\vecb c_t = \vecb f_t \odot \vecb c_{t-1} + \vecb i_t \odot \tilde{\vecb c}_t,\qquad \vecb h_t = \vecb o_t \odot \tanh(\vecb c_t)}
+  \begin{csbul}
+    \item \textbf{3 sigmoid gates:} $\vecb f_t$ (forget), $\vecb i_t$ (input/add), $\vecb o_t$ (output) $\in (0,1)^{d_h}$
+    \item \textbf{Candidate memory:} $\tilde{\vecb c}_t = \tanh(\mat W_{cx}\vecb x_t + \mat W_{ch}\vecb h_{t-1} + \vecb b_c) \in (-1,1)^{d_h}$
+    \item \textbf{Constant Error Carousel (CEC):} $\left.\pd{\vecb c_t}{\vecb c_k}\right|_{\mathrm{direct}} = \diag\bigl(\prod_{j=k+1}^t \vecb f_j\bigr)$
+    \item When $\vecb f_j \approx \ones$, gradients flow across $t-k$ steps with \textbf{no $\mat W_{hh}$ multiplication}!
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ GRU, ESNs \& leaky units}{%
+  \begin{csbul}
+    \item \textbf{GRU (2 gates, 1 state):} $\vecb h_t = \vecb z_t\odot\vecb h_{t-1} + (\ones-\vecb z_t)\odot\tanh(\mat W_{hx}\vecb x_t + \mat W_{hh}(\vecb r_t\odot\vecb h_{t-1}))$
+    \item \textbf{ResNet = unrolled LSTM:} $\vecb c_t = \vecb c_{t-1} + \text{gate}\odot\tilde{\vecb c}_t$ is a temporal residual connection
+    \item \textbf{Echo State Network (ESN):} fix random $\mat W_{hh}$ at $\rho(\mat W_{hh})\approx 1$; train only $\mat W_{oh}$
+    \item \textbf{Leaky units / skip edges:} $\mu_t=\alpha\mu_{t-1}+(1-\alpha)v_t$ or $d$-step jumps ($T/d$ path)
+    \item \textbf{Bidirectional RNN:} forward $\overrightarrow{\vecb h}_t \oplus$ backward $\overleftarrow{\vecb h}_t$ for non-causal tagging
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ SRN vs LSTM vs GRU vs TBPTT}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{2.15cm}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{1.85cm}@{}}
+    \textbf{\textcolor{csE}{Cell}} & \textbf{\textcolor{csE}{Params}} & \textbf{\textcolor{csE}{BPTT Mem}} & \textbf{\textcolor{csE}{Highway}}\\ \hline
+    Elman SRN & $d_h(d_x{+}d_h{+}1)$ & $O(Kd_h)$ & None ($\prod\jac_j$)\\
+    GRU (3$\times$) & $3d_h(d_x{+}d_h{+}1)$ & $O(Kd_h)$ & $\vecb z_t\odot\vecb h_{t-1}$\\
+    LSTM (4$\times$) & $4d_h(d_x{+}d_h{+}1)$ & $O(Kd_h)$ & $\vecb f_t\odot\vecb c_{t-1}$ (CEC)\\
+    ESN & $d_y d_h$ trained & $O(1)$ & Fixed $\rho(\mat W_{hh}){\approx}1$\\
+  \end{tabular}\par\vspace{2pt}
+  \scriptsize \textbf{TBPTT($K$):} detach state every $K$ steps $\Rightarrow O(Kd_h)$ activation memory instead of $O(Td_h)$.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ four canonical topologies}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Many-to-many:} POS tagging, NER ($\vecb x_{1:T}\!\mapsto\!\vecb y_{1:T}$)
+      \item \textbf{Many-to-one:} sentiment ($\vecb x_{1:T}\!\mapsto\!\vecb h_T\!\mapsto\!y$)
+      \item \textbf{Autoregressive LM:} $\vecb x_t=\vecb y_{t-1}$, $O(1)$ state
+      \item \textbf{Seq2Seq:} encoder $\vecb h_T \to$ decoder
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csF, thick] (0,2.2) .. controls (1.2,2.1) and (1.4,0.3) .. (1.8,0.2) -- (3.5,0.2);
+      \draw[-{Stealth}, csA, very thick] (1.3,1.4) -- (2.9,1.4) node[right] {raw $\vecb g$};
+      \draw[-{Stealth}, csD, very thick] (1.3,1.4) -- (1.9,0.5) node[right] {clipped};
+      \node at (1.8,-0.45) {Cliff clipping $\norm{\vecb g}_2\le\nu$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Multiply-and-Squash Vanishes $\cdot$ Add-and-Gate Remembers} \\[1pt]
+  \footnotesize\mdseries \textbf{Clip norms for exploding cliffs; use LSTM/GRU additive gates ($\vecb f_t\approx 1$) for vanishing horizons.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Zero forget bias:} $f_t{\approx}0.5\Rightarrow 0.5^{20}$ decay; init $\vecb b_f\in[1,2]$
+    \item \textbf{Elementwise clip:} clip global $\norm{\vecb g}_2>\nu$ to keep direction
+    \item \textbf{Exposure bias:} train $\vecb y_{t-1}$ vs test $\hat{\vecb y}_{t-1}$ (scheduled sampling)
+    \item \textbf{State leakage:} reset $\vecb h_0=\zeros, \vecb c_0=\zeros$ at TBPTT boundaries
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Recurrent Neural Networks, BPTT, LSTMs/GRUs \& Long-Range Gradient Flow}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item BPTT Recursion ($\vecb\delta_t^o = \hat{\vecb y}_t - \vecb y_t$):\csfm{\nabla_{\vecb h_t}\mathcal L = \mat W_{hh}\T\diag\bigl(\phi'(\vecb a_{t+1})\bigr)\nabla_{\vecb h_{t+1}}\mathcal L + \mat W_{oh}\T\vecb\delta_t^o}
+    \item Parameter Gradients:\csfm{\nabla_{\mat W_{hh}}\mathcal L = \sum_{t=1}^T \diag\bigl(\phi'(\vecb a_t)\bigr)(\nabla_{\vecb h_t}\mathcal L)\vecb h_{t-1}\T}
+    \item LSTM Gates \& Cell Update:\csfm{[\vecb f_t,\vecb i_t,\vecb o_t] = \sigma(\mat W_x\vecb x_t + \mat W_h\vecb h_{t-1} + \vecb b),\quad \vecb c_t = \vecb f_t\odot\vecb c_{t-1} + \vecb i_t\odot\tilde{\vecb c}_t}
+    \item GRU Interpolation Update:\csfm{\vecb h_t = \vecb z_t\odot\vecb h_{t-1} + (\ones-\vecb z_t)\odot\tanh\!\bigl(\mat W_{hx}\vecb x_t + \mat W_{hh}(\vecb r_t\odot\vecb h_{t-1})+\vecb b_h\bigr)}
+    \item Global $L_2$-Norm Clipping:\csfm{\vecb g \leftarrow \min\!\Bigl(1,\, \frac{\nu}{\norm{\vecb g}_2}\Bigr)\vecb g}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{TBPTT($K$) + GRADIENT CLIPPING RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Init $\vecb h_0\leftarrow\zeros, \vecb c_0\leftarrow\zeros$ at sequence start ($b_f\leftarrow +1$)
+    \item For chunk $s=1, K{+}1, 2K{+}1,\dots$ to $e=\min(s{+}K{-}1,T)$:
+    \item \textbf{Detach} $\vecb h_{s-1}, \vecb c_{s-1}$ from prior autograd graph (carry values forward, stop gradients beyond $K$)
+    \item Unroll forward $t=s\dots e$; compute $\mathcal L_{\mathrm{chunk}}$ and backprop $\vecb g = \nabla_\theta\mathcal L_{\mathrm{chunk}}$ from $e$ down to $s$
+    \item If $\norm{\vecb g}_2 > \nu$, rescale $\vecb g \leftarrow (\nu/\norm{\vecb g}_2)\vecb g$; step $\theta \leftarrow \theta - \eta\vecb g$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    loss spikes / NaN updates & global $L_2$-norm clipping ($\nu\in[1,5]$)\\
+    long lags ($T>30$ steps) & LSTM ($\vecb b_f{=}\ones$) or GRU\\
+    tight parameter budget & GRU ($3\times$ weights vs LSTM's $4\times$)\\
+    full sequence at test time & Bidirectional LSTM/GRU ($\overrightarrow{\vecb h}_t\oplus\overleftarrow{\vecb h}_t$)\\
+    tiny dataset, fast fit & Echo State Network ($\rho(\mat W_{hh})\approx 1$)\\
+    $T \gg 10^3$ GPU OOM & TBPTT($K$) or switch to SSM / Mamba\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{STABILITY \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Sufficient vanishing:} $\sigma_{\max}(\mat W_{hh}) < 1/\gamma$ ($\gamma{=}1$ for $\tanh$)
+    \item \textbf{Necessary exploding:} $\rho(\jac_t) > 1$ along non-saturated modes
+    \item \textbf{CEC gain:} $\prod_{j=k+1}^t f_j \approx 1$ when $f_j\to 1$ (additive highway)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{EIGENVALUE POWER $|\lambda|^T$ vs CEC HIGHWAY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=0, xmax=50, ymin=1e-4, ymax=1e4,
+      ymode=log, xlabel={Sequence Lag $T = t - k$}, ylabel={Gradient Gain $|\lambda|^T$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,10,20,30,40,50}, grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.03)}, anchor=south west, font=\tiny, draw=gray!40, fill=white, fill opacity=0.85}]
+      \addplot[csA, very thick, domain=0:50] {1.15^x};
+      \addlegendentry{$|\lambda|=1.15$ (Exploding)}
+      \addplot[csB, thick, dashed, domain=0:50] {1.05^x};
+      \addlegendentry{$|\lambda|=1.05$}
+      \addplot[csD, ultra thick, domain=0:50] {1.0^x};
+      \addlegendentry{$|\lambda|=1.00$ (LSTM CEC)}
+      \addplot[csE, very thick, domain=0:50] {0.85^x};
+      \addlegendentry{$|\lambda|=0.85$ (Vanishing)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Forget bias $\vecb b_f = \zeros$:} gives $f_t = \sigma(0) = 0.5$, killing cell gradients in $\sim 15$ steps; always set $\vecb b_f \in [1, 2]$
+    \item \textbf{Sigmoid recurrent activation:} $\sup|\sigma'(z)| = 0.25$ accelerates vanishing $4\times$ per step; use $\tanh$ for candidates
+    \item \textbf{Un-detached hidden carryover:} forgetting `.detach()` at TBPTT chunk boundaries backpropagates to $t=1$ and causes OOM
+    \item \textbf{Teacher forcing exposure bias:} model never sees its own mistakes during training; anneal with scheduled sampling or train with sequence-level RL/beam search
+    \item \textbf{Orthogonal init forgotten on $\mat W_{hh}$:} Gaussian $\mat W_{hh}$ has spread singular values; initialize $\mat W_{hh}$ orthogonal so $\sigma_i(\mat W_{hh})=1$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Vanilla RNNs multiply by $\mat W_{hh}$ every step}, so backpropagated gradients scale as $\jac^{t-k}$---exploding when $|\lambda|>1$ (fix: \textbf{norm clipping}) and vanishing when $|\lambda|<1$ (fix: \textbf{additive gating}). \textbf{LSTMs} and \textbf{GRUs} replace multiplicative state transitions with a gated linear self-loop ($\vecb c_t = \vecb f_t\odot\vecb c_{t-1} + \dots$), creating a \textbf{Constant Error Carousel} where gradients travel unimpeded whenever $\vecb f_t\approx \ones$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

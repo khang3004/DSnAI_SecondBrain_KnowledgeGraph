@@ -1,0 +1,361 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Latent Variables, Graphical Models, VI \& MCMC Sampling}{Graphical Models, Gaussian Processes, Variational Inference \& MCMC}{Monte Carlo Integration, Metropolis-Hastings, Gibbs, HMC \& Langevin Sampling}{\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~11--13, pp.~517--606}, \bookcite{deep_learning_foundations_concepts}{Ch.~14, pp.~444--470}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~17, pp.~605--619}, \bookcite{diffusionmodels_stanleychan}{Sec.~3.1, pp.~30--32}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:mcmc:formulation}
+% =============================================================================
+
+In Bayesian inference, statistical physics, and energy-based generative modeling, computing posterior expectations or marginal likelihoods reduces to evaluating high-dimensional integrals over a state space $\Theta \subseteq \R^d$:
+\begin{equation}
+  \label{eq:mcmc:target_expectation}
+  \mu = \E_{\pi}[f(\vecb{\theta})] = \int_{\Theta} f(\vecb{\theta})\,\pi(\vecb{\theta})\,\mathrm{d}\vecb{\theta},
+  \qquad
+  \pi(\vecb{\theta}) = \frac{\tilde{\pi}(\vecb{\theta})}{Z},
+  \qquad
+  Z = \int_{\Theta} \tilde{\pi}(\vecb{\theta})\,\mathrm{d}\vecb{\theta},
+\end{equation}
+where $f \colon \Theta \to \R$ is an integrable test function, $\tilde{\pi}(\vecb{\theta}) \ge 0$ is an unnormalized target density (such as the joint $p(\vecb{\theta}, \mathcal{D})$ or Boltzmann factor $\exp(-E(\vecb{\theta}))$), and $Z$ is the typically intractable normalizing partition function \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~11.1--11.5, pp.~517--525} \bookcite{deep_learning_foundations_concepts}{Sec.~14.1, pp.~445--452}. Deterministic quadrature scales exponentially as $\mathcal{O}(K^d)$ and fails for $d \gg 1$. Monte Carlo methods bypass the curse of dimensionality in integration error by replacing grid summation with stochastic simulation, though designing proposals or Markov kernels that explore $\pi(\vecb{\theta})$ efficiently in high dimensions remains the central algorithmic challenge.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The four synthesized sources adopt distinct conventions for state variables, unnormalized densities, energy functions, and step sizes. Table~\ref{tab:mcmc:notation} establishes a unified notation used throughout this leaf monograph.
+\par\medskip
+{\scriptsize
+\noindent\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{1.65cm} >{\raggedright\arraybackslash}p{2.15cm} >{\raggedright\arraybackslash}p{7.1cm} X @{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Symbol} & \textbf{Source Variants} & \textbf{Reconciliation \& Role} \\
+\midrule
+State / Target & $\vecb{\theta} \in \R^d$, $\pi(\vecb{\theta})$ &
+  $\vecb{x}, \pi(\vecb{x})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.~524};\newline $\vecb{z}, p(\vecb{z})$ \bookcite{deep_learning_foundations_concepts}{p.~452};\newline $\vecb{x}, p(\vecb{x})$ \bookcite{diffusionmodels_stanleychan}{p.~30} &
+  $\vecb{\theta}$ denotes continuous parameters or latent states; $\pi = \tilde{\pi}/Z$ is the normalized target. \\
+Potential Energy & $E(\vecb{\theta}) = -\log\tilde{\pi}(\vecb{\theta})$ &
+  $E(\vecb{\theta})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.~551};\newline $E(\vecb{x}, \vecb{w})$ \bookcite{deep_learning_foundations_concepts}{p.~468};\newline $U(\vecb{x})$ \bookcite{diffusionmodels_stanleychan}{p.~32} &
+  Gradient $-\grad E(\vecb{\theta}) = \grad_{\vecb{\theta}}\log\pi(\vecb{\theta})$ equals the Stein score, independent of $Z$. \\
+HMC Momentum & $\vecb{r} \in \R^d$, $\mat{M} \succ \mat{0}$ &
+  $\vecb{v}, \mat{\Sigma}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.~551};\newline $(\vecb{q}, \vecb{p})$ in physics &
+  $\vecb{r} \sim \Normal(\zeros, \mat{M})$ with kinetic energy $K(\vecb{r}) = \frac{1}{2}\vecb{r}\T \mat{M}\inv \vecb{r}$ ($\mat{M}\inv = \mat{\Sigma}$). \\
+Step Size & $\epsilon > 0$ &
+  $\eta$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.~552};\newline $\eta$ \bookcite{deep_learning_foundations_concepts}{p.~470};\newline $\tau$ \bookcite{diffusionmodels_stanleychan}{p.~30} &
+  $\epsilon$ denotes discrete integrator / SDE step size; $L$ denotes leapfrog steps per HMC proposal. \\
+Sample Count & $S$ (chains $M$) &
+  $N_s$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{p.~525};\newline $L$ \bookcite{deep_learning_foundations_concepts}{p.~452};\newline $n$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p.~606} &
+  $S$ avoids collision with $L$ (leapfrog steps) and $N$ (dataset size). \\
+\bottomrule
+\end{tabularx}}
+\label{tab:mcmc:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:mcmc:derivations}
+% =============================================================================
+
+\subsection{Standard Monte Carlo, Convergence Diagnostics (\texorpdfstring{$\hat{R}$}{R-hat}), and Effective Sample Size}
+\label{subsec:mcmc:mc_diagnostics}
+
+\begin{coremath}[Unbiased Monte Carlo Variance \& Correlated Chain ESS]
+Given i.i.d.\ draws $\vecb{\theta}^{(1)}, \dots, \vecb{\theta}^{(S)} \simiid \pi$, the empirical estimator $\hat{\mu}_S = \frac{1}{S}\sum_{s=1}^S f(\vecb{\theta}^{(s)})$ is unbiased ($\E[\hat{\mu}_S] = \mu$) and, provided $\sigma^2 = \Var_{\pi}[f(\vecb{\theta})] < \infty$, satisfies
+\begin{equation}
+  \label{eq:mcmc:mc_variance}
+  \Var[\hat{\mu}_S] = \frac{\sigma^2}{S},
+  \qquad
+  \sqrt{S}(\hat{\mu}_S - \mu) \xrightarrow{d} \Normal(0, \sigma^2) \quad (S \to \infty).
+\end{equation}
+Crucially, the $\mathcal{O}(S^{-1/2})$ standard error is independent of ambient dimension $d$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~17.1.2, pp.~606--607}. However, when samples form a stationary Markov chain with lag-$\ell$ autocorrelation $\rho(\ell) = \Corr[f(\vecb{\theta}^{(0)}), f(\vecb{\theta}^{(\ell)})]$, the estimator variance inflates by the integrated autocorrelation time $\tau_{\mathrm{int}}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.6.3, pp.~563--565}:
+\begin{align}
+  \label{eq:mcmc:ess_mcmc}
+  \Var[\hat{\mu}_S]
+  &= \frac{\sigma^2}{S^2} \sum_{i=1}^S \sum_{j=1}^S \Corr\bigl[f(\vecb{\theta}^{(i)}), f(\vecb{\theta}^{(j)})\bigr]
+  \;\xrightarrow{S \to \infty}\; \frac{\sigma^2}{S} \underbrace{\left(1 + 2\sum_{\ell=1}^{\infty} \rho(\ell)\right)}_{\tau_{\mathrm{int}}}, \\
+  \mathrm{ESS} &\triangleq \frac{S}{1 + 2\sum_{\ell=1}^{\infty} \rho(\ell)}.
+\end{align}
+To diagnose non-stationarity across $M$ parallel chains of length $S$ (each split into halves to detect within-chain drift), let $\bar{f}_{\cdot m}$ be chain $m$'s mean, $\bar{f}_{\cdot\cdot}$ the grand mean, $W = \frac{1}{M}\sum_{m=1}^M s_m^2$ the mean within-chain variance, and $B = \frac{S}{M-1}\sum_{m=1}^M (\bar{f}_{\cdot m} - \bar{f}_{\cdot\cdot})^2$ the scaled between-chain variance. The Gelman--Rubin potential scale reduction factor is \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.6.2.2, pp.~562--563}
+\begin{equation}
+  \label{eq:mcmc:rhat}
+  \hat{V}^+ = \frac{S - 1}{S} W + \frac{1}{S} B,
+  \qquad
+  \hat{R} = \sqrt{\frac{\hat{V}^+}{W}},
+\end{equation}
+with $\hat{R} < 1.01$ required before declaring convergence.
+\end{coremath}
+
+\subsection{Importance Sampling \& High-Dimensional \texorpdfstring{$\chi^2$}{Chi-Squared}-Divergence Degeneracy}
+\label{subsec:mcmc:importance_sampling}
+
+When direct sampling from $\pi$ is infeasible, importance sampling (IS) draws $\vecb{\theta}^{(s)} \simiid q$ from an easy-to-sample proposal satisfying $\mathrm{supp}(\pi) \subseteq \mathrm{supp}(q)$ \bookcite{deep_learning_foundations_concepts}{Sec.~14.1.5, pp.~452--454} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~11.5, pp.~524--526}. For unnormalized $\tilde{\pi} = Z\pi$, self-normalized importance sampling (SNIS) forms normalized weights $W_s = \tilde{w}_s / \sum_{j=1}^S \tilde{w}_j$ with $\tilde{w}_s = \tilde{\pi}(\vecb{\theta}^{(s)}) / q(\vecb{\theta}^{(s)})$, yielding the consistent (though finite-sample biased) ratio estimator $\hat{\mu}_{\mathrm{SNIS}} = \sum_{s=1}^S W_s f(\vecb{\theta}^{(s)})$.
+
+\begin{coremath}[Optimal Proposal \& $\chi^2$-Divergence Weight Collapse]
+For direct IS with known $Z$, minimizing $\Var_q[\frac{\pi(\vecb{\theta})}{q(\vecb{\theta})} f(\vecb{\theta})]$ over proposals $q$ via Cauchy--Schwarz yields the zero-variance (for $f \ge 0$) optimal proposal $q^*(\vecb{\theta}) \propto |f(\vecb{\theta})|\pi(\vecb{\theta})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~17.2, pp.~608--609}. For general $f$, the variance of the normalized weights $w(\vecb{\theta}) = \pi(\vecb{\theta})/q(\vecb{\theta})$ is governed by the Pearson $\chi^2$-divergence:
+\begin{equation}
+  \label{eq:mcmc:chi2_ess}
+  \Var_q[w(\vecb{\theta})] = \E_q\!\left[\left(\frac{\pi(\vecb{\theta})}{q(\vecb{\theta})}\right)^2\right] - 1 = \chi^2(\pi \,\|\, q),
+  \qquad
+  \mathrm{ESS}_{\mathrm{IS}} \approx \frac{S}{1 + \chi^2(\pi \,\|\, q)} = \frac{\bigl(\sum_{s=1}^S \tilde{w}_s\bigr)^2}{\sum_{s=1}^S \tilde{w}_s^2}.
+\end{equation}
+Consider two isotropic $d$-dimensional Gaussians $\pi = \Normal(\zeros, \sigma_\pi^2 \eye_d)$ and $q = \Normal(\zeros, \sigma_q^2 \eye_d)$ with $\sigma_q^2 > \sigma_\pi^2 / 2$. Direct integration gives
+\begin{equation}
+  \label{eq:mcmc:is_curse}
+  1 + \chi^2(\pi \,\|\, q) = \left(\frac{\sigma_q^2}{\sigma_\pi \sqrt{2\sigma_q^2 - \sigma_\pi^2}}\right)^d.
+\end{equation}
+Because the base strictly exceeds $1$ whenever $\sigma_q \neq \sigma_\pi$, the required sample size $S$ to maintain fixed $\mathrm{ESS}_{\mathrm{IS}}$ grows exponentially in $d$, causing a single particle to capture $W_s \to 1$ while all others vanish.
+\end{coremath}
+
+\subsection{Markov Chain Ergodicity, Detailed Balance \& Metropolis--Hastings}
+\label{subsec:mcmc:mh}
+
+To avoid exponential importance-weight collapse, Markov chain Monte Carlo (MCMC) constructs an ergodic (irreducible and aperiodic) Markov transition kernel $T(\vecb{\theta}' \mid \vecb{\theta})$ admitting $\pi$ as its unique stationary distribution: $\pi(\vecb{\theta}') = \int T(\vecb{\theta}' \mid \vecb{\theta})\pi(\vecb{\theta})\,\mathrm{d}\vecb{\theta}$ \bookcite{deep_learning_foundations_concepts}{Sec.~14.2.2, pp.~457--460}. A sufficient condition for stationarity is \emph{detailed balance} (reversibility):
+\begin{equation}
+  \label{eq:mcmc:detailed_balance}
+  T(\vecb{\theta}' \mid \vecb{\theta})\,\pi(\vecb{\theta}) = T(\vecb{\theta} \mid \vecb{\theta}')\,\pi(\vecb{\theta}'),
+\end{equation}
+since integrating over $\vecb{\theta}$ immediately recovers $\int T(\vecb{\theta}' \mid \vecb{\theta})\pi(\vecb{\theta})\,\mathrm{d}\vecb{\theta} = \pi(\vecb{\theta}') \int T(\vecb{\theta} \mid \vecb{\theta}')\,\mathrm{d}\vecb{\theta} = \pi(\vecb{\theta}')$.
+
+\begin{coremath}[Metropolis--Hastings Detailed Balance \& Random-Walk $\mathcal{O}(d^2)$ Scaling]
+Given a proposal $q(\vecb{\theta}' \mid \vecb{\theta})$, the Metropolis--Hastings (MH) kernel proposes $\vecb{\theta}' \sim q(\cdot \mid \vecb{\theta})$ and accepts with probability \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.2.1--12.2.2, pp.~534--536}
+\begin{equation}
+  \label{eq:mcmc:mh_accept}
+  \alpha(\vecb{\theta}, \vecb{\theta}') = \min\!\left(1,\, \frac{\tilde{\pi}(\vecb{\theta}')\,q(\vecb{\theta} \mid \vecb{\theta}')}{\tilde{\pi}(\vecb{\theta})\,q(\vecb{\theta}' \mid \vecb{\theta})}\right),
+\end{equation}
+where the unknown $Z$ cancels. For $\vecb{\theta}' \neq \vecb{\theta}$, the transition density is $T(\vecb{\theta}' \mid \vecb{\theta}) = q(\vecb{\theta}' \mid \vecb{\theta})\alpha(\vecb{\theta}, \vecb{\theta}')$. Multiplying by $\pi(\vecb{\theta}) = \tilde{\pi}(\vecb{\theta})/Z$ gives
+\begin{equation}
+  \label{eq:mcmc:mh_db_proof}
+  T(\vecb{\theta}' \mid \vecb{\theta})\,\pi(\vecb{\theta})
+  = \frac{1}{Z}\min\!\bigl(\tilde{\pi}(\vecb{\theta})q(\vecb{\theta}' \mid \vecb{\theta}),\, \tilde{\pi}(\vecb{\theta}')q(\vecb{\theta} \mid \vecb{\theta}')\bigr)
+  = T(\vecb{\theta} \mid \vecb{\theta}')\,\pi(\vecb{\theta}'),
+\end{equation}
+which is symmetric in $(\vecb{\theta}, \vecb{\theta}')$, proving detailed balance. However, for isotropic random-walk proposals $q(\vecb{\theta}' \mid \vecb{\theta}) = \Normal(\vecb{\theta}, \sigma^2 \eye_d)$, maintaining $\mathcal{O}(1)$ acceptance in $d$ dimensions forces $\sigma = \mathcal{O}(d^{-1/2})$ (optimal asymptotic acceptance $\approx 0.234$); because diffusive random walks traverse distance $\propto \sqrt{t}\,\sigma$ in $t$ steps \bookcite{deep_learning_foundations_concepts}{Sec.~14.2.1, p.~457}, exploring an $\mathcal{O}(1)$ target width requires $t = \mathcal{O}(d)$ steps per proposal scale, or $\mathcal{O}(d^2)$ gradient-free density evaluations for an independent sample (and $\mathcal{O}((L/\ell)^2)$ in anisotropic valleys of aspect ratio $L/\ell$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.3.7, p.~545}).
+\end{coremath}
+
+\subsection{Gibbs Sampling \& Rao--Blackwellized (Collapsed) Gibbs}
+\label{subsec:mcmc:gibbs}
+
+{\sloppy Gibbs sampling updates one coordinate (or block) $\theta_j$ at a time from its exact full conditional $\pi(\theta_j \mid \vecb{\theta}_{-j})$ \bookcite{deep_learning_foundations_concepts}{Sec.~14.2.4, pp.~461--465} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.3, pp.~539--546}. Viewing a single-site update as an MH proposal $q(\vecb{\theta}' \mid \vecb{\theta}) = \pi(\theta'_j \mid \vecb{\theta}_{-j})\mathbb{I}(\vecb{\theta}'_{-j} = \vecb{\theta}_{-j})$ and factoring $\pi(\vecb{\theta}) = \pi(\theta_j \mid \vecb{\theta}_{-j})\pi(\vecb{\theta}_{-j})$, the MH acceptance ratio simplifies identically to unity:\par}
+\begin{equation}
+  \label{eq:mcmc:gibbs_accept}
+  \frac{\pi(\vecb{\theta}')\,q(\vecb{\theta} \mid \vecb{\theta}')}{\pi(\vecb{\theta})\,q(\vecb{\theta}' \mid \vecb{\theta})}
+  = \frac{\pi(\theta'_j \mid \vecb{\theta}_{-j})\pi(\vecb{\theta}_{-j})\,\pi(\theta_j \mid \vecb{\theta}_{-j})}{\pi(\theta_j \mid \vecb{\theta}_{-j})\pi(\vecb{\theta}_{-j})\,\pi(\theta'_j \mid \vecb{\theta}_{-j})} = 1.
+\end{equation}
+When conjugate priors permit analytic marginalization of parameters $\vecb{\phi}$ (e.g., mixture weights/means in a Dirichlet-multinomial Gaussian mixture), \emph{collapsed} or \emph{Rao--Blackwellized} Gibbs sampling runs the Markov chain solely on the remaining latent variables $\vecb{z}$ and estimates expectations via $\E[f(\vecb{\phi}, \vecb{z})] = \E_{\vecb{z}}[\E[f(\vecb{\phi}, \vecb{z}) \mid \vecb{z}]]$. By the Law of Total Variance, $\Var[\E[f \mid \vecb{z}]] = \Var[f] - \E[\Var[f \mid \vecb{z}]] \le \Var[f]$, strictly reducing Monte Carlo variance while eliminating coupling between $\vecb{\phi}$ and $\vecb{z}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~11.6.2 \& 12.3.8, pp.~528, 546}.
+
+\subsection{Hamiltonian Monte Carlo (HMC), Symplectic Leapfrog \& NUTS}
+\label{subsec:mcmc:hmc}
+
+To suppress random-walk diffusion, Hamiltonian Monte Carlo (HMC) augments $\vecb{\theta} \in \R^d$ with an auxiliary momentum $\vecb{r} \in \R^d$ and defines the Hamiltonian $H(\vecb{\theta}, \vecb{r}) = E(\vecb{\theta}) + K(\vecb{r})$, where $E(\vecb{\theta}) = -\log\tilde{\pi}(\vecb{\theta})$ and $K(\vecb{r}) = \frac{1}{2}\vecb{r}\T \mat{M}\inv \vecb{r}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.5.1, p.~551}. The augmented target $\pi(\vecb{\theta}, \vecb{r}) \propto \exp(-H(\vecb{\theta}, \vecb{r})) = \tilde{\pi}(\vecb{\theta})\exp(-K(\vecb{r}))$ factorizes, preserving $\pi(\vecb{\theta})$ as its exact marginal.
+
+\begin{coremath}[Symplectic Leapfrog Volume Preservation, Reversibility \& $\mathcal{O}(d^{1/4})$ Scaling]
+Hamilton's continuous-time equations $\dot{\vecb{\theta}} = \grad_{\vecb{r}} H = \mat{M}\inv\vecb{r}$ and $\dot{\vecb{r}} = -\grad_{\vecb{\theta}} H = -\grad E(\vecb{\theta})$ conserve total energy ($\dd{H}{t} = \grad_{\vecb{\theta}}H\T\dot{\vecb{\theta}} + \grad_{\vecb{r}}H\T\dot{\vecb{r}} = 0$) and preserve phase-space volume (Liouville's theorem: $\grad \cdot (\dot{\vecb{\theta}}, \dot{\vecb{r}}) = 0$). Discretizing with step size $\epsilon$ via the $L$-step \emph{leapfrog integrator} executes, for each step:
+\begin{equation}
+  \label{eq:mcmc:leapfrog}
+  \vecb{r}_{t+1/2} = \vecb{r}_t - \frac{\epsilon}{2}\grad E(\vecb{\theta}_t), \qquad
+  \vecb{\theta}_{t+1} = \vecb{\theta}_t + \epsilon \mat{M}\inv \vecb{r}_{t+1/2}, \qquad
+  \vecb{r}_{t+1} = \vecb{r}_{t+1/2} - \frac{\epsilon}{2}\grad E(\vecb{\theta}_{t+1}).
+\end{equation}
+Each sub-step is a shear transformation whose Jacobian is block-triangular with unit diagonal, so $|\det \jac_{\mathrm{LF}}| = 1$ (exact volume preservation, eliminating Jacobian factors in MH). Composing $L$ steps with a momentum negation $\Phi_{\mathrm{flip}}(\vecb{\theta}, \vecb{r}) = (\vecb{\theta}, -\vecb{r})$ yields an involution $(\Phi_{\mathrm{flip}} \circ \Psi_{\mathrm{LF}}^L)^2 = \mathrm{Id}$, guaranteeing exact time-reversibility. Because the leapfrog integrator is second-order symplectic, the global Hamiltonian error remains bounded at $\Delta H = H(\vecb{\theta}^*, \vecb{r}^*) - H(\vecb{\theta}_0, \vecb{r}_0) = \mathcal{O}(\epsilon^2)$ over arbitrarily long trajectories, and MH acceptance $\alpha = \min(1, \exp(-\Delta H))$ requires $\epsilon = \mathcal{O}(d^{-1/4})$ to keep $\Delta H = \mathcal{O}(1)$, yielding $\mathcal{O}(d^{1/4})$ leapfrog steps per nearly independent sample \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.5.2--12.5.3, pp.~552--554}.
+\end{coremath}
+
+\begin{intuition}[Typical Set Geometry \& NUTS U-Turn Criterion]
+In high dimensions, probability mass concentrates not at the mode $\argmax \pi(\vecb{\theta})$, where volume is negligible, nor in the tails, where density vanishes, but on a thin shell called the \emph{typical set} where density and volume balance. HMC glides coherently along level sets of $H$ inside this typical set. To prevent trajectories from wasting computation by doubling back, the No-U-Turn Sampler (NUTS) builds a recursive binary tree forward and backward in time and halts when the span $(\vecb{\theta}^+ - \vecb{\theta}^-)$ ceases to increase:
+\begin{equation}
+  \label{eq:mcmc:nuts}
+  (\vecb{\theta}^+ - \vecb{\theta}^-)\T \mat{M}\inv \vecb{r}^+ < 0
+  \quad\text{or}\quad
+  (\vecb{\theta}^+ - \vecb{\theta}^-)\T \mat{M}\inv \vecb{r}^- < 0,
+\end{equation}
+thus adaptively selecting the trajectory length $L$ without manual tuning \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.5.4.1, p.~554}.
+\end{intuition}
+
+\subsection{Langevin Dynamics (ULA, MALA, SGLD) \& Sequential Monte Carlo}
+\label{subsec:mcmc:langevin_smc}
+
+{\sloppy The overdamped Langevin stochastic differential equation (SDE) evolves $\vecb{\theta}_t \in \R^d$ via drift along the Stein score $\grad_{\vecb{\theta}}\log\pi(\vecb{\theta}_t) = -\grad E(\vecb{\theta}_t)$ plus isotropic Brownian motion $\vecb{W}_t$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.5.6, p.~556} \bookcite{deep_learning_foundations_concepts}{Sec.~14.3.3, p.~470} \bookcite{diffusionmodels_stanleychan}{Sec.~3.1, p.~30}:\par}
+\begin{equation}
+  \label{eq:mcmc:langevin_sde}
+  \mathrm{d}\vecb{\theta}_t = \grad_{\vecb{\theta}}\log\pi(\vecb{\theta}_t)\,\mathrm{d}t + \sqrt{2}\,\mathrm{d}\vecb{W}_t.
+\end{equation}
+By the Fokker--Planck equation, $\pi(\vecb{\theta})$ is the unique stationary density of \eqref{eq:mcmc:langevin_sde}. Euler--Maruyama discretization with step size $\epsilon$ gives the \emph{Unadjusted Langevin Algorithm (ULA)}:
+\begin{equation}
+  \label{eq:mcmc:ula}
+  \vecb{\theta}_{t+1} = \vecb{\theta}_t + \epsilon\,\grad_{\vecb{\theta}}\log\pi(\vecb{\theta}_t) + \sqrt{2\epsilon}\,\vecb{\xi}_t, \qquad \vecb{\xi}_t \sim \Normal(\zeros, \eye_d).
+\end{equation}
+Because finite $\epsilon > 0$ introduces $\mathcal{O}(\epsilon)$ asymptotic bias, the \emph{Metropolis-Adjusted Langevin Algorithm (MALA)} treats \eqref{eq:mcmc:ula} as an asymmetric Gaussian proposal $q(\vecb{\theta}' \mid \vecb{\theta}_t) = \Normal(\vecb{\theta}_t + \epsilon\grad\log\pi(\vecb{\theta}_t),\, 2\epsilon\eye_d)$ and applies an MH accept/reject step---which is algebraically equivalent to $L=1$ leapfrog HMC with step size $\sqrt{2\epsilon}$ and scales as $\mathcal{O}(d^{1/3})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.5.6, pp.~555--556}. Replacing $\grad\log\pi$ with minibatch gradients yields Stochastic Gradient Langevin Dynamics (SGLD) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.7.1, p.~568}, while replacing it with a learned score network $\vecb{s}_{\vecb{\phi}}(\vecb{x}, \sigma)$ yields Score-Matching Langevin Dynamics (SMLD) for diffusion generative models \bookcite{diffusionmodels_stanleychan}{Sec.~3.1, pp.~30--32}.
+
+For sequential state-space posteriors $\pi_t(\vecb{z}_{1:t}) = \tilde{\gamma}_t(\vecb{z}_{1:t})/Z_t$, \emph{Sequential Monte Carlo (SMC)} propagates $N_s$ particles via $q_t(\vecb{z}_t \mid \vecb{z}_{1:t-1})$ with recursive incremental weights $\alpha_t^{(i)} = \frac{\tilde{\gamma}_t(\vecb{z}_{1:t}^{(i)})}{\tilde{\gamma}_{t-1}(\vecb{z}_{1:t-1}^{(i)})\,q_t(\vecb{z}_t^{(i)} \mid \vecb{z}_{1:t-1}^{(i)})}$ and triggers low-variance resampling (stratified or systematic) whenever $\mathrm{ESS}_{\mathrm{IS}} < N_s/2$ to prevent weight degeneracy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~13.2, pp.~581--587}.
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:mcmc:algorithms}
+% =============================================================================
+
+Algorithms~\ref{alg:mcmc:hmc} and~\ref{alg:mcmc:mala} formalize HMC and MALA in unified notation; Table~\ref{tab:mcmc:comparison} summarizes asymptotic mixing and computational trade-offs across all sampler families.
+
+\begin{algorithm}[htbp]
+\caption{Hamiltonian Monte Carlo (HMC) with Symplectic Leapfrog Integrator}
+\label{alg:mcmc:hmc}
+\KwIn{Unnormalized log-density $\log\tilde{\pi}(\vecb{\theta}) = -E(\vecb{\theta})$, mass matrix $\mat{M}$, step size $\epsilon$, leapfrog steps $L$, iterations $S$, initial $\vecb{\theta}^{(0)}$}
+\KwOut{Markov chain $\{\vecb{\theta}^{(s)}\}_{s=1}^S$}
+\For{$s = 1, \dots, S$}{
+  Sample auxiliary momentum $\vecb{r}_0 \sim \Normal(\zeros, \mat{M})$\;
+  Initialize $(\vecb{\theta}'_0, \vecb{r}'_0) \leftarrow (\vecb{\theta}^{(s-1)}, \vecb{r}_0)$\;
+  $\vecb{r}'_{1/2} \leftarrow \vecb{r}'_0 - \frac{\epsilon}{2}\grad E(\vecb{\theta}'_0)$ \tcp*{Initial half-kick}
+  \For{$\ell = 1, \dots, L-1$}{
+    $\vecb{\theta}'_{\ell} \leftarrow \vecb{\theta}'_{\ell-1} + \epsilon \mat{M}\inv \vecb{r}'_{\ell-1/2}$ \tcp*{Full position drift}
+    $\vecb{r}'_{\ell+1/2} \leftarrow \vecb{r}'_{\ell-1/2} - \epsilon \grad E(\vecb{\theta}'_{\ell})$ \tcp*{Full momentum kick}
+  }
+  $\vecb{\theta}'_L \leftarrow \vecb{\theta}'_{L-1} + \epsilon \mat{M}\inv \vecb{r}'_{L-1/2}$\;
+  $\vecb{r}'_L \leftarrow \vecb{r}'_{L-1/2} - \frac{\epsilon}{2}\grad E(\vecb{\theta}'_L)$ \tcp*{Final half-kick}
+  Compute $\Delta H = E(\vecb{\theta}'_L) + \frac{1}{2}(\vecb{r}'_L)\T \mat{M}\inv \vecb{r}'_L - E(\vecb{\theta}^{(s-1)}) - \frac{1}{2}\vecb{r}_0\T \mat{M}\inv \vecb{r}_0$\;
+  Sample $u \sim \Uniform(0, 1)$; \textbf{if} $u \le \min(1, \exp(-\Delta H))$ \textbf{then} $\vecb{\theta}^{(s)} \leftarrow \vecb{\theta}'_L$ \textbf{else} $\vecb{\theta}^{(s)} \leftarrow \vecb{\theta}^{(s-1)}$\;
+}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Metropolis-Adjusted Langevin Algorithm (MALA) / ULA}
+\label{alg:mcmc:mala}
+\KwIn{Score $\grad\log\tilde{\pi}(\vecb{\theta}) = -\grad E(\vecb{\theta})$, step size $\epsilon$, iterations $S$, initial $\vecb{\theta}^{(0)}$, boolean \texttt{adjust}}
+\KwOut{Samples $\{\vecb{\theta}^{(s)}\}_{s=1}^S$}
+\For{$s = 1, \dots, S$}{
+  Sample $\vecb{\xi}_s \sim \Normal(\zeros, \eye_d)$ and propose $\vecb{\theta}' \leftarrow \vecb{\theta}^{(s-1)} + \epsilon \grad\log\tilde{\pi}(\vecb{\theta}^{(s-1)}) + \sqrt{2\epsilon}\,\vecb{\xi}_s$\;
+  \eIf{\texttt{adjust} is \texttt{true} (MALA)}{
+    Evaluate $\log q(\vecb{\theta} \mid \vecb{\theta}') = -\frac{1}{4\epsilon}\norm{\vecb{\theta} - \vecb{\theta}' - \epsilon\grad\log\tilde{\pi}(\vecb{\theta}')}_2^2 + C$\;
+    $\alpha \leftarrow \min\!\left(1,\, \frac{\tilde{\pi}(\vecb{\theta}')\,q(\vecb{\theta}^{(s-1)} \mid \vecb{\theta}')}{\tilde{\pi}(\vecb{\theta}^{(s-1)})\,q(\vecb{\theta}' \mid \vecb{\theta}^{(s-1)})}\right)$\;
+    Sample $u \sim \Uniform(0, 1)$; \textbf{if} $u \le \alpha$ \textbf{then} $\vecb{\theta}^{(s)} \leftarrow \vecb{\theta}'$ \textbf{else} $\vecb{\theta}^{(s)} \leftarrow \vecb{\theta}^{(s-1)}$\;
+  }{
+    $\vecb{\theta}^{(s)} \leftarrow \vecb{\theta}'$ \tcp*{Unadjusted Langevin (ULA): $\mathcal{O}(\epsilon)$ bias}
+  }
+}
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative synthesis of Monte Carlo and MCMC samplers in $d$ dimensions.}
+\label{tab:mcmc:comparison}
+\begin{tabularx}{\linewidth}{@{} l l c c X @{}}
+\toprule
+\textbf{Method} & \textbf{Gradients} & \textbf{Dim.\ Scaling} & \textbf{Asymptotic Bias} & \textbf{Primary Strength / Bottleneck} \\
+\midrule
+IS / SNIS & None & $\mathcal{O}(\exp(d))$ & $0$ ($S\to\infty$) & Parallelizable; collapses under $\chi^2(\pi\|q)$ mismatch \\
+RW-MH & None & $\mathcal{O}(d^2)$ & $0$ & Universal; diffusive random walk in high $d$ \\
+Gibbs (Blocked) & None & $\mathcal{O}((L/\ell)^2)$ & $0$ & Acceptance $1$; stalls under strong correlation \\
+ULA / SGLD & $\grad\log\tilde{\pi}$ & $\mathcal{O}(d^{1/3})$ & $\mathcal{O}(\epsilon)$ & Scales to $N\gg 1$ minibatches; step-size bias \\
+MALA ($L=1$ HMC) & $\grad\log\tilde{\pi}$ & $\mathcal{O}(d^{1/3})$ & $0$ & Exact stationary $\pi$; local-only steps \\
+HMC / NUTS & $\grad\log\tilde{\pi}$ & $\mathcal{O}(d^{1/4})$ & $0$ & Coherent typical-set orbits; fails on sharp funnels \\
+SMC (SISR) & Optional & Particle $N_s$ & $0$ ($N_s\to\infty$) & Handles multimodality via tempering; path degeneracy \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Energy-Based Models, Mode Mixing \& Annealed Bridges]
+\bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~17.5, pp.~614--617} and \bookcite{deep_learning_foundations_concepts}{Sec.~14.3, pp.~466--470} highlight a fundamental tension in energy-based models (EBMs) $p_{\vecb{w}}(\vecb{x}) = \exp(-E(\vecb{x}, \vecb{w}))/Z(\vecb{w})$: maximum-likelihood gradients require sampling from $p_{\vecb{w}}$ via $\grad_{\vecb{w}}\E_{p_{\mathcal{D}}}[\log p_{\vecb{w}}(\vecb{x})] = -\E_{p_{\mathcal{D}}}[\grad_{\vecb{w}}E] + \E_{p_{\vecb{w}}}[\grad_{\vecb{w}}E]$, yet sharp learned modes separated by high-energy barriers trap single-chain Gibbs or HMC samplers. \bookcite{diffusionmodels_stanleychan}{Sec.~3.1, pp.~30--32} resolves this in generative modeling by running score-driven Langevin dynamics across annealed noise scales, directly paralleling Annealed Importance Sampling (AIS) and tempered SMC in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~11.5.4 \& 13.5, pp.~526, 600}.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:mcmc:visuals}
+% =============================================================================
+
+Figure~\ref{fig:mcmc:architecture} contrasts the diffusive proposal--reject loop of Random-Walk MH with the symplectic phase-space $(\vecb{\theta}, \vecb{r})$ trajectory of HMC, while Figure~\ref{fig:mcmc:scaling} quantifies both the $\mathcal{O}(d^{1/4})$ vs.\ $\mathcal{O}(d^2)$ dimensional scaling and symplectic energy conservation.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.85cm and 1.1cm]
+  % Top row: Random-Walk MH
+  \node[monoBox, minimum width=2.4cm] (mh_state) {State $\vecb{\theta}^{(s-1)}$};
+  \node[monoBox, right=of mh_state, minimum width=3.1cm] (mh_prop) {Isotropic Proposal\\$\vecb{\theta}' \sim \Normal(\vecb{\theta}^{(s-1)}, \sigma^2\eye_d)$};
+  \node[monoWarnBox, right=of mh_prop, minimum width=3.2cm] (mh_acc) {MH Accept $\alpha(\vecb{\theta}, \vecb{\theta}')$\\$\sigma = \mathcal{O}(d^{-1/2}) \Rightarrow \mathcal{O}(d^2)$ mix};
+  \draw[monoArrow] (mh_state) -- (mh_prop);
+  \draw[monoArrow] (mh_prop) -- (mh_acc);
+  \draw[monoArrow] (mh_acc.north) -- ++(0,0.45) -| node[pos=0.25, above, font=\footnotesize\color{monographSlate}] {Next iteration} (mh_state.north);
+
+  % Bottom row: HMC Symplectic Leapfrog
+  \node[monoTealBox, below=1.55cm of mh_state, minimum width=2.4cm] (hmc_mom) {Resample Momentum\\$\vecb{r}_0 \sim \Normal(\zeros, \mat{M})$};
+  \node[monoIndigoBox, right=of hmc_mom, minimum width=3.5cm] (hmc_lf) {$L$ Symplectic Leapfrog Steps\\$|\det \jac_{\mathrm{LF}}| = 1,\; \Delta H = \mathcal{O}(\epsilon^2)$};
+  \node[monoTealBox, right=of hmc_lf, minimum width=3.2cm] (hmc_acc) {MH Accept $\min(1, e^{-\Delta H})$\\$\epsilon = \mathcal{O}(d^{-1/4}) \Rightarrow \mathcal{O}(d^{1/4})$ mix};
+  \draw[monoArrow] (hmc_mom) -- (hmc_lf);
+  \draw[monoArrow] (hmc_lf) -- (hmc_acc);
+  \draw[monoArrow] (hmc_acc.south) -- ++(0,-0.45) -| node[pos=0.25, below, font=\footnotesize\color{monographSlate}] {Drop $\vecb{r}'_L$, retain $\vecb{\theta}^{(s)}$} (hmc_mom.south);
+\end{tikzpicture}
+\caption{Architectural contrast between Random-Walk Metropolis--Hastings (top, diffusive $\mathcal{O}(d^2)$ mixing) and Hamiltonian Monte Carlo (bottom, coherent volume-preserving leapfrog orbits in phase space $(\vecb{\theta}, \vecb{r})$ with $\mathcal{O}(d^{1/4})$ mixing).}
+\label{fig:mcmc:architecture}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.6cm},
+  width=0.45\textwidth,
+  height=5.2cm,
+  grid=major,
+  grid style={dashed, monographRule!60},
+  label style={font=\small\color{monographNavy}},
+  tick label style={font=\footnotesize\color{monographSlate}},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9}
+]
+% Left plot: Dimensional Scaling
+\nextgroupplot[
+  xmode=log, ymode=log,
+  xlabel={Dimension $d$},
+  ylabel={Steps per Independent Sample},
+  title={\small\bfseries\color{monographNavy} High-Dimensional Mixing Scaling},
+  xmin=10, xmax=10000,
+  ymin=1, ymax=1e8,
+  legend pos=north west
+]
+\addplot[color=monographCrimson, very thick, domain=10:10000, samples=30] {x^2};
+\addlegendentry{RW-MH $\mathcal{O}(d^2)$}
+\addplot[color=monographTeal, very thick, dashed, domain=10:10000, samples=30] {x^(1/3)};
+\addlegendentry{MALA $\mathcal{O}(d^{1/3})$}
+\addplot[color=monographIndigo, very thick, domain=10:10000, samples=30] {x^(1/4)};
+\addlegendentry{HMC $\mathcal{O}(d^{1/4})$}
+
+% Right plot: Euler vs Leapfrog Energy Drift
+\nextgroupplot[
+  xlabel={Integration Steps $L$},
+  ylabel={Hamiltonian Error $|\Delta H|$},
+  title={\small\bfseries\color{monographNavy} Symplectic Conservation ($\epsilon = 0.25$)},
+  xmin=0, xmax=50,
+  ymin=0, ymax=1.2,
+  legend pos=north west
+]
+\addplot[color=monographCrimson, very thick, domain=0:50, samples=51] {0.00045*x^2};
+\addlegendentry{Standard Euler (Drift)}
+\addplot[color=monographTeal, very thick, domain=0:50, samples=100] {0.08*(sin(deg(0.35*x)))^2 + 0.01};
+\addlegendentry{Leapfrog $\mathcal{O}(\epsilon^2)$ Bounded}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Left: Asymptotic cost per independent sample as a function of dimension $d$. Right: Standard Euler integration exhibits secular energy drift $|\Delta H|$ (collapsing MH acceptance), whereas the symplectic leapfrog integrator preserves a shadow Hamiltonian with bounded $\mathcal{O}(\epsilon^2)$ oscillation.}
+\label{fig:mcmc:scaling}
+\end{figure}
+
+Empirical diagnostics from three synthesized textbooks further illuminate these geometric behaviors. Figure~\ref{fig:mcmc:gibbs_paths} illustrates axis-aligned Gibbs sampling on independent, correlated, and separated bimodal Gaussians; Figure~\ref{fig:mcmc:neals_funnel} demonstrates HMC failure in Neal's funnel and its resolution via non-centered parameterization; and Figure~\ref{fig:mcmc:langevin_traj} visualizes Langevin SDE trajectories converging to a bimodal Gaussian mixture.
+
+\monographfig[0.82\textwidth]{deep_learning_goodfellow_bengio_courville_2017_p616_fig1.png}{Gibbs sampling trajectories on three 2D distributions \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Fig.~17.1, p.~616}: (left) rapid mixing under independence; (center) slow diagonal crawling under strong correlation; (right) complete mode trapping when modes are separated by low-density barriers.}{fig:mcmc:gibbs_paths}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p566_fig1.png}{Neal's funnel geometry ($v \sim \Normal(0, 9)$, $x \mid v \sim \Normal(0, e^v)$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~12.18, p.~566}: (a) true joint density; (b) centered HMC fails to enter the narrow neck ($v < -3$) due to extreme curvature; (c) non-centered reparameterization $x = e^{v/2}\tilde{x}$ flattens the geometry and restores uniform exploration.}{fig:mcmc:neals_funnel}
+
+\monographfig[0.78\textwidth]{diffusionmodels_stanleychan_p31_fig1.png}{Score-driven Langevin dynamics trajectories initialized across $[-10, 10]$ converging to the two modes of a Gaussian mixture under $\vecb{x}_{t+1} = \vecb{x}_t + \epsilon\grad\log p(\vecb{x}_t) + \sqrt{2\epsilon}\,\vecb{\xi}_t$ \bookcite{diffusionmodels_stanleychan}{Fig.~17, p.~31}.}{fig:mcmc:langevin_traj}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:mcmc:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Importance-Weight Collapse in High Dimensions]
+Even when $\mathrm{supp}(\pi) \subseteq \mathrm{supp}(q)$, any mismatch in scale or location between $q$ and $\pi$ inflates $1 + \chi^2(\pi \| q)$ exponentially in $d$ (Eq.~\eqref{eq:mcmc:is_curse}). \textbf{Remedy:} Monitor $\mathrm{ESS}_{\mathrm{IS}} = (\sum_s \tilde{w}_s)^2 / \sum_s \tilde{w}_s^2$ in log-space via log-sum-exp; for sequential or multimodal targets, bridge via Annealed Importance Sampling or SMC with adaptive resampling when $\mathrm{ESS}_{\mathrm{IS}} < N_s/2$.
+\end{pitfall}
+
+\begin{pitfall}[Multimodal Trapping \& Funnel Curvature in HMC]
+In hierarchical models with varying curvature (such as Neal's funnel, Fig.~\ref{fig:mcmc:neals_funnel}), a global step size $\epsilon$ tuned for the wide mouth diverges in the narrow neck, causing leapfrog trajectories to reject repeatedly and under-explore the neck. Moreover, single-chain HMC cannot cross wide zero-density barriers between separated modes. \textbf{Remedy:} Apply non-centered reparameterizations ($\vecb{\theta} = \vecb{\mu} + \sigma\tilde{\vecb{\theta}}$ with $\tilde{\vecb{\theta}} \sim \Normal(\zeros, \eye)$), diagonal/dense mass-matrix adaptation $\mat{M}$ during warmup, and tempered SMC or parallel tempering for multimodal targets.
+\end{pitfall}
+
+\begin{pitfall}[Non-Symplectic Euler Drift \& Unadjusted Langevin Bias]
+Replacing leapfrog with standard or modified Euler integration violates volume preservation ($|\det \jac| \neq 1$) and induces secular energy drift $\Delta H \to \infty$, driving HMC acceptance to zero. Similarly, running ULA/SGLD with fixed $\epsilon > 0$ omits the MH correction and samples from a biased stationary distribution at $\mathcal{O}(\epsilon)$ Wasserstein/KL error. \textbf{Remedy:} Always use a symplectic reversible integrator (leapfrog) for HMC, or apply MALA / decaying step-size schedules $\sum_t \epsilon_t = \infty, \sum_t \epsilon_t^2 < \infty$ in SGLD.
+\end{pitfall}
+
+\begin{pitfall}[Insufficient Burn-In, Correlated $\mathrm{ESS} \ll S$, and Single-Chain Blindness]
+Reporting raw iteration counts $S$ when lag-$\ell$ autocorrelation decays slowly overestimates precision by $\tau_{\mathrm{int}} = S/\mathrm{ESS}$, while computing $\hat{R}$ on a single mode-trapped chain can falsely yield $\hat{R} \approx 1.00$. \textbf{Remedy:} Initialize $M \ge 4$ overdispersed chains, discard warmup, verify split-$\hat{R} < 1.01$ and bulk/tail $\mathrm{ESS} \ge 400$, and inspect rank-normalized trace plots (trankplots) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~12.6.2, pp.~561--563}.
+\end{pitfall}
+
+\end{document}

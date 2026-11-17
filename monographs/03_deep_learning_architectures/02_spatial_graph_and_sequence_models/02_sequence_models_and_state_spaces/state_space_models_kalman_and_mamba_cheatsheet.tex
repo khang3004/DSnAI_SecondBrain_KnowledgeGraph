@@ -1,0 +1,197 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{CNNs, GNNs, RNNs \& State-Space Models}{Classical State-Space Models, Structured SSMs \& Selective Scan (Mamba)}
+  {Compress history into a Markovian state: Bayesian Kalman/RTS, LTI S4 via FFT, and input-selective Mamba ($S6$) in $O(L)$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{SSMs \& Mamba\\ \footnotesize\mdseries Kalman $\cdot$ HiPPO/S4 $\cdot$ Selective $S6$}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize}]
+    \node[circle, draw=csDom, fill=csDom!15, very thick, inner sep=2.5pt] (h) at (0,0) {$\vecb h_t$};
+    \draw[-{Stealth}, thick, csB] (-2.0,0) -- (h.west) node[midway, above] {\tiny $\bar{\mat B}_t x_t$};
+    \draw[-{Stealth}, thick, csD] (h.east) -- (2.0,0) node[midway, above] {\tiny $\mat C_t\vecb h_t$};
+    \draw[-{Stealth}, very thick, csA] (h.north east) .. controls (0.9,1.25) and (-0.9,1.25) .. (h.north west) node[midway, above] {\tiny $\bar{\mat A}_t=\exp(\Delta_t\mat A)$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ three views of a state space}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\dot{\vecb h}(t)=\mat A\vecb h(t)+\mat Bx(t),\quad y(t)=\mat C\vecb h(t)+Dx(t)}
+    \begin{csbul}
+      \item \textbf{1. Continuous ODE:} resolution-invariant $(\mat A,\mat B,\mat C)$
+      \item \textbf{2. Discrete RNN:} $\vecb h_t=\bar{\mat A}\vecb h_{t-1}+\bar{\mat B}x_t$ ($O(1)$ step)
+      \item \textbf{3. Global Conv (LTI):} $\vecb y = \bar{\mat K}*\vecb x$, $\bar K_k = \mat C\bar{\mat A}^k\bar{\mat B}$
+      \item \textbf{Stochastic LDS:} $\vecb z_t=\mat F_t\vecb z_{t-1}+\vecb q_t$, $\vecb y_t=\mat H_t\vecb z_t+\vecb r_t$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{3pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny, align=center}]
+      \node[draw=csA, rounded corners=2pt, fill=csA!10, inner sep=2pt] (ode) at (0,1.6) {ODE\\$(\mat A,\mat B)$};
+      \node[draw=csB, rounded corners=2pt, fill=csB!10, inner sep=2pt] (rnn) at (-1.4,-0.6) {RNN\\$O(1)$};
+      \node[draw=csE, rounded corners=2pt, fill=csE!10, inner sep=2pt] (cnv) at (1.4,-0.6) {Conv $\bar{\mat K}$\\FFT};
+      \draw[<->, thick, csDom] (ode)--(rnn);
+      \draw[<->, thick, csDom] (ode)--(cnv);
+      \draw[<->, dashed, csDom] (rnn)--(cnv);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; KALMAN \& RTS $-$ exact Bayesian state inference}{%
+  \begin{csbul}
+    \item \textbf{Predict:} $\vecb\mu_{t|t-1}=\mat F_t\vecb\mu_{t-1|t-1}+\mat B_t\vecb u_t$, \; $\mat\Sigma_{t|t-1}=\mat F_t\mat\Sigma_{t-1|t-1}\mat F_t\T+\mat Q_t$
+    \item \textbf{Kalman Gain (SNR gate):} $\mat S_t=\mat H_t\mat\Sigma_{t|t-1}\mat H_t\T+\mat R_t$, \; $\mat K_t=\mat\Sigma_{t|t-1}\mat H_t\T\mat S_t\inv$
+    \item \textbf{Update:} $\vecb\mu_{t|t}=\vecb\mu_{t|t-1}+\mat K_t(\vecb y_t-\hat{\vecb y}_t)$, \; $\mat\Sigma_{t|t}=\mat\Sigma_{t|t-1}-\mat K_t\mat S_t\mat K_t\T$
+    \item \textbf{RTS Smoother ($t=T{-}1\dots 1$):} $\mat J_t=\mat\Sigma_{t|t}\mat F_t\T\mat\Sigma_{t+1|t}\inv$, \; $\vecb\mu_{t|T}=\vecb\mu_{t|t}+\mat J_t(\vecb\mu_{t+1|T}-\vecb\mu_{t+1|t})$
+    \item High sensor noise $\mat R_t\gg\mat\Sigma \Rightarrow \mat K_t\to\zeros$ (trust dynamics); $\mat R_t\to\zeros \Rightarrow$ snap to $\vecb y_t$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; KEY ADVANCES $-$ ZOH, HiPPO/S4 \& Selective $S6$}{%
+  \csfm{\bar{\mat A}_t = \exp(\Delta_t\mat A),\qquad \bar{\mat B}_t = (\Delta_t\mat A)\inv\bigl(\exp(\Delta_t\mat A)-\mat I\bigr)\Delta_t\mat B_t}
+  \begin{csbul}
+    \item \textbf{HiPPO-LegS:} $A_{nk}=-(2n{+}1)^{1/2}(2k{+}1)^{1/2}$ ($n>k$) projects history onto Legendre polynomials; \textbf{S4} uses NPLR + Woodbury/Cauchy
+    \item \textbf{LTI Failure:} fixed $(\bar{\mat A},\bar{\mat B},\mat C)$ cannot do content-based selection / induction heads
+    \item \textbf{Mamba ($S6$):} input-dependent $\mat B_t=\mathrm{Lin}_N(x_t)$, $\mat C_t=\mathrm{Lin}_N(x_t)$, $\Delta_t=\softplus(\mathrm{Lin}_1(x_t))$
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Parallel Scan, SRAM \& Gating}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{(\mat M_2,\vecb v_2)\bullet(\mat M_1,\vecb v_1)=(\mat M_2\mat M_1,\;\mat M_2\vecb v_1+\vecb v_2)}
+    \begin{csbul}
+      \item \textbf{Associative Scan:} solves time-varying $\vecb h_t=\bar{\mat A}_t\vecb h_{t-1}+\vecb b_t$ (and Kalman!) in $O(\log L)$ span
+      \item \textbf{$\Delta_t \leftrightarrow$ RNN Gate:} $\Delta_t\to\infty$ resets state to $x_t$; $\Delta_t\to 0$ persists $\vecb h_{t-1}$
+      \item \textbf{SRAM Fusion:} keep $(B,L,D,N)$ states in fast SRAM, never HBM
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{3pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny, align=center}]
+      \node[draw=csA, fill=csA!10, minimum width=2.1cm, rounded corners=2pt] (hbm) at (0,1.8) {GPU HBM\\$\mat X,\mat Y\;(B,L,D)$};
+      \node[draw=csD, fill=csD!12, minimum width=2.1cm, rounded corners=2pt] (sram) at (0,-0.7) {SRAM Scan\\$\bar{\mat A},\vecb h\;(B,L,D,N)$};
+      \draw[-{Stealth}, thick, csDom] (hbm.south west) -- (sram.north west);
+      \draw[-{Stealth}, thick, csD] (sram.north east) -- (hbm.south east);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Attention vs S4 vs Mamba vs Kalman}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{1.05cm}@{}}
+    \textbf{\textcolor{csE}{Model}} & \textbf{\textcolor{csE}{Training}} & \textbf{\textcolor{csE}{Step}} & \textbf{\textcolor{csE}{Cache}} & \textbf{\textcolor{csE}{Select?}}\\ \hline
+    Transformer & $O(L^2D)$ & $O(LD)$ & $O(LD)$ & Yes\\
+    LTI S4 (FFT) & $O(DL\log L)$ & $O(DN)$ & $O(DN)$ & No\\
+    Mamba ($S6$) & $O(LDN)$ & $O(DN)$ & $O(DN)$ & \textbf{Yes}\\
+    Kalman / RTS & $O(TN_z^3)$ & $O(N_z^3)$ & $O(N_z^2)$ & SNR $\mat K_t$\\
+  \end{tabular}\par\vspace{2pt}
+  \scriptsize Mamba achieves \textbf{linear $O(L)$ training} via parallel scan and \textbf{$O(1)$ per-token decoding} with fixed $O(DN)$ state.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ from sensor tracking to 1M-token LLMs}{%
+  \begin{csbul}
+    \item \textbf{Kalman / RTS:} robotics localization, navigation, econometrics, sensor fusion
+    \item \textbf{RSSMs (World Models):} deterministic $\vecb h_t$ + stochastic $\vecb z_t$ for RL planning
+    \item \textbf{LTI S4:} raw audio waveforms, irregular physiological time series
+    \item \textbf{Mamba / Hybrid Jamba:} $1\text{M}$-context LLMs, genomics (DNA), long-horizon induction heads
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{LTI Gives Speed ($O(L)$) $\cdot$ Selectivity ($\Delta_t,\mat B_t,\mat C_t$) Gives Intelligence} \\[1pt]
+  \footnotesize\mdseries \textbf{Fused associative scan in SRAM gives Mamba both Transformer selectivity and RNN $O(1)$ memory.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Kalman asymmetry:} $\mat\Sigma-\mat K\mat H\mat\Sigma$ loses PD $\Rightarrow$ Joseph form / QR
+    \item \textbf{Unstable $\mat A$:} $\mathrm{Re}(\lambda_i)>0$ explodes $\Rightarrow$ $\mat A=-\exp(\mat A_{\log})$
+    \item \textbf{HBM $(B,L,D,N)$:} naive $S6$ is mem-bound $\Rightarrow$ fuse scan in SRAM
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Classical State-Space Models, Structured SSMs \& Selective Scan (Mamba)}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Kalman Predict \& Gain:\csfm{\mat\Sigma_{t|t-1}=\mat F_t\mat\Sigma_{t-1|t-1}\mat F_t\T+\mat Q_t,\quad \mat K_t=\mat\Sigma_{t|t-1}\mat H_t\T(\mat H_t\mat\Sigma_{t|t-1}\mat H_t\T+\mat R_t)\inv}
+    \item Joseph-Form Covariance Update:\csfm{\mat\Sigma_{t|t}=(\mat I-\mat K_t\mat H_t)\mat\Sigma_{t|t-1}(\mat I-\mat K_t\mat H_t)\T+\mat K_t\mat R_t\mat K_t\T}
+    \item RTS Backward Smoother:\csfm{\mat J_t=\mat\Sigma_{t|t}\mat F_t\T\mat\Sigma_{t+1|t}\inv,\quad \vecb\mu_{t|T}=\vecb\mu_{t|t}+\mat J_t(\vecb\mu_{t+1|T}-\vecb\mu_{t+1|t})}
+    \item ZOH Discretization:\csfm{\bar{\mat A}_t=\exp(\Delta_t\mat A),\quad \bar{\mat B}_t=(\Delta_t\mat A)\inv(e^{\Delta_t\mat A}-\mat I)\Delta_t\mat B_t\approx \Delta_t\mat B_t}
+    \item Associative Parallel Scan Operator:\csfm{(\mat M_2,\vecb v_2)\bullet(\mat M_1,\vecb v_1)=(\mat M_2\mat M_1,\;\mat M_2\vecb v_1+\vecb v_2)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{MAMBA ($S6$) HARDWARE-AWARE SCAN RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Project input $\mat X\in\R^{B\times L\times D}$ to $\mat B=\mathrm{Lin}_N(\mat X)$, $\mat C=\mathrm{Lin}_N(\mat X)$, and $\mat\Delta=\softplus(\vecb b_\Delta + \mathrm{Lin}_1(\mat X))$ in HBM
+    \item \textbf{Load tiles to SRAM:} read $(\mat A, \mat\Delta, \mat B, \mat C, \mat X)$ into on-chip SRAM
+    \item \textbf{Discretize \& Scan in SRAM:} form $\bar{\mat A}=\exp(\mat\Delta\mat A)$, $\bar{\mat B}=\mat\Delta\mat B$; run parallel associative scan $\bullet$ over $L$ in $O(\log L)$ depth
+    \item \textbf{Project \& Write:} compute $y_t = \mat C_t\vecb h_t$ in SRAM; write only $\mat Y\in\R^{B\times L\times D}$ to HBM (recompute $\vecb h$ on backward pass)
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    linear-Gaussian noisy sensors & Kalman Filter (online) / RTS (offline)\\
+    nonlinear dynamics & Extended / Unscented KF or Particle Filter\\
+    continuous LTI audio / waves & S4 / S4D (HiPPO + FFT convolution)\\
+    long-context discrete tokens & Mamba ($S6$) selective scan ($O(L)$)\\
+    exact needle-in-haystack recall & Hybrid Mamba + Attention (e.g.\ Jamba)\\
+    GPU OOM on $S6$ backward & SRAM activation recomputation\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& DICTIONARY CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Log-marginal likelihood:} $\ell_{1:T} = \sum_{t=1}^T \log\Normal(\vecb y_t\mid\hat{\vecb y}_t,\mat S_t)$
+    \item \textbf{LTI Conv Kernel:} $\bar{\mat K}=(\mat C\bar{\mat B},\mat C\bar{\mat A}\bar{\mat B},\dots,\mat C\bar{\mat A}^{L-1}\bar{\mat B})$
+    \item \textbf{KV Cache vs SSM State:} Transformer $O(LD)$ grows with $L$; Mamba $O(DN)$ is constant ($N\approx 16$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{TRAINING FLOPs SCALING ACROSS CONTEXT $L$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmode=log, ymode=log, log basis x=2,
+      xmin=256, xmax=65536, ymax=2e8, xlabel={Sequence Length $L$}, ylabel={Relative FLOPs},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={256,1024,4096,16384,65536}, xticklabels={$2^8$,$2^{10}$,$2^{12}$,$2^{14}$,$2^{16}$},
+      ytick={1e3,1e4,1e5,1e6,1e7},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.93)}, anchor=north west, font=\tiny, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csA, very thick, domain=256:65536, samples=25] {x^2 * 0.001};
+      \addlegendentry{Transformer $O(L^2)$}
+      \addplot[csF, thick, dashed, domain=256:65536, samples=25] {x * ln(x)/ln(2) * 1.5};
+      \addlegendentry{LTI S4 $O(L\log L)$}
+      \addplot[csD, ultra thick, domain=256:65536, samples=25] {x * 16};
+      \addlegendentry{Mamba ($S6$) $O(LN)$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Naive $\mat\Sigma_{t|t}$ subtraction:} $(\mat I-\mat K_t\mat H_t)\mat\Sigma_{t|t-1}$ loses symmetry/PD in float32; always use the symmetric Joseph update or Cholesky/QR factors
+    \item \textbf{Explicit matrix inverse $\mat S_t\inv$:} never invert $\mat S_t$ or $\mat\Sigma_{t+1|t}$; solve linear systems $\mat S_t\T\mat K_t\T = \mat H_t\mat\Sigma_{t|t-1}$
+    \item \textbf{Positive eigenvalues in $\mat A$:} if $\mathrm{Re}(\lambda_i(\mat A))>0$, discrete $|\bar\lambda_i|>1$ explodes; parameterize $\mat A = -\exp(\mat A_{\log})$ and $\Delta_t = \softplus(\cdot) > 0$
+    \item \textbf{Using FFT convolution on Mamba:} input-dependent $(\Delta_t,\mat B_t,\mat C_t)$ break time-invariance, so $\vecb y\ne\bar{\mat K}*\vecb x$; must use the associative parallel scan $\bullet$
+    \item \textbf{Saving 4D state $\vecb h\in\R^{B\times L\times D\times N}$ in HBM:} blows up GPU memory $N\times$; recompute in SRAM during backprop
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{All state-space models compress the past into a Markovian state.} Classical \textbf{Kalman/RTS} propagates Gaussian beliefs $(\vecb\mu_t,\mat\Sigma_t)$ gated by inverse SNR ($\mat K_t$). Deep \textbf{LTI SSMs (S4)} discretize HiPPO ODEs into fast $O(L\log L)$ FFT convolutions but cannot select content. \textbf{Mamba ($S6$)} makes $(\Delta_t,\mat B_t,\mat C_t)$ functions of token $x_t$ and fuses an $O(\log L)$ \textbf{associative scan in GPU SRAM}, achieving linear $O(L)$ training and constant $O(1)$ per-token inference.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,155 @@
+% =============================================================================
+% Unified Mathematical & Editorial Macros for AI/ML Knowledge Monograph
+% =============================================================================
+
+% --- Number Sets & Spaces ----------------------------------------------------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Hilbert}{\mathcal{H}}
+\newcommand{\Simplex}{\Delta}
+
+% --- Vectors, Matrices & Tensors ---------------------------------------------
+\newcommand{\vecb}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\bm{#1}}
+\newcommand{\T}{^{\top}}
+\newcommand{\inv}{^{-1}}
+\newcommand{\pinv}{^{+}}
+\newcommand{\eye}{\mat{I}}
+\newcommand{\zeros}{\vecb{0}}
+\newcommand{\ones}{\vecb{1}}
+
+% --- Linear Algebra & Calculus Operators -------------------------------------
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\spn}{span}
+\DeclareMathOperator{\nullsp}{null}
+\DeclareMathOperator{\colsp}{col}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator{\softplus}{softplus}
+\DeclareMathOperator{\sigmoid}{\sigma}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator*{\maximize}{maximize}
+
+\newcommand{\grad}{\nabla}
+\newcommand{\hess}{\nabla^2}
+\newcommand{\jac}{\mat{J}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\dd}[2]{\frac{\mathrm{d} #1}{\mathrm{d} #2}}
+
+% --- Norms, Inner Products & Delimiters --------------------------------------
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\DeclarePairedDelimiterX{\inner}[2]{\langle}{\rangle}{#1,\, #2}
+\DeclarePairedDelimiter{\set}{\{}{\}}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+
+% --- Probability, Statistics & Information Theory ----------------------------
+\DeclareMathOperator{\Prob}{\mathbb{P}}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Corr}{Corr}
+\DeclareMathOperator{\Entropy}{H}
+\DeclareMathOperator{\MI}{I}
+\newcommand{\KL}[2]{D_{\mathrm{KL}}\!\left(#1 \,\middle\|\, #2\right)}
+\newcommand{\JS}[2]{D_{\mathrm{JS}}\!\left(#1 \,\middle\|\, #2\right)}
+\newcommand{\Wass}[3][p]{W_{#1}\!\left(#2,\, #3\right)}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\Uniform}{\mathcal{U}}
+\newcommand{\Bernoulli}{\mathrm{Bern}}
+\newcommand{\Cat}{\mathrm{Cat}}
+\newcommand{\given}{\,\middle|\,}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\simiid}{\overset{\mathrm{i.i.d.}}{\sim}}
+
+% --- Reinforcement Learning & Decision Processes -----------------------------
+\newcommand{\States}{\mathcal{S}}
+\newcommand{\Actions}{\mathcal{A}}
+\newcommand{\Rewards}{\mathcal{R}}
+\newcommand{\Trans}{\mathcal{P}}
+\newcommand{\Bellman}{\mathcal{T}}
+\newcommand{\Qval}{Q}
+\newcommand{\Vval}{V}
+\newcommand{\Adv}{A}
+
+% --- Cross-Book Citation & Figure Helpers ------------------------------------
+% Standard citation format: \bookcite{book_slug}{Ch. 4, p. 82}
+\DeclareRobustCommand{\bookcite}[2]{%
+  \textcolor{monographIndigo}{\textsf{[\texttt{\detokenize{#1}}, #2]}}%
+}
+
+% Standard figure macro for 300 DPI extracted source figures
+\newcommand{\monographfig}[4][0.82\textwidth]{%
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[width=#1]{#2}
+    \caption{#3}
+    \label{#4}
+  \end{figure}
+}
+
+% Highlighted inline notation badge for resolving cross-book symbol conflicts
+\newcommand{\notebadge}[2]{%
+  \textbf{#1}: \ensuremath{#2}%
+}
+
+% Dual-mode leaf monograph header: standalone leaf vs. chapter inside master.tex
+% Args: {Domain}{Parent Topic}{Sub-Topic}{Leaf Title}{Synthesized Book Slugs}
+\newcommand{\monographleaf}[5]{%
+  \ifSubfilesClassLoaded{%
+    \renewcommand{\thesection}{\arabic{section}}%
+    \renewcommand{\thesubsection}{\thesection.\arabic{subsection}}%
+    \renewcommand{\thefigure}{\arabic{figure}}%
+    \renewcommand{\thetable}{\arabic{table}}%
+    \renewcommand{\theequation}{\arabic{equation}}%
+    \renewcommand{\thealgocf}{\arabic{algocf}}%
+    \begin{tcolorbox}[
+      enhanced,
+      colback=monographNavyBg,
+      colframe=monographNavy,
+      boxrule=0.8pt,
+      leftrule=4pt,
+      arc=3pt,
+      top=10pt,
+      bottom=10pt,
+      left=12pt,
+      right=12pt,
+      before skip=0pt,
+      after skip=12pt
+    ]
+      {\footnotesize\textsf{\color{monographTeal}\textbf{#1} $\triangleright$ #2 $\triangleright$ #3}}\par\vspace{4pt}
+      {\LARGE\bfseries\color{monographNavy}#4}\par\vspace{6pt}
+      {\footnotesize\color{monographSlate}\textbf{Synthesized Sources:} #5}
+    \end{tcolorbox}
+    \markboth{#4}{#4}%
+    \phantomsection%
+    \addcontentsline{toc}{section}{#4}%
+  }{%
+    \chapter{#4}%
+    \begin{tcolorbox}[
+      enhanced,
+      colback=monographCodeBg,
+      colframe=monographRule,
+      boxrule=0.6pt,
+      leftrule=3pt,
+      arc=2pt,
+      top=5pt,
+      bottom=5pt,
+      left=8pt,
+      right=8pt,
+      before skip=0pt,
+      after skip=10pt
+    ]
+      {\footnotesize\textsf{\color{monographTeal}#1 $\triangleright$ \textbf{#2} $\triangleright$ #3}}\par\vspace{2pt}
+      {\footnotesize\color{monographSlate}\textbf{Synthesized Sources:} #5}
+    \end{tcolorbox}
+  }%
+}

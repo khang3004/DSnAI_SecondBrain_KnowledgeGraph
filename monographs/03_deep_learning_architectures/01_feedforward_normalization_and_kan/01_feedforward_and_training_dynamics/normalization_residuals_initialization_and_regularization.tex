@@ -1,0 +1,333 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Neural Architectures, Representations \& Regularization}{MLPs, Kolmogorov-Arnold Networks, Residuals \& Regularization}{Feedforward Networks, Normalization, Residuals \& KANs}{Initialization, Batch/LayerNorm, Residual Connections, Weight Decay \& Dropout}{\bookcite{understandingdl_simonprince}{Ch. 7, 9, 11}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 7}, \bookcite{deep_learning_foundations_concepts}{Ch. 7.4, 9}, \bookcite{build_large_language_model_from_scratch}{Ch. 4.2, 4.4}}
+
+\section{Problem Formulation \& Unified Notation}
+\label{sec:normres:formulation}
+
+Training deep neural networks of depth $L \gg 1$ requires simultaneously solving three coupled conditioning problems: (i) preserving signal and gradient variance at initialization so forward activations and backward sensitivities neither vanish nor explode; (ii) maintaining well-conditioned intermediate feature distributions and smooth loss landscapes throughout optimization via normalization and residual pathways; and (iii) constraining effective model capacity via explicit and stochastic regularization so that overparameterized networks generalize.
+
+Consider an $L$-layer feedforward network mapping an input $\vecb{x} = \vecb{h}^{(0)} \in \R^{D_0}$ to an output $\hat{\vecb{y}} \in \R^{D_L}$. At layer $l \in \{1, \dots, L\}$ with fan-in $D_{l-1}$ and fan-out $D_l$, the pre-activation $\vecb{f}^{(l)} \in \R^{D_l}$ and post-activation $\vecb{h}^{(l)} \in \R^{D_l}$ evolve according to:
+\begin{equation}
+  \vecb{f}^{(l)} = \mat{W}^{(l)} \vecb{h}^{(l-1)} + \vecb{b}^{(l)}, \qquad
+  \vecb{h}^{(l)} = \phi\!\left(\vecb{f}^{(l)}\right),
+  \label{eq:normres:ffn_layer}
+\end{equation}
+where $\mat{W}^{(l)} \in \R^{D_l \times D_{l-1}}$ is the weight matrix, $\vecb{b}^{(l)} \in \R^{D_l}$ is the bias vector, and $\phi(\cdot)$ is an element-wise nonlinearity (e.g., $\ReLU(z) = \max(0, z)$, $\tanh$, or GELU). For a mini-batch of $N$ examples (or 4D feature maps $\mat{X} \in \R^{N \times C \times H \times W}$ with batch size $N$, channels $C$, and spatial dimensions $H \times W$), training minimizes the regularized empirical risk:
+\begin{equation}
+  \tilde{\mathcal{J}}(\vecb{\theta}) = \frac{1}{N}\sum_{n=1}^{N} \ell\!\left(f(\vecb{x}_n; \vecb{\theta}),\, \vecb{y}_n\right) + \lambda\,\Omega(\vecb{\theta}),
+  \label{eq:normres:reg_objective}
+\end{equation}
+where $\vecb{\theta} = \{\mat{W}^{(l)}, \vecb{b}^{(l)}\}_{l=1}^L$ collects all trainable parameters, $\Omega(\vecb{\theta})$ is a parameter norm penalty (typically applied only to weights $\mat{W}^{(l)}$), and $\lambda \ge 0$ governs regularization strength.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{box:normres:notation}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{} >{\bfseries\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}p{0.19\textwidth} >{\raggedright\arraybackslash}p{0.20\textwidth} >{\raggedright\arraybackslash}p{0.19\textwidth} >{\raggedright\arraybackslash}X @{}}
+\toprule
+Concept & Prince & Goodfellow et al. & Bishop \& Bishop & Unified Monograph Notation \\
+\midrule
+Layer weights \& biases & $\mat{\Omega}_k, \vecb{\beta}_k$ & $\mat{W}^{(l)}, \vecb{b}^{(l)}$ & $\mat{W}, \vecb{w}_0$ (or $\mat{W}^{(l)}$) & $\mat{W}^{(l)} \in \R^{D_l \times D_{l-1}}$, $\vecb{b}^{(l)} \in \R^{D_l}$ \\
+Pre-/post-activations & $\vecb{f}_k, \vecb{h}_k = a[\vecb{f}_{k-1}]$ & $\vecb{a}^{(l)}, \vecb{h}^{(l)} = g(\vecb{a}^{(l)})$ & $\vecb{a}, \vecb{z} = h(\vecb{a})$ & $\vecb{f}^{(l)}, \vecb{h}^{(l)} = \phi(\vecb{f}^{(l)})$ \\
+Norm scale \& shift & $\gamma_c, \delta_c$ (per channel) & $\gamma, \beta$ & $\gamma_i, \beta_i$ & $\vecb{\gamma}, \vecb{\beta}$ (\texttt{scale}, \texttt{shift} in Raschka) \\
+$L_2$ penalty coeff. & $\lambda \sum_j \phi_j^2$ & $\frac{\alpha}{2}\norm{\vecb{w}}_2^2$ & $\frac{\lambda}{2}\norm{\vecb{w}}_2^2$ & $\frac{\lambda}{2}\sum_l \norm{\mat{W}^{(l)}}_F^2$ \\
+Dropout mask & Random zeroing & $\vecb{d} \in \{0,1\}^n$, $\frac{1}{2}\mat{W}$ at test & Bernoulli mask & $\vecb{m} \sim \Bernoulli(p)$, inverted scaling $1/p$ \\
+Residual block & $\vecb{f}_k[\vecb{x}] + \vecb{x}$ & Skip connections & $\vecb{z}_l = \mathcal{F}_l(\vecb{z}_{l-1}) + \vecb{z}_{l-1}$ & $\vecb{x}^{(l+1)} = \vecb{x}^{(l)} + \mathcal{F}_l(\vecb{x}^{(l)})$ \\
+\bottomrule
+\end{tabularx}
+\par\vspace{4pt}
+{\footnotesize\textit{Reconciled Sources:} \bookcite{understandingdl_simonprince}{Ch. 7, 9, 11}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 7}, \bookcite{deep_learning_foundations_concepts}{Ch. 7.4, 9}, and \bookcite{build_large_language_model_from_scratch}{Ch. 4.2, 4.4}.}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:normres:derivations}
+
+\subsection{Variance-Preserving Initialization: Xavier/Glorot and Kaiming/He}
+\label{sec:normres:init}
+
+At initialization, biases are set to $\vecb{b}^{(l)} = \zeros$ and weights are drawn i.i.d.\ from a zero-mean distribution with variance $\sigma_l^2 = \Var(W_{ij}^{(l)})$. If $\sigma_l^2$ is even slightly miscalibrated, repeated multiplication across $L$ layers causes exponential blow-up or collapse of both forward activations and backward gradients \bookcite{understandingdl_simonprince}{Ch. 7, PDF pp. 122--125}.
+
+\begin{coremath}[Forward \& Backward Variance Preservation: Xavier vs.\ Kaiming/He]
+\label{box:normres:init_proof}
+Assume $\vecb{h}^{(l-1)}$ has independent, identically distributed components with $\E[h_j^{(l-1)}] = 0$ (or symmetric pre-activations $f_j^{(l-1)}$) and $W_{ij}^{(l)}$ are i.i.d.\ with $\E[W_{ij}^{(l)}] = 0$, $\Var(W_{ij}^{(l)}) = \sigma_l^2$, independent of $\vecb{h}^{(l-1)}$. Since $\vecb{b}^{(l)} = \zeros$, each pre-activation $f_i^{(l)} = \sum_{j=1}^{D_{l-1}} W_{ij}^{(l)} h_j^{(l-1)}$ satisfies $\E[f_i^{(l)}] = 0$ and:
+\begin{equation}
+  \Var\!\left(f_i^{(l)}\right) = \sum_{j=1}^{D_{l-1}} \Var\!\left(W_{ij}^{(l)} h_j^{(l-1)}\right)
+  = \sum_{j=1}^{D_{l-1}} \E\!\left[\left(W_{ij}^{(l)}\right)^2\right] \E\!\left[\left(h_j^{(l-1)}\right)^2\right]
+  = D_{l-1}\,\sigma_l^2\,\E\!\left[\left(h_j^{(l-1)}\right)^2\right].
+  \label{eq:normres:var_forward}
+\end{equation}
+\textbf{Case 1: Linear / $\tanh$ regime (Xavier/Glorot).} In the linear regime around $0$ ($\phi(z) \approx z$), $\E[(h_j^{(l-1)})^2] = \Var(f_j^{(l-1)})$. Enforcing $\Var(f_i^{(l)}) = \Var(f_j^{(l-1)})$ requires $D_{l-1}\sigma_l^2 = 1$. Repeating the argument for the backward gradient $\vecb{\delta}^{(l-1)} = (\mat{W}^{(l)})\T \vecb{\delta}^{(l)} \odot \phi'(\vecb{f}^{(l-1)})$ yields $D_l \sigma_l^2 = 1$. Averaging the fan-in and fan-out constraints gives \textbf{Xavier/Glorot initialization}:
+\begin{equation}
+  \sigma_{\text{Xavier}}^2 = \frac{2}{D_{l-1} + D_l}, \qquad
+  W_{ij}^{(l)} \sim \Uniform\!\left(-\sqrt{\frac{6}{D_{l-1}+D_l}},\, \sqrt{\frac{6}{D_{l-1}+D_l}}\right).
+  \label{eq:normres:xavier}
+\end{equation}
+\textbf{Case 2: ReLU nonlinearity (Kaiming/He).} For $\phi(z) = \ReLU(z) = \max(0, z)$ and a symmetric zero-mean pre-activation density $p(f) = p(-f)$, half of the pre-activations are clipped to zero, so the second moment of the post-activation is exactly half the pre-activation variance \bookcite{understandingdl_simonprince}{Ch. 7, Eq. (7.30), PDF p. 123}:
+\begin{equation}
+  \E\!\left[\left(h_j^{(l-1)}\right)^2\right]
+  = \int_0^{\infty} f^2\, p(f)\,\mathrm{d}f
+  = \frac{1}{2}\int_{-\infty}^{\infty} f^2\, p(f)\,\mathrm{d}f
+  = \frac{1}{2}\Var\!\left(f_j^{(l-1)}\right).
+  \label{eq:normres:relu_half}
+\end{equation}
+Substituting \eqref{eq:normres:relu_half} into \eqref{eq:normres:var_forward} gives $\Var(f_i^{(l)}) = \frac{1}{2} D_{l-1} \sigma_l^2 \Var(f_j^{(l-1)})$. Preserving variance across all $L$ layers therefore requires \textbf{Kaiming/He initialization}:
+\begin{equation}
+  \sigma_{\text{He, fwd}}^2 = \frac{2}{D_{l-1}} \quad (\text{fan-in}), \qquad
+  \sigma_{\text{He, bwd}}^2 = \frac{2}{D_l} \quad (\text{fan-out}), \qquad
+  \sigma_{\text{He, avg}}^2 = \frac{4}{D_{l-1} + D_l}.
+  \label{eq:normres:he_init}
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Why ReLU Needs the $\sqrt{2}$ Weight Standard Deviation Factor]
+A ReLU unit sets negative pre-activations to zero, discarding $50\%$ of the signal energy at every layer. Without the factor of $2$ in $\sigma_l^2 = 2/D_{l-1}$ (i.e., $\sqrt{2}$ in weight standard deviation), the activation variance decays geometrically as $(1/2)^L$; after $L = 30$ layers, variance shrinks by $2^{-30} \approx 9.3 \times 10^{-10}$, starving both forward representations and backward gradients.
+\end{intuition}
+
+\subsection{Normalization Layers: BatchNorm, LayerNorm, RMSNorm \& GroupNorm}
+\label{sec:normres:normalization}
+
+{\sloppy Even with exact initialization, parameter updates during training alter layer statistics and induce ill-conditioned curvature. As shown in \bookcite{deep_learning_foundations_concepts}{Ch. 7.4, pp. 224--229}, \bookcite{understandingdl_simonprince}{Ch. 11, PDF p. 218}, and \bookcite{build_large_language_model_from_scratch}{Ch. 4.2, PDF pp. 257--268}, normalization layers standardize activations along specific tensor axes and re-introduce learnable affine degrees of freedom $\vecb{\gamma}, \vecb{\beta}$.\par}
+
+For a 4D activation tensor $\mat{X} \in \R^{N \times C \times H \times W}$ (where $N$ is batch size, $C$ is channels/features, and $H, W$ are spatial or sequence dimensions), each normalization family computes mean $\mu_i$ and variance $\sigma_i^2$ over an index set $\mathcal{S}_i$ specific to element $i = (n, c, h, w)$:
+\begin{equation}
+  \mu_i = \frac{1}{|\mathcal{S}_i|}\sum_{k \in \mathcal{S}_i} X_k, \qquad
+  \sigma_i^2 = \frac{1}{|\mathcal{S}_i|}\sum_{k \in \mathcal{S}_i} (X_k - \mu_i)^2, \qquad
+  \hat{X}_i = \frac{X_i - \mu_i}{\sqrt{\sigma_i^2 + \epsilon}}, \qquad
+  Y_i = \gamma_c \hat{X}_i + \beta_c.
+  \label{eq:normres:general_norm}
+\end{equation}
+
+\begin{coremath}[Exact Normalization Axes, BatchNorm Jacobian Coupling \& RMSNorm]
+\label{box:normres:norm_axes}
+\begin{enumerate}
+  \item \textbf{BatchNorm (BN):} $\mathcal{S}_i^{\text{BN}} = \{(n', c, h', w') : n' \in [N],\, h' \in [H],\, w' \in [W]\}$ with $|\mathcal{S}_i^{\text{BN}}| = NHW$. During training, BN couples all $N$ batch elements via $\mu_c, \sigma_c^2$. Differentiating $\hat{x}_n = (x_n - \mu_B)/\sqrt{\sigma_B^2 + \epsilon}$ with respect to $x_n$ yields the coupled mini-batch Jacobian:
+  \begin{equation}
+    \pd{\mathcal{L}}{x_n} = \frac{1}{\sqrt{\sigma_B^2 + \epsilon}} \left[ \pd{\mathcal{L}}{\hat{x}_n} - \frac{1}{N}\sum_{m=1}^N \pd{\mathcal{L}}{\hat{x}_m} - \frac{\hat{x}_n}{N}\sum_{m=1}^N \pd{\mathcal{L}}{\hat{x}_m}\,\hat{x}_m \right].
+    \label{eq:normres:bn_grad}
+  \end{equation}
+  At inference, BN replaces mini-batch statistics with exponential moving averages $\hat{\mu}_{\text{run}}, \hat{\sigma}_{\text{run}}^2$ accumulated during training.
+  \item \textbf{LayerNorm (LN):} $\mathcal{S}_i^{\text{LN}} = \{(n, c', h', w') : c' \in [C],\, h' \in [H],\, w' \in [W]\}$ (or across the last embedding dimension $D$ for sequence tensors $\mat{X} \in \R^{N \times T \times D}$, as implemented via \texttt{dim=-1, unbiased=False} in \bookcite{build_large_language_model_from_scratch}{Ch. 4.2, Listing 4.2}). LN is completely independent across batch elements and requires no train/eval running statistics.
+  \item \textbf{GroupNorm (GN) \& InstanceNorm (IN):} Partition $C$ channels into $G$ groups of $C/G$ channels: $\mathcal{S}_i^{\text{GN}} = \{(n, c', h', w') : \lfloor c'/(C/G)\rfloor = \lfloor c/(C/G)\rfloor,\, h' \in [H],\, w' \in [W]\}$. Setting $G=1$ recovers LN; setting $G=C$ recovers InstanceNorm \bookcite{understandingdl_simonprince}{Ch. 11, Fig. 11.14, PDF p. 218}.
+  \item \textbf{RMSNorm:} Used in modern LLMs (e.g., LLaMA, Gemma) for computational efficiency \bookcite{build_large_language_model_from_scratch}{PDF p. 705}, RMSNorm drops mean centering and normalizes solely by the root mean square over the feature dimension $D$:
+  \begin{equation}
+    \bar{x}_i = \frac{x_i}{\mathrm{RMS}(\vecb{x})}, \qquad
+    \mathrm{RMS}(\vecb{x}) = \sqrt{\frac{1}{D}\sum_{j=1}^D x_j^2 + \epsilon}, \qquad
+    y_i = \gamma_i \bar{x}_i.
+    \label{eq:normres:rmsnorm}
+  \end{equation}
+  Eliminating the mean subtraction saves one reduction pass over $D$ elements while preserving re-scaling invariance: $\mathrm{RMS}(\alpha\vecb{x}) = \alpha\,\mathrm{RMS}(\vecb{x})$ for $\alpha > 0$.
+\end{enumerate}
+\end{coremath}
+
+\subsection{Residual Connections: Gradient Highway, Shattered Gradients \& Pre-LN vs.\ Post-LN}
+\label{sec:normres:residuals}
+
+In deep plain networks, even with He initialization, gradients become spatially uncorrelated across nearby inputs --- a phenomenon termed \emph{shattered gradients} \bookcite{understandingdl_simonprince}{Ch. 11, Fig. 11.3, PDF p. 202}, \bookcite{deep_learning_foundations_concepts}{Ch. 9.5, Fig. 9.12, p. 274}. Residual networks (ResNets) resolve this by adding an identity skip connection around each nonlinear residual block $\mathcal{F}_l$:
+\begin{equation}
+  \vecb{x}^{(l+1)} = \vecb{x}^{(l)} + \mathcal{F}_l\!\left(\vecb{x}^{(l)};\, \vecb{\theta}_l\right).
+  \label{eq:normres:residual_block}
+\end{equation}
+
+\begin{coremath}[Residual Gradient Highway, Ensemble of Paths \& $1/\sqrt{L}$ Variance Scaling]
+\label{box:normres:residual_math}
+Unrolling \eqref{eq:normres:residual_block} from layer $l$ to $L$ yields $\vecb{x}^{(L)} = \vecb{x}^{(l)} + \sum_{k=l}^{L-1} \mathcal{F}_k(\vecb{x}^{(k)})$. Applying the chain rule to a scalar loss $\mathcal{L}$ gives the exact backward gradient:
+\begin{equation}
+  \pd{\mathcal{L}}{\vecb{x}^{(l)}}
+  = \pd{\mathcal{L}}{\vecb{x}^{(L)}} \left( \eye + \pd{}{\vecb{x}^{(l)}} \sum_{k=l}^{L-1} \mathcal{F}_k\!\left(\vecb{x}^{(k)}\right) \right)
+  = \pd{\mathcal{L}}{\vecb{x}^{(L)}} \prod_{k=l}^{L-1} \left( \eye + \pd{\mathcal{F}_k(\vecb{x}^{(k)})}{\vecb{x}^{(k)}} \right).
+  \label{eq:normres:residual_jacobian}
+\end{equation}
+The additive identity $\eye$ creates an unimpeded \textbf{gradient highway}: $\pd{\mathcal{L}}{\vecb{x}^{(L)}}$ propagates directly to any earlier layer $l$ without being attenuated by repeated matrix multiplications \bookcite{build_large_language_model_from_scratch}{Ch. 4.4, PDF pp. 280--287}. Expanding the nested composition across $L$ blocks reveals an implicit ensemble of $2^L$ computational paths of lengths $0$ through $L$ \bookcite{deep_learning_foundations_concepts}{Ch. 9.5, Eq. (9.40), p. 276}.
+
+\textbf{Variance Growth \& $1/\sqrt{L}$ Scaling:} If $\vecb{x}^{(l)}$ and $\mathcal{F}_l(\vecb{x}^{(l)})$ are uncorrelated with $\Var(\vecb{x}^{(l)}) = \sigma_x^2$ and $\Var(\mathcal{F}_l) = \sigma_F^2$, then $\Var(\vecb{x}^{(l+1)}) = \Var(\vecb{x}^{(l)}) + \Var(\mathcal{F}_l)$ doubles at each block if $\sigma_F^2 = \sigma_x^2$, causing exponential variance growth $2^L$ \bookcite{understandingdl_simonprince}{Ch. 11, PDF p. 206}. To keep $\Var(\vecb{x}^{(L)}) = \mathcal{O}(1)$ at depth $L$ without normalization, residual branches must be scaled by $1/\sqrt{L}$ (or $1/\sqrt{2L}$ in Transformers with two sub-layers per block), yielding $\Var(\vecb{x}^{(L)}) = \Var(\vecb{x}^{(0)}) + \sum_{l=0}^{L-1} \frac{1}{L}\sigma_F^2 = \sigma_0^2 + \sigma_F^2$.
+\end{coremath}
+
+In Transformer architectures, placement of LayerNorm/RMSNorm relative to the residual addition critically governs gradient conditioning \bookcite{build_large_language_model_from_scratch}{PDF p. 704}:
+\begin{itemize}
+  \item \textbf{Post-LN:} $\vecb{x}^{(l+1)} = \mathrm{Norm}\!\left(\vecb{x}^{(l)} + \mathcal{F}_l(\vecb{x}^{(l)})\right)$. The identity path passes \emph{through} the normalization Jacobian at every block, causing large gradients near the output layer and requiring careful learning-rate warmup.
+  \item \textbf{Pre-LN:} $\vecb{x}^{(l+1)} = \vecb{x}^{(l)} + \mathcal{F}_l\!\left(\mathrm{Norm}(\vecb{x}^{(l)})\right)$. The identity skip connection remains completely unmodulated from input to output, bounding gradient norms across depth and enabling stable training without aggressive warmup.
+\end{itemize}
+
+\subsection{Regularization: Weight Decay, Dropout, Label Smoothing, Mixup \& Early Stopping}
+\label{sec:normres:regularization}
+
+\begin{coremath}[$L_2$ Weight Decay Curvature Filtering \& Inverted Dropout Ensemble]
+\label{box:normres:reg_math}
+\textbf{1. $L_2$ Weight Decay as Spectral Curvature Filtering:} Consider minimizing $\tilde{\mathcal{J}}(\vecb{w}) = \mathcal{J}(\vecb{w}) + \frac{\lambda}{2}\norm{\vecb{w}}_2^2$. A single gradient step yields $\vecb{w} \leftarrow (1 - \eta\lambda)\vecb{w} - \eta \grad_{\vecb{w}}\mathcal{J}(\vecb{w})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 7.1.1, Eq. (7.5), p. 231}. Expanding $\mathcal{J}(\vecb{w})$ to second order around the unregularized minimum $\vecb{w}^*$ with Hessian $\mat{H} = \mat{Q}\mat{\Lambda}\mat{Q}\T$ gives:
+\begin{equation}
+  (\mat{H} + \lambda\eye)\tilde{\vecb{w}} = \mat{H}\vecb{w}^*
+  \implies \tilde{w}_i' = \frac{\Lambda_{ii}}{\Lambda_{ii} + \lambda}\,(w_i^*)' \quad \text{in the eigenbasis of } \mat{H}.
+  \label{eq:normres:wd_curvature}
+\end{equation}
+Directions with high curvature ($\Lambda_{ii} \gg \lambda$) are preserved ($\frac{\Lambda_{ii}}{\Lambda_{ii}+\lambda} \approx 1$), whereas flat, low-curvature directions ($\Lambda_{ii} \ll \lambda$) are shrunk toward zero \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 7.1.1, pp. 232--234}, \bookcite{deep_learning_foundations_concepts}{Ch. 9.2, p. 262}.
+
+\textbf{2. Inverted Dropout \& Geometric-Mean Ensemble:} During training, each unit in $\vecb{h}^{(l)}$ is multiplied by an independent Bernoulli mask $m_j \sim \Bernoulli(p)$ and rescaled by $1/p$ (\emph{inverted dropout}) so that $\E[\tilde{h}_j^{(l)}] = h_j^{(l)}$ and no weight rescaling is needed at test time. For a softmax classifier with weights $\mat{W}$ and binary mask $\vecb{d} \in \{0,1\}^D$ ($p=1/2$), the geometric mean of the $2^D$ sub-networks is \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 7.12, Eqs. (7.60)--(7.66), p. 264}:
+\begin{equation}
+  \tilde{P}_{\text{ens}}(y \mid \vecb{v}) \propto \left(\prod_{\vecb{d}\in\{0,1\}^D} \exp\!\left(\mat{W}_{y,:}(\vecb{d}\odot\vecb{v}) + b_y\right)\right)^{2^{-D}}
+  = \exp\!\left(\frac{1}{2}\mat{W}_{y,:}\vecb{v} + b_y\right),
+  \label{eq:normres:dropout_geomean}
+\end{equation}
+showing that weight scaling at inference is \emph{exact} for single-layer softmax/linear models and a strong approximation for deep nonlinear networks.
+\end{coremath}
+
+Complementing weight decay and dropout, three widely used regularizers act directly on targets, inputs, or optimization trajectories \bookcite{understandingdl_simonprince}{Ch. 9, pp. 142--157}, \bookcite{deep_learning_foundations_concepts}{Ch. 9.3, pp. 266--268}:
+\begin{itemize}
+  \item \textbf{Label Smoothing:} Replaces one-hot target $\vecb{y} \in \{0,1\}^K$ with $\tilde{\vecb{y}} = (1 - \varepsilon)\vecb{y} + \frac{\varepsilon}{K}\ones$, preventing logit divergence ($\norm{\vecb{z}} \to \infty$) and improving calibration.
+  \item \textbf{Mixup:} Constructs convex combinations $\tilde{\vecb{x}} = \alpha\vecb{x}_i + (1-\alpha)\vecb{x}_j$, $\tilde{\vecb{y}} = \alpha\vecb{y}_i + (1-\alpha)\vecb{y}_j$ with $\alpha \sim \mathrm{Beta}(\nu,\nu)$, enforcing linear interpolation between training manifolds.
+  \item \textbf{Early Stopping:} Halting SGD after $T$ iterations acts like $L_2$ regularization with effective penalty $\lambda \propto (\eta T)^{-1}$ along low-curvature Hessian eigenvectors \newline\bookcite{deep_learning_foundations_concepts}{Ch. 9.3.1, Fig. 9.8, p. 268}.
+\end{itemize}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:normres:algorithms}
+
+Algorithm~\ref{alg:normres:preln_bn} details the exact forward mechanics of a Pre-LN RMSNorm Residual Block (standard in modern LLMs) alongside the dual train/eval execution paths of BatchNorm.
+
+\begin{algorithm}[htbp]
+\caption{Pre-LN RMSNorm Residual Block \& BatchNorm Train/Eval Execution}
+\label{alg:normres:preln_bn}
+\KwIn{Input $\vecb{x}^{(l)} \in \R^D$ (or mini-batch $\mat{X} \in \R^{N \times C \times H \times W}$); RMSNorm gain $\vecb{\gamma}$; BN params $(\vecb{\gamma}_{\text{bn}}, \vecb{\beta}_{\text{bn}}, \hat{\vecb{\mu}}, \hat{\vecb{\sigma}}^2)$, momentum $\rho \in (0,1)$, $\epsilon = 10^{-5}$.}
+\KwOut{Updated hidden state $\vecb{x}^{(l+1)}$ or normalized tensor $\mat{Y}$.}
+\BlankLine
+\textbf{Procedure 1: Pre-LN RMSNorm Residual Block}\;
+$\mathrm{rms} \leftarrow \sqrt{\frac{1}{D}\sum_{j=1}^D \left(x_j^{(l)}\right)^2 + \epsilon}$\;
+$\bar{\vecb{x}} \leftarrow \vecb{\gamma} \odot \left(\vecb{x}^{(l)} / \mathrm{rms}\right)$ \tcp*{No mean centering; invariant to positive rescaling}
+$\vecb{x}^{(l+1)} \leftarrow \vecb{x}^{(l)} + \mathcal{F}_l(\bar{\vecb{x}})$ \tcp*{Unmodulated identity skip path}
+\BlankLine
+\textbf{Procedure 2: BatchNorm Forward Pass (Train vs.\ Eval)}\;
+\eIf{\texttt{training == True}}{
+  Compute batch statistics $\vecb{\mu}_B, \vecb{\sigma}_B^2$ over $(N, H, W)$ for each channel $c \in [C]$\;
+  $\hat{\mat{X}}_{:,c,:,:} \leftarrow (\mat{X}_{:,c,:,:} - \mu_{B,c}) / \sqrt{\sigma_{B,c}^2 + \epsilon}$\;
+  Update running buffers: $\hat{\vecb{\mu}} \leftarrow (1-\rho)\hat{\vecb{\mu}} + \rho\vecb{\mu}_B$, \quad $\hat{\vecb{\sigma}}^2 \leftarrow (1-\rho)\hat{\vecb{\sigma}}^2 + \frac{N}{N-1}\rho\vecb{\sigma}_B^2$\;
+}{
+  $\hat{\mat{X}}_{:,c,:,:} \leftarrow (\mat{X}_{:,c,:,:} - \hat{\mu}_c) / \sqrt{\hat{\sigma}_c^2 + \epsilon}$ \tcp*{Frozen running stats; no batch coupling}
+}
+$\mat{Y}_{:,c,:,:} \leftarrow \gamma_{\text{bn},c}\hat{\mat{X}}_{:,c,:,:} + \beta_{\text{bn},c}$\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of Normalization Schemes across Axes, Complexity, and Inductive Properties.}
+\label{tab:normres:norm_compare}
+\small
+\begin{tabularx}{\textwidth}{@{} >{\bfseries}l l c c >{\raggedright\arraybackslash}X @{}}
+\toprule
+Method & Reduction Axes & Params & Train/Eval Match & Primary Domain \& Trade-offs \\
+\midrule
+BatchNorm & $(N, H, W)$ & $2C$ & No (EMA) & Vision CNNs; smooths loss landscape, fails at small $N$ \\
+LayerNorm & $(C, H, W)$ / $D$ & $2D$ & Yes & Transformers/NLP; batch-independent, mean-centered \\
+RMSNorm & Feature dim $D$ & $D$ & Yes & Modern LLMs; faster than LN, drops shift invariance \\
+GroupNorm & $(C/G, H, W)$ & $2C$ & Yes & Detection/segmentation with small $N$; interpolates LN--IN \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Why Normalization and Residuals Co-Evolve]
+Prince \bookcite{understandingdl_simonprince}{Ch. 11, PDF p. 218} highlights Santurkar et al.'s finding that BatchNorm's primary benefit is not reducing internal covariate shift, but rather smoothing the loss surface and bounding gradient Lipschitzness. Bishop \& Bishop \bookcite{deep_learning_foundations_concepts}{Ch. 9.5, Fig. 9.14, p. 276} show the exact same landscape-smoothing phenomenon for residual connections in 56-layer networks. Meanwhile, Raschka \bookcite{build_large_language_model_from_scratch}{Ch. 4.2, 4.4, PDF pp. 266, 287} demonstrates empirically in GPT-style Transformers that combining Pre-LN with shortcut connections eliminates vanishing gradients across depth without batch-size dependence.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:normres:visuals}
+
+Figure~\ref{fig:normres:shattered} illustrates the shattered-gradients pathology in plain ReLU networks as depth grows from $1$ to $24$ hidden layers, while Figure~\ref{fig:normres:norm_cubes} visualizes the tensor-slicing geometry of BatchNorm, GhostNorm, LayerNorm, GroupNorm, and InstanceNorm. Figure~\ref{fig:normres:loss_surface} contrasts the chaotic non-convex landscape of a 56-layer plain network against the smooth basin induced by residual connections.
+
+\monographfig[0.86\textwidth]{understandingdl_simonprince_p202_fig2.png}{Shattered gradients in plain ReLU networks: as depth increases from 1 to 24 layers, the gradient $\mathrm{d}y/\mathrm{d}x$ becomes white-noise-like and its spatial autocorrelation collapses to zero \bookcite{understandingdl_simonprince}{Ch. 11, Fig. 11.3, PDF p. 202}.}{fig:normres:shattered}
+
+\monographfig[0.88\textwidth]{understandingdl_simonprince_p218_fig1.png}{Normalization tensor-slicing schemes across batch, channel, and spatial/position axes for BatchNorm, GhostNorm, LayerNorm, GroupNorm, and InstanceNorm \bookcite{understandingdl_simonprince}{Ch. 11, Fig. 11.14, PDF p. 218}.}{fig:normres:norm_cubes}
+
+\monographfig[0.80\textwidth]{deep_learning_foundations_concepts_p293_fig1.png}{Loss surface visualization for a 56-layer network (a) without residual connections and (b) with residual connections, demonstrating dramatic smoothing of local minima and ridges \bookcite{deep_learning_foundations_concepts}{Ch. 9.5, Fig. 9.14, p. 276}.}{fig:normres:loss_surface}
+
+Figure~\ref{fig:normres:pre_post_ln} compares the computational graphs of Post-LN and Pre-LN residual blocks, highlighting how Pre-LN keeps the identity gradient highway unobstructed. Figure~\ref{fig:normres:var_prop} plots theoretical forward activation variance across $30$ ReLU layers under Xavier ($\sigma^2 = 1/D$), over-scaled ($\sigma^2 = 4/D$), and Kaiming/He ($\sigma^2 = 2/D$) initialization, alongside residual gradient norm preservation.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.7cm and 1.1cm]
+  % Left: Post-LN
+  \node[monoBox, minimum width=2.2cm] (post_x) {$\vecb{x}^{(l)}$};
+  \node[monoTealBox, right=of post_x, minimum width=1.8cm] (post_F) {$\mathcal{F}_l(\cdot)$};
+  \node[monoBox, right=0.8cm of post_F, circle, inner sep=2pt] (post_add) {$+$};
+  \node[monoWarnBox, right=0.8cm of post_add, minimum width=2.0cm] (post_norm) {$\mathrm{Norm}$};
+  \node[monoBox, right=0.8cm of post_norm, minimum width=1.6cm] (post_out) {$\vecb{x}^{(l+1)}$};
+
+  \draw[monoArrow] (post_x) -- (post_F);
+  \draw[monoArrow] (post_F) -- (post_add);
+  \draw[monoArrow] (post_add) -- (post_norm);
+  \draw[monoArrow] (post_norm) -- (post_out);
+  \draw[monoArrow, dashed, monographCrimson] (post_x.north) -- ++(0,0.65) -| (post_add.north)
+    node[midway, above, font=\scriptsize\color{monographCrimson}] {Skip enters \emph{before} Norm};
+
+  \node[above=1.05cm of post_F, font=\small\bfseries\color{monographNavy}] {(a) Post-LN Block (Warmup Sensitive)};
+
+  % Right / Below: Pre-LN
+  \node[monoBox, below=1.8cm of post_x, minimum width=2.2cm] (pre_x) {$\vecb{x}^{(l)}$};
+  \node[monoIndigoBox, right=of pre_x, minimum width=1.8cm] (pre_norm) {$\mathrm{Norm}$};
+  \node[monoTealBox, right=0.8cm of pre_norm, minimum width=1.8cm] (pre_F) {$\mathcal{F}_l(\cdot)$};
+  \node[monoBox, right=0.8cm of pre_F, circle, inner sep=2pt] (pre_add) {$+$};
+  \node[monoBox, right=0.8cm of pre_add, minimum width=1.6cm] (pre_out) {$\vecb{x}^{(l+1)}$};
+
+  \draw[monoArrow] (pre_x) -- (pre_norm);
+  \draw[monoArrow] (pre_norm) -- (pre_F);
+  \draw[monoArrow] (pre_F) -- (pre_add);
+  \draw[monoArrow, very thick, monographTeal] (pre_add) -- (pre_out);
+  \draw[monoArrow, very thick, monographTeal] (pre_x.north) -- ++(0,0.65) -| (pre_add.north)
+    node[midway, above, font=\scriptsize\color{monographTeal}] {Clean Identity Highway ($\eye$)};
+
+  \node[above=1.05cm of pre_F, font=\small\bfseries\color{monographNavy}] {(b) Pre-LN Block (Unobstructed Gradient Flow)};
+\end{tikzpicture}
+\caption{Post-LN vs.\ Pre-LN residual block topology. In Post-LN, the skip connection passes through $\mathrm{Norm}$ at every layer; in Pre-LN, the identity path bypasses normalization, preserving $\eye$ in the backward Jacobian.}
+\label{fig:normres:pre_post_ln}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.86\textwidth,
+  height=5.8cm,
+  ymode=log,
+  xmin=0, xmax=30,
+  ymin=1e-9, ymax=1e9,
+  xlabel={Layer Depth $l$},
+  ylabel={Activation Variance $\Var(f^{(l)})$ (log scale)},
+  grid=both,
+  grid style={monographRule!40},
+  legend pos=south west,
+  legend style={font=\footnotesize, fill=white, fill opacity=0.9, draw=monographRule},
+  tick label style={font=\footnotesize},
+  label style={font=\small\color{monographNavy}}
+]
+\addplot[color=monographCrimson, very thick, dashed, domain=0:30, samples=31] {2^x};
+\addlegendentry{Over-scaled ($\sigma_w^2 = 4/D_h$): $2^l$ explosion}
+
+\addplot[color=monographTeal, very thick, domain=0:30, samples=31] {1};
+\addlegendentry{Kaiming/He ($\sigma_w^2 = 2/D_h$): $\Var = 1$ preserved}
+
+\addplot[color=monographIndigo, very thick, dotted, domain=0:30, samples=31] {2^(-x)};
+\addlegendentry{Xavier on ReLU ($\sigma_w^2 = 1/D_h$): $2^{-l}$ collapse}
+\end{axis}
+\end{tikzpicture}
+\caption{Forward pre-activation variance propagation across 30 ReLU layers ($\Var(f^{(0)})=1$). Omitting the factor of $2$ in He initialization causes $2^{-l}$ exponential collapse; over-scaling causes $2^l$ explosion.}
+\label{fig:normres:var_prop}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:normres:pitfalls}
+
+\begin{pitfall}[Post-LN Warmup Instability]
+In Post-LN Transformers, gradients near the output layer scale as $\mathcal{O}(1)$ while deeper layers receive attenuated updates, causing divergence at standard learning rates without a linear learning-rate warmup. \textbf{Remedy:} Prefer Pre-LN (or Pre-RMSNorm) with a final normalization layer before the output projection, or apply a linear warmup over the first $1$--$5\%$ of training steps \bookcite{build_large_language_model_from_scratch}{PDF p. 704}.
+\end{pitfall}
+
+\begin{pitfall}[BatchNorm Batch-Size Collapse \& Train/Eval Mismatch]
+When mini-batch size $N \le 4$ (e.g., high-resolution object detection or 3D medical imaging), mini-batch variance estimates $\sigma_B^2$ become noisy and biased, degrading accuracy; additionally, forgetting \texttt{model.eval()} causes inference predictions to depend on test-batch composition. \textbf{Remedy:} Switch to GroupNorm ($G=32$) or LayerNorm for small-batch regimes, and enforce \texttt{model.eval()} before validation/deployment \bookcite{understandingdl_simonprince}{Ch. 11, PDF p. 217}.
+\end{pitfall}
+
+\begin{pitfall}[Dropout Variance Shift Before BatchNorm]
+Placing Dropout immediately before BatchNorm creates a train/eval variance mismatch: during training, inverted dropout multiplies feature variance by $1/p$, which BatchNorm absorbs into $\sigma_B^2$; at evaluation, dropout is disabled (variance drops by $p$), yet BatchNorm uses the inflated training running variance $\hat{\sigma}_{\text{run}}^2$. \textbf{Remedy:} Apply Dropout \emph{after} normalization + nonlinearity (or omit Dropout in BatchNorm-heavy convolutional blocks).
+\end{pitfall}
+
+\begin{pitfall}[Forgetting the $\sqrt{2}$ Factor in ReLU Initialization]
+Applying Xavier/Glorot initialization ($\sigma_w^2 = 1/D_{\text{in}}$) to deep ReLU or GELU networks without skip connections shrinks activation variance by $1/2$ per layer, collapsing gradients in early layers before training begins. \textbf{Remedy:} Use Kaiming/He initialization ($\sigma_w^2 = 2/D_{\text{in}}$) for ReLU-family activations \bookcite{understandingdl_simonprince}{Ch. 7, Eq. (7.31), PDF p. 124}.
+\end{pitfall}
+
+\end{document}

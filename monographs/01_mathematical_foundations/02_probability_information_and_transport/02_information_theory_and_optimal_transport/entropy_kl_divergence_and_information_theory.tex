@@ -1,0 +1,615 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf
+  {Mathematical Foundations for Machine Intelligence}
+  {Probability Theory, Information Theory \& Optimal Transport}
+  {Information Theory, Divergences \& Optimal Transport}
+  {Shannon Entropy, KL Divergence, $f$-Divergences \& Information Bottleneck}
+  {\bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~6}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~2, 3, 5, 26}, \bookcite{deep_learning_foundations_concepts}{Sec.~2.5}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.13}, \bookcite{understandingdl_simonprince}{App.~C.5}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:infotheory:formulation}
+% =============================================================================
+
+Information theory furnishes the variational geometry underlying statistical estimation, data compression, representation learning, and generative modeling. Let $(\mathcal{X}, \mathcal{F}, \mu)$ be a $\sigma$-finite reference measure space (counting measure on a finite alphabet $\abs{\mathcal{X}} = K$ in the discrete case, or Lebesgue measure on $\R^d$ in the continuous case). We denote probability distributions $P, Q$ by their Radon--Nikodym densities (or probability mass functions) $p = \mathrm{d}P / \mathrm{d}\mu$ and $q = \mathrm{d}Q / \mathrm{d}\mu$ on $\mathcal{X}$. Whenever comparing $P$ against $Q$ via likelihood ratios $u(x) = p(x)/q(x)$, we require absolute continuity $P \ll Q$, meaning $q(x) = 0 \implies p(x) = 0$ $\mu$-almost everywhere \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.2, p.~222} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.12, p.~71}.
+
+Throughout this monograph, we adopt the natural logarithm $\ln$ (units of \emph{nats}) as the default analytical base for derivatives, convex conjugates, and variational bounds, explicitly indicating base-$2$ logarithms $\log_2$ (units of \emph{bits}) when interpreting binary coding lengths ($1\text{ nat} = (\ln 2)^{-1} \approx 1.4427\text{ bits}$; $1\text{ bit} = \ln 2 \approx 0.6931\text{ nats}$); see \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.3.1, p.~224}. We enforce the information-theoretic continuity convention $0 \ln 0 := 0$ and $0 \ln(0/q) := 0$, justified by $\lim_{\epsilon \to 0^+} \epsilon \ln \epsilon = 0$ \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.1, p.~46} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.13, p.~75}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{cb:infotheory:notation}
+The five source texts exhibit deliberate pedagogical divergences in logarithmic base, symbol overloading, and parametric conventions that must be reconciled before chaining derivations across domains:
+\vspace{4pt}
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Monograph} & \textbf{Source Variants} & \textbf{Reconciliation} \\
+\midrule
+Logarithm \& units & $\ln$ (nats) default; $\log_2$ (bits) for coding & $\log_2$ in Murphy Intro; $\ln$ in Murphy Adv., Goodfellow, Prince; mixed in Bishop & Multiply nats by $(\ln 2)^{-1}$ to convert to bits. \\
+Self-information & $\iota(x) \triangleq -\ln p(x)$ & $h(x)$ in Bishop; $I(x)$ in Goodfellow & Avoids collision with differential entropy $h(X)$ and MI $\MI(X;Y)$. \\
+Discrete vs.\ diff.\ entropy & $\Entropy(X)$ discrete; $h(X)$ continuous & $\Entropy(X)$ vs.\ $h(X)$ in Murphy; $\Entropy[x]$ for both in Bishop & Distinguishes non-negative $\Entropy(X)\ge 0$ from coordinate-dependent $h(X)\in\R$. \\
+Cross-entropy & $H_{\mathrm{ce}}(p, q) \triangleq -\E_p[\ln q(X)]$ & $H_{\mathrm{ce}}(p,q)$ in Murphy; $H(P,Q)$ in Goodfellow & Disambiguates joint entropy $\Entropy(X,Y)$ from cross-entropy $H_{\mathrm{ce}}(p,q)$. \\
+KL divergence & $\KL{p}{q}$ & $D_{\mathrm{KL}}(p\|q)$ in Murphy, Goodfellow, Prince; $\mathrm{KL}(p\|q)$ in Bishop & Ordered argument convention: $p$ is the expectation/reference measure. \\
+$\alpha$-divergence & Minka $\alpha \in \R\setminus\{0,1\}$ & Amari $\alpha' \in \R\setminus\{\pm 1\}$ vs.\ Minka $\alpha$ & $\alpha' = 2\alpha - 1$; $\alpha \to 0$ gives reverse KL, $\alpha \to 1$ gives forward KL. \\
+Jensen--Shannon scaling & $\JS{p}{q} = \frac{1}{2}\KL{p}{m} + \frac{1}{2}\KL{q}{m}$ & $D_{\mathrm{JS}}$ with $\frac{1}{2}$ in Prince/Murphy; $2D_{\mathrm{JS}}$ in some $f$-GAN tables & Bounded in $[0, \ln 2]$ nats ($[0,1]$ bits) with $m = \frac{p+q}{2}$. \\
+IB latent variable & $T$ (with $T \equiv Z$ in Murphy Adv.) & $Z$ in Murphy Adv.\ Sec.~5.6; $T$ in Tishby IB & Markov chain $Y \leftrightarrow X \to T$ for data; $X \to T \to \hat{Y}$ for inference. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\vspace{2pt}
+\footnotesize\emph{Synthesized Sources:} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~6.1--6.3, pp.~207--225}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.1, 5.1--5.6, 26.2, pp.~55--57, 219--256, 897}, \bookcite{deep_learning_foundations_concepts}{Sec.~2.5, pp.~46--53}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.13, pp.~73--76}, and \bookcite{understandingdl_simonprince}{App.~C.5, pp.~459--461}.
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:infotheory:derivations}
+% =============================================================================
+
+\subsection{Shannon Entropy, Multiplicity, and Maximum Entropy}
+
+Information theory formalizes uncertainty through three axioms on the self-information (surprisal) $\iota(x)$ of observing an event of probability $p(x)$: (i) certainty carries zero information ($\iota(1) = 0$), (ii) strictly decreasing monotonicity in $p(x)$, and (iii) additivity across independent events $p(x, y) = p(x)p(y) \implies \iota(x, y) = \iota(x) + \iota(y)$ \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.1, p.~46} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.13, p.~73}. The unique continuous solution up to a positive scale factor (log base) is $\iota(x) = -\ln p(x)$.
+
+\begin{coremath}[Shannon Entropy, Statistical Multiplicity \& Differential Entropy]
+\label{cm:infotheory:entropy}
+For a discrete random variable $X \in \mathcal{X}$ with PMF $p$, the \textbf{Shannon entropy} is the expected self-information \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.1, p.~207}:
+\begin{equation}
+\label{eq:infotheory:shannon}
+  \Entropy(X) = \Entropy(p) \triangleq -\sum_{x \in \mathcal{X}} p(x) \ln p(x) = \E_{X \sim p}[-\ln p(X)].
+\end{equation}
+\textbf{1. Statistical-Mechanics Derivation (Multiplicity).} Following \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.2, pp.~47--48}, allocate $N$ distinguishable objects across $K$ bins with counts $\{n_k\}_{k=1}^K$ ($\sum_k n_k = N$). The number of microstates per macrostate is the multinomial multiplicity $W = N! / \prod_{k=1}^K n_k!$. Taking $\frac{1}{N}\ln W$ with $p_k = \lim_{N\to\infty} n_k / N$ fixed and applying Stirling's asymptotic expansion $\ln N! = N\ln N - N + O(\ln N)$ yields
+\begin{equation}
+\label{eq:infotheory:stirling}
+  \lim_{N\to\infty} \frac{1}{N} \ln W
+  = \lim_{N\to\infty} \frac{1}{N}\left(N\ln N - N - \sum_{k=1}^K (n_k\ln n_k - n_k)\right)
+  = -\sum_{k=1}^K p_k \ln p_k = \Entropy(p).
+\end{equation}
+
+\textbf{2. Continuum Limit \& Differential Entropy.} Discretizing a continuous density $p(x)$ on $\R^d$ into hypercubes of volume $\Delta^d$ with cell probabilities $p(x_i)\Delta^d$ (by the mean value theorem) produces a discrete entropy \bookcite{deep_learning_foundations_concepts}{Eq.~2.90, p.~50}:
+\begin{equation}
+\label{eq:infotheory:quantized_entropy}
+  \Entropy_\Delta = -\sum_i p(x_i)\Delta^d \ln\bigl(p(x_i)\Delta^d\bigr)
+  = -\sum_i p(x_i)\Delta^d \ln p(x_i) - d\ln\Delta.
+\end{equation}
+Dropping the divergent quantization offset $-d\ln\Delta$ and taking $\Delta \to 0^+$ defines the \textbf{differential entropy} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.95, p.~235}:
+\begin{equation}
+\label{eq:infotheory:diff_entropy}
+  h(X) \triangleq -\int_{\mathcal{X}} p(x) \ln p(x)\, \mathrm{d}x.
+\end{equation}
+
+\textbf{3. Maximum Entropy (MaxEnt) Principle.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Discrete ($K$ states):} Maximizing $\Entropy(p) + \lambda\bigl(\sum_{k=1}^K p_k - 1\bigr)$ gives $\partial_{p_k}\mathcal{L} = -\ln p_k - 1 + \lambda = 0 \implies p_k = 1/K$, with strictly negative Hessian $\nabla^2_{p}\mathcal{L} = -\diag(p_1^{-1}, \dots, p_K^{-1}) \prec \zeros$. Hence $\Entropy(X) \le \ln K$ \bookcite{deep_learning_foundations_concepts}{Eq.~2.87--2.88, pp.~48--49}.
+  \item \emph{Continuous (fixed mean $\vecb{\mu} \in \R^d$ and covariance $\mat{\Sigma} \succ \zeros$):} Applying Euler--Lagrange calculus of variations to $-\int p \ln p\,\mathrm{d}x$ subject to normalization, $\E_p[\vecb{x}] = \vecb{\mu}$, and $\E_p[(\vecb{x}-\vecb{\mu})(\vecb{x}-\vecb{\mu})\T] = \mat{\Sigma}$ forces $p^\star(\vecb{x}) = \exp\bigl(\lambda_0 + \vecb{\lambda}_1\T \vecb{x} + \vecb{x}\T \mat{\Lambda}_2 \vecb{x}\bigr) = \Normal(\vecb{x} \mid \vecb{\mu}, \mat{\Sigma})$, yielding \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.26, p.~212} \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.4, pp.~50--51}:
+  \begin{equation}
+  \label{eq:infotheory:gaussian_entropy}
+    h\bigl(\Normal(\vecb{\mu}, \mat{\Sigma})\bigr)
+    = \frac{1}{2}\ln\det(2\pi e \mat{\Sigma})
+    = \frac{d}{2}\bigl(1 + \ln(2\pi)\bigr) + \frac{1}{2}\ln\det(\mat{\Sigma}).
+  \end{equation}
+\end{itemize}
+\end{coremath}
+
+\begin{intuition}[Typical Sets, Source Coding \& Quantized Differential Entropy]
+\label{int:infotheory:typical}
+Shannon's noiseless source coding theorem establishes that any uniquely decodable prefix code for symbols drawn i.i.d.\ from $p$ requires expected length at least $\Entropy_2(p) = \Entropy(p)/\ln 2$ bits per symbol \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.1, p.~47} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.4.1, p.~247}. Equivalently, by the Asymptotic Equipartition Property (AEP), almost all probability mass of $N$ i.i.d.\ draws concentrates on the $\epsilon$-typical set
+\begin{equation}
+\label{eq:infotheory:typical_set}
+  A_\epsilon^{(N)} \triangleq \left\{ \vecb{x}_{1:N} \in \mathcal{X}^N : \Entropy(p) - \epsilon \le -\frac{1}{N}\ln p(\vecb{x}_{1:N}) \le \Entropy(p) + \epsilon \right\},
+\end{equation}
+which contains approximately $e^{N \Entropy(p)}$ nearly equiprobable sequences, each occurring with asymptotic empirical probability $\approx e^{-N \Entropy(p)}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.2.3, pp.~236--237}. For continuous $X$ quantized to $n$-bit precision ($\Delta = 2^{-n}$), Eq.~\eqref{eq:infotheory:quantized_entropy} implies $\Entropy_{2^{-n}} \approx h_2(X) + n$ bits; thus $h_2(X) < 0$ simply indicates that $X$ is localized within a sub-unit interval where leading fractional bits are deterministic (e.g., $X \sim \Uniform(0, 1/8)$ saves $3$ bits, giving $h_2(X) = -3$ bits) \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~6.1.6, p.~212}.
+\end{intuition}
+
+\subsection{Kullback--Leibler Divergence, Non-Negativity, and M- vs.\ I-Projections}
+
+Following \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.1--5.1.2, pp.~219--223}, the \textbf{Kullback--Leibler (KL) divergence} (relative entropy) is the unique divergence (up to a positive constant) satisfying continuity on $P \ll Q$, non-negativity, permutation invariance, monotonicity on uniform refinements, and a probability-weighted chain rule across conditional decompositions:
+\begin{equation}
+\label{eq:infotheory:kl_def}
+  \KL{p}{q} \triangleq \int_{\mathcal{X}} p(x) \ln \frac{p(x)}{q(x)}\,\mathrm{d}\mu(x) = \E_{X \sim p}\left[\ln \frac{p(X)}{q(X)}\right].
+\end{equation}
+When encoding data from true distribution $p$ using a code optimized for model $q$, the expected code length is the \textbf{cross-entropy} $H_{\mathrm{ce}}(p, q) \triangleq -\E_p[\ln q(X)] = \Entropy(p) + \KL{p}{q}$, so $\KL{p}{q}$ measures the exact excess coding penalty \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.31, p.~214} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Eq.~3.51, p.~75}.
+
+\begin{coremath}[Gibbs' Information Inequality, Gaussian KL \& Projection Duality]
+\label{cm:infotheory:kl_projections}
+\textbf{1. Proof of Non-Negativity (Information Inequality).} Let $A = \{x \in \mathcal{X} : p(x) > 0\}$ be the support of $p$. Using the strict concavity of $\ln u$ (equivalently strict convexity of $-\ln u$) and Jensen's inequality \bookcite{probabilisticml_kevinmurphy_introduction}{Thm.~6.2.1, p.~215} \bookcite{deep_learning_foundations_concepts}{Eq.~2.105, p.~52}:
+\begin{equation}
+\label{eq:infotheory:jensen_kl}
+\begin{aligned}
+  -\KL{p}{q}
+  &= \int_A p(x)\ln\frac{q(x)}{p(x)}\,\mathrm{d}\mu(x)
+   \le \ln\left(\int_A p(x)\frac{q(x)}{p(x)}\,\mathrm{d}\mu(x)\right) \\
+  &= \ln\left(\int_A q(x)\,\mathrm{d}\mu(x)\right)
+   \le \ln 1 = 0.
+\end{aligned}
+\end{equation}
+(Alternatively, via the tangent bound $-\ln u \ge 1 - u$ \bookcite{understandingdl_simonprince}{Eq.~C.29, p.~460}, $\KL{p}{q} \ge \int_A p(1 - q/p)\,\mathrm{d}\mu = 1 - \int_A q\,\mathrm{d}\mu \ge 0$.) Equality requires both $q(x)/p(x) = c$ $\mu$-a.e.\ on $A$ and $\int_A q\,\mathrm{d}\mu = 1$, forcing $c = 1$ and $p = q$ $\mu$-a.e.
+
+\textbf{2. Chain Rule \& Reparameterization Invariance.} For any joint distributions $p(x, y) = p(x)p(y|x)$ and $q(x, y) = q(x)q(y|x)$,
+\begin{equation}
+\label{eq:infotheory:kl_chain}
+  \KL{p(x, y)}{q(x, y)} = \KL{p(x)}{q(x)} + \E_{p(x)}\bigl[\KL{p(y|x)}{q(y|x)}\bigr].
+\end{equation}
+Under any smooth bijection $y = g(x)$, Jacobians cancel in the density ratio $\frac{p_Y(y)}{q_Y(y)} = \frac{p_X(x)\abs{\det \jac_g(x)}^{-1}}{q_X(x)\abs{\det \jac_g(x)}^{-1}} = \frac{p_X(x)}{q_X(x)}$, making $\KL{p}{q}$ strictly invariant to invertible coordinate changes \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.16, p.~223}.
+
+\textbf{3. Closed-Form Multivariate Gaussian KL.} For $p = \Normal(\vecb{\mu}_1, \mat{\Sigma}_1)$ and $q = \Normal(\vecb{\mu}_2, \mat{\Sigma}_2)$ on $\R^d$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.32, p.~214} \bookcite{understandingdl_simonprince}{Eq.~C.32, p.~461}:
+\begin{equation}
+\label{eq:infotheory:gaussian_kl}
+  \KL{p}{q} = \frac{1}{2}\left[
+    \Tr(\mat{\Sigma}_2\inv \mat{\Sigma}_1)
+    + (\vecb{\mu}_2 - \vecb{\mu}_1)\T \mat{\Sigma}_2\inv (\vecb{\mu}_2 - \vecb{\mu}_1)
+    - d + \ln\frac{\det \mat{\Sigma}_2}{\det \mat{\Sigma}_1}
+  \right].
+\end{equation}
+
+\textbf{4. Forward KL (M-Projection) vs.\ Reverse KL (I-Projection).} Approximating a target $p$ within a parametric family $\mathcal{Q}$ reveals fundamental asymmetry \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.4, pp.~225--227}:
+\begin{itemize}[leftmargin=1.4em]
+  \item \emph{Forward (Inclusive) KL / Moment Projection:} $q_M^\star = \argmin_{q \in \mathcal{Q}} \KL{p}{q}$. When $p = p_{\mathcal{D}} = \frac{1}{N}\sum_{n=1}^N \delta_{x_n}$, $\KL{p_{\mathcal{D}}}{q_\theta} = -\frac{1}{N}\sum_{n=1}^N \ln q_\theta(x_n) + \text{const}$, recovering Maximum Likelihood Estimation (MLE) \bookcite{deep_learning_foundations_concepts}{Eq.~2.106, p.~53} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~3.13, p.~75}. For an exponential family $q_\eta(x) = h(x)\exp(\eta\T \vecb{\phi}(x) - A(\eta))$, first-order optimality yields
+  \begin{equation}
+  \label{eq:infotheory:m_proj}
+    \nabla_\eta \KL{p}{q_\eta} = \nabla_\eta A(\eta) - \E_p[\vecb{\phi}(X)] = \E_{q_\eta}[\vecb{\phi}(X)] - \E_p[\vecb{\phi}(X)] = \zeros,
+  \end{equation}
+  enforcing \emph{moment matching}. Because $p(x) > 0, q(x) = 0 \implies \KL{p}{q} = +\infty$, $q_M^\star$ is \textbf{zero-avoiding} (mode-covering).
+  \item \emph{Reverse (Exclusive) KL / Information Projection:} $q_I^\star = \argmin_{q \in \mathcal{Q}} \KL{q}{p}$. Expanding $\KL{q}{p} = -\Entropy(q) - \E_q[\ln \tilde{p}(x)] + \ln Z_p$ avoids the intractable normalizer $Z_p$ and yields the variational inference / ELBO objective. Because $q(x) > 0, p(x) = 0 \implies \KL{q}{p} = +\infty$, $q_I^\star$ is \textbf{zero-forcing} (mode-seeking).
+\end{itemize}
+\end{coremath}
+
+\begin{intuition}[Gaussian Covariance Dualism Under Factorized Approximations]
+\label{int:infotheory:gauss_proj}
+Approximating a correlated bivariate Gaussian $p(\vecb{x}) = \Normal(\vecb{\mu}, \mat{\Sigma}) = \Normal(\vecb{\mu}, \mat{\Lambda}\inv)$ by a factorized Gaussian $q(\vecb{x}) = \prod_{i=1}^2 \Normal(x_i \mid m_i, v_i)$ makes the M- vs.\ I-projection contrast algebraically exact \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.4.2--5.1.4.3, p.~227}:
+\begin{equation}
+\label{eq:infotheory:factorized_gauss}
+  \text{M-projection: } m_i^\star = \mu_i,\;\; v_i^\star = \Sigma_{ii},
+  \qquad
+  \text{I-projection: } m_i^\star = \mu_i,\;\; v_i^\star = (\Lambda_{ii})\inv \le \Sigma_{ii}.
+\end{equation}
+By the Schur complement identity $(\Lambda_{11})\inv = \Sigma_{11} - \Sigma_{12}\Sigma_{22}\inv\Sigma_{21} \le \Sigma_{11}$, forward KL matches marginal variances (covering support, underconfident) whereas reverse KL matches conditional precisions (hugging the high-density ridge, overconfident). On multimodal $p$, M-projection bridges across modes while I-projection locks onto a single high-mass mode (Figure~\ref{fig:infotheory:fwd_rev_kl}).
+\end{intuition}
+
+\monographfig[0.86\textwidth]{probabilisticml_kevinmurphy_introduction_p247_fig1.png}{Forward KL vs.\ reverse KL when fitting a unimodal Gaussian $q$ (red contours) to a bimodal target mixture $p$ (blue contours): \textbf{(a)} minimizing forward KL $\KL{p}{q}$ (M-projection) exhibits zero-avoiding, mode-covering behavior spanning both modes; \textbf{(b--c)} minimizing reverse KL $\KL{q}{p}$ (I-projection) exhibits zero-forcing, mode-seeking behavior locking onto one mode. Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch.~6, Fig.~6.3, p.~217}.}{fig:infotheory:fwd_rev_kl}
+
+\subsection{Mutual Information, Data Processing Inequality, and Fano's Bound}
+
+Mutual information quantifies statistical dependence by measuring how far a joint distribution $p(x, y)$ departs from independence $p(x)p(y)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.47, p.~217} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.109, p.~238}:
+\begin{equation}
+\label{eq:infotheory:mi_def}
+  \MI(X; Y) \triangleq \KL{p(x, y)}{p(x)p(y)}
+  = \iint p(x, y)\ln\frac{p(x, y)}{p(x)p(y)}\,\mathrm{d}\mu(x)\,\mathrm{d}\mu(y) \ge 0,
+\end{equation}
+with equality iff $X \indep Y$. Via the product rule $p(x, y) = p(x)p(y|x)$, $\MI(X; Y)$ admits the equivalent entropy decompositions $\MI(X; Y) = \Entropy(X) - \Entropy(X|Y) = \Entropy(Y) - \Entropy(Y|X) = \Entropy(X) + \Entropy(Y) - \Entropy(X, Y)$ (for discrete variables; replace $\Entropy$ with $h$ for continuous densities, where differential entropies cancel coordinate-Jacobians so $\MI(X; Y)$ remains reparameterization invariant). For jointly Gaussian $(X, Y)$ with correlation $\rho \in (-1, 1)$, Eq.~\eqref{eq:infotheory:gaussian_entropy} yields $\MI(X; Y) = -\frac{1}{2}\ln(1 - \rho^2)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~6.70, p.~220}.
+
+\begin{coremath}[Data Processing Inequality (MI \& $f$-Divergence Forms) and Fano's Inequality]
+\label{cm:infotheory:dpi_fano}
+\textbf{1. Data Processing Inequality for Mutual Information.} Suppose $X \to Y \to Z$ forms a Markov chain ($X \indep Z \mid Y$, so $\MI(X; Z \mid Y) = 0$). Expanding $\MI(X; Y, Z)$ in two orders via the chain rule $\MI(X; A, B) = \MI(X; A) + \MI(X; B \mid A)$ gives \bookcite{probabilisticml_kevinmurphy_introduction}{Thm.~6.3.1, p.~223} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Thm.~5.3.1, p.~239}:
+\begin{equation}
+\label{eq:infotheory:dpi_mi}
+  \MI(X; Y) + \underbrace{\MI(X; Z \mid Y)}_{=\,0}
+  = \MI(X; Y, Z)
+  = \MI(X; Z) + \underbrace{\MI(X; Y \mid Z)}_{\ge\,0}
+  \implies \MI(X; Y) \ge \MI(X; Z).
+\end{equation}
+Equality holds iff $\MI(X; Y \mid Z) = 0$, i.e., $X \to Z \to Y$ is also a Markov chain ($Z$ is a \emph{sufficient statistic} for $X$ given $Y$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.3.4, p.~240}.
+
+\textbf{2. Channel Contraction (DPI for KL \& $f$-Divergences).} Let $p(y) = \int t(y|x)p(x)\,\mathrm{d}x$ and $q(y) = \int t(y|x)q(x)\,\mathrm{d}x$ be outputs of a Markov kernel $t(y|x)$, so $p(x, y) = p(x)t(y|x)$ and $q(x, y) = q(x)t(y|x)$ share conditional $t(y|x)$. For any convex generator $f$, Jensen's inequality applied under $q(x|y)$ yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Thm.~5.1.3, p.~229}:
+\begin{align}
+  D_f\bigl(p(x) \,\|\, q(x)\bigr)
+  &= \iint q(x, y)\, f\!\left(\frac{p(x)t(y|x)}{q(x)t(y|x)}\right) \mathrm{d}x\,\mathrm{d}y \nonumber \\
+  &= \int q(y) \left[ \int q(x|y)\, f\!\left(\frac{p(x, y)}{q(x, y)}\right) \mathrm{d}x \right] \mathrm{d}y
+  \ge \int q(y)\, f\!\left(\int q(x|y)\frac{p(x, y)}{q(x, y)}\,\mathrm{d}x\right) \mathrm{d}y \nonumber \\
+  &= \int q(y)\, f\!\left(\frac{p(y)}{q(y)}\right) \mathrm{d}y
+  = D_f\bigl(p(y) \,\|\, q(y)\bigr). \label{eq:infotheory:dpi_fdiv}
+\end{align}
+Setting $f(u) = u\ln u$ gives $\KL{p(x)}{q(x)} \ge \KL{p(y)}{q(y)}$; setting $t(y|x)$ to coordinate projection gives monotonicity $\KL{p(x,y)}{q(x,y)} \ge \KL{p(x)}{q(x)}$.
+
+\textbf{3. Fano's Inequality.} For Markov chain $Y \to X \to \hat{Y} = g(X)$ over discrete labels $\mathcal{Y}$ with error indicator $E = \mathbb{I}(\hat{Y} \ne Y)$ and error probability $P_e = \Prob(Y \ne \hat{Y})$, expanding $\Entropy(E, Y \mid \hat{Y})$ yields $\Entropy(Y \mid \hat{Y}) + \Entropy(E \mid Y, \hat{Y}) = \Entropy(E \mid \hat{Y}) + \Entropy(Y \mid E, \hat{Y})$. Because $\Entropy(E \mid Y, \hat{Y}) = 0$, $\Entropy(E \mid \hat{Y}) \le \Entropy(E) = H_e(P_e)$, and $\Entropy(Y \mid E, \hat{Y}) \le P_e \ln(\abs{\mathcal{Y}} - 1)$ (or $P_e \ln\abs{\mathcal{Y}}$ in weak form), combining with DPI $\Entropy(Y \mid X) \le \Entropy(Y \mid \hat{Y})$ establishes \bookcite{probabilisticml_kevinmurphy_introduction}{Thm.~6.3.2, p.~225}:
+\begin{equation}
+\label{eq:infotheory:fano}
+  \Entropy(Y \mid X) \le \Entropy(E) + P_e \ln\abs{\mathcal{Y}}
+  \implies
+  P_e \ge \frac{\Entropy(Y \mid X) - \ln 2}{\ln\abs{\mathcal{Y}}}
+  = \frac{\Entropy(Y) - \MI(X; Y) - \ln 2}{\ln\abs{\mathcal{Y}}}.
+\end{equation}
+\end{coremath}
+
+\subsection{Csisz\'ar $f$-Divergences, Jensen--Shannon, and Pinsker's Inequality}
+
+Generalizing the density-ratio geometry of KL, a \textbf{Csisz\'ar $f$-divergence} compares $p$ and $q$ through any convex function $f : (0, \infty) \to \R$ satisfying $f(1) = 0$ (with boundary convention $0 f(0/0) := 0$ and $0 f(a/0) := a\lim_{u\to\infty} f(u)/u$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.1, p.~55}:
+\begin{equation}
+\label{eq:infotheory:fdiv_def}
+  D_f(p \,\|\, q) \triangleq \int_{\mathcal{X}} q(x)\, f\!\left(\frac{p(x)}{q(x)}\right) \mathrm{d}\mu(x) \ge f\!\left(\int_{\mathcal{X}} q(x)\frac{p(x)}{q(x)}\,\mathrm{d}\mu(x)\right) = f(1) = 0,
+\end{equation}
+where non-negativity follows directly from Jensen's inequality. Notice an affine gauge invariance: replacing $f(u)$ by $\tilde{f}(u) = f(u) + c(u - 1)$ leaves $D_{\tilde{f}}(p\|q) = D_f(p\|q)$ unchanged for normalized probability measures since $\E_q[p/q - 1] = 0$. Setting $c = -f'(1)$ (when differentiable at $1$) yields the \textbf{canonical non-negative generator} $\tilde{f}(1) = \tilde{f}'(1) = 0$ with $\tilde{f}(u) \ge 0$ everywhere.
+
+\begin{coremath}[Pinsker's Inequality, Variational $f$-Divergence Bounds \& Fisher--Rao Metric]
+\label{cm:infotheory:pinsker_fenchel}
+\textbf{1. Pinsker's Inequality ($\KL{p}{q} \ge 2 D_{\mathrm{TV}}(p, q)^2$).} Let $D_{\mathrm{TV}}(p, q) \triangleq \frac{1}{2}\int_{\mathcal{X}} \abs{p(x) - q(x)}\,\mathrm{d}\mu(x)$ denote the total variation distance ($f_{\mathrm{TV}}(u) = \frac{1}{2}\abs{u-1}$), the unique divergence that is simultaneously an $f$-divergence and an integral probability metric (IPM) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.4, p.~61}. Defining $A = \{x \in \mathcal{X} : p(x) \ge q(x)\}$, $\alpha = P(A)$, and $\beta = Q(A)$, we have $\alpha \ge \beta$ and $D_{\mathrm{TV}}(p, q) = \int_A (p - q)\,\mathrm{d}\mu = \alpha - \beta$. Passing both $P$ and $Q$ through the deterministic indicator map $T(x) = \mathbb{I}(x \in A) \in \{0, 1\}$, Eq.~\eqref{eq:infotheory:dpi_fdiv} gives
+\begin{equation}
+\label{eq:infotheory:pinsker_reduce}
+  \KL{p}{q} \ge \KL{\Bernoulli(\alpha)}{\Bernoulli(\beta)}
+  = \alpha \ln\frac{\alpha}{\beta} + (1 - \alpha)\ln\frac{1 - \alpha}{1 - \beta}.
+\end{equation}
+Fix $\alpha \in (0, 1)$ (boundary $\alpha\in\{0,1\}$ is immediate) and define $h(\beta) \triangleq \alpha\ln\frac{\alpha}{\beta} + (1-\alpha)\ln\frac{1-\alpha}{1-\beta} - 2(\alpha-\beta)^2$ on $\beta \in (0, \alpha]$. Clearly $h(\alpha) = 0$, and differentiating with respect to $\beta$ gives
+\begin{equation}
+\label{eq:infotheory:pinsker_deriv}
+  h'(\beta)
+  = -\frac{\alpha}{\beta} + \frac{1-\alpha}{1-\beta} + 4(\alpha - \beta)
+  = (\alpha - \beta)\left(4 - \frac{1}{\beta(1 - \beta)}\right) \le 0,
+\end{equation}
+since $\beta(1-\beta) \le \frac{1}{4}$ for all $\beta \in (0, 1)$ by AM--GM. Hence $h(\beta) \ge h(\alpha) = 0$ for all $\beta \le \alpha$, proving \textbf{Pinsker's inequality}:
+\begin{equation}
+\label{eq:infotheory:pinsker}
+  D_{\mathrm{TV}}(p, q) \le \sqrt{\frac{1}{2}\KL{p}{q}}
+  \qquad\Longleftrightarrow\qquad
+  \KL{p}{q} \ge 2 D_{\mathrm{TV}}(p, q)^2 = \frac{1}{2}\|p - q\|_1^2.
+\end{equation}
+
+\textbf{2. Fenchel--Legendre Variational Bound for $f$-Divergences.} Expressing convex $f$ via its biconjugate $f(u) = \sup_{t \in \mathrm{dom}(f^\dagger)} [ut - f^\dagger(t)]$, where $f^\dagger(t) \triangleq \sup_{u \in \R_+} [ut - f(u)]$, yields the lower bound used in $f$-GANs and neural divergence estimation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~26.22--26.25, p.~899}:
+\begin{equation}
+\label{eq:infotheory:fenchel_fdiv}
+  D_f(p \,\|\, q)
+  = \sup_{t:\mathcal{X} \to \mathrm{dom}(f^\dagger)} \Bigl(\E_{p}[t(X)] - \E_{q}[f^\dagger(t(X))]\Bigr)
+  \ge \sup_{t \in \mathcal{T}} \Bigl(\E_{p}[t(X)] - \E_{q}[f^\dagger(t(X))]\Bigr),
+\end{equation}
+achieved with equality at $t^\star(x) = f'(p(x)/q(x))$. Specializing to KL with a shift $\phi = t - 1$ gives the \textbf{Donsker--Varadhan variational representation} $\KL{p}{q} = \sup_{\phi} \E_p[\phi(X)] - \ln \E_q[e^{\phi(X)}]$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.45, p.~228}.
+
+\textbf{3. Local Fisher--Rao Geometry \& KL Hessian.} Consider a smooth parametric family $p_\theta(x)$ with score $\vecb{s}(\theta) = \nabla_\theta \ln p_\theta(x)$ and Fisher Information Matrix (FIM) $F(\theta) = \E_{p_\theta}[\vecb{s}(\theta)\vecb{s}(\theta)\T] = -\E_{p_\theta}[\nabla_\theta^2 \ln p_\theta(x)]$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~3.3.4, pp.~76--77}. Because $\E_{p_\theta}[\vecb{s}(\theta)] = \nabla_\theta \int p_\theta(x)\,\mathrm{d}x = \zeros$, second-order Taylor expansion of $\KL{p_\theta}{p_{\theta + \delta}}$ around $\delta = \zeros$ yields \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.81, p.~233}:
+\begin{equation}
+\label{eq:infotheory:fisher_kl}
+\begin{aligned}
+  \KL{p_\theta}{p_{\theta + \delta}}
+  &= -\delta\T \underbrace{\E_{p_\theta}[\nabla_\theta \ln p_\theta(x)]}_{=\,\zeros}
+     - \frac{1}{2}\delta\T \E_{p_\theta}\bigl[\nabla_\theta^2 \ln p_\theta(x)\bigr]\delta + O(\|\delta\|^3) \\
+  &= \frac{1}{2}\delta\T F(\theta)\delta + O(\|\delta\|^3).
+\end{aligned}
+\end{equation}
+More generally, any twice-differentiable $f$-divergence satisfies $D_f(p_\theta \| p_{\theta+\delta}) = \frac{f''(1)}{2}\delta\T F(\theta)\delta + O(\|\delta\|^3)$ (matching the $\chi^2$ local limit $D_{\mathrm{KL}}(p\|q) \approx \frac{1}{2}\chi^2(p, q)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ex.~6.2, p.~226}). Furthermore, for exponential family $p_\eta(x) = h(x)\exp(\eta\T \vecb{\phi}(x) - A(\eta))$, $\KL{p_{\eta_1}}{p_{\eta_2}} = A(\eta_2) - A(\eta_1) - (\eta_2 - \eta_1)\T \nabla A(\eta_1) = B_A(\eta_2 \| \eta_1)$ equals the Bregman divergence generated by $A(\eta)$---and KL is the \emph{unique} divergence that belongs simultaneously to both the $f$-divergence and Bregman families \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.10.1, p.~234}.
+\end{coremath}
+
+\subsection{Information Bottleneck, Variational IB, and Conditional Entropy Bottleneck}
+
+In supervised representation learning, we seek a stochastic bottleneck representation $T$ (denoted $Z$ in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.6}) of input $X$ that preserves predictive information about target $Y$ while compressing irrelevant input nuisance. Under the data-encoder Markov condition $Y \leftrightarrow X \to T$ (so $T \indep Y \mid X$ and $p(x, y, t) = p(x, y)e(t|x)$), DPI guarantees $\MI(T; Y) \le \MI(X; Y)$. The \textbf{Information Bottleneck (IB)} Lagrangian balances compression against predictive sufficiency via $\beta \ge 0$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~5.165, p.~252}:
+\begin{equation}
+\label{eq:infotheory:ib_obj}
+  \min_{e(t|x)} \; \mathcal{L}_{\mathrm{IB}}[e] \triangleq \beta\,\MI(X; T) - \MI(T; Y).
+\end{equation}
+
+\begin{coremath}[Discrete IB Fixed-Point Equations, Variational IB (VIB) \& CEB]
+\label{cm:infotheory:ib_vib}
+\textbf{1. Exact Blahut--Arimoto Fixed-Point Equations (Discrete $X, Y, T$).} Introducing Lagrange multipliers $\tilde{\lambda}(x)\bigl(\sum_t e(t|x) - 1\bigr)$ for encoder normalization and differentiating $\mathcal{L}_{\mathrm{IB}}[e]$ with respect to $e(t|x)$:
+\begin{itemize}[leftmargin=1.4em]
+  \item For the rate term $\MI(X; T) = \sum_{x,t} p(x)e(t|x)\ln\frac{e(t|x)}{p(t)}$ with $p(t) = \sum_{x'} p(x')e(t|x')$:
+  \[
+    \pd{\MI(X; T)}{e(t|x)} = p(x)\ln\frac{e(t|x)}{p(t)} + p(x) - \sum_{x'} p(x')e(t|x')\frac{p(x)}{p(t)} = p(x)\ln\frac{e(t|x)}{p(t)}.
+  \]
+  \item For the relevance term $\MI(T; Y) = \sum_{t,y} p(t,y)\ln\frac{p(y|t)}{p(y)}$ with $p(t,y) = \sum_x p(x,y)e(t|x)$ and $p(y|t) = p(t,y)/p(t)$:
+  \[
+    \pd{\MI(T; Y)}{e(t|x)} = p(x)\sum_{y} p(y|x)\ln\frac{p(y|t)}{p(y)} = -p(x)\KL{p(y|x)}{p(y|t)} + p(x)\sum_y p(y|x)\ln\frac{p(y|x)}{p(y)}.
+  \]
+\end{itemize}
+Setting $\beta\partial\MI(X;T)/\partial e(t|x) - \partial\MI(T;Y)/\partial e(t|x) + \tilde{\lambda}(x) = 0$ and normalizing yields the coupled fixed-point system:
+\begin{equation}
+\label{eq:infotheory:ib_ba}
+\begin{aligned}
+  e(t|x) &= \frac{p(t)}{Z(x, \beta)}\exp\!\left(-\frac{1}{\beta}\KL{p(y|x)}{p(y|t)}\right), \\
+  p(t) &= \sum_x p(x)e(t|x),\qquad
+  p(y|t) = \sum_x \frac{p(x)e(t|x)}{p(t)}p(y|x).
+\end{aligned}
+\end{equation}
+
+\textbf{2. Variational Information Bottleneck (VIB).} When $(X, T, Y)$ are high-dimensional or continuous, exact computation of $p(t)$ and $p(y|t)$ is intractable. Introducing a variational decoder $d_\phi(y|t) \approx p(y|t)$ and variational prior marginal $m(t) \approx p(t)$, non-negativity of KL ($\KL{p(y|t)}{d_\phi(y|t)} \ge 0$ and $\KL{p(t)}{m(t)} \ge 0$) furnishes a tractable lower bound on $\MI(T;Y)$ and upper bound on $\MI(X;T)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.6.2, Eqs.~5.168--5.181, pp.~253--254}:
+\begin{align}
+  \MI(T; Y) &= \E_{p(t,y)}\!\left[\ln\frac{p(y|t)}{p(y)}\right] \ge \E_{p(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)] + \Entropy(Y), \label{eq:infotheory:vib_lb}\\
+  \MI(X; T) &= \E_{p(x,t)}\!\left[\ln\frac{e_\theta(t|x)}{p(t)}\right] \le \E_{p(x)}\!\left[\KL{e_\theta(t|x)}{m(t)}\right]. \label{eq:infotheory:vib_ub}
+\end{align}
+Dropping the constant $\Entropy(Y)$ yields the differentiable \textbf{VIB upper bound} optimized by reparameterized SGD:
+\begin{equation}
+\label{eq:infotheory:vib_loss}
+  \mathcal{L}_{\mathrm{VIB}}(\theta, \phi) = -\E_{p_{\mathcal{D}}(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)] + \beta\,\E_{p_{\mathcal{D}}(x)}\bigl[\KL{e_\theta(t|x)}{m(t)}\bigr].
+\end{equation}
+
+\textbf{3. Conditional Entropy Bottleneck (CEB).} Observing that $\MI(X; T)$ penalizes predictive information $\MI(T; Y)$ inside $X$, CEB instead minimizes the residual nuisance $\MI(X; T \mid Y) = \MI(X; T) - \MI(T; Y)$ via a conditional backward encoder $b_\psi(t|y) \approx p(t|y)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.6.3, Eqs.~5.183--5.190, pp.~255--256}:
+\begin{equation}
+\label{eq:infotheory:ceb}
+  \min \;\beta\Bigl(\E_{p(x)e_\theta(t|x)}[\ln e_\theta(t|x)] - \E_{p(x,y)e_\theta(t|x)}[\ln b_\psi(t|y)]\Bigr) - \E_{p(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)].
+\end{equation}
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:infotheory:algorithms}
+% =============================================================================
+
+For finite discrete spaces $(\mathcal{X}, \mathcal{Y}, \mathcal{T})$, Algorithm~\ref{alg:infotheory:ba_ib} iterates the three coupled self-consistent equations~\eqref{eq:infotheory:ib_ba} (a generalized Blahut--Arimoto alternating projection) to a local minimum of $\mathcal{L}_{\mathrm{IB}}$ for a fixed compression weight $\beta > 0$. By sweeping $\beta$ from $\infty$ (maximal compression $T \indep X$, $\MI(X;T)=\MI(T;Y)=0$) down toward $0$ (maximal sufficiency), the solver traces the IB information curve in the $(\MI(X;T), \MI(T;Y))$ plane \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.6.1, p.~252}.
+
+\begin{algorithm}[htbp]
+\caption{Blahut--Arimoto Iterative Information Bottleneck Solver}
+\label{alg:infotheory:ba_ib}
+\KwIn{Joint table $p(x, y)$ on $\mathcal{X} \times \mathcal{Y}$, bottleneck cardinality $\abs{\mathcal{T}}$, trade-off $\beta > 0$, tolerance $\varepsilon > 0$, max iterations $M$}
+\KwOut{Stochastic encoder $e(t|x)$, bottleneck marginal $p(t)$, decoder $p(y|t)$}
+Initialize $e^{(0)}(t|x)$ randomly on the simplex $\Delta^{\abs{\mathcal{T}}-1}$ for each $x \in \mathcal{X}$\;
+Compute marginals $p(x) \leftarrow \sum_{y} p(x, y)$ and $p(y|x) \leftarrow p(x, y)/p(x)$\;
+\For{$k \leftarrow 0, 1, \dots, M - 1$}{
+  $p^{(k)}(t) \leftarrow \sum_{x \in \mathcal{X}} p(x)\, e^{(k)}(t|x)$ \tcp*{Marginal update}
+  \ForEach{$t \in \mathcal{T}$ and $y \in \mathcal{Y}$}{
+    $p^{(k)}(y|t) \leftarrow \frac{1}{p^{(k)}(t)} \sum_{x \in \mathcal{X}} p(x)\, e^{(k)}(t|x)\, p(y|x)$ \tcp*{Bayes decoder consistency}
+  }
+  \ForEach{$x \in \mathcal{X}$}{
+    \ForEach{$t \in \mathcal{T}$}{
+      $d_{x,t} \leftarrow \sum_{y \in \mathcal{Y}} p(y|x)\,\bigl(\ln p(y|x) - \ln \max(p^{(k)}(y|t), 10^{-15})\bigr)$\;
+      $\tilde{e}(t|x) \leftarrow p^{(k)}(t)\,\exp\!\left(-\frac{1}{\beta}\, d_{x,t}\right)$ \tcp*{Log-sum-exp stabilized in impl.}
+    }
+    $Z(x) \leftarrow \sum_{t' \in \mathcal{T}} \tilde{e}(t'|x)$\;
+    $e^{(k+1)}(t|x) \leftarrow \tilde{e}(t|x) / Z(x)$ for all $t \in \mathcal{T}$\;
+  }
+  \If{$\max_{x,t}\abs{e^{(k+1)}(t|x) - e^{(k)}(t|x)} < \varepsilon$}{
+    \textbf{break}\;
+  }
+}
+\Return{$e^{(k+1)}(t|x),\; p^{(k+1)}(t),\; p^{(k+1)}(y|t)$}\;
+\end{algorithm}
+
+Each iteration of Algorithm~\ref{alg:infotheory:ba_ib} requires $O(\abs{\mathcal{X}}\abs{\mathcal{T}}\abs{\mathcal{Y}})$ floating-point operations and $O(\abs{\mathcal{X}}\abs{\mathcal{T}} + \abs{\mathcal{T}}\abs{\mathcal{Y}})$ memory. When $\abs{\mathcal{X}}$ is exponential or continuous, VIB replaces exact enumeration with minibatch stochastic gradient descent on Eq.~\eqref{eq:infotheory:vib_loss} at $O(B \cdot d_T)$ cost per step (batch size $B$, bottleneck dimension $d_T$). Table~\ref{tab:infotheory:divergences} compares the major $f$-divergences, their Fenchel conjugates for neural critic estimation, and their support-mismatch geometry.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.22}
+\caption{Canonical $f$-divergences $D_f(p \,\|\, q)$, Fenchel conjugates $f^\dagger(t)$ for variational lower bounds (Eq.~\eqref{eq:infotheory:fenchel_fdiv}), and structural properties \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.1 \& Table~26.2, pp.~55--57, 899} \bookcite{understandingdl_simonprince}{App.~C.5, p.~460}.}
+\label{tab:infotheory:divergences}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.65cm}>{\raggedright\arraybackslash\hsize=0.92\hsize}X>{\raggedright\arraybackslash\hsize=1.08\hsize}Xccc>{\raggedright\arraybackslash}p{2.45cm}@{}}
+\toprule
+\textbf{Divergence} & \textbf{Canonical $\tilde{f}(u)$} & \textbf{Conjugate $f^\dagger(t)$ \& Optimal $t^\star$} & \textbf{Sym.} & \textbf{Metric} & \textbf{Range} & \textbf{Support Behavior} \\
+\midrule
+Forward KL $\KL{p}{q}$ & $u\ln u - u + 1$ & $e^t - 1$\newline $t^\star = \ln(p/q)$ & No & No & $[0,\infty]$ & Zero-avoiding \\
+Reverse KL $\KL{q}{p}$ & $-\ln u + u - 1$ & $-\ln(1-t)$ ($t<1$)\newline $t^\star = 1 - q/p$ & No & No & $[0,\infty]$ & Zero-forcing \\
+Jensen--Shannon $\JS{p}{q}$ & $\frac{1}{2}[u\ln u - (u+1)\ln\frac{u+1}{2}]$ & $-\frac{1}{2}\ln(2 - e^{2t})$\newline $t^\star = \frac{1}{2}\ln\frac{2p}{p+q}$ & Yes & $\sqrt{D_{\mathrm{JS}}}$ & $[0,\ln 2]$ & Smooth under disjoint supports \\
+Squared Hellinger $D_H^2(p,q)$ & $\frac{1}{2}(\sqrt{u} - 1)^2$ & $\frac{t}{1 - 2t}$ ($t < \frac{1}{2}$)\newline $t^\star = \frac{1}{2}(1 - \sqrt{q/p})$ & Yes & $D_H$ & $[0,1]$ & Bounded gradient \\
+Pearson $\chi^2(p,q)$ & $(u - 1)^2$ & $\frac{1}{4}t^2 + t$\newline $t^\star = 2(p/q - 1)$ & No & No & $[0,\infty]$ & Heavy tail sensitivity \\
+Total Variation $D_{\mathrm{TV}}(p,q)$ & $\frac{1}{2}\abs{u - 1}$ & $t$ ($t \in [-\frac{1}{2}, \frac{1}{2}]$)\newline $t^\star = \frac{1}{2}\mathrm{sgn}(p-q)$ & Yes & Yes & $[0,1]$ & Also an IPM ($\|f\|_\infty \le \frac{1}{2}$) \\
+Minka $\alpha$-div.\ $D_\alpha^M(p\|q)$ & $\frac{u^\alpha - \alpha u + \alpha - 1}{\alpha(\alpha - 1)}$ & Variational power-EP bound & No & No & Bounded if $\alpha\in(0,1)$ & $\alpha\to 1$: fwd;\newline $\alpha\to 0$: rev \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Variational Bounds, Rate--Distortion \& Implicit Models]
+\label{cb:infotheory:synthesis}
+Synthesizing across the five monographs reveals that four seemingly distinct deep learning objectives are specializations of the same information-theoretic variational calculus:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Maximum Likelihood \& Cross-Entropy:} Minimizing $\KL{p_{\mathcal{D}}}{q_\theta}$ directly optimizes cross-entropy $H_{\mathrm{ce}}(p_{\mathcal{D}}, q_\theta)$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{p.~75} \bookcite{deep_learning_foundations_concepts}{p.~53}, prioritizing mode coverage at the risk of overfitting empirical Dirac spikes \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~6.2.5, p.~216}.
+  \item \textbf{Rate--Distortion \& $\beta$-VAE:} In unsupervised encoding $e(z|x)$ with decoder $d(x|z)$ and prior $m(z)$, distortion $D = -\E_{p(x)e(z|x)}[\ln d(x|z)]$ and rate $R = \E_{p(x)}[\KL{e(z|x)}{m(z)}]$ sandwich mutual information via $h(X) - D \le \MI(X; Z) \le R$; minimizing $D + \beta R$ recovers the ELBO at $\beta = 1$ and $\beta$-VAE for $\beta \ne 1$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.4.2, Eqs.~5.158--5.161, pp.~248--250}.
+  \item \textbf{GANs, $f$-GANs \& Density-Ratio Estimation:} Training a binary classifier on $P$ vs.\ $Q$ under log-loss recovers $D^\star(x) = \frac{p(x)}{p(x)+q(x)}$ and optimizes $2\JS{p}{q} - 2\ln 2$; swapping $(\tilde{f}, f^\dagger)$ in Eq.~\eqref{eq:infotheory:fenchel_fdiv} yields $f$-GANs, while replacing density ratios with $1$-Lipschitz witness functions yields Wasserstein IPMs \bookcite{understandingdl_simonprince}{App.~C.5.2, p.~460} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~2.7.5 \& 26.2.2--26.2.3, pp.~61--62, 897--899}.
+  \item \textbf{Contrastive Representation Bounds:} Replacing normalized $d_\phi(y|t)$ with unnormalized energy $e^{f(x,y)}$ turns Barber--Agakov's lower bound into the Donsker--Varadhan / NWJ bound, and multi-sample normalization yields $\MI_{\mathrm{NCE}}(X; Y) \le \ln K$, directly linking VIB to self-supervised contrastive learning \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.3.6, pp.~244--246}.
+\end{enumerate}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:infotheory:visuals}
+% =============================================================================
+
+We combine quantitative plots, structural diagrams, and benchmark empirical diagnostics to expose the exact geometry of entropy, $f$-divergences, information projections, and bottleneck compression.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{groupplot}[
+      group style={group size=2 by 1, horizontal sep=1.7cm},
+      width=0.45\textwidth,
+      height=5.6cm,
+      grid=major,
+      grid style={monographRule, dashed, line width=0.35pt},
+      tick label style={font=\footnotesize, color=monographSlate},
+      label style={font=\small, color=monographNavy},
+      title style={font=\small\bfseries, color=monographNavy},
+      legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.92, text opacity=1}
+    ]
+    % --- Panel (a): Binary Entropy ---
+    \nextgroupplot[
+      title={(a) Binary Entropy Function $H(p)$},
+      xlabel={Bernoulli probability $p = \Prob(X = 1)$},
+      ylabel={Entropy},
+      xmin=0, xmax=1,
+      ymin=0, ymax=1.20,
+      xtick={0, 0.25, 0.5, 0.75, 1},
+      ytick={0, 0.25, 0.5, 0.6931, 1.0},
+      yticklabels={$0$, $0.25$, $0.5$, $\ln 2$, $1.0$},
+      legend pos=south east
+    ]
+      \addplot[monographNavy, very thick, smooth, domain=0.0002:0.9998, samples=201]
+        {- (x*ln(x) + (1-x)*ln(1-x))/ln(2)};
+      \addlegendentry{$H_2(p)$ (bits)}
+      \addplot[monographTeal, very thick, dashed, smooth, domain=0.0002:0.9998, samples=201]
+        {- (x*ln(x) + (1-x)*ln(1-x))};
+      \addlegendentry{$H_e(p)$ (nats)}
+      \addplot[monographCrimson, dotted, thick] coordinates {(0.5, 0) (0.5, 1.0)};
+      \addplot[only marks, mark=*, mark size=1.8pt, monographNavy] coordinates {(0.5, 1.0)};
+      \addplot[only marks, mark=*, mark size=1.8pt, monographTeal] coordinates {(0.5, 0.6931)};
+      \node[anchor=south, font=\scriptsize, color=monographNavy] at (axis cs:0.5, 1.03) {$p = 0.5$};
+
+    % --- Panel (b): Canonical f-Divergence Generators ---
+    \nextgroupplot[
+      title={(b) Canonical $f$-Divergence Generators $\tilde{f}(u)$},
+      xlabel={Likelihood ratio $u = p(x)/q(x)$},
+      ylabel={Generator value $\tilde{f}(u)$},
+      xmin=0.08, xmax=2.85,
+      ymin=-0.08, ymax=1.55,
+      xtick={0.5, 1.0, 1.5, 2.0, 2.5},
+      ytick={0, 0.5, 1.0, 1.5},
+      legend pos=north east
+    ]
+      \addplot[monographNavy, very thick, smooth, domain=0.08:2.85, samples=160]
+        {x*ln(x) - x + 1};
+      \addlegendentry{Fwd KL: $u\ln u - u + 1$}
+      \addplot[monographCrimson, very thick, dashed, smooth, domain=0.08:2.85, samples=160]
+        {-ln(x) + x - 1};
+      \addlegendentry{Rev KL: $-\ln u + u - 1$}
+      \addplot[monographTeal, very thick, dashdotted, smooth, domain=0.08:2.85, samples=160]
+        {0.5*(x*ln(x) - (x+1)*ln((x+1)/2))};
+      \addlegendentry{JS: $\tilde{f}_{\mathrm{JS}}(u)$}
+      \addplot[monographIndigo, very thick, dotted, smooth, domain=0.08:2.85, samples=160]
+        {0.5*(sqrt(x) - 1)^2};
+      \addlegendentry{Hellinger: $\frac{1}{2}(\sqrt{u}-1)^2$}
+      \addplot[only marks, mark=*, mark size=1.8pt, monographSlate] coordinates {(1.0, 0.0)};
+      \node[anchor=west, font=\scriptsize, color=monographSlate, fill=white, inner sep=1pt] (f1lbl) at (axis cs:1.25, 0.28) {$\tilde{f}(1) = \tilde{f}'(1) = 0$};
+      \draw[->, thin, monographSlate] (f1lbl.south west) -- (axis cs:1.03, 0.03);
+    \end{groupplot}
+  \end{tikzpicture}
+  \caption{Analytical behavior of entropy and canonical convex generators. \textbf{(a)} Concave binary entropy peaking at the uniform distribution $p=0.5$ ($1\text{ bit} = \ln 2\text{ nats}$). \textbf{(b)} Canonical generators shifted so $\tilde{f}(1) = \tilde{f}'(1) = 0$: forward KL penalizes $u = p/q \gg 1$ ($q \to 0$ on support of $p$), whereas reverse KL diverges steeply as $u \to 0^+$ ($q > 0$ outside support of $p$); Jensen--Shannon and squared Hellinger stay bounded as $u \to 0^+$.}
+  \label{fig:infotheory:pgf_entropy_fdiv}
+\end{figure}
+
+Figure~\ref{fig:infotheory:pgf_entropy_fdiv}(b) makes the algebraic origin of KL asymmetry immediately transparent: because $\tilde{f}_{\mathrm{KL}}(u)$ grows superlinearly ($u\ln u$) as $u = p/q \to \infty$, minimizing forward KL forces $q > 0$ everywhere $p > 0$. Conversely, $\tilde{f}_{\mathrm{rKL}}(u) \sim -\ln u$ explodes as $u \to 0^+$ ($q > 0$ where $p \approx 0$), forcing $q$ to collapse onto high-density regions of $p$. Jensen--Shannon and squared Hellinger remain finite at $u = 0$ ($\tilde{f}_{\mathrm{JS}}(0) = \frac{1}{2}\ln 2$, $\tilde{f}_{H^2}(0) = \frac{1}{2}$), explaining their stability under disjoint support.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=1.3cm and 1.3cm]
+    % --- Left Panel: IB Markov Chain ---
+    \node[font=\small\bfseries, color=monographNavy] (titleA) at (3.42, 3.60) {(a) Information Bottleneck Pipeline};
+
+    \node[monoIndigoBox, minimum width=0.96cm, minimum height=0.80cm] (Y) at (0.0, 1.85) {$Y$\\{\scriptsize target}};
+    \node[monoBox, minimum width=0.96cm, minimum height=0.80cm] (X) at (2.15, 1.85) {$X$\\{\scriptsize input}};
+    \node[monoTealBox, minimum width=1.08cm, minimum height=0.80cm] (T) at (4.55, 1.85) {$T$\\{\scriptsize bottleneck}};
+    \node[monoBox, minimum width=0.96cm, minimum height=0.80cm] (Yhat) at (6.90, 1.85) {$\hat{Y}$\\{\scriptsize pred.}};
+
+    \draw[<->, thick, monographIndigo] (Y) -- node[above=4pt, font=\scriptsize, color=monographSlate] {$p(x,y)$} (X);
+    \draw[monoArrow, monographTeal] (X) -- node[above=4pt, font=\scriptsize, color=monographTeal] {$e_\theta(t|x)$} (T);
+    \draw[monoArrow, monographNavy] (T) -- node[above=4pt, font=\scriptsize, color=monographNavy] {$d_\phi(\hat{y}|t)$} (Yhat);
+
+    \node[monoWarnBox, font=\scriptsize, text width=6.6cm] (ibbox) at (3.42, 0.32) {
+      \textbf{Markov:} $T \indep Y \mid X \implies \MI(T; Y) \le \MI(X; Y)$ (DPI)\\
+      \textbf{Objective:} $\min_{e_\theta} \; \beta\,\MI(X; T) - \MI(T; Y)$
+    };
+
+    % --- Right Panel: Information Venn Diagram ---
+    \node[font=\small\bfseries, color=monographNavy] (titleB) at (11.75, 3.60) {(b) Bottleneck Information Diagram};
+
+    \begin{scope}[shift={(11.75, 1.48)}]
+      % Outer circles H(X) and H(Y)
+      \fill[monographNavyBg, opacity=0.75] (-0.84, 0) circle (1.48cm);
+      \fill[monographIndigoBg, opacity=0.75] (0.84, 0) circle (1.48cm);
+      % Highlight H(T) overlapping left lobe and central lens
+      \fill[monographTealBg, opacity=0.88] (-0.52, -0.22) ellipse (1.24cm and 0.64cm);
+
+      \draw[monographNavy, thick] (-0.84, 0) circle (1.48cm);
+      \draw[monographIndigo, thick] (0.84, 0) circle (1.48cm);
+      \draw[monographTeal, very thick, dashed] (-0.52, -0.22) ellipse (1.24cm and 0.64cm);
+
+      % Labels carefully positioned in non-overlapping regions
+      \node[font=\scriptsize\bfseries, color=monographNavy, align=center] at (-1.58, 0.58) {$\Entropy(X|Y)$};
+      \node[font=\scriptsize\bfseries, color=monographIndigo, align=center] at (1.58, 0.58) {$\Entropy(Y|X)$};
+      \node[font=\scriptsize\bfseries, color=monographTeal, align=center] at (-1.10, -0.22) {$\MI(X;T|Y)$};
+      \node[font=\scriptsize\bfseries, color=monographNavy, align=center] at (0.16, -0.22) {$\MI(T;Y)$};
+      \node[font=\scriptsize, color=monographSlate] at (0.0, 0.62) {$\MI(X;Y)$};
+
+      \node[font=\footnotesize\bfseries, color=monographNavy] at (-2.00, 1.40) {$\Entropy(X)$};
+      \node[font=\footnotesize\bfseries, color=monographIndigo] at (2.00, 1.40) {$\Entropy(Y)$};
+      \node[font=\footnotesize\bfseries, color=monographTeal, fill=white, fill opacity=0.82, text opacity=1, inner sep=1pt] at (-0.52, -1.16) {$\Entropy(T)$};
+      \node[font=\scriptsize, color=monographSlate] at (0.0, -1.72) {Union $= \Entropy(X, Y) = \Entropy(X|Y) + \MI(X;Y) + \Entropy(Y|X)$};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Graphical and information-diagram geometry of the Information Bottleneck. \textbf{(a)} Because $T$ depends on $Y$ only through $X$ ($Y \leftrightarrow X \to T$), DPI limits predictive information to $\MI(T;Y) \le \MI(X;Y)$, while decoder $d_\phi(\hat{y}|t)$ forms the inference chain $X \to T \to \hat{Y}$. \textbf{(b)} In the signed information diagram \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~5.6 \& 5.12, pp.~240, 253}, optimal compression squeezes residual nuisance $\MI(X;T|Y) \to 0$ inside $\Entropy(T)$ while retaining $\MI(T;Y) \approx \MI(X;Y)$.}
+  \label{fig:infotheory:ib_venn}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    % Left: Information Manifold & Dual Projections
+    \node[font=\small\bfseries, color=monographNavy] at (3.55, 5.05) {(a) Information Manifold: M- vs.\ I-Projections};
+
+    % Manifold curve Q
+    \draw[monographNavy, very thick, smooth] plot coordinates {(0.2, 1.75) (1.8, 2.20) (3.55, 2.30) (5.25, 2.05) (6.65, 1.55)};
+    \node[font=\footnotesize\bfseries, color=monographNavy] at (6.75, 1.82) {$\mathcal{Q}$};
+
+    % Target p outside Q
+    \fill[monographCrimson] (3.45, 3.92) circle (2.8pt);
+    \node[font=\small\bfseries, color=monographCrimson, anchor=south] at (3.45, 4.30) {$p \notin \mathcal{Q}$};
+
+    % M-projection q_M^* (primal m-geodesic)
+    \fill[monographTeal] (2.15, 2.23) circle (2.6pt);
+    \node[font=\scriptsize\bfseries, color=monographTeal, align=center] at (1.35, 1.38) {$q_M^\star = \argmin_{q\in\mathcal{Q}} \KL{p}{q}$\\{\normalfont\scriptsize(mode-covering)}};
+    \draw[->, very thick, monographTeal, bend right=16] (3.38, 3.84) to node[left, font=\scriptsize, pos=0.52, xshift=-2pt] {$m$-geodesic} (2.18, 2.32);
+
+    % I-projection q_I^* (dual e-geodesic)
+    \fill[monographIndigo] (4.85, 2.12) circle (2.6pt);
+    \node[font=\scriptsize\bfseries, color=monographIndigo, align=center] at (4.95, 1.15) {$q_I^\star = \argmin_{q\in\mathcal{Q}} \KL{q}{p}$\\{\normalfont\scriptsize(mode-seeking)}};
+    \draw[->, very thick, monographIndigo, bend left=16] (3.52, 3.84) to node[right, font=\scriptsize, pos=0.52, xshift=2pt] {$e$-geodesic} (4.82, 2.21);
+
+    % Local Fisher ball around p
+    \draw[monographRule, thick, dashed] (3.45, 3.92) ellipse (0.76cm and 0.34cm);
+    \node[font=\scriptsize, color=monographSlate, anchor=west] (fimlbl) at (4.35, 4.25) {$\KL{p_\theta}{p_{\theta+\delta}} \approx \frac{1}{2}\delta\T F(\theta)\delta$};
+    \draw[->, thin, monographSlate] (fimlbl.south west) -- (4.16, 3.99);
+
+    \node[monoBox, font=\scriptsize, text width=6.6cm] at (3.55, -0.02) {
+      \textbf{Dual Pythagorean identity} ($\mathcal{Q}$ is $m$-convex):\\
+      $\KL{q}{p} = \KL{q}{q_I^\star} + \KL{q_I^\star}{p}$ whenever $\mathcal{Q}$ is an exp.\ family
+    };
+
+    % Right: Pinsker Bound Geometry
+    \begin{scope}[shift={(8.5, 0.0)}]
+      \node[font=\small\bfseries, color=monographNavy] at (2.85, 5.05) {(b) Pinsker's Inequality Envelope};
+      \begin{axis}[
+        width=6.2cm,
+        height=5.2cm,
+        at={(0.1cm, 0.20cm)},
+        grid=major,
+        grid style={monographRule, dashed, line width=0.35pt},
+        xlabel={$D_{\mathrm{TV}}(p, q) = \frac{1}{2}\|p - q\|_1$},
+        ylabel={Divergence (nats)},
+        xmin=0, xmax=0.95,
+        ymin=0, ymax=2.2,
+        tick label style={font=\footnotesize, color=monographSlate},
+        label style={font=\footnotesize, color=monographNavy},
+        legend style={font=\scriptsize, draw=monographRule, fill=white, at={(0.04,0.96)}, anchor=north west}
+      ]
+        \addplot[monographNavy, very thick, smooth, domain=0:0.95, samples=100] {2*x^2};
+        \addlegendentry{Pinsker lower bound: $2 D_{\mathrm{TV}}^2$}
+        \addplot[monographCrimson, very thick, dashed, smooth, domain=0.001:0.93, samples=100]
+          {0.5*(1+x)*ln((1+x)/(1-x)) + 0.5*(1-x)*ln((1-x)/(1+x))};
+        \addlegendentry{Symmetric $\Bernoulli(\frac{1\pm \tau}{2})$ KL}
+        \node[font=\scriptsize, color=monographTeal, align=center, fill=white, fill opacity=0.92, text opacity=1, inner sep=2pt] at (axis cs:0.35, 1.15) {Feasible KL region\\$\KL{p}{q} \ge 2 D_{\mathrm{TV}}^2$};
+      \end{axis}
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Information-geometric and metric comparison of divergences. \textbf{(a)} Minimizing forward KL projects along mixture ($m$-) geodesics (moment matching), whereas reverse KL projects along exponential ($e$-) geodesics (I-projection) with local Riemannian curvature governed by the Fisher Information Matrix $F(\theta)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.9--5.1.10, pp.~233--234}. \textbf{(b)} Pinsker's bound $\KL{p}{q} \ge 2 D_{\mathrm{TV}}(p,q)^2$ is exact to second order near $p=q$, as shown against the exact symmetric Bernoulli divergence $\tau\ln\frac{1+\tau}{1-\tau} = 2\tau^2 + O(\tau^4)$.}
+  \label{fig:infotheory:pinsker_manifold}
+\end{figure}
+
+Complementing the theoretical geometry, Figure~\ref{fig:infotheory:vib_mnist} illustrates the empirical behavior of the Variational Information Bottleneck (Eq.~\eqref{eq:infotheory:vib_loss}) on MNIST digits in a 2D latent space: while a deterministic MLP maps instances to sharp trajectories that encode instance-specific nuisance, VIB learns compact Gaussian posteriors $e_\theta(t|x) = \Normal(\vecb{\mu}_\theta(x), \diag(\vecb{\sigma}^2_\theta(x)))$ whose covariances expand across intra-class variations, discarding irrelevant pixel detail while preserving inter-class separability.
+
+\monographfig[0.86\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p289_fig1.png}{2D MNIST embeddings from a classifier bottleneck: \textbf{(a)} deterministic encoder creates sharp instance-memorizing rays; \textbf{(b)} VIB encoder means $\vecb{\mu}_\theta(x)$ separate digit classes cleanly; \textbf{(c)} VIB posterior covariance ellipses expand within each class cluster to discard label-irrelevant input bits under the $\beta\,\KL{e_\theta(t|x)}{m(t)}$ rate penalty. Reproduced from \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~5, Fig.~5.13, p.~255}.}{fig:infotheory:vib_mnist}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:infotheory:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Disjoint-Support KL Blowup ($+\infty$) \& Singular Manifolds]
+\label{pit:infotheory:disjoint}
+If there exists a measurable set $S$ with $p(S) > 0$ and $q(S) = 0$, then $\KL{p}{q} = +\infty$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.1.2.1, p.~222} \bookcite{understandingdl_simonprince}{App.~C.5.1, p.~460}. This failure occurs routinely in high-dimensional generative modeling when real data $p^*$ and a neural generator $q_\theta$ concentrate on low-dimensional manifolds with measure-zero intersection: both $\KL{p^*}{q_\theta}$ and $\KL{q_\theta}{p^*}$ diverge to $+\infty$, while $\JS{p^*}{q_\theta}$ saturates flatly at $\ln 2$ with zero gradient everywhere.
+\textbf{Remedy:} Add controlled Gaussian jitter ($p_\sigma * p^*$, $p_\sigma * q_\theta$) to restore overlapping support, smooth empirical targets via label smoothing or data augmentation \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~6.2.5, p.~216}, or replace density-ratio $f$-divergences with $1$-Lipschitz Integral Probability Metrics such as Wasserstein-$1$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~26.2.4, p.~900}.
+\end{pitfall}
+
+\begin{pitfall}[Differential Entropy Negativity, Divergence \& Unit Dependence]
+\label{pit:infotheory:diff_entropy}
+Unlike discrete entropy $\Entropy(X) \in [0, \ln K]$, differential entropy $h(X)$ can be negative (for $X \sim \Normal(\mu, \sigma^2)$, $h(X) < 0$ whenever $\sigma^2 < (2\pi e)^{-1}$ \bookcite{deep_learning_foundations_concepts}{Sec.~2.5.4, p.~51}), diverges as $-\ln\Delta \to +\infty$ under infinite quantization precision (Eq.~\eqref{eq:infotheory:quantized_entropy}), and is \emph{not} coordinate-invariant: under an invertible smooth map $Y = g(X)$ with Jacobian $\jac_g(x)$,
+\begin{equation}
+\label{eq:infotheory:diff_entropy_jacobian}
+  h(Y) = h(X) + \E_{p_X}\!\bigl[\ln\abs{\det \jac_g(X)}\bigr],
+\end{equation}
+so merely rescaling adult human heights from feet to centimeters adds $\log_2 30.48 \approx 4.93$ bits \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.2.2 \& Fig.~5.5, pp.~236--237}.
+\textbf{Remedy:} Never interpret raw $h(X)$ as an absolute information measure or minimize $h(T)$ in continuous networks without fixing a reference scale; always optimize relative quantities ($\KL{p}{q}$ or $\MI(X;Y)$) where $\ln\abs{\det \jac_g(X)}$ cancels identically.
+\end{pitfall}
+
+\begin{pitfall}[Deterministic Bottleneck Collapse \& Log-Domain Numerical Instability]
+\label{pit:infotheory:numerical}
+Two severe implementation hazards arise in neural pipelines:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Deterministic IB Singularity:} For a deterministic continuous map $T = g_\theta(X)$ with continuous $X$, $\MI(X; T) = +\infty$ identically, rendering $\min_\theta \beta\MI(X; T) - \MI(T; Y)$ ill-posed unless stochastic encoder noise (as in VIB, $e_\theta(t|x) = \Normal(\vecb{\mu}_\theta(x), \diag(\vecb{\sigma}^2_\theta(x)))$) or fixed finite binning is enforced \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.6.2, p.~254}.
+  \item \textbf{$0\ln 0$ \& Softmax Underflow:} Evaluating $-p_k \ln(\softmax(\vecb{z})_k)$ directly yields $0 \cdot (-\infty) = \mathrm{NaN}$ or catastrophic cancellation when probabilities underflow IEEE-754 float32 ($\approx 10^{-38}$).
+\end{enumerate}
+\textbf{Remedy:} Compute cross-entropy and KL terms strictly in log-space via log-sum-exp ($\ln\softmax(\vecb{z})_k = z_k - \text{LogSumExp}(\vecb{z})$), mask zero-probability support entries ($p_k = 0 \mapsto 0$) before multiplying by $\ln q_k$, and use non-parametric $k$-NN (KSG) or variational InfoNCE estimators (noting $\MI_{\mathrm{NCE}} \le \ln K$ requires sufficiently large negative batch size $K$) rather than naive histogram binning for continuous MI \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~6.3.5, p.~220} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~5.3.6.4, p.~246}.
+\end{pitfall}
+
+\end{document}

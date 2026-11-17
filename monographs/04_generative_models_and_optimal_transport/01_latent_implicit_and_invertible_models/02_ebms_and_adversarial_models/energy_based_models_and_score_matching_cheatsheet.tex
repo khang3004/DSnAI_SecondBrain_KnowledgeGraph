@@ -1,0 +1,210 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Autoencoders, VAEs, Flows, EBMs \& GANs}{Energy-Based Models, Partition Functions, Contrastive Divergence \& Score Matching}
+  {Carve an energy landscape $E_\theta(\vecb x)$ with low valleys on data; sample or train via Langevin dynamics and $Z_\theta$-free Stein scores}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{EBMs \& Scores\\ \footnotesize\mdseries Gibbs $\cdot$ $\mathrm{CD}_k$ $\cdot$ Stein Score}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\scriptsize}]
+    % Double-well energy curve
+    \draw[csDom, very thick] plot[smooth, tension=0.7] coordinates {(-2.3,1.1) (-1.3,-0.65) (0,0.65) (1.3,-0.45) (2.3,1.1)};
+    % Data point at valley (push down)
+    \fill[csD] (-1.3,-0.65) circle (3.2pt);
+    \draw[-{Stealth}, thick, csD] (-1.3,-0.1)--(-1.3,-0.55);
+    \node[csD, font=\tiny\bfseries] at (-1.3,0.12) {data $\downarrow$};
+    % Fantasy particle (push up)
+    \fill[csA] (0,0.65) circle (3.2pt);
+    \draw[-{Stealth}, thick, csA] (0,0.15)--(0,0.58);
+    \node[csA, font=\tiny\bfseries] at (0,-0.08) {$\tilde{\vecb x}\uparrow$};
+    % Score arrow pointing into right mode
+    \draw[-{Stealth}, very thick, csF] (2.15,0.25)--(1.45,-0.35) node[midway, right, font=\tiny] {$\vecb s_\theta$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Gibbs density \& MLE phases}{%
+  \csfm{p_\theta(\vecb x)=\frac{\exp(-E_\theta(\vecb x))}{Z_\theta},\qquad Z_\theta=\int_{\R^D}\exp(-E_\theta(\vecb x))\,\mathrm{d}\vecb x}
+  \begin{csbul}
+    \item \textbf{Log-partition gradient:} $\nabla_\theta\log Z_\theta=\E_{\tilde{\vecb x}\sim p_\theta}[-\nabla_\theta E_\theta(\tilde{\vecb x})]$
+    \item \textbf{Wake--Sleep MLE gradient:}
+      \csfm{\nabla_\theta\ell(\theta)=\underbrace{\E_{\vecb x\sim p_{\mathcal D}}[-\nabla_\theta E_\theta(\vecb x)]}_{\text{Positive (push }E_\theta\text{ down)}}-\underbrace{\E_{\tilde{\vecb x}\sim p_\theta}[-\nabla_\theta E_\theta(\tilde{\vecb x})]}_{\text{Negative (push }E_\theta\text{ up)}}}
+    \item \textbf{Products of Experts (PoE):} $p_{12}\propto p_1 p_2\iff E_{12}=E_1+E_2$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ Langevin MCMC, $\mathrm{CD}_k$ \& PCD}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\vecb x_{k+1}=\vecb x_k-\frac{\epsilon^2}{2}\nabla_{\vecb x}E_\theta(\vecb x_k)+\epsilon\vecb z_k}
+    \begin{csbul}
+      \item $\vecb z_k\sim\Normal(\zeros,\eye)$; uses $\vecb s_\theta=-\nabla_{\vecb x}E_\theta$ (\textbf{no $Z_\theta$!})
+      \item \textbf{$\mathrm{CD}_k$:} start chain at data $\vecb x_0\sim p_{\mathcal D}$, run $k$ steps; minimizes $\KL{p_0}{p_\infty}-\KL{p_k}{p_\infty}$
+      \item \textbf{PCD / SML:} evolve persistent replay buffer $\mathcal B$ across $\theta$ updates
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.54, every node/.style={font=\tiny}]
+      \draw[csB, thick] plot[smooth] coordinates {(0,1.4) (0.9,0.1) (1.8,1.1) (2.7,-0.2) (3.4,1.2)};
+      \fill[csD] (0.9,0.1) circle (3pt) node[below] {$\vecb x_0$};
+      \fill[csA] (0.45,0.6) circle (3pt) node[left] {$\vecb x_k$};
+      \draw[-{Stealth}, csA, thick] (0.9,0.15) to[bend left=25] (0.5,0.55);
+      \node[csA, align=center] at (2.7,-0.75) {unvisited\\spurious mode};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; IMPLICIT \& SLICED SCORE MATCHING}{%
+  \csfm{D_F(p_{\mathcal D}\|p_\theta)=\frac{1}{2}\E_{p_{\mathcal D}}\!\bigl[\norm{\vecb s_\theta(\vecb x)-\nabla_{\vecb x}\log p_{\mathcal D}(\vecb x)}_2^2\bigr]}
+  \begin{csbul}
+    \item \textbf{Stein score:} $\vecb s_\theta(\vecb x)=\nabla_{\vecb x}\log p_\theta(\vecb x)=-\nabla_{\vecb x}E_\theta(\vecb x)$ ($\nabla_{\vecb x}\log Z_\theta=\zeros$)
+    \item \textbf{Hyv\"arinen ISM} (integration by parts, $O(D^2)$ Hessian trace):
+      \csfm{J_{\mathrm{ISM}}(\theta)=\E_{p_{\mathcal D}}\!\Bigl[\tfrac{1}{2}\norm{\vecb s_\theta(\vecb x)}_2^2+\Tr\bigl(\nabla_{\vecb x}\vecb s_\theta(\vecb x)\bigr)\Bigr]}
+    \item \textbf{Sliced SM (SSM):} $\E_{\vecb v}[\frac{1}{2}(\vecb v\T\vecb s_\theta)^2+\vecb v\T(\nabla_{\vecb x}\vecb s_\theta)\vecb v]$, $O(D)$ via 1 JVP
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; DENOISING SM \& TWEEDIE'S FORMULA}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{J_{\mathrm{DSM}}(\theta;\sigma)=\frac{1}{2}\E_{\vecb x,\vecb\epsilon}\!\left[\norm{\vecb s_\theta(\vecb x+\sigma\vecb\epsilon)+\frac{\vecb\epsilon}{\sigma}}_2^2\right]}
+    \begin{csbul}
+      \item Matches smoothed $q_\sigma(\tilde{\vecb x})$ with \textbf{zero derivatives} of $\vecb s_\theta$ ($O(1)$ backprop!)
+      \item \textbf{Tweedie's formula:} $\E[\vecb x\mid\tilde{\vecb x}]=\tilde{\vecb x}+\sigma^2\nabla_{\tilde{\vecb x}}\log q_\sigma(\tilde{\vecb x})$
+      \item \textbf{de Bruijn:} $\dd{}{t}\KL{q_t}{p_{\theta,t}}=-\frac{1}{2}D_F(q_t\|p_{\theta,t})$ ($\mathrm{CD}_1\approx$ Fisher div.)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \draw[csD, dashed, thick] (0,0) circle (1.35);
+      \fill[csD] (0,0) circle (3pt) node[below] {$\vecb x$};
+      \fill[csA] (0.95,0.95) circle (3pt) node[above right] {$\tilde{\vecb x}=\vecb x+\sigma\vecb\epsilon$};
+      \draw[-{Stealth}, csF, very thick] (0.9,0.9)--(0.12,0.12) node[midway, above left] {$-\vecb\epsilon/\sigma$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{5}{E}{5\;\; COST $-$ method comparison}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{1.55cm}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{2.2cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{$Z_\theta$ Status}} & \textbf{\textcolor{csE}{Step Cost}} & \textbf{\textcolor{csE}{Main Bottleneck}}\\ \hline
+    MCMC MLE & $\nabla_\theta\log Z_\theta$ & $O(K_{\mathrm{burn}})$ & Slow MCMC burn-in\\
+    $\mathrm{CD}_k$ / PCD & Biased / buffer & $O(k)$ steps & Spurious far modes\\
+    Hyv\"arinen ISM & Eliminated & $O(D^2)$ trace & $D$ backward passes\\
+    Sliced SM & Eliminated & $O(D)$ 1 JVP & Probe $\vecb v$ variance\\
+    Vincent DSM & Eliminated & $O(1)$ 1 pass & $\sigma$-smoothing bias\\
+    NCE & Learns $c{\approx}{-}\log Z$ & $O(1)$ logistic & Needs good noise $p_n$\\
+  \end{tabular}}
+
+\csbranch{6}{F}{6\;\; CONNECTIONS $-$ NCE, AIS \& diffusion}{%
+  \begin{csbul}
+    \item \textbf{NCE:} classifies $\vecb x\sim p_{\mathcal D}$ vs.\ $\vecb x\sim p_n$ via $\sigmoid(\log p_\theta(\vecb x)-\log p_n(\vecb x))$ with learnable $c\approx-\log Z_\theta$ (self-normalized EBM)
+    \item \textbf{AIS (Annealed Importance Sampling):} estimates $\log Z_1/\log Z_0$ via geometric bridge $p_{\eta_k}\propto p_0^{1-\eta_k}p_\theta^{\eta_k}$
+    \item \textbf{NCSN / Diffusion:} multi-scale DSM over $\{\sigma_i\}_{i=1}^L$ weighted by $\lambda(\sigma_i)=\sigma_i^2$ + annealed Langevin dynamics
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Lower Energy on Data $\cdot$ Raise Energy on Fantasies $\cdot$ Or Match $\nabla_{\vecb x}\log p$ to Kill $Z_\theta$}\\[1pt]
+  \footnotesize\mdseries \textbf{Grad w.r.t.\ $\theta$ gives $\nabla_\theta\log Z_\theta$ (needs MCMC); grad w.r.t.\ $\vecb x$ gives $\vecb s_\theta=-\nabla_{\vecb x}E_\theta$ ($Z_\theta$ vanishes).}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Stein vs.\ Fisher:} $\vecb s_\theta=\nabla_{\vecb x}\log p_\theta\ne\nabla_\theta\log p_\theta$ (no $Z_\theta$)
+    \item \textbf{$\mathrm{CD}_1$ spurious modes:} short chains miss barriers $\to$ PCD + $L_2$ reg.
+    \item \textbf{DSM blow-up \& manifold:} weight by $\sigma^2$; use multi-scale noise off-data
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Energy-Based Models, Partition Functions, Contrastive Divergence \& Score Matching}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item EBM MLE Gradient (Positive vs.\ Negative Phase):
+      \csfm{\nabla_\theta\ell(\theta)=-\E_{p_{\mathcal D}}[\nabla_\theta E_\theta(\vecb x)]+\E_{p_\theta}[\nabla_\theta E_\theta(\tilde{\vecb x})]}
+    \item Overdamped Langevin MCMC ($\eta=\epsilon^2/2$, $\vecb s_\theta=-\nabla_{\vecb x}E_\theta$):
+      \csfm{\vecb x_{k+1}=\vecb x_k+\eta\vecb s_\theta(\vecb x_k)+\sqrt{2\eta}\,\vecb z_k,\quad \vecb z_k\sim\Normal(\zeros,\eye)}
+    \item Hyv\"arinen Implicit Score Matching (ISM):
+      \csfm{J_{\mathrm{ISM}}(\theta)=\E_{p_{\mathcal D}}\!\Bigl[\tfrac{1}{2}\norm{\vecb s_\theta(\vecb x)}_2^2+\Tr\bigl(\nabla_{\vecb x}\vecb s_\theta(\vecb x)\bigr)\Bigr]}
+    \item Sliced Score Matching (SSM, $\E[\vecb v\vecb v\T]=\eye$):
+      \csfm{J_{\mathrm{SSM}}(\theta)=\E_{p_{\mathcal D},\vecb v}\!\Bigl[\tfrac{1}{2}(\vecb v\T\vecb s_\theta(\vecb x))^2+\vecb v\T\nabla_{\vecb x}(\vecb v\T\vecb s_\theta(\vecb x))\Bigr]}
+    \item Vincent Denoising Score Matching \& Tweedie's Formula:
+      \csfm{J_{\mathrm{DSM}}=\frac{1}{2}\E_{\vecb x,\vecb\epsilon}\!\left[\norm{\vecb s_\theta(\vecb x+\sigma\vecb\epsilon)+\frac{\vecb\epsilon}{\sigma}}_2^2\right],\;\E[\vecb x\mid\tilde{\vecb x}]=\tilde{\vecb x}+\sigma^2\vecb s_{\theta^*}(\tilde{\vecb x})}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ PCD vs.\ DSM + LANGEVIN}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{PCD training:} draw $\tilde{\vecb x}_0\sim\mathcal B$, run $K$ Langevin steps $\to\tilde{\vecb x}_K$, write back to $\mathcal B$, step $\theta$ along $\nabla_\theta E_\theta(\vecb x)-\nabla_\theta E_\theta(\tilde{\vecb x}_K)$
+    \item \textbf{DSM training:} draw $\vecb\epsilon\sim\Normal(\zeros,\eye)$, perturb $\tilde{\vecb x}=\vecb x+\sigma\vecb\epsilon$, minimize $\frac{\sigma^2}{2}\norm{\vecb s_\theta(\tilde{\vecb x})+\vecb\epsilon/\sigma}_2^2$
+    \item \textbf{Sampling:} iterate $\vecb x_{t+1}=\vecb x_t+\eta\vecb s_\theta(\vecb x_t)+\sqrt{2\eta}\vecb z_t$ across annealed noise scales $\sigma_1>\dots>\sigma_L$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    low-$D$ smooth density ($D\le 20$) & Hyv\"arinen ISM (exact trace)\\
+    high-$D$ explicit energy $E_\theta$ & Sliced SM (1 JVP) or PCD + buffer\\
+    high-$D$ images on a manifold & Multi-scale DSM (NCSN / DDPM)\\
+    tractable close noise $p_n(\vecb x)$ & Noise Contrastive Est.\ (NCE)\\
+    need test $\log Z_\theta$ evaluation & Annealed Importance Sampling (AIS)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& VARIANCE CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Trace cost:} ISM $D$ backprops $\to$ SSM $1$ JVP $\to$ DSM $0$ JVPs
+    \item \textbf{DSM variance:} $\Var(\vecb\epsilon/\sigma)=O(1/\sigma^2)\implies$ scale loss by $\sigma^2$
+    \item \textbf{Stationarity:} at modes $\vecb x^\star$, $\vecb s_\theta(\vecb x^\star)=\zeros$ and $\nabla_{\vecb x}\cdot\vecb s_\theta(\vecb x^\star)<0$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{ENERGY WELLS $E_\theta(x)$ vs.\ STEIN SCORE $s_\theta(x)$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.3cm, xmin=-2.3, xmax=2.3, ymin=-4.5, ymax=4.5,
+      xlabel={$x$}, ylabel={$E_\theta(x)$ and $s_\theta(x)=-\partial_x E_\theta(x)$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25}]
+      \addplot[csDom, very thick, domain=-2.2:2.2, samples=100] {0.35*(x^2 - 2.25)^2 + 0.12*x};
+      \addplot[csF, very thick, dashed, domain=-1.92:1.92, samples=100] {-1.4*x*(x^2 - 2.25) - 0.12};
+      \addplot[black!40, thin, domain=-2.3:2.3] {0};
+      \addplot[only marks, mark=*, mark size=2.2pt, csD] coordinates {(-1.519,0) (1.481,0)};
+      \addplot[only marks, mark=triangle*, mark size=2.5pt, csA] coordinates {(0.038,0)};
+      \node[font=\tiny, csDom, anchor=south, fill=white, fill opacity=0.9, text opacity=1, inner sep=1pt] at (axis cs:0,2.25) {$E_\theta(x)$};
+      \node[font=\tiny, csF, anchor=east, fill=white, fill opacity=0.9, text opacity=1, inner sep=1pt] at (axis cs:1.85,-3.3) {$s_\theta(x)$};
+      \node[font=\tiny, csD, anchor=north, fill=white, fill opacity=0.9, text opacity=1, inner sep=1pt] at (axis cs:-0.75,-2.5) {Sink ($\partial_x s_\theta<0$)};
+      \node[font=\tiny, csA, anchor=south, fill=white, fill opacity=0.9, text opacity=1, inner sep=1pt] at (axis cs:0.04,0.38) {Barrier};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Confusing Stein and Fisher scores:} Stein score $\nabla_{\vecb x}\log p_\theta(\vecb x)=-\nabla_{\vecb x}E_\theta(\vecb x)$ is independent of $Z_\theta$; Fisher score $\nabla_\theta\log p_\theta(\vecb x)$ requires $\nabla_\theta\log Z_\theta$
+    \item \textbf{Short-run $\mathrm{CD}_k$ blindness:} chains initialized at data cannot cross wide low-density barriers, leaving deep spurious energy wells untouched
+    \item \textbf{Zero-noise DSM blow-up:} training DSM with tiny $\sigma\to 0$ explodes gradient variance as $O(1/\sigma^2)$; always weight by $\sigma^2$
+    \item \textbf{Low-density score starvation:} on thin data manifolds, ambient space has $p_{\mathcal D}(\vecb x)\approx 0$, so unperturbed ISM/SSM learns garbage away from data
+    \item \textbf{Non-conservative vector networks:} a free vector net $\vecb s_\theta(\vecb x)$ need not satisfy $\nabla_{\vecb x}\vecb s_\theta=(\nabla_{\vecb x}\vecb s_\theta)\T$ unless parameterized as $-\nabla_{\vecb x}E_\theta(\vecb x)$
+    \item \textbf{Unadjusted Langevin bias:} finite step $\eta>0$ has $O(\eta)$ stationary bias without Metropolis--Hastings correction (MALA) or $\eta\to 0$ annealing
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{EBMs} assign scalar energy $E_\theta(\vecb x)$ so $p_\theta(\vecb x)=e^{-E_\theta(\vecb x)}/Z_\theta$.
+  \textbf{MLE / CD} pushes $E_\theta$ down on real data and up on MCMC fantasy particles.
+  \textbf{Score Matching} takes $\nabla_{\vecb x}\log p_\theta=-\nabla_{\vecb x}E_\theta$ to annihilate $Z_\theta$, turning density estimation into vector-field regression (DSM) toward data modes.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

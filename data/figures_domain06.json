@@ -1,0 +1,3959 @@
+{
+  "dpi": 300,
+  "dry_run": false,
+  "count": 208,
+  "figures": [
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 50,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.1",
+      "caption": "Figure 2.1: An example bandit problem from the 10-armed testbed. The true value q ⇤ ( a ) of each of the ten actions was selected according to a normal distribution with mean zero and unit variance, and then the actual rewards were selected according to a mean q ⇤ ( a ) unit variance normal distribution, as suggested by these gray distributions.",
+      "bbox": [
+        67.61,
+        247.51,
+        435.64,
+        563.46
+      ],
+      "pixel_width": 1535,
+      "pixel_height": 1296,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p50_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 51,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.2",
+      "caption": "Figure 2.2: Average performance of \" -greedy action-value methods on the 10-armed testbed. These data are averages over 2000 runs with di↵erent bandit problems. All methods used sample averages as their action-value estimates.",
+      "bbox": [
+        107.26,
+        283.67,
+        401.72,
+        572.39
+      ],
+      "pixel_width": 1218,
+      "pixel_height": 1184,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p51_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 56,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.3",
+      "caption": "Figure 2.3: The e↵ect of optimistic initial action-value estimates on the 10-armed testbed. Both methods used a constant step-size parameter, ↵ = 0 . 1.",
+      "bbox": [
+        84.0,
+        423.02,
+        419.33,
+        582.79
+      ],
+      "pixel_width": 1343,
+      "pixel_height": 618,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p56_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 58,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.4",
+      "caption": "Figure 2.4: Average performance of UCB action selection on the 10-armed testbed. As shown, UCB generally performs better than \" -greedy action selection, except in the ﬁrst k steps, when it selects randomly among the as-yet-untried actions.",
+      "bbox": [
+        89.34,
+        354.63,
+        417.29,
+        513.14
+      ],
+      "pixel_width": 1338,
+      "pixel_height": 636,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p58_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 60,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.5",
+      "caption": "Figure 2.5: Average performance of the gradient bandit algorithm with and without a reward baseline on the 10-armed testbed when the q ⇤ ( a ) are chosen to be near +4 rather than near zero.",
+      "bbox": [
+        105.34,
+        64.27,
+        399.44,
+        233.72
+      ],
+      "pixel_width": 1160,
+      "pixel_height": 664,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p60_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 64,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.6",
+      "caption": "Figure 2.6: A parameter study of the various bandit algorithms presented in this chapter. Each point is the average reward obtained over 1000 steps with a particular algorithm at a particular setting of its parameter.",
+      "bbox": [
+        86.88,
+        393.68,
+        414.29,
+        572.33
+      ],
+      "pixel_width": 1341,
+      "pixel_height": 698,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p64_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 177,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.1",
+      "caption": "Figure 7.1: Illustration of Thompson sampling applied to a linear-Gaussian contextual bandit. The context has the",
+      "bbox": [
+        79.44,
+        66.0,
+        536.16,
+        200.35
+      ],
+      "pixel_width": 1787,
+      "pixel_height": 510,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p177_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1156,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.7",
+      "caption": "Figure 34.7: Illustration of the feedback problem in online advertising and recommendation systems. The click through rate (CTR) model is used to decide what ads to show, which affects what data is collected, which affects how the model learns. From Figure 1–2 of [ Du+21 ]. Used with kind permission of Chao Du.",
+      "bbox": [
+        155.38,
+        54.05,
+        430.64,
+        138.92
+      ],
+      "pixel_width": 1123,
+      "pixel_height": 332,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1156_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1157,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.8",
+      "caption": "Figure 34.8: Illustration of sequential belief updating for a two-armed beta-Bernoulli bandit. The prior for the reward for action 1 is the (blue) uniform distribution Beta (1 , 1) ; the prior for the reward for action 2 is the (orange) unimodal distribution Beta (2 , 2) . We update the parameters of the belief state based on the chosen action, and based on whether the observed reward is success (1) or failure (0).",
+      "bbox": [
+        85.21,
+        54.67,
+        509.07,
+        204.04
+      ],
+      "pixel_width": 1751,
+      "pixel_height": 608,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1157_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1160,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.9",
+      "caption": "Figure 34.9: Illustration of the reward distribution Q ( a ) for 3 different actions, and the corresponding lower and upper confidence bounds. From [ Sil18 ]. Used with kind permission of David Silver.",
+      "bbox": [
+        157.69,
+        54.05,
+        428.28,
+        174.05
+      ],
+      "pixel_width": 1076,
+      "pixel_height": 483,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1160_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1161,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.10",
+      "caption": "Figure 34.10: Illustration of Thompson sampling applied to a linear-Gaussian contextual bandit. The context has the form s t = (1 , t, t 2 ) . (a) True reward for each arm vs time. (b) Cumulative reward per arm vs time. (c) Cumulative regret vs time. Generated by thompson_sampling_linear_gaussian.ipynb .",
+      "bbox": [
+        82.62,
+        54.05,
+        517.74,
+        188.4
+      ],
+      "pixel_width": 1696,
+      "pixel_height": 510,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1161_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 70,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.1",
+      "caption": "Figure 3.1: The agent–environment interaction in a Markov decision process.",
+      "bbox": [
+        120.0,
+        113.76,
+        384.0,
+        212.96
+      ],
+      "pixel_width": 1072,
+      "pixel_height": 401,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p70_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 82,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.2",
+      "caption": "Figure 3.2: Gridworld example: exceptional reward dynamics (left) and state-value function for the equiprobable random policy (right).",
+      "bbox": [
+        100.37,
+        261.06,
+        381.78,
+        367.5
+      ],
+      "pixel_width": 1173,
+      "pixel_height": 417,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p82_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 83,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.3",
+      "caption": "Figure 3.3: A golf example: the state-value func- tion for putting (upper) and the optimal action- value function for using the driver (lower).",
+      "bbox": [
+        238.89,
+        256.87,
+        448.45,
+        477.77
+      ],
+      "pixel_width": 844,
+      "pixel_height": 898,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p83_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 86,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.4",
+      "caption": "Figure 3.4: Backup diagrams for v ⇤ and q ⇤",
+      "bbox": [
+        130.99,
+        163.78,
+        371.87,
+        246.37
+      ],
+      "pixel_width": 981,
+      "pixel_height": 308,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p86_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 87,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.5",
+      "caption": "Figure 3.5: Optimal solutions to the gridworld example.",
+      "bbox": [
+        84.5,
+        200.22,
+        448.8,
+        325.82
+      ],
+      "pixel_width": 1239,
+      "pixel_height": 453,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p87_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 99,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.1",
+      "caption": "Figure 4.1: Convergence of iterative policy evaluation on a small gridworld. The left column is the sequence of approximations of the state-value function for the random policy (all actions equally likely). The right column is the sequence of greedy policies corresponding to the value function estimates (arrows are shown for all actions achieving the maximum, and the numbers shown are rounded to two signiﬁcant digits). The last policy is guaranteed only to be an improvement over the random policy, but in this case it, and all policies after the third iteration, are optimal.",
+      "bbox": [
+        115.88,
+        92.61,
+        384.56,
+        498.23
+      ],
+      "pixel_width": 1090,
+      "pixel_height": 1648,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p99_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 103,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.2",
+      "caption": "Figure 4.2: The sequence of policies found by policy iteration on Jack’s car rental problem, and the ﬁnal state-value function. The ﬁrst ﬁve diagrams show, for each number of cars at each location at the end of the day, the number of cars to be moved from the ﬁrst location to the second (negative numbers indicate transfers from the second location to the ﬁrst). Each successive policy is a strict improvement over the previous policy, and the last policy is optimal.",
+      "bbox": [
+        65.13,
+        292.08,
+        435.98,
+        547.55
+      ],
+      "pixel_width": 1522,
+      "pixel_height": 1022,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p103_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 106,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.3",
+      "caption": "Figure 4.3: The solution to the gambler’s problem for p h = 0 . 4. The upper graph shows the value func- tion found by successive sweeps of value iteration. The lower graph shows the ﬁnal policy.",
+      "bbox": [
+        223.92,
+        199.62,
+        446.87,
+        430.4
+      ],
+      "pixel_width": 909,
+      "pixel_height": 942,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p106_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 14,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 1.1",
+      "caption": "Figure 1.1: A small agent interacting with a big external world. The observation o t (which, for notational simplicity, includes the previous action a t ) is used to update the internal agent state z t , which is passed to the policy π which",
+      "bbox": [
+        159.17,
+        72.0,
+        452.83,
+        218.0
+      ],
+      "pixel_width": 1157,
+      "pixel_height": 594,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p14_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 16,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 1.2",
+      "caption": "Figure 1.2: Detailed illustration of the interaction of an agent in an environment. The agent has internal state z t , and chooses action a t based on its policy π t using a t ∼ π t ( z t | θ t ) . It then predicts its next internal states, z t +1 | t , via the predict function P , and optionally predicts the resulting observation, ˆ o t +1 , via the observation decoder D . The environment has (hidden) internal state w t , which gets updated by the environment model M to give the new",
+      "bbox": [
+        155.26,
+        209.97,
+        451.99,
+        449.99
+      ],
+      "pixel_width": 1221,
+      "pixel_height": 984,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p16_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 18,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 1.3",
+      "caption": "Figure 1.3: Illustration of an MDP as a finite state machine (FSM). The MDP has three discrete states (green cirlces), two discrete actions (orange circles), and two non-zero rewards (orange arrows). The numbers on the black edges represent state transition probabilities, e.g., p ( s ′ = s 0 | a = a 0 , s ′ = s 1 ) = 0 . 7 ; most state transitions are impossible (probability 0), so the graph is sparse. The numbers on the yellow wiggly edges represent expected rewards, e.g., R ( s = s 1 , a = a 0 , s ′ = s 0 ) = +5 ; state transitions with zero reward are not annotated. From https: // en. wikipedia. org/ wiki/ Markov_ decision_ process . Used with kind permission of Wikipedia author waldoalvarez.",
+      "bbox": [
+        220.4,
+        66.0,
+        391.61,
+        207.6
+      ],
+      "pixel_width": 677,
+      "pixel_height": 553,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p18_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 21,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 1.4",
+      "caption": "Figure 1.4: Illustration of sequential belief updating for a two-armed beta-Bernoulli bandit. The prior for the reward",
+      "bbox": [
+        98.22,
+        66.63,
+        522.09,
+        216.0
+      ],
+      "pixel_width": 1751,
+      "pixel_height": 607,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p21_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 27,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 1.5",
+      "caption": "Figure 1.5: Illustration of how the MineClip reward function can be used to help train an agent to play Minecraft in the MineDojo simulator. From Figure 4 of [ Fan+22 ]. Used with kind permission of Jim Fan.",
+      "bbox": [
+        133.6,
+        66.0,
+        478.39,
+        221.97
+      ],
+      "pixel_width": 1306,
+      "pixel_height": 484,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p27_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 33,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.1",
+      "caption": "Figure 2.1: Left: illustration of a simple MDP corresponding to a 1d grid world of 3 non-absorbing states and 2 actions. Right: optimal Q -functions for different values of γ . Adapted from Figures 3.1, 3.2, 3.4 of [ GK19 ].",
+      "bbox": [
+        109.14,
+        79.15,
+        508.55,
+        251.18
+      ],
+      "pixel_width": 1650,
+      "pixel_height": 709,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p33_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1163,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.11",
+      "caption": "Figure 34.11: Illustration of an MDP as a finite state machine (FSM). The MDP has three discrete states (green cirlces), two discrete actions (orange circles), and two non-zero rewards (orange arrows). The numbers on the black edges represent state transition probabilities, e.g., p ( s ′ = s 0 | a = a 0 , s ′ = s 1 ) = 0 . 7 ; most state transitions are impossible (probability 0), so the graph is sparse. The numbers on the yellow wiggly edges represent expected rewards, e.g., R ( s = s 1 , a = a 0 , s ′ = s 0 ) = +5 ; state transitions with zero reward are not annotated. From https: // en. wikipedia. org/ wiki/ Markov_ decision_ process . Used with kind",
+      "bbox": [
+        207.38,
+        54.04,
+        378.59,
+        195.64
+      ],
+      "pixel_width": 677,
+      "pixel_height": 553,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1163_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1164,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.12",
+      "caption": "Figure 34.12: Illustration of a partially observable Markov decision process (POMDP) with hidden environment state s t which generates the observation x t , controlled by an agent with internal belief state b t which generates the action a t . The reward r t depends on s t and a t . Nodes in this graph represent random variables (circles) and decision variables (squares).",
+      "bbox": [
+        167.7,
+        55.89,
+        418.26,
+        208.44
+      ],
+      "pixel_width": 1013,
+      "pixel_height": 619,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1164_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1167,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.13",
+      "caption": "Figure 34.13: Left: illustration of a simple MDP corresponding to a 1d grid world of 3 non-absorbing states and 2 actions. Right: optimal Q -functions for different values of γ . Adapted from Figures 3.1, 3.2, 3.4 of",
+      "bbox": [
+        96.13,
+        67.2,
+        495.53,
+        239.22
+      ],
+      "pixel_width": 1649,
+      "pixel_height": 709,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1167_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1170,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 34.14",
+      "caption": "Figure 34.14: Policy iteration vs value iteration represented as backup diagrams. Empty circles represent states, solid (filled) circles represent states and actions. Adapted from Figure 8.6 of [ SB18 ].",
+      "bbox": [
+        152.93,
+        60.05,
+        433.04,
+        170.05
+      ],
+      "pixel_width": 1068,
+      "pixel_height": 414,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1170_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 388,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.1",
+      "caption": "Figure 19.1 Markov process. A Markov process consists of a set of states and tran- sition probabilities Pr ( s t +1 | s t ) that define the probability of moving to state s t +1 given the current state is s t . a) The penguin can visit 16 different positions (states) on the ice. b) The ice is slippery, so at each time, it has an equal proba- bility of moving to any adjacent state. For example, in position 6, it has a 25% chance of moving to states 2, 5, 7, and 10. A trajectory τ = [ s 1 , s 2 , s 3 , . . . ] from this process consists of a sequence of states.",
+      "bbox": [
+        84.78,
+        131.16,
+        521.35,
+        278.24
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 596,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p388_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 389,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.2",
+      "caption": "Figure 19.2 Markov reward process. This associates a distribution Pr ( r t +1 | s t ) of rewards r t +1 with each state s t . a) Here, the rewards are deterministic; the penguin will receive a reward of +1 if it lands on a fish and 0 otherwise. The trajectory τ now consists of a sequence s 1 , r 2 , s 2 , r 3 , s 3 , r 4 . . . of alternating states and rewards, terminating after eight steps. The return G t of the sequence is the sum of discounted future rewards, here with discount factor γ = 0 . 9 . b-c) As the penguin proceeds along the trajectory and gets closer to reaching the rewards, the return increases.",
+      "bbox": [
+        45.75,
+        131.7,
+        482.51,
+        298.22
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 677,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p389_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 389,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 19.3",
+      "caption": "Figure 19.3 Markov decision process. a) The agent (penguin) can perform one of a set of actions in each state. The action influences both the probability of moving to the successor state and the probability of receiving rewards. b) Here, the four actions correspond to moving up, right, down, and left. c) For any state (here, state 6), the action changes the probability of moving to the next state. The penguin moves in the intended direction with 50% probability, but the ice is slippery, so it may slide to one of the other adjacent positions with equal prob- ability. Accordingly, in panel (a), the action taken (gray arrows) doesn’t always line up with the trajectory (orange line). Here, the action does not affect the reward, so Pr ( r t +1 | s t , a t ) = Pr ( r t +1 | s t ) . The trajectory τ from an MDP consists of a sequence s 1 , a 1 , r 2 , s 2 , a 2 , r 3 , s 3 , a 3 , r 4 . . . of alternating states s t , actions a t , and rewards, r t +1 . Note that here the penguin receives the reward when it leaves a state with a fish (i.e., the reward is received for passing through the fish square, regardless of whether the penguin arrived there intentionally or not).",
+      "bbox": [
+        45.71,
+        401.22,
+        482.49,
+        541.01
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 566,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p389_fig2.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 390,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.4",
+      "caption": "Figure 19.4 Partially observable Markov decision process (POMDP). In a POMDP, the agent does not have access to the entire state. Here, the penguin is in state three and can only see the region in the dashed box. This is indistinguishable from what it would see in state nine. In the first case, moving right leads to the hole in the ice (with -2 reward) and, in the latter, to the fish (with +3 reward).",
+      "bbox": [
+        127.77,
+        143.06,
+        604.0,
+        411.08
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 1102,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p390_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 390,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 19.5",
+      "caption": "Figure 19.5 Policies. a) A deterministic policy always chooses the same action in each state (indicated by arrow). Some policies are better than others. This policy is not optimal but still generally steers the penguin from top-left to bottom-right where the reward lies. b) This policy is more random. c) A stochastic policy has a probability distribution over actions for each state (probability indicated by size of arrows). This has the advantage that the agent explores the states more thoroughly and can be necessary for optimal performance in partially observable Markov decision processes.",
+      "bbox": [
+        84.58,
+        286.07,
+        521.36,
+        411.08
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 505,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p390_fig2.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 390,
+      "fig_idx": 3,
+      "kind": "captioned",
+      "label": "Figure 19.6",
+      "caption": "Figure 19.6 Reinforcement learning loop. The agent takes an action a t at time t based on the state s t , according to the policy π [ a t | s t ] . This triggers the generation of a new state s t +1 (via the state transition function) and a reward r t +1 (via the reward function). Both are passed back to the agent, which then chooses a new action.",
+      "bbox": [
+        322.04,
+        548.73,
+        524.83,
+        680.85
+      ],
+      "pixel_width": 820,
+      "pixel_height": 534,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p390_fig3.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 392,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.7",
+      "caption": "Figure 19.7 State and action values. a) The value v [ s t | π ] of a state s t (number at each position) is the expected return for this state for a given policy π (gray ar- rows). It is the average sum of discounted rewards received over many trajectories started from this state. Here, states closer to the fish are more valuable. b) The value q [ s t , a t , π ] of an action a t in state s t (four numbers at each position/state corresponding to four actions) is the expected return given that this particular action is taken in this state. In this case, it gets larger as we get closer to the fish and is larger for actions that head in the direction of the fish. c) If we know the action values at a state, then the policy can be modified so that it chooses the maximum of these values (red numbers in panel b).",
+      "bbox": [
+        87.16,
+        131.35,
+        513.88,
+        255.55
+      ],
+      "pixel_width": 1589,
+      "pixel_height": 501,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p392_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 394,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.8",
+      "caption": "Figure 19.8 Relationship between state values and action values. The value of state six v [ s t =6] is a weighted sum of the action values q [ s t =6 , a t ] at state six, where the weights are the policy probabilities π [ a t | s t =6] of taking that action.",
+      "bbox": [
+        124.93,
+        101.54,
+        521.35,
+        309.05
+      ],
+      "pixel_width": 1635,
+      "pixel_height": 843,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p394_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 394,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 19.9",
+      "caption": "Figure 19.9 Relationship between action values and state values. The value q [ s t = 6 , a t =2] of taking action two in state six is the reward r [ s t =6 , a t =2] from taking that action plus a weighted sum of the discounted values v [ s t +1 ] of being in successor states, where the weights are the transition probabilities Pr ( s t +1 | s t = 6 , a t = 2) . The Bellman equations chain this relation with that of figure 19.8 to link the current and next (i) state values and (ii) action values.",
+      "bbox": [
+        145.61,
+        365.38,
+        550.98,
+        593.24
+      ],
+      "pixel_width": 1492,
+      "pixel_height": 918,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p394_fig2.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 396,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.10",
+      "caption": "Figure 19.10 Dynamic programming. a) The state values are initialized to zero, and the policy (arrows) is chosen randomly. b) The state values are updated to be consistent with their neighbors (equation 19.11, shown after two iterations). The policy is updated to move the agent to states with the highest value (equa- tion 19.12). c) After several iterations, the algorithm converges to the optimal policy, in which the penguin tries to avoid the holes and reach the fish.",
+      "bbox": [
+        84.6,
+        131.16,
+        521.35,
+        255.5
+      ],
+      "pixel_width": 1622,
+      "pixel_height": 502,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p396_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 397,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.11",
+      "caption": "Figure 19.11 Monte Carlo methods. a) The policy (arrows) is initialized ran- domly. The MDP is repeatedly simulated, and the trajectories of these episodes are stored (orange and brown paths represent two trajectories). b) The action values are empirically estimated based on the observed returns averaged over these trajectories. In this case, the action values were all initially zero and have been updated where an action was observed. c) The policy can then be updated according to the action which received the best (or least bad) reward.",
+      "bbox": [
+        47.2,
+        131.78,
+        482.67,
+        256.17
+      ],
+      "pixel_width": 1622,
+      "pixel_height": 502,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p397_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 116,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.1",
+      "caption": "Figure 5.1: Approximate state-value functions for the blackjack policy that sticks only on 20 or 21, computed by Monte Carlo policy evaluation.",
+      "bbox": [
+        95.65,
+        66.2,
+        404.62,
+        278.56
+      ],
+      "pixel_width": 1259,
+      "pixel_height": 856,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p116_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 117,
+      "fig_idx": 1,
+      "kind": "uncaptioned_visual",
+      "label": "p.117",
+      "caption": "",
+      "bbox": [
+        264.66,
+        283.89,
+        454.8,
+        393.69
+      ],
+      "pixel_width": 759,
+      "pixel_height": 435,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p117_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 122,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.2",
+      "caption": "Figure 5.2: The optimal policy and state-value function for blackjack, found by Monte Carlo ES. The state-value function shown was computed from the action-value function found by Monte Carlo ES.",
+      "bbox": [
+        104.38,
+        49.82,
+        399.62,
+        286.06
+      ],
+      "pixel_width": 1232,
+      "pixel_height": 962,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p122_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 128,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.3",
+      "caption": "Figure 5.3: Weighted importance sampling produces lower error estimates of the value of a single blackjack state from o↵-policy episodes.",
+      "bbox": [
+        80.52,
+        300.82,
+        406.47,
+        466.06
+      ],
+      "pixel_width": 1338,
+      "pixel_height": 663,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p128_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 129,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.4",
+      "caption": "Figure 5.4: Ordinary importance sampling produces surprisingly unstable estimates on the one-state MDP shown inset (Example 5.5). The correct estimate here is 1 ( γ = 1), and, even though this is the expected value of a sample return (after importance sampling), the variance of the samples is inﬁnite, and the estimates do not converge to this value. These results are for o↵-policy ﬁrst-visit MC.",
+      "bbox": [
+        71.18,
+        112.45,
+        437.29,
+        350.61
+      ],
+      "pixel_width": 1447,
+      "pixel_height": 793,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p129_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 134,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.5",
+      "caption": "Figure 5.5: A couple of right turns for the racetrack task.",
+      "bbox": [
+        85.83,
+        64.17,
+        414.31,
+        246.9
+      ],
+      "pixel_width": 1351,
+      "pixel_height": 745,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p134_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 145,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.1",
+      "caption": "Figure 6.1: Changes recommended in the driving home example by Monte Carlo methods (left) and TD methods (right).",
+      "bbox": [
+        92.7,
+        66.16,
+        463.34,
+        209.36
+      ],
+      "pixel_width": 1525,
+      "pixel_height": 586,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p145_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 149,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.2",
+      "caption": "Figure 6.2: Performance of TD(0) and constant- ↵ MC under batch training on the random walk task.",
+      "bbox": [
+        275.92,
+        112.91,
+        442.85,
+        260.47
+      ],
+      "pixel_width": 674,
+      "pixel_height": 595,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p149_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 155,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.3",
+      "caption": "Figure 6.3: Interim and asymptotic performance of TD control methods on the cli↵-walking task as a function of ↵ . All algorithms used an \" -greedy policy with \" = 0 . 1. Asymptotic performance is an average over 100,000 episodes whereas interim performance is an average over the ﬁrst 100 episodes. These data are averages of over 50,000 and 10 runs for the interim and asymptotic cases respectively. The solid circles mark the best interim performance of each method. Adapted from van Seijen et al. (2009).",
+      "bbox": [
+        16.0,
+        335.29,
+        400.4,
+        541.54
+      ],
+      "pixel_width": 1334,
+      "pixel_height": 835,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p155_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 156,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.4",
+      "caption": "Figure 6.4: The backup diagrams for Q-learning and Expected Sarsa.",
+      "bbox": [
+        146.86,
+        63.35,
+        351.72,
+        143.79
+      ],
+      "pixel_width": 833,
+      "pixel_height": 312,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p156_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 157,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.5",
+      "caption": "Figure 6.5: Comparison of Q-learning and Double Q-learning on a simple episodic MDP (shown inset). Q-learning initially learns to take the left action much more often than the right action, and always takes it signiﬁcantly more often than the 5% minimum probability enforced by \" -greedy action selection with \" = 0 . 1. In contrast, Double Q-learning is essentially una↵ected by maximization bias. These data are averaged over 10,000 runs. The initial action-value estimates were zero. Any ties in \" -greedy action selection were broken randomly.",
+      "bbox": [
+        91.9,
+        65.33,
+        383.23,
+        225.66
+      ],
+      "pixel_width": 1193,
+      "pixel_height": 655,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p157_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 164,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.1",
+      "caption": "Figure 7.1: The backup diagrams of n -step methods. These methods form a spectrum ranging from one-step TD methods to Monte Carlo methods.",
+      "bbox": [
+        134.54,
+        248.14,
+        380.48,
+        474.17
+      ],
+      "pixel_width": 1016,
+      "pixel_height": 923,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p164_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 167,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.2",
+      "caption": "Figure 7.2: Performance of n -step TD methods as a function of ↵ , for various values of n , on a 19-state random walk task (Example 7.1).",
+      "bbox": [
+        108.51,
+        276.94,
+        364.27,
+        449.53
+      ],
+      "pixel_width": 1054,
+      "pixel_height": 687,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p167_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 168,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.3",
+      "caption": "Figure 7.3: The backup diagrams for the spectrum of n -step methods for state–action values. They range from the one-step update of Sarsa(0) to the up-until-termination update of the Monte Carlo method. In between are the n -step updates, based on n steps of real rewards and the estimated value of the n th next state–action pair, all appropriately discounted. On the far right is the backup diagram for n -step Expected Sarsa.",
+      "bbox": [
+        66.0,
+        322.59,
+        438.0,
+        550.59
+      ],
+      "pixel_width": 1495,
+      "pixel_height": 914,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p168_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 169,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.4",
+      "caption": "Figure 7.4: Gridworld example of the speedup of policy learning due to the use of n -step methods. The ﬁrst panel shows the path taken by an agent in a single episode, ending at a location of high reward, marked by the G . In this example the values were all initially 0, and all rewards were zero except for a positive reward at G . The arrows in the other two panels show which action values were strengthened as a result of this path by one-step and n -step Sarsa methods. The one-step method strengthens only the last action of the sequence of actions that led to the high reward, whereas the n -step method strengthens the last n actions of the sequence, so that much more is learned from the one episode.",
+      "bbox": [
+        66.0,
+        396.99,
+        438.02,
+        517.71
+      ],
+      "pixel_width": 1518,
+      "pixel_height": 457,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p169_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 177,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.5",
+      "caption": "Figure 7.5: The backup diagrams of the three kinds of n -step action-value updates considered so far in this chapter (4-step case) plus the backup diagram of a fourth kind of update that uniﬁes them all. The ‘ ⇢ ’s indicate half transitions on which importance sampling is required in the o↵-policy case. The fourth kind of update uniﬁes all the others by choosing on a state-by-state basis whether to sample ( σ t = 1) or not ( σ t = 0).",
+      "bbox": [
+        111.82,
+        63.34,
+        392.19,
+        270.47
+      ],
+      "pixel_width": 1128,
+      "pixel_height": 832,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p177_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 226,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.1",
+      "caption": "Figure 9.1: Function approximation by state aggregation on the 1000-state random walk task, using the gradient Monte Carlo algorithm (page 202).",
+      "bbox": [
+        108.71,
+        70.29,
+        395.97,
+        225.37
+      ],
+      "pixel_width": 1176,
+      "pixel_height": 613,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p226_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 230,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.2",
+      "caption": "Figure 9.2: Bootstrapping with state aggregation on the 1000-state random walk task. Left : Asymptotic values of semi-gradient TD are worse than the asymptotic Monte Carlo values in Figure 9.1. Right : Performance of n -step methods with state-aggregation are strikingly similar to those with tabular representations (cf. Figure 7.2). These data are averages over 100 runs.",
+      "bbox": [
+        53.29,
+        419.24,
+        451.16,
+        563.46
+      ],
+      "pixel_width": 1637,
+      "pixel_height": 577,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p230_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 234,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.3",
+      "caption": "Figure 9.3: One-dimensional Fourier cosine-basis features x i , i = 1 , 2 , 3 , 4, for approximating functions over the interval [0 , 1]. After Konidaris et al. (2011).",
+      "bbox": [
+        44.13,
+        338.67,
+        458.45,
+        431.73
+      ],
+      "pixel_width": 1629,
+      "pixel_height": 329,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p234_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 235,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.4",
+      "caption": "Figure 9.4: A selection of six two-dimensional Fourier cosine features, each labeled by the vector c i that deﬁnes it ( s 1 is the horizontal axis, and c i is shown with the index i omitted). After Konidaris et al. (2011).",
+      "bbox": [
+        16.0,
+        243.86,
+        485.8,
+        492.01
+      ],
+      "pixel_width": 1684,
+      "pixel_height": 1019,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p235_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 236,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.5",
+      "caption": "Figure 9.5: Fourier basis vs polynomials on the 1000-state random walk. Shown are learning curves for the gradient Monte Carlo method with Fourier and polynomial bases of order 5, 10, and 20. The step-size parameters were roughly optimized for each case: ↵ = 0 . 0001 for the polynomial basis and ↵ = 0 . 00005 for the Fourier basis. The performance measure (y-axis) is the root mean squared value error (9.1).",
+      "bbox": [
+        82.26,
+        331.89,
+        378.71,
+        501.6
+      ],
+      "pixel_width": 1215,
+      "pixel_height": 681,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p236_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 237,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.6",
+      "caption": "Figure 9.6: Coarse coding. Generaliza- tion from state s to state s 0 depends on the number of their features whose recep- tive ﬁelds (in this case, circles) overlap. These states have one feature in common, so there will be slight generalization be- tween them.",
+      "bbox": [
+        276.88,
+        103.91,
+        447.45,
+        249.57
+      ],
+      "pixel_width": 696,
+      "pixel_height": 591,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p237_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 237,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 9.7",
+      "caption": "Figure 9.7: Generalization in linear function approximation methods is determined by the sizes and shapes of the features’ receptive ﬁelds. All three of these cases have roughly the same number and density of features.",
+      "bbox": [
+        49.56,
+        426.4,
+        454.04,
+        568.44
+      ],
+      "pixel_width": 1667,
+      "pixel_height": 575,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p237_fig2.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 238,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.8",
+      "caption": "Figure 9.8: Example of feature width’s strong e↵ect on initial generalization (ﬁrst row) and weak e↵ect on asymptotic accuracy (last row).",
+      "bbox": [
+        81.45,
+        391.17,
+        421.35,
+        582.11
+      ],
+      "pixel_width": 1398,
+      "pixel_height": 770,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p238_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 239,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.9",
+      "caption": "Figure 9.9: Multiple, overlapping grid-tilings on a limited two-dimensional space. These tilings are o↵set from one another by a uniform amount in each dimension.",
+      "bbox": [
+        48.71,
+        243.07,
+        454.75,
+        393.35
+      ],
+      "pixel_width": 1674,
+      "pixel_height": 605,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p239_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 240,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.10",
+      "caption": "Figure 9.10: Why we use coarse coding. Shown are learning curves on the 1000-state random walk example for the gradient Monte Carlo algorithm with a single tiling and with multiple tilings. The space of 1000 states was treated as a single continuous dimension, covered with tiles each 200 states wide. The multiple tilings were o↵set from each other by 4 states. The step-size parameter was set so that the initial learning rate in the two cases was the same, ↵ = 0 . 0001 for the single tiling and ↵ = 0 . 0001 / 50 for the 50 tilings.",
+      "bbox": [
+        169.19,
+        65.01,
+        342.66,
+        215.65
+      ],
+      "pixel_width": 702,
+      "pixel_height": 603,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p240_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 241,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.11",
+      "caption": "Figure 9.11: Why tile asymmetrical o↵sets are preferred in tile coding. Shown is the strength of generalization from a trained state, indicated by the small black plus, to nearby states, for the case of eight tilings. If the tilings are uniformly o↵set (above), then there are diagonal artifacts and substantial variations in the generalization, whereas with asymmetrically o↵set tilings the generalization is more spherical and homogeneous.",
+      "bbox": [
+        53.27,
+        63.35,
+        456.0,
+        379.97
+      ],
+      "pixel_width": 1660,
+      "pixel_height": 1301,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p241_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 242,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.12",
+      "caption": "Figure 9.12: Tilings need not be grids. They can be arbitrarily shaped and non-uniform, while still in many cases being computationally eﬃcient to compute.",
+      "bbox": [
+        105.62,
+        357.63,
+        397.72,
+        466.55
+      ],
+      "pixel_width": 1202,
+      "pixel_height": 429,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p242_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 243,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.13",
+      "caption": "Figure 9.13: One-dimensional radial basis functions.",
+      "bbox": [
+        139.15,
+        512.9,
+        365.13,
+        581.46
+      ],
+      "pixel_width": 926,
+      "pixel_height": 284,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p243_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 246,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.14",
+      "caption": "Figure 9.14: A generic feedforward ANN with four input units, two output units, and two hidden layers.",
+      "bbox": [
+        158.2,
+        58.38,
+        370.27,
+        245.62
+      ],
+      "pixel_width": 879,
+      "pixel_height": 759,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p246_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 249,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 9.15",
+      "caption": "Figure 9.15: Deep Convolutional Network. Republished with permission of Proceedings of the IEEE, from Gradient-based learning applied to document recognition, LeCun, Bottou, Bengio, and Ha↵ner, volume 86, 1998; permission conveyed through Copyright Clearance Center, Inc.",
+      "bbox": [
+        47.58,
+        456.99,
+        454.86,
+        565.31
+      ],
+      "pixel_width": 1640,
+      "pixel_height": 449,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p249_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 267,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 10.1",
+      "caption": "Figure 10.1: The Mountain Car task (upper left panel) and the cost-to-go function ( − max a ˆ q ( s, a, w )) learned during one run.",
+      "bbox": [
+        68.84,
+        84.51,
+        443.53,
+        309.13
+      ],
+      "pixel_width": 1562,
+      "pixel_height": 937,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p267_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 268,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 10.2",
+      "caption": "Figure 10.2: Mountain Car learning curves for the semi-gradient Sarsa method with tile-coding function approximation and \" -greedy action selection.",
+      "bbox": [
+        163.44,
+        332.57,
+        393.85,
+        481.89
+      ],
+      "pixel_width": 939,
+      "pixel_height": 590,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p268_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 270,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 10.3",
+      "caption": "Figure 10.3: Performance of one-step vs 8-step semi-gradient Sarsa on the Mountain Car task. Good step sizes were used: ↵ = 0 . 5 / 8 for n = 1 and ↵ = 0 . 3 / 8 for n = 8.",
+      "bbox": [
+        163.44,
+        65.52,
+        393.85,
+        214.84
+      ],
+      "pixel_width": 939,
+      "pixel_height": 591,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p270_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 270,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 10.4",
+      "caption": "Figure 10.4: E↵ect of the ↵ and n on early performance of n -step semi-gradient Sarsa and tile-coding function approximation on the Mountain Car task. As usual, an intermediate level of bootstrapping ( n = 4) performed best. These results are for selected ↵ values, on a log scale, and then connected by straight lines. The standard errors ranged from 0.5 (less than the line width) for n = 1 to about 4 for n = 16, so the main e↵ects are all statistically signiﬁcant.",
+      "bbox": [
+        160.14,
+        264.69,
+        385.79,
+        418.48
+      ],
+      "pixel_width": 921,
+      "pixel_height": 610,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p270_fig2.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 274,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 10.5",
+      "caption": "Figure 10.5: The policy and value function found by di↵erential semi-gradient one-step Sarsa on the access-control queuing task after 2 million steps. The drop on the right of the graph is probably due to insuﬃcient data; many of these states were never experienced. The value learned for ¯ R was about 2 . 31.",
+      "bbox": [
+        86.06,
+        65.88,
+        417.74,
+        321.09
+      ],
+      "pixel_width": 1359,
+      "pixel_height": 1020,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p274_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 283,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.1",
+      "caption": "Figure 11.1: Baird’s counterexample. The approximate state-value function for this Markov process is of the form shown by the linear expressions inside each state. The solid action usually results in the seventh state, and the dashed action usually results in one of the other six states, each with equal probability. The reward is always zero.",
+      "bbox": [
+        87.44,
+        390.71,
+        398.67,
+        563.46
+      ],
+      "pixel_width": 1287,
+      "pixel_height": 680,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p283_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 284,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.2",
+      "caption": "Figure 11.2: Demonstration of instability on Baird’s counterexample. Shown are the evolution of the components of the parameter vector w of the two semi-gradient algorithms. The step size was ↵ = 0 . 01, and the initial weights were w = (1 , 1 , 1 , 1 , 1 , 1 , 10 , 1) > .",
+      "bbox": [
+        70.89,
+        364.62,
+        436.33,
+        571.46
+      ],
+      "pixel_width": 1503,
+      "pixel_height": 843,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p284_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 289,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.3",
+      "caption": "Figure 11.3: The geometry of linear value-function approximation. Shown is the three- dimensional space of all value functions over three states, while shown as a plane is the subspace of all value functions representable by a linear function approximator with parameter w = ( w 1 , w 2 ) > . The true value function v ⇡ is in the larger space and can be projected down (into the subspace, using a projection operator ⇧) to its best approximation in the value error (VE) sense. The best approximators in the Bellman error (BE), projected Bellman error (PBE), and temporal di↵erence error (TDE) senses are all potentially di↵erent and are shown in the lower right. (VE, BE, and PBE are all treated as the corresponding vectors in this ﬁgure.) The Bellman operator takes a value function in the plane to one outside, which can then be projected back. If you iteratively applied the Bellman operator outside the space (shown in gray above) you would reach the true value function, as in conventional dynamic programming. If instead you kept projecting back into the subspace at each step, as in the lower step shown in gray, then the ﬁxed point would be the point of vector-zero PBE.",
+      "bbox": [
+        44.71,
+        63.3,
+        450.98,
+        266.05
+      ],
+      "pixel_width": 1674,
+      "pixel_height": 828,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p289_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 299,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.4",
+      "caption": "Figure 11.4: Causal relationships among the data distribution, MDPs, and various objectives. Left, Monte Carlo objectives: Two di↵erent MDPs can produce the same data distribution yet also produce di↵erent VE s, proving that the VE objective cannot be determined from data and is not learnable. However, all such VE s must have the same optimal parameter vector, w ⇤ ! Moreover, this same w ⇤ can be determined from another objective, the RE , which is uniquely determined from the data distribution. Thus w ⇤ and the RE are learnable even though the VE s are not. Right, Bootstrapping objectives: Two di↵erent MDPs can produce the same data distribution yet also produce di↵erent BE s and have di↵erent minimizing parameter vectors; these are not learnable from the data distribution. The PBE and TDE objectives and their (di↵erent) minima can be directly determined from data and thus are learnable.",
+      "bbox": [
+        53.65,
+        77.12,
+        456.88,
+        245.84
+      ],
+      "pixel_width": 1646,
+      "pixel_height": 674,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p299_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 302,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.5",
+      "caption": "Figure 11.5: The behavior of the TDC algorithm on Baird’s counterexample. On the left is shown a typical single run, and on the right is shown the expected behavior of this algorithm if the updates are done synchronously (analogous to (11.9) , except for the two TDC parameter vectors). The step sizes were ↵ = 0 . 005 and β = 0 . 05.",
+      "bbox": [
+        71.18,
+        326.37,
+        433.42,
+        561.03
+      ],
+      "pixel_width": 1490,
+      "pixel_height": 958,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p302_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 305,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 11.6",
+      "caption": "Figure 11.6: The behavior of the one-step Emphatic-TD algorithm in expectation on Baird’s counterexample. The step size was ↵ = 0 . 03.",
+      "bbox": [
+        111.66,
+        63.35,
+        398.5,
+        250.04
+      ],
+      "pixel_width": 1164,
+      "pixel_height": 738,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p305_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 311,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.1",
+      "caption": "Figure 12.1: The backup digram for TD( λ ). If λ = 0, then the overall update reduces to its ﬁrst component, the one-step TD update, whereas if λ = 1, then the overall update reduces to its last component, the Monte Carlo update.",
+      "bbox": [
+        131.39,
+        352.74,
+        372.63,
+        574.42
+      ],
+      "pixel_width": 988,
+      "pixel_height": 916,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p311_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 312,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.2",
+      "caption": "Figure 12.2: Weighting given in the λ -return to each of the n -step returns.",
+      "bbox": [
+        69.92,
+        67.12,
+        436.95,
+        202.5
+      ],
+      "pixel_width": 1440,
+      "pixel_height": 537,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p312_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 313,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.3",
+      "caption": "Figure 12.3: 19-state Random walk results (Example 7.1): Performance of the o✏ine λ -return algorithm alongside that of the n -step TD methods. In both case, intermediate values of the bootstrapping parameter ( λ or n ) performed best. The results with the o✏ine λ -return algorithm are slightly better at the best values of ↵ and λ , and at high ↵ .",
+      "bbox": [
+        42.05,
+        223.63,
+        461.08,
+        405.07
+      ],
+      "pixel_width": 1725,
+      "pixel_height": 724,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p313_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 314,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.4",
+      "caption": "Figure 12.4: The forward view. We decide how to update each state by looking forward to future rewards and states.",
+      "bbox": [
+        66.0,
+        59.56,
+        438.02,
+        176.15
+      ],
+      "pixel_width": 1521,
+      "pixel_height": 435,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p314_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 315,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.5",
+      "caption": "Figure 12.5: The backward or mechanistic view of TD( λ ). Each update depends on the current TD error combined with the current eligibility traces of past events.",
+      "bbox": [
+        100.18,
+        414.13,
+        413.46,
+        571.56
+      ],
+      "pixel_width": 1299,
+      "pixel_height": 640,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p315_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 317,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.6",
+      "caption": "Figure 12.6: 19-state Random walk results (Example 7.1): Performance of TD( λ ) alongside that of the o✏ine λ -return algorithm. The two algorithms performed virtually identically at low (less than optimal) ↵ values, but TD( λ ) was worse at high ↵ values.",
+      "bbox": [
+        51.45,
+        57.34,
+        452.93,
+        228.62
+      ],
+      "pixel_width": 1652,
+      "pixel_height": 699,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p317_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 318,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.7",
+      "caption": "Figure 12.7: The backup diagram for truncated TD( λ ).",
+      "bbox": [
+        112.96,
+        396.47,
+        391.07,
+        582.32
+      ],
+      "pixel_width": 1141,
+      "pixel_height": 766,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p318_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 321,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.8",
+      "caption": "Figure 12.8: 19-state Random walk results (Example 7.1): Performance of online and o✏ine λ -return algorithms. The performance measure here is the VE at the end of the episode, which should be the best case for the o✏ine algorithm. Nevertheless, the online algorithm performs subtly better. For comparison, the λ =0 line is the same for both methods.",
+      "bbox": [
+        53.31,
+        112.51,
+        451.08,
+        282.64
+      ],
+      "pixel_width": 1636,
+      "pixel_height": 694,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p321_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 326,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.9",
+      "caption": "Figure 12.9: Sarsa( λ )’s backup diagram. Compare with Figure 12.1.",
+      "bbox": [
+        138.55,
+        64.25,
+        365.47,
+        279.69
+      ],
+      "pixel_width": 929,
+      "pixel_height": 868,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p326_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 328,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.10",
+      "caption": "Figure 12.10: Early performance on the Mountain Car task of Sarsa( λ ) with replacing traces and n -step Sarsa (copied from Figure 10.4) as a function of the step size, ↵ .",
+      "bbox": [
+        16.0,
+        67.44,
+        455.65,
+        263.45
+      ],
+      "pixel_width": 1662,
+      "pixel_height": 793,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p328_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 328,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 12.11",
+      "caption": "Figure 12.11: Summary comparison of Sarsa( λ ) algorithms on the Mountain Car task. True online Sarsa( λ ) performed better than regular Sarsa( λ ) with both accumulating and replacing traces. Also included is a version of Sarsa( λ ) with replacing traces in which, on each time step, the traces for the state and the actions not selected were set to zero.",
+      "bbox": [
+        49.87,
+        372.82,
+        454.02,
+        568.06
+      ],
+      "pixel_width": 1663,
+      "pixel_height": 742,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p328_fig2.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 335,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.12",
+      "caption": "Figure 12.12: The backup diagram for Watkins’s Q( λ ). The series of component updates ends either with the end of the episode or with the ﬁrst nongreedy action, whichever comes ﬁrst.",
+      "bbox": [
+        87.05,
+        64.27,
+        443.41,
+        303.81
+      ],
+      "pixel_width": 1468,
+      "pixel_height": 972,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p335_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 336,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.13",
+      "caption": "Figure 12.13: The backup diagram for the λ version of the Tree Backup algorithm.",
+      "bbox": [
+        119.0,
+        64.26,
+        387.06,
+        304.2
+      ],
+      "pixel_width": 1099,
+      "pixel_height": 971,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p336_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 340,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 12.14",
+      "caption": "Figure 12.14: The e↵ect of λ on reinforcement learning performance in four di↵erent test problems. In all cases, performance is generally best (a lower number in the graph) at an intermediate value of λ . The two left panels are applications to simple continuous-state control tasks using the Sarsa( λ ) algorithm and tile coding, with either replacing or accumulating traces (Sutton, 1996). The upper-right panel is for policy evaluation on a random walk task using TD( λ ) (Singh and Sutton, 1996). The lower right panel is unpublished data for the pole-balancing task (Example 3.4) from an earlier study (Sutton, 1984).",
+      "bbox": [
+        110.73,
+        65.81,
+        433.71,
+        351.37
+      ],
+      "pixel_width": 1326,
+      "pixel_height": 1159,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p340_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 35,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.2",
+      "caption": "Figure 2.2: Policy iteration vs value iteration represented as backup diagrams. Empty circles represent states, solid (filled) circles represent states and actions. Adapted from Figure 8.6 of [ SB18 ].",
+      "bbox": [
+        163.95,
+        66.0,
+        448.06,
+        186.0
+      ],
+      "pixel_width": 1067,
+      "pixel_height": 413,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p35_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 37,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.3",
+      "caption": "Figure 2.3: Backup diagrams of V ( s t ) for Monte Carlo, temporal difference, and dynamic programming updates of the state-value function. Used with kind permission of Andy Barto.",
+      "bbox": [
+        99.64,
+        72.0,
+        512.36,
+        182.0
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 446,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p37_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 38,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.4",
+      "caption": "Figure 2.4: The backup diagram for TD( λ ). Standard TD learning corresponds to λ = 0 , and standard MC learning corresponds to λ = 1 . From Figure 12.1 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        214.4,
+        66.0,
+        397.6,
+        222.0
+      ],
+      "pixel_width": 664,
+      "pixel_height": 623,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p38_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 40,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.5",
+      "caption": "Figure 2.5: Illustration of Q learning for one random trajectory in the 1d grid world in Figure 2.1 using ϵ -greedy exploration. At the end of episode 1, we make a transition from S 3 to S T 2 and get a reward of r = 1 , so we estimate",
+      "bbox": [
+        165.0,
+        66.0,
+        447.0,
+        438.0
+      ],
+      "pixel_width": 1104,
+      "pixel_height": 1433,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p40_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 43,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.6",
+      "caption": "Figure 2.6: (a) A simple MDP. (b) Parameters of the policy diverge over time. From Figures 11.1 and 11.2 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        85.84,
+        66.0,
+        501.21,
+        218.35
+      ],
+      "pixel_width": 1702,
+      "pixel_height": 615,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p43_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 44,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.7",
+      "caption": "Figure 2.7: We generate a dataset (left) with inputs x distributed in a circle with radius 0.5 and labels y = || x || . We then fit a two-layer MLP without LayerNorm (center) and with LayerNorm (right). LayerNorm bounds the values and",
+      "bbox": [
+        70.74,
+        65.67,
+        578.24,
+        186.0
+      ],
+      "pixel_width": 1989,
+      "pixel_height": 456,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p44_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 45,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.8",
+      "caption": "Figure 2.8: Comparison of Q-learning and double Q-learning on a simple episodic MDP using ϵ -greedy action selection with ϵ = 0 . 1 . The initial state is A, and squares denote absorbing states. The data are averaged over 10,000 runs. From Figure 6.5 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        200.04,
+        66.0,
+        411.96,
+        186.0
+      ],
+      "pixel_width": 813,
+      "pixel_height": 450,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p45_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 48,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 2.9",
+      "caption": "Figure 2.9: Plot of median human-normalized score over all 57 Atari games for various DQN agents. The yellow, red and green curves are distributional RL methods (Section 7.3 ), namely categorical DQN (C51) (Section 7.3.2 ) Quantile Regression DQN (Section 7.3.1 ), and Implicit Quantile Networks [ Dab+18 ]. Figure from https: // github.",
+      "bbox": [
+        219.0,
+        66.0,
+        393.0,
+        186.0
+      ],
+      "pixel_width": 682,
+      "pixel_height": 457,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p48_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1185,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.2",
+      "caption": "Figure 35.2: Backup diagrams of V ( s t ) for Monte Carlo, temporal difference, and dynamic programming updates of the state-value function. Used with kind permission of Andy Barto.",
+      "bbox": [
+        86.62,
+        60.05,
+        499.34,
+        170.05
+      ],
+      "pixel_width": 1681,
+      "pixel_height": 447,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1185_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1186,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.3",
+      "caption": "Figure 35.3: The backup diagram for TD( λ ). Standard TD learning corresponds to λ = 0 , and standard MC learning corresponds to λ = 1 . From Figure 12.1 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        201.38,
+        54.05,
+        384.59,
+        210.05
+      ],
+      "pixel_width": 664,
+      "pixel_height": 624,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1186_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1189,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.4",
+      "caption": "Figure 35.4: Illustration of Q learning for the 1d grid world in Figure 34.13 using ϵ -greedy exploration. At the end of episode 1, we make a transition from S 3 to S T 2 and get a reward of r = 1 , so we estimate Q ( S 3 , ↓ ) = 1 . In episode 2, we make a transition from S 2 to S 3 , so S 2 gets incremented by γQ ( S 3 , ↓ ) = 0 . 9 . Adapted from Figure 3.3 of [ GK19 ].",
+      "bbox": [
+        151.98,
+        54.04,
+        433.98,
+        426.04
+      ],
+      "pixel_width": 1103,
+      "pixel_height": 1433,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1189_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 399,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.12",
+      "caption": "Figure 19.12 Q-learning. a) The agent starts in state s t and takes action a t = 2 according to the policy. It does not slip on the ice and moves downward, receiving reward r [ s t , a t ] = 0 for leaving the original state. b) The maximum action value at the new state is found (here 0.43). c) The action value for action 2 in the original state is updated to 1.12 based on the current estimate of the maximum action value at the subsequent state, the reward, discount factor γ = 0 . 9 , and learning rate α = 0 . 1 . This changes the highest action value at the original state, so the policy changes.",
+      "bbox": [
+        45.74,
+        131.16,
+        482.5,
+        289.93
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 644,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p399_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 400,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.13",
+      "caption": "Figure 19.13 Atari Benchmark. The Atari benchmark consists of 49 Atari 2600 games, including Breakout (pictured), Pong, and various shoot-em-up, platform, and other types of games. a-d) Even for games with a single screen, the state is not fully observable from a single frame because the velocity of the objects is unknown. Consequently, it is usual to use several adjacent frames (here, four) to represent the state. e) The action simulates the user input via a joystick. f) There are eighteen actions corresponding to eight directions of movement or no movement, and for each of these nine cases, the button being pressed or not.",
+      "bbox": [
+        127.77,
+        131.16,
+        521.01,
+        297.79
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 680,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p400_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 345,
+      "fig_idx": 1,
+      "kind": "uncaptioned_visual",
+      "label": "p.345",
+      "caption": "",
+      "bbox": [
+        75.09,
+        360.81,
+        389.59,
+        520.9
+      ],
+      "pixel_width": 1312,
+      "pixel_height": 668,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p345_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 350,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 13.1",
+      "caption": "Figure 13.1: REINFORCE on the short-corridor gridworld (Example 13.1). With a good step size, the total reward per episode approaches the optimal value of the start state.",
+      "bbox": [
+        71.58,
+        389.31,
+        402.96,
+        569.98
+      ],
+      "pixel_width": 1361,
+      "pixel_height": 735,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p350_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 352,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 13.2",
+      "caption": "Figure 13.2: Adding a baseline to REINFORCE can make it learn much faster, as illus- trated here on the short-corridor gridworld (Example 13.1). The step size used here for plain REINFORCE is that at which it performs best (to the nearest power of two; see Figure 13.1).",
+      "bbox": [
+        65.24,
+        391.65,
+        419.07,
+        568.67
+      ],
+      "pixel_width": 1453,
+      "pixel_height": 722,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p352_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 59,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.1",
+      "caption": "Figure 3.1: Changing the mean of a Gaussian by a fixed amount (from solid to dotted curve) can have more impact when the (shared) variance is small (as in a) compared to when the variance is large (as in b). Hence the impact (in terms of prediction accuracy) of a change to µ depends on where the optimizer is in ( µ, σ ) space. From Figure 3 of",
+      "bbox": [
+        108.54,
+        66.0,
+        504.0,
+        200.35
+      ],
+      "pixel_width": 1478,
+      "pixel_height": 438,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p59_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 64,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.2",
+      "caption": "Figure 3.2: Conceptual illustration of how Wasserstein policy optimization (WPO) combines elements of stochastic and deterministic policy gradient methods for a 2d action space. Left: “classic” policy gradient. Samples are taken",
+      "bbox": [
+        131.52,
+        78.73,
+        480.48,
+        223.59
+      ],
+      "pixel_width": 1436,
+      "pixel_height": 579,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p64_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 73,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 3.3",
+      "caption": "Figure 3.3: A graphical model for optimal control.",
+      "bbox": [
+        229.27,
+        66.0,
+        382.73,
+        222.0
+      ],
+      "pixel_width": 555,
+      "pixel_height": 584,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p73_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1190,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.5",
+      "caption": "Figure 35.5: Comparison of Q-learning and double Q-learning on a simple episodic MDP using ϵ -greedy action selection with ϵ = 0 . 1 . The initial state is A, and squares denote absorbing states. The data are averaged over 10,000 runs. From Figure 6.5 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        187.02,
+        54.05,
+        398.94,
+        174.05
+      ],
+      "pixel_width": 813,
+      "pixel_height": 451,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1190_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1199,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.6",
+      "caption": "Figure 35.6: Illustration of heuristic search. In this figure, the subtrees are ordered according to a depth-first search procedure. From Figure 8.9 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        187.14,
+        54.05,
+        398.82,
+        174.05
+      ],
+      "pixel_width": 808,
+      "pixel_height": 443,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1199_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1201,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.7",
+      "caption": "Figure 35.7: (a) A cart-pole system being controlled by a policy learned by PILCO using just 17.5 seconds of real-world interaction. The goal state is marked by the red cross. The initial state is where the cart is stationary on the right edge of the workspace, and the pendulum is horizontal. For a video of the system learning, see https: // bit. ly/ 35fpLmR . (b) A low-quality robot arm being controlled by a block-stacking",
+      "bbox": [
+        87.6,
+        54.04,
+        458.91,
+        170.4
+      ],
+      "pixel_width": 1503,
+      "pixel_height": 448,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1201_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1203,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.8",
+      "caption": "Figure 35.8: (a) Illustration of an agent interacting with the VizDoom environment. (The yellow blobs represent fireballs being thrown towards the agent by various enemies.) The agent has a world model, composed of a vision system V and a memory RNN M, and has a controller C. (b) Detailed representation of the memory model. Here h t is the deterministic hidden state of the RNN at time t , which is used to predict the next latent of the VAE, z t +1 , using a mixture density network (MDN). Here τ is a temperature parameter used to increase the variance of the predictions, to prevent the controller from exploiting model inaccuracies. From Figures 4, 6 of [ HS18 ]. Used with kind permission of David Ha.",
+      "bbox": [
+        102.63,
+        54.04,
+        476.83,
+        188.4
+      ],
+      "pixel_width": 1542,
+      "pixel_height": 544,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1203_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1204,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.9",
+      "caption": "Figure 35.9: Illustration of some image-based control problems used in the PlaNet paper. Inputs are 64 × 64 × 3 . (a) The cartpole swingup task has a fixed camera so the cart can move out of sight, making this a partially observable problem. (b) The reacher task has a sparse reward. (c) The cheetah running task includes both contacts and a larger number of joints. (d) The finger spinning task includes contacts between the finger and the object. (e) The cup task has a sparse reward that is only given once the ball is caught. (f) The walker task requires balance and predicting difficult interactions with the ground when the robot is lying down. From Figure 1 of [ Haf+19 ]. Used with kind permission of Danijar Hafner.",
+      "bbox": [
+        94.46,
+        60.04,
+        491.5,
+        134.04
+      ],
+      "pixel_width": 1603,
+      "pixel_height": 309,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1204_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1210,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.10",
+      "caption": "Figure 35.10: (a) A simple MDP. (b) Parameters of the policy diverge over time. From Figures 11.1 and 11.2 of [ SB18 ]. Used with kind permission of Richard Sutton.",
+      "bbox": [
+        87.6,
+        54.04,
+        478.29,
+        206.4
+      ],
+      "pixel_width": 1599,
+      "pixel_height": 615,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1210_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+      "page": 1212,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 35.11",
+      "caption": "Figure 35.11: A graphical model for optimal control. States and actions are observed, while optimality variables are not. Adapted from Figure 1b of [ Lev18 ].",
+      "bbox": [
+        197.68,
+        54.04,
+        388.28,
+        174.05
+      ],
+      "pixel_width": 684,
+      "pixel_height": 401,
+      "dpi": 300,
+      "output_path": "assets/figures/probabilisticml_kevinmurphy_advancedtopics_p1212_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "understandingdl_simonprince",
+      "page": 406,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19.16",
+      "caption": "Figure 19.16 Decreasing variance of estimates using control variates. a) Consider trying to estimate E [ a ] from a small number of samples. The estimate (the mean of the samples) will vary based on the number of samples and the variance of those samples. b) Now consider observing another variable b that co-varies with a and has E [ b ] = 0 and the same variance as a . c) The variance of the samples of a − b is much less than that of a , but the expected value E [ a − b ] = E [ a ] , so we get an estimator with lower variance.",
+      "bbox": [
+        127.77,
+        131.16,
+        521.35,
+        277.64
+      ],
+      "pixel_width": 1623,
+      "pixel_height": 593,
+      "dpi": 300,
+      "output_path": "assets/figures/understandingdl_simonprince_p406_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 63,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 20",
+      "caption": "Figure 20: Basic REINFORCE architecture for language models. The shaped reward combines the reward model score with a KL penalty from the reference model. We build on this structure throughout the chapter.",
+      "bbox": [
+        104.01,
+        359.2,
+        508.0,
+        502.73
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 599,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p63_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 65,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 21",
+      "caption": "Figure 21: REINFORCE Leave-One-Out (RLOO) architecture. Multiple completions per prompt provide a leave-one-out baseline for advantage estimation without learning a value function.",
+      "bbox": [
+        104.0,
+        108.0,
+        508.01,
+        224.0
+      ],
+      "pixel_width": 1683,
+      "pixel_height": 485,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p65_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 66,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 22",
+      "caption": "Figure 22: PPO framework. A learned value function enables Generalized Advantage Estimation (GAE) for per-token advantages, used with a clipped surrogate objective.",
+      "bbox": [
+        104.0,
+        388.87,
+        507.99,
+        520.6
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 550,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p66_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 68,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 23",
+      "caption": "Figure 23: Visualization of the PPO objective J ( θ ) as a function of the policy ratio ρ ( θ ), for both positive and negative advantage. Within each panel, the three ratio regions are annotated with their unclipped term, clipped term, resulting objective, and gradient.",
+      "bbox": [
+        104.0,
+        187.57,
+        508.0,
+        560.6
+      ],
+      "pixel_width": 1628,
+      "pixel_height": 1524,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p68_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 71,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 24",
+      "caption": "Figure 24: Value function training uses on-policy rollouts to compute targets. The model predicts V t at each token, which is trained via MSE against the target return ˆ V t . The advantage A t = ˆ V t − V t then weights the policy gradient update.",
+      "bbox": [
+        104.0,
+        179.67,
+        508.0,
+        352.02
+      ],
+      "pixel_width": 1599,
+      "pixel_height": 660,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p71_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 73,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 25",
+      "caption": "Figure 25: GRPO architecture. Advantages are normalized relative to the group mean and standard deviation. The KL penalty is applied directly in the loss rather than shaping the reward.",
+      "bbox": [
+        104.01,
+        279.28,
+        508.0,
+        417.27
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 576,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p73_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 184,
+      "fig_idx": 1,
+      "kind": "uncaptioned_visual",
+      "label": "p.184",
+      "caption": "",
+      "bbox": [
+        279.03,
+        187.31,
+        460.14,
+        333.51
+      ],
+      "pixel_width": 698,
+      "pixel_height": 600,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p184_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 185,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.1",
+      "caption": "Figure 8.1: The general Dyna Architecture. Real experience, passing back and forth between the environment and the policy, a↵ects policy and value functions in much the same way as does simulated experience generated by the model of the environment.",
+      "bbox": [
+        120.94,
+        281.51,
+        379.22,
+        478.55
+      ],
+      "pixel_width": 1060,
+      "pixel_height": 805,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p185_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 187,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.2",
+      "caption": "Figure 8.2: A simple maze (inset) and the average learning curves for Dyna-Q agents varying in their number of planning steps ( n ) per real step. The task is to travel from S to G as quickly as possible.",
+      "bbox": [
+        104.53,
+        64.19,
+        400.11,
+        283.96
+      ],
+      "pixel_width": 1212,
+      "pixel_height": 898,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p187_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 187,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 8.3",
+      "caption": "Figure 8.3: Policies found by planning and nonplanning Dyna-Q agents halfway through the second episode. The arrows indicate the greedy action in each state; if no arrow is shown for a state, then all of its action values were equal. The black square indicates the location of the agent.",
+      "bbox": [
+        124.91,
+        466.25,
+        375.19,
+        559.92
+      ],
+      "pixel_width": 1027,
+      "pixel_height": 370,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p187_fig2.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 189,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.4",
+      "caption": "Figure 8.4: Average performance of Dyna agents on a blocking task. The left environment was used for the ﬁrst 1000 steps, the right environment for the rest. Dyna-Q+ is Dyna-Q with an exploration bonus that encourages exploration.",
+      "bbox": [
+        136.58,
+        58.6,
+        363.5,
+        255.36
+      ],
+      "pixel_width": 920,
+      "pixel_height": 808,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p189_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 189,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 8.5",
+      "caption": "Figure 8.5: Average performance of Dyna agents on a shortcut task. The left environment was used for the ﬁrst 3000 steps, the right environment for the rest.",
+      "bbox": [
+        218.12,
+        316.61,
+        465.18,
+        519.94
+      ],
+      "pixel_width": 953,
+      "pixel_height": 809,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p189_fig2.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 194,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.6",
+      "caption": "Figure 8.6: Backup diagrams for all the one-step updates considered in this book.",
+      "bbox": [
+        298.52,
+        256.51,
+        447.19,
+        584.2
+      ],
+      "pixel_width": 601,
+      "pixel_height": 1338,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p194_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 196,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.7",
+      "caption": "Figure 8.7: Comparison of eﬃciency of expected and sample updates.",
+      "bbox": [
+        93.18,
+        52.6,
+        420.01,
+        237.72
+      ],
+      "pixel_width": 1298,
+      "pixel_height": 686,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p196_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 198,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.8",
+      "caption": "Figure 8.8: Relative eﬃciency of updates dis- tributed uniformly across the state space versus focused on simulated on-policy trajectories, each starting in the same state. Results are for randomly generated tasks of two sizes and various branching factors, b .",
+      "bbox": [
+        236.12,
+        213.38,
+        488.0,
+        535.92
+      ],
+      "pixel_width": 928,
+      "pixel_height": 1324,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p198_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 205,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.9",
+      "caption": "Figure 8.9: Heuristic search can be implemented as a sequence of one-step updates (shown here outlined in blue) backing up values from the leaf nodes toward the root. The ordering shown here is for a selective depth-ﬁrst search.",
+      "bbox": [
+        86.1,
+        271.31,
+        417.9,
+        451.78
+      ],
+      "pixel_width": 1350,
+      "pixel_height": 729,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p205_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 208,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.10",
+      "caption": "Figure 8.10: Monte Carlo Tree Search. When the environment changes to a new state, MCTS executes as many iterations as possible before an action needs to be selected, incrementally building a tree whose root node represents the current state. Each iteration consists of the four operations Selection , Expansion (though possibly skipped on some iterations), Simulation , and Backup , as explained in the text and illustrated by the bold arrows in the trees. Adapted from Chaslot, Bakkes, Szita, and Spronck (2008).",
+      "bbox": [
+        57.0,
+        285.78,
+        447.0,
+        541.54
+      ],
+      "pixel_width": 1585,
+      "pixel_height": 1046,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p208_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+      "page": 212,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.11",
+      "caption": "Figure 8.11: A slice through the space of reinforcement learning methods, highlighting the two of the most important dimensions explored in Part I of this book: the depth and width of the updates.",
+      "bbox": [
+        103.41,
+        38.3,
+        413.29,
+        334.73
+      ],
+      "pixel_width": 1293,
+      "pixel_height": 1229,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_introduction_richard_s_su_p212_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 85,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.1",
+      "caption": "Figure 4.1: Illustration of forward search applied to a problem with 3 discrete states and 2 discrete actions. From Figure 9.1 of [ KWW22 ]. Used with kind permission of Mykel Kochenderfer.",
+      "bbox": [
+        111.96,
+        554.92,
+        500.04,
+        664.92
+      ],
+      "pixel_width": 1477,
+      "pixel_height": 405,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p85_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 87,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.2",
+      "caption": "Figure 4.2: Illustration of MCTS. (a) Expanding nodes until we hit a new (previously unexplored) leaf node. (b) Propagating leaf value u back up the tree. From Figure 9.25 of [ ACS24 ].",
+      "bbox": [
+        197.71,
+        66.0,
+        414.33,
+        235.95
+      ],
+      "pixel_width": 882,
+      "pixel_height": 692,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p87_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 91,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.3",
+      "caption": "Figure 4.3: Illustration of the suboptimality of open-loop planning. From Figure 9.9 of [ KWW22 ]. Used with kind",
+      "bbox": [
+        259.62,
+        512.92,
+        352.37,
+        668.92
+      ],
+      "pixel_width": 336,
+      "pixel_height": 628,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p91_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 96,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.4",
+      "caption": "Figure 4.4: Illustration of Dyna. From Figure 2 of [ Liu+24 ]. Used with kind permission of Zichen Liu.",
+      "bbox": [
+        170.11,
+        97.63,
+        441.25,
+        325.62
+      ],
+      "pixel_width": 1069,
+      "pixel_height": 877,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p96_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 99,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.5",
+      "caption": "Figure 4.5: Illustration of Dreamer world model as a factor graph (squares are learnable functions, circles are variables, diamonds are fixed cost functions). We have unrolled the forwards prediction for only 1 step. Also, we have omitted the reward prediction loss.",
+      "bbox": [
+        156.57,
+        217.98,
+        455.43,
+        507.98
+      ],
+      "pixel_width": 1176,
+      "pixel_height": 1209,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p99_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 103,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.6",
+      "caption": "Figure 4.6: Illustration of an encoder z t = E ( o t ) , which is passed to a value estimator v t = V ( z t ) , and a world model, which predicts the next latent state ˆ z t +1 = M ( z t , a t ) , the reward r t = R ( z t , a t ) , and the termination (done) flag,",
+      "bbox": [
+        188.23,
+        66.0,
+        423.77,
+        258.0
+      ],
+      "pixel_width": 828,
+      "pixel_height": 707,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p103_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 105,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.7",
+      "caption": "Figure 4.7: Self-supervised learning methods. Left: masked auto-encoder. Right: self-prediction. Figure from https: // x. com/ hugues_ va/ status/ 1991635221884891373? s= 58 m based on [ VA+25 ].",
+      "bbox": [
+        203.72,
+        66.01,
+        408.28,
+        258.0
+      ],
+      "pixel_width": 798,
+      "pixel_height": 734,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p105_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 107,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.8",
+      "caption": "Figure 4.8: Illustration of the JEPA (Joint embedding Prediction Architecture) world model approach using two different approaches to avoid latent collapse: (a) self-distillation; (b) information theoretic regularizers. Diamonds represent fixed cost functions, squares represent learnable functions, circles are variables.",
+      "bbox": [
+        263.51,
+        72.0,
+        579.07,
+        290.0
+      ],
+      "pixel_width": 1265,
+      "pixel_height": 884,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p107_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 109,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.9",
+      "caption": "Figure 4.9: Illustration of (a simplified version of) the BYOL-Explore architecture, represented as a factor graph (so squares are functions, circles are variables). The dotted lines represent an optional observation prediction loss. The map from notation in this figure to the paper is as follows: U → h c (closed-loop RNN update), P → h o (open-loop RNN update), D → g (decoder), E → f (encoder). We have unrolled the forwards prediction for only 1 step. Also, we have omitted the reward prediction loss. The V node is the EMA version of the value function. The TD node is the TD operator.",
+      "bbox": [
+        145.7,
+        89.97,
+        469.67,
+        367.64
+      ],
+      "pixel_width": 1092,
+      "pixel_height": 1141,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p109_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 114,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.10",
+      "caption": "Figure 4.10: Illustration of successor representation for the 2d maze environment shown in (a) with reward shown in (d), which assigns all states a reward of -0.1 except for the goal state which has a reward of 1.0. In (b-c) we show the SRs",
+      "bbox": [
+        137.87,
+        215.11,
+        474.12,
+        443.1
+      ],
+      "pixel_width": 1365,
+      "pixel_height": 911,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p114_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 116,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 4.11",
+      "caption": "Figure 4.11: Illustration of successor features representation. (a) Here ϕ t = ϕ ( s t ) is the vector of features for the state at time t , and ψ π is the corresponding SF representation, which depends on the policy π . (b) Given a set of existing",
+      "bbox": [
+        127.05,
+        66.0,
+        484.96,
+        294.0
+      ],
+      "pixel_width": 1444,
+      "pixel_height": 912,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p116_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 121,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.1",
+      "caption": "Figure 5.1: Hierarchy of games. From Fig 3.1 of [ ACS24 ]. Used with kind permission of Stefano Albrecht.",
+      "bbox": [
+        181.48,
+        523.87,
+        430.58,
+        679.81
+      ],
+      "pixel_width": 1016,
+      "pixel_height": 624,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p121_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 124,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.2",
+      "caption": "Figure 5.2: Example of a two-player general-sum stochastic game. Circles represent the states, inside of which we show the reward function in matrix form. Only one of the 4 possible transitions out of each state are shown. The little black dots are called the after states , and correspond to an intermediate point where a joint action has been decided by the players, but nature hasn’t yet sampled the next transition, which occurs with the specified probabilities. From Fig 3.3(b) of [ ACS24 ]. Used with kind permission of Stefano Albrecht.",
+      "bbox": [
+        218.17,
+        65.99,
+        393.9,
+        221.66
+      ],
+      "pixel_width": 712,
+      "pixel_height": 604,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p124_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 126,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.3",
+      "caption": "Figure 5.3: EFG for Kuhn Poker. The dashed lines connect histories in the same information set. From Fig 2 of",
+      "bbox": [
+        77.84,
+        72.0,
+        534.16,
+        290.0
+      ],
+      "pixel_width": 1670,
+      "pixel_height": 875,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p126_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 131,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.4",
+      "caption": "Figure 5.4: Space of (discretized) joint policies for Chicken game. From Fig 4.4 of [ ACS24 ]. Used with kind permission of Stefano Albrecht.",
+      "bbox": [
+        191.61,
+        66.0,
+        419.6,
+        294.0
+      ],
+      "pixel_width": 908,
+      "pixel_height": 911,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p131_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 136,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.5",
+      "caption": "Figure 5.5: Learning dynamics of two policies for the rock-paper-scissors game. The upper and lower triangles illustrate the policies for each agent over time as a point in the 2d simplex (noting that π i",
+      "bbox": [
+        187.07,
+        64.72,
+        424.93,
+        294.0
+      ],
+      "pixel_width": 955,
+      "pixel_height": 916,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p136_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 138,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 5.6",
+      "caption": "Figure 5.6: Encoder-decoder architecture for agent modeling. From Fig 9.21 of [ ACS24 ]. Used with kind permission of Stefano Albrecht.",
+      "bbox": [
+        122.71,
+        66.2,
+        488.8,
+        163.26
+      ],
+      "pixel_width": 1504,
+      "pixel_height": 389,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p138_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 185,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.4",
+      "caption": "Figure 7.4: Illustration of a 3 level hierarchical RL system. From Fig 2 of [ Pat+22 ].",
+      "bbox": [
+        168.2,
+        66.0,
+        443.8,
+        258.0
+      ],
+      "pixel_width": 1014,
+      "pixel_height": 741,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p185_fig1.png",
+      "source_mode": "raster"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 187,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.5",
+      "caption": "Figure 7.5: Illustration of a 3 level hierarchical goal-conditioned controller. From http: // bigai. cs. brown. edu/",
+      "bbox": [
+        262.57,
+        86.63,
+        332.43,
+        255.31
+      ],
+      "pixel_width": 284,
+      "pixel_height": 696,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p187_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 192,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 7.6",
+      "caption": "Figure 7.6: Comparison of online on-policy RL, online off-policy RL, and offline RL. From Figure 1 of [ Lev+20a ]. Used with kind permission of Sergey Levine.",
+      "bbox": [
+        84.0,
+        66.0,
+        528.0,
+        186.0
+      ],
+      "pixel_width": 1810,
+      "pixel_height": 428,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p192_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 40,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 14",
+      "caption": "Figure 14: The reward model in RLHF plays the role of the environment component that returns rewards in standard RL. The key difference is that in RLHF, we get to control and learn this reward function from human preferences, rather than having it fixed by the environment.",
+      "bbox": [
+        104.0,
+        206.99,
+        507.99,
+        529.23
+      ],
+      "pixel_width": 1664,
+      "pixel_height": 1327,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p40_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 42,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 15",
+      "caption": "Figure 15: Training a preference reward model requires pairs of chosen and rejected com- pletions. The model computes a scalar score for each completion from a sequence-level representation, often the end-of-sequence (EOS) token’s hidden state, and the contrastive loss depends only on the score difference between the two.",
+      "bbox": [
+        104.0,
+        269.53,
+        508.0,
+        362.81
+      ],
+      "pixel_width": 1637,
+      "pixel_height": 363,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p42_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 47,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 16",
+      "caption": "Figure 16: At inference time, an outcome reward model outputs per-token correctness probabilities over completion tokens. Prompt tokens are ignored for scoring, and the completion probabilities can be aggregated into a response-level score for verification, filtering, or reranking.",
+      "bbox": [
+        104.0,
+        142.93,
+        508.0,
+        215.84
+      ],
+      "pixel_width": 1570,
+      "pixel_height": 274,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p47_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 47,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 17",
+      "caption": "Figure 17: Training an outcome reward model uses offline labels from a verifier or dataset (e.g., all 1s for correct completions). Each completion token is trained with binary cross-",
+      "bbox": [
+        104.0,
+        287.8,
+        508.0,
+        435.69
+      ],
+      "pixel_width": 1565,
+      "pixel_height": 552,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p47_fig2.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 48,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 18",
+      "caption": "Figure 18: Process reward models provide supervision only at step boundaries (e.g., newline tokens). Each step receives a 3-class label: correct (+1), neutral (0), or incorrect (-1). All other tokens are masked during training.",
+      "bbox": [
+        104.0,
+        471.51,
+        508.0,
+        539.51
+      ],
+      "pixel_width": 1653,
+      "pixel_height": 277,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p48_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 57,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 19",
+      "caption": "Figure 19: Overview of the RLHF training loop. A prompt from the dataset is passed to the tuned policy, which generates a completion. The reward model scores this completion, while the frozen initial model (typically the instruction-tuned model before RL) computes log probabilities on the same text to calculate a KL penalty that prevents excessive drift. The combined reward signal then drives a reinforcement learning update to the policy parameters.",
+      "bbox": [
+        104.0,
+        201.02,
+        507.99,
+        523.25
+      ],
+      "pixel_width": 1664,
+      "pixel_height": 1327,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p57_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 85,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 26",
+      "caption": "Figure 26: A comparison of the generation-update phases for synchronous or asynchronous RL training following Noukhovitch et al. 2024.",
+      "bbox": [
+        104.0,
+        179.67,
+        508.01,
+        429.44
+      ],
+      "pixel_width": 1616,
+      "pixel_height": 938,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p85_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 86,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 27",
+      "caption": "Figure 27: An example distributed RL system, where two queues are managed to pass data to the learner and actor GPUs, which can both be synchronized with a distributed computing library such as Ray. Olmo Team 2025, license CC-BY.",
+      "bbox": [
+        104.01,
+        107.99,
+        508.01,
+        328.8
+      ],
+      "pixel_width": 1665,
+      "pixel_height": 921,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p86_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 103,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 28",
+      "caption": "Figure 28: RLVR in the form of an RL feedback loop. Instead of a reward model, a verification function is used.",
+      "bbox": [
+        104.0,
+        257.38,
+        507.99,
+        512.98
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 1066,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p103_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 115,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 29",
+      "caption": "Figure 29: When DPO first released it sparked a fierce debate in the research community about how to best do RLHF and preference learning. This meme does a great job capturing the sentiment, where the debate often felt forced and over the top, but many people both getting started and in top labs were getting immense benefit out of DPO. DPO simplicity meme, credit Tom Goldstein.",
+      "bbox": [
+        104.0,
+        245.43,
+        508.02,
+        540.18
+      ],
+      "pixel_width": 1667,
+      "pixel_height": 1229,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p115_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 121,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 30",
+      "caption": "Figure 30: Sketch of preference displacement in DPO.",
+      "bbox": [
+        104.0,
+        108.0,
+        508.0,
+        303.12
+      ],
+      "pixel_width": 1669,
+      "pixel_height": 811,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p121_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 152,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 39",
+      "caption": "Figure 39: Traditional knowledge distillation trains a smaller student model to match the soft probability distribution of a larger teacher model using KL divergence loss. Both models process the same input simultaneously, and temperature scaling ( τ > 1) softens the distributions to reveal more information about class relationships.",
+      "bbox": [
+        104.0,
+        417.79,
+        507.99,
+        561.9
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 602,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p152_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 159,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 40",
+      "caption": "Figure 40: Three distillation regimes, compared by where the rollout comes from and how supervision flows. Sequence KD (left): the teacher generates an output offline and the student is trained to match it with a cross-entropy (CE) loss. On-policy distillation (OPD) (center): the student generates the rollout on-policy (e.g. within a RL framework) and a separate teacher scores each visited token, training the student with a per-token KL divergence (KL). On-policy self-distillation (OPSD) (right): one model plays both roles – privileged information (a hint) added to the context creates a teacher trajectory, and the",
+      "bbox": [
+        104.05,
+        143.51,
+        507.96,
+        254.59
+      ],
+      "pixel_width": 1682,
+      "pixel_height": 464,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p159_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 159,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 41",
+      "caption": "Figure 41: On-policy self-distillation (OPSD) on a string-reversal task. One policy π θ is forwarded twice over the same student-sampled completion y : a teacher pass conditioned on the question plus a correct sibling demonstration (yellow), and a student pass conditioned on the question only (green). The per-token reverse KL between the two passes, with a stop- gradient on the teacher, pulls the question-only policy toward its demonstration-conditioned self; highlighted columns are the incorrectly sampled tokens where the distributions diverge most.",
+      "bbox": [
+        104.0,
+        437.18,
+        508.0,
+        556.84
+      ],
+      "pixel_width": 1684,
+      "pixel_height": 500,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p159_fig2.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 171,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 42",
+      "caption": "Figure 42: Tool use interleaves model generation with external execution: the model generates tokens until it emits a tool call (orange), an external system executes the tool and injects the output (purple) into the sequence, then the model continues generating. Models can emit multiple tool calls in a single generation. During training, tool output tokens are typically masked from the loss, while the model-generated tool calls remain training targets.",
+      "bbox": [
+        104.0,
+        226.74,
+        508.0,
+        363.03
+      ],
+      "pixel_width": 1460,
+      "pixel_height": 511,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p171_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 172,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 43",
+      "caption": "Figure 43: Reinforcement learning for multi-step tool use. A prompt is sampled from the training data and the agent (policy π θ ) interacts with the environment and its tools over a trajectory, alternating actions a t with observations o t . The completed trajectory is graded or verified to produce a single reward r T at the end, which drives the policy update. Unlike the per-sample RLHF loop, the reward arrives only after a multi-step rollout – closer to classic RL.",
+      "bbox": [
+        104.02,
+        155.76,
+        508.0,
+        312.06
+      ],
+      "pixel_width": 1683,
+      "pixel_height": 653,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p172_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 177,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 44",
+      "caption": "Figure 44: Over-optimization of an RL training run vs. downstream evaluations. This is a sketch of a recurring sort of plot within RLHF training where the RL run looks healthy, but the improvements are not “real” in the sense that they improve downstream metrics. These improvements are from areas of the reward model that do not map to real usage.",
+      "bbox": [
+        133.25,
+        198.36,
+        478.75,
+        537.86
+      ],
+      "pixel_width": 1221,
+      "pixel_height": 1220,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p177_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 181,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 45",
+      "caption": "Figure 45: Over-optimization with a train and test RM from Bai et al. 2022. License CC-BY.",
+      "bbox": [
+        133.26,
+        250.1,
+        478.75,
+        521.97
+      ],
+      "pixel_width": 1391,
+      "pixel_height": 1103,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p181_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 190,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 46",
+      "caption": "Figure 46: Forgetting dynamics for forward KL (SFT) versus reverse KL (RL). The “old” mode represents prior knowledge, the “new” mode represents the target task. Forward KL stretches the policy to cover the target and pulls mass away from the old mode (top right), while reverse KL shifts the new mode toward the target without disturbing the old mode (bottom right). From Chen et al. 2025, with permission of the author.",
+      "bbox": [
+        104.0,
+        108.0,
+        508.0,
+        293.86
+      ],
+      "pixel_width": 1643,
+      "pixel_height": 731,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p190_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforcement_learning_from_human_feedback",
+      "page": 191,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 47",
+      "caption": "Figure 47: Bias toward KL-minimal solutions reduces forgetting. (Left) Among policies that solve the new task, RL converges to those closest in KL to the base model. (Right) This KL bias yields higher prior-task retention at matched new-task performance compared to SFT. From Shenfeld, Pari, and Agrawal 2026. License CC-BY.",
+      "bbox": [
+        104.0,
+        197.61,
+        508.0,
+        333.26
+      ],
+      "pixel_width": 1677,
+      "pixel_height": 566,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforcement_learning_from_human_feedback_p191_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 163,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.1",
+      "caption": "Fig. 4.1: Schematic illustration of the pre-train-then-align method for developing LLMs. In the pre-training stage, we train an LLM on vast amounts of data using next token prediction. Then, in the alignment stage, we align the LLM to user instructions, intents, and preferences. This includes instruction alignment, human preference alignment, and prompting.",
+      "bbox": [
+        91.4,
+        81.54,
+        500.65,
+        235.28
+      ],
+      "pixel_width": 1688,
+      "pixel_height": 624,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p163_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 166,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.2",
+      "caption": "Fig. 4.2: Illustration of supervised fine-tuning for LLMs. We concatenate the input and the output into a single se- quence. During the forward pass, we run the LLM as usual. During the backward pass, we compute the loss only for the output part and simply set the loss for the input part to 0.",
+      "bbox": [
+        110.42,
+        84.24,
+        481.63,
+        180.34
+      ],
+      "pixel_width": 1529,
+      "pixel_height": 378,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p166_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 168,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.3",
+      "caption": "Fig. 4.3: Illustration of supervised fine-tuning for conversational models. Here the LLM acts as a chatbot to respond to each request based on the conversational history. The conversation progresses by alternating between the user and the chatbot. In SFT, we treat the entire conversation as a sequence, just like in standard LLMs, but compute the loss only for the responses of the LLM.",
+      "bbox": [
+        102.59,
+        119.86,
+        484.2,
+        354.77
+      ],
+      "pixel_width": 1570,
+      "pixel_height": 960,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p168_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 171,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.4",
+      "caption": "Fig. 4.4: Illustration of self-instruct [ Wang et al. , 2023b ]. This method maintains a pool of instructions and correspond- ing input-output samples. Initially, the pool contains a number of hand-crafted instructions and samples. Each time, we draw a few instructions from the pool. An LLM is then prompted to generate new instructions and samples based on those drawn. Finally, the newly-generated instructions and samples are filtered and added to the pool.",
+      "bbox": [
+        118.84,
+        81.94,
+        473.41,
+        551.07
+      ],
+      "pixel_width": 1463,
+      "pixel_height": 1941,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p171_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 178,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.5",
+      "caption": "Fig. 4.5: Illustrations of using small models to improve large models in LLMs. One approach involves using smaller models for the fine-tuning or pre-training of larger models. This includes generating synthetic data (a), incorporating auxiliary loss (b), and selecting appropriate data (c). Another approach involves combining small models and large models. This includes learning a strong model by aggregating multiple small models (d), and cascading small models with large models (e).",
+      "bbox": [
+        91.3,
+        84.32,
+        497.31,
+        550.42
+      ],
+      "pixel_width": 1675,
+      "pixel_height": 1920,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p178_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 180,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.6",
+      "caption": "Fig. 4.6: Supervised fine-tuning vs. reinforcement learning from human feedback. In supervised fine-tuning, we optimize the LLM by maximizing the probability of the prediction given the input. In reinforcement learning from human feedback, we first train a reward model on human preference data (on each pair of predictions, evaluators are asked to choose which one they prefer). Then, we use this reward model to supervise the LLM during fine-tuning.",
+      "bbox": [
+        116.45,
+        81.74,
+        472.15,
+        343.1
+      ],
+      "pixel_width": 1462,
+      "pixel_height": 1074,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p180_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 182,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.7",
+      "caption": "Fig. 4.7: LLM as policy in reinforcement learning. At each step t , the LLM predicts a token y t given the model input x and the previously-generated tokens y <t . This process can be framed as a reinforcement learning problem, where y t serves as the action, ( x , y <t ) as the state, and the predicted distribution Pr( y t | x , y <t ) as the policy. Once y t is predicted, the LLM inputs both ( x , y <t ) and y t to the reward model, which evaluates how effectively the chosen token contributes to achieving the desired textual outcome. This evaluation generates reward scores which are used to compute the value functions V ( s t ) and Q ( s t , a t ) . These functions then provide feedback to the LLM and guide the policy training.",
+      "bbox": [
+        112.46,
+        84.38,
+        479.59,
+        257.97
+      ],
+      "pixel_width": 1516,
+      "pixel_height": 703,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p182_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 187,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.8",
+      "caption": "Fig. 4.8: Architecture of the reward model based on Transformer. The main component of this model is still an LLM. We use the Transformer decoder as the sequence representation model. We extract the representation of the last position of the decoder as the representation of the entire sequence [ x , y ] . We then map this representation to a scalar through a linear transformation, which serves as the reward score for [ x , y ] .",
+      "bbox": [
+        107.63,
+        84.46,
+        484.42,
+        210.52
+      ],
+      "pixel_width": 1551,
+      "pixel_height": 515,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p187_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 193,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.9",
+      "caption": "Fig. 4.9: Illustration of RLHF. The first step is to collect human preference data and train the reward model using this data. Once the reward model is optimized, along with the reference model, we proceed to train both the policy and the value function. At each prediction step, we compute the sum of the PPO-based loss and update the parameters of the policy. This requires access to the reward model, the reference model, and the value function at hand. At the same time, we update the parameters of the value function by minimizing the MSE loss.",
+      "bbox": [
+        96.13,
+        81.74,
+        494.84,
+        597.47
+      ],
+      "pixel_width": 1646,
+      "pixel_height": 2134,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p193_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 200,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.10",
+      "caption": "Fig. 4.10: Standard RLHF (PPO) vs. DPO. In RLHF, the human preference data is used to train a reward model, which is then employed in training the policy as well as the value function. In DPO, the use of human preference data is more direct, and the policy is trained on this data without the need for reward model training.",
+      "bbox": [
+        112.34,
+        81.94,
+        476.07,
+        311.83
+      ],
+      "pixel_width": 1497,
+      "pixel_height": 940,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p200_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "foundations_large_language_models",
+      "page": 206,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Fig. 4.11",
+      "caption": "Fig. 4.11: Two LLM responses to a math problem. In response 1, both the final result and all the reasoning steps are correct. In response 2, the final result is correct, but there are mistakes in the reasoning process (highlighted in red). For outcome-based approaches, both responses are considered correct. For process-based approaches, the mistakes in response 2 can be considered in reward modeling.",
+      "bbox": [
+        100.15,
+        155.52,
+        495.34,
+        432.36
+      ],
+      "pixel_width": 1629,
+      "pixel_height": 1124,
+      "dpi": 300,
+      "output_path": "assets/figures/foundations_large_language_models_p206_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 154,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.1",
+      "caption": "Figure 6.1: Three different ways to estimate the baseline function b t (needed to compute the advantage function A t ) for intermediate tokens s t based on G = 3 trajectory rollouts. (a) MC estimate b t = V MC ( s 0 ) derived from the initial state. (b) Parametric value function, b t = V ϕ ( s t ) . (c) MC estimate b t = V MC ( s t ) derived from K rollouts η k ∼ π ( ·| s t ) from",
+      "bbox": [
+        68.0,
+        71.99,
+        591.87,
+        218.0
+      ],
+      "pixel_width": 2030,
+      "pixel_height": 530,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p154_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 157,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.2",
+      "caption": "Figure 6.2: Illustration of how to train an LLM to both “think” internally and “act” externally. From the initial state",
+      "bbox": [
+        68.0,
+        72.0,
+        550.66,
+        218.0
+      ],
+      "pixel_width": 2005,
+      "pixel_height": 609,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p157_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 158,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.3",
+      "caption": "Figure 6.3: (a) In standard multi-turn RL, the context grows longer at each step. (b) In turn-level training, we truncate the past context to a fixed window (here, the previous state, previous action, and current state). In addition, we learn a value function, so we can truncate trajectories early and still get a learning signal. State tokens are skipped over when computing the loss, since they are not generated by the model. Finally, we use different discounting factors for steps corresponding to action token generation and environment tokens. From [ Che+25 ]. Used with kind permission of Wen-Tse Chen.",
+      "bbox": [
+        151.72,
+        71.99,
+        460.28,
+        290.0
+      ],
+      "pixel_width": 1112,
+      "pixel_height": 861,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p158_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 159,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.4",
+      "caption": "Figure 6.4: Illustration of zero-sum two-player game for training a robust and safe LLM. Based on a slide from Natasha Jacques.",
+      "bbox": [
+        71.35,
+        71.35,
+        572.63,
+        216.65
+      ],
+      "pixel_width": 2075,
+      "pixel_height": 506,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p159_fig1.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 164,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.5",
+      "caption": "Figure 6.5: Illustration of how to use a pretrained LLM (combined with RAG) as a policy. From Figure 5 of [ Par+23 ]. Used with kind permission of Joon Park.",
+      "bbox": [
+        107.4,
+        72.01,
+        504.6,
+        218.0
+      ],
+      "pixel_width": 1493,
+      "pixel_height": 557,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p164_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 166,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.6",
+      "caption": "Figure 6.6: Main Tinker training loop.",
+      "bbox": [
+        68.0,
+        105.72,
+        594.66,
+        467.73
+      ],
+      "pixel_width": 2122,
+      "pixel_height": 1468,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p166_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 168,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.7",
+      "caption": "Figure 6.7: Code to collect trajectories.",
+      "bbox": [
+        68.0,
+        101.12,
+        549.35,
+        463.12
+      ],
+      "pixel_width": 1932,
+      "pixel_height": 1447,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p168_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 169,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.8",
+      "caption": "Figure 6.8: Code to compute advantages.",
+      "bbox": [
+        89.32,
+        72.0,
+        522.68,
+        290.0
+      ],
+      "pixel_width": 1749,
+      "pixel_height": 853,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p169_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 170,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.9",
+      "caption": "Figure 6.9: Code to compute data for token level loss computation.",
+      "bbox": [
+        83.09,
+        72.0,
+        528.92,
+        290.0
+      ],
+      "pixel_width": 1791,
+      "pixel_height": 841,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p170_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 171,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 6.10",
+      "caption": "Figure 6.10: Code to compute metrics.",
+      "bbox": [
+        79.07,
+        95.58,
+        532.93,
+        313.59
+      ],
+      "pixel_width": 1822,
+      "pixel_height": 855,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p171_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "reinforement_learning_kevin_murphy",
+      "page": 171,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 6.11",
+      "caption": "Figure 6.11: Results of RL on the guess-the-number game from GEM.",
+      "bbox": [
+        87.91,
+        383.5,
+        522.78,
+        630.82
+      ],
+      "pixel_width": 1735,
+      "pixel_height": 962,
+      "dpi": 300,
+      "output_path": "assets/figures/reinforement_learning_kevin_murphy_p171_fig2.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "speech_language_processing_aug26",
+      "page": 223,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.7",
+      "caption": "Figure 8.7 Parameter-Efficient Fine-Tuning methods like LoRA.",
+      "bbox": [
+        159.58,
+        108.53,
+        493.82,
+        238.8
+      ],
+      "pixel_width": 1394,
+      "pixel_height": 543,
+      "dpi": 300,
+      "output_path": "assets/figures/speech_language_processing_aug26_p223_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "speech_language_processing_aug26",
+      "page": 223,
+      "fig_idx": 2,
+      "kind": "captioned",
+      "label": "Figure 8.8",
+      "caption": "Figure 8.8 The intuition of LoRA. We freeze W to its pretrained values, and instead fine- tune by training a pair of matrices A and B , updating those instead of W , and just sum W and the updated AB .",
+      "bbox": [
+        212.7,
+        287.44,
+        440.7,
+        493.33
+      ],
+      "pixel_width": 951,
+      "pixel_height": 850,
+      "dpi": 300,
+      "output_path": "assets/figures/speech_language_processing_aug26_p223_fig2.png",
+      "source_mode": "vector"
+    },
+    {
+      "book_slug": "speech_language_processing_aug26",
+      "page": 225,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.9",
+      "caption": "Figure 8.9 Using user votes to extract preferences over outputs on social media.",
+      "bbox": [
+        161.58,
+        473.83,
+        491.82,
+        537.12
+      ],
+      "pixel_width": 1376,
+      "pixel_height": 265,
+      "dpi": 300,
+      "output_path": "assets/figures/speech_language_processing_aug26_p225_fig1.png",
+      "source_mode": "scan_crop"
+    },
+    {
+      "book_slug": "speech_language_processing_aug26",
+      "page": 228,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.10",
+      "caption": "Figure 8.10 Reward model learning with a pretrained LLM. Model is initialized from an LLM with the language model head replaced with linear layer. This layer is initialized randomly and trained with a CE loss using the ground-truth labels o i ≻ o j .",
+      "bbox": [
+        77.29,
+        110.43,
+        475.83,
+        288.0
+      ],
+      "pixel_width": 1661,
+      "pixel_height": 740,
+      "dpi": 300,
+      "output_path": "assets/figures/speech_language_processing_aug26_p228_fig1.png",
+      "source_mode": "hybrid"
+    },
+    {
+      "book_slug": "speech_language_processing_aug26",
+      "page": 229,
+      "fig_idx": 1,
+      "kind": "captioned",
+      "label": "Figure 8.11",
+      "caption": "Figure 8.11 Preference-based model alignment.",
+      "bbox": [
+        98.18,
+        172.27,
+        492.02,
+        349.28
+      ],
+      "pixel_width": 1616,
+      "pixel_height": 739,
+      "dpi": 300,
+      "output_path": "assets/figures/speech_language_processing_aug26_p229_fig1.png",
+      "source_mode": "hybrid"
+    }
+  ]
+}

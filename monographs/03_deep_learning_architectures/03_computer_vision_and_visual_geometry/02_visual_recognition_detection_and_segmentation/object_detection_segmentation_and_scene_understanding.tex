@@ -1,0 +1,78 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Neural Architectures, Representations \& Regularization}{Computer Vision, Image Formation \& 3D Scene Understanding}{Object Detection, Segmentation \& Vision-Language Understanding}{Object Detection (R-CNN, SSD, DETR), Semantic Segmentation (FCN, U-Net, SAM) \& Vision-Language Models}{\bookcite{dive_into_deep_learning_d2l}{Ch. 14}, \bookcite{foundations_computer_vision_mit}{Ch. 50--51}, \bookcite{understandingdl_simonprince}{Ch. 10, 12}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 20}}
+
+\section{Problem Formulation \& Unified Notation}
+
+\begin{sloppypar}
+Dense visual scene understanding extends image-level classification $f(\mat{I}) \to y$ to structured spatial outputs: \emph{object detection} predicts a variable-size set $\{(c_i, \vecb{b}_i)\}_{i=1}^M$ of categories and bounding boxes $\vecb{b}_i = (x, y, w, h)\T$, while \emph{semantic/instance segmentation} assigns pixel-level masks $M \in \{1,\dots,C\}^{H \times W}$ \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 646--705}, \bookcite{foundations_computer_vision_mit}{Ch. 50, pp. 982--1014}. Modern vision systems further align visual features with natural language embeddings via contrastive pretraining (CLIP) and promptable mask decoders (SAM) \bookcite{foundations_computer_vision_mit}{Ch. 51, pp. 1015--1032}.
+\end{sloppypar}
+
+\begin{crossbook}[Cross-Book Notation: Detection, Anchor Boxes \& Segmentation]
+\begin{center}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{D2L (Zhang et al.)} & \textbf{MIT Vision / Prince} & \textbf{Unified Monograph} \\
+\midrule
+Bounding Box & $(x_1,y_1,x_2,y_2)$ or $(c_x,c_y,w,h)$ & $\vecb{b} \in \R^4$ & $\vecb{b} = (c_x, c_y, w, h)\T$ \\
+Box Overlap & $\mathrm{IoU}(A,B)$ (Jaccard) & IoU / GIoU & $\mathrm{IoU}(A,B) = \frac{|A \cap B|}{|A \cup B|}$ \\
+Anchor Parameterization & Scale $s \in (0,1]$, aspect $r > 0$ & Multi-scale FPN anchors & $w_a = s\sqrt{r}$, $h_a = s/\sqrt{r}$ \\
+Upsampling & Transposed conv $\mat{W}\T$ & Skip-connected U-Net / FCN & Transposed conv or bilinear + conv \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Unified notation across \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 646--705}, \bookcite{foundations_computer_vision_mit}{Ch. 50--51}, and \bookcite{understandingdl_simonprince}{Ch. 10}.}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations}
+
+\subsection{Bounding-Box Geometry, Anchor Boxes, NMS \& Bipartite Matching (DETR)}
+
+\begin{coremath}[IoU, Box Offset Regression, Focal Loss \& Hungarian Set Matching]
+Given predicted box $A$ and ground-truth box $B$, \emph{Intersection over Union (IoU)} measures localization quality \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 649--653}:
+\begin{equation}
+  \mathrm{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|} \in [0, 1], \qquad \mathcal{L}_{\mathrm{GIoU}} = 1 - \mathrm{IoU}(A,B) + \frac{|C \setminus (A \cup B)|}{|C|},
+\end{equation}
+where $C$ is the smallest enclosing box. Anchor-based detectors (SSD, Faster R-CNN, YOLO) tile each feature map cell $(i,j)$ with $K$ priors of scale $s$ and aspect ratio $r$ ($w_a = s\sqrt{r}, h_a = s/\sqrt{r}$) and regress scale-invariant offsets \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 650--675}:
+\begin{equation}
+  t_x = \frac{c_x - c_{x,a}}{w_a}, \quad t_y = \frac{c_y - c_{y,a}}{h_a}, \quad t_w = \log\frac{w}{w_a}, \quad t_h = \log\frac{h}{h_a}.
+\end{equation}
+To suppress extreme easy-negative background dominance in dense one-stage detectors, \emph{Focal Loss} down-weights well-classified anchors: $\mathcal{L}_{\mathrm{FL}}(p_t) = -\alpha_t (1-p_t)^\gamma \log p_t$ ($\gamma \approx 2$) \bookcite{foundations_computer_vision_mit}{Ch. 50, pp. 995--1002}. Overlapping predictions are pruned via \emph{Non-Maximum Suppression (NMS)} or eliminated entirely in \emph{DETR}, which treats detection as direct set prediction via optimal bipartite \emph{Hungarian matching} $\hat{\sigma} = \argmin_{\sigma \in \mathfrak{S}_N} \sum_{i=1}^N \mathcal{L}_{\mathrm{match}}(y_i, \hat{y}_{\sigma(i)})$ \bookcite{foundations_computer_vision_mit}{Ch. 50, pp. 1004--1010}.
+\end{coremath}
+
+\subsection{Semantic/Instance Segmentation, Style Transfer \& Contrastive Vision-Language}
+
+\begin{coremath}[Transposed Convolution, FCN/U-Net, Style Gram Matrices \& CLIP InfoNCE]
+Dense pixel prediction recovers spatial resolution from downsampled backbone features using \emph{transposed convolution} (whose forward and backward passes multiply by $\mat{W}\T$ and $\mat{W}$ respectively) or bilinear upsampling followed by $3\times 3$ refinement \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 694--704}. Because deep layers encode semantics at coarse resolution while shallow layers retain crisp boundaries, \emph{FCN} and \emph{U-Net} fuse multi-scale feature maps via skip connections \bookcite{understandingdl_simonprince}{Ch. 10, pp. 185--192}, \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 699--705}.
+
+In \emph{Neural Style Transfer}, content is preserved via deep activation MSE $\norm{\mat{F}^l - \mat{P}^l}_F^2$, while texture statistics are matched via channel-wise \emph{Gram matrices} $G_{ij}^l = \sum_k F_{ik}^l F_{jk}^l$ \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 706--712}. Finally, \emph{CLIP} aligns image encoder $f_I(\mat{I})$ and text encoder $f_T(\vecb{t})$ over $B$ paired captions using symmetric InfoNCE contrastive loss \bookcite{foundations_computer_vision_mit}{Ch. 51, pp. 1015--1028}:
+\begin{equation}
+  \mathcal{L}_{\mathrm{CLIP}} = -\frac{1}{2B}\sum_{i=1}^B \left[\log\frac{\exp(\inner{\vecb{u}_i}{\vecb{v}_i}/\tau)}{\sum_j \exp(\inner{\vecb{u}_i}{\vecb{v}_j}/\tau)} + \log\frac{\exp(\inner{\vecb{u}_i}{\vecb{v}_i}/\tau)}{\sum_j \exp(\inner{\vecb{u}_j}{\vecb{v}_i}/\tau)}\right].
+\end{equation}
+\end{coremath}
+
+\section{Visual Diagnostics \& Algorithmic Pipeline}
+
+\begin{algorithm}[htbp]
+\caption{Greedy Non-Maximum Suppression (NMS) for Object Detection}
+\DontPrintSemicolon
+\KwIn{Candidate boxes $\mathcal{B} = \{b_1, \dots, b_M\}$, confidence scores $\{s_1, \dots, s_M\}$, IoU threshold $\tau_{\mathrm{nms}}$}
+\KwOut{Filtered detection set $\mathcal{D}$}
+Sort $\mathcal{B}$ in descending order of confidence $s_i$\;
+$\mathcal{D} \gets \emptyset$\;
+\While{$\mathcal{B} \neq \emptyset$}{
+  Pop highest-scoring box $b^*$ from $\mathcal{B}$ and append $b^*$ to $\mathcal{D}$\;
+  \ForEach{remaining box $b \in \mathcal{B}$}{
+    \If{$\mathrm{IoU}(b^*, b) > \tau_{\mathrm{nms}}$}{Remove $b$ from $\mathcal{B}$}
+  }
+}
+\Return{$\mathcal{D}$}
+\end{algorithm}
+
+\begin{pitfall}[Checkerboard Artifacts, Small-Object Collapse \& NMS Crowding]
+Transposed convolutions whose kernel size is not divisible by stride create uneven overlap and \emph{checkerboard artifacts}; prefer `Resize + Conv` or divisible kernels \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 694--700}. In single-scale detectors, downsampling by $32\times$ erases small objects; Feature Pyramid Networks (FPN) resolve this by routing high-resolution shallow maps with top-down semantic context \bookcite{dive_into_deep_learning_d2l}{Ch. 14, pp. 663--666}. Standard hard NMS deletes valid neighboring objects in dense crowds—use Soft-NMS or end-to-end DETR set prediction \bookcite{foundations_computer_vision_mit}{Ch. 50, pp. 1004--1008}.
+\end{pitfall}
+
+\end{document}

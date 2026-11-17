@@ -1,0 +1,217 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Supervised Learning \& Generalization}{Bias-Variance Trade-off, Statistical Capacity \& Double Descent}
+  {Test risk = $\mathrm{Bias}^2 + \mathrm{Var} + \sigma_\epsilon^2$; variance blows up at $P=N$ then falls again via min-norm interpolation}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Bias--Var\\ \footnotesize\mdseries Capacity $\cdot$ $P/N$ $\cdot$ Double Descent}{%
+  \begin{tikzpicture}[scale=0.55]
+    \draw[gray!50, ->] (0,0)--(4.2,0) node[right, font=\tiny] {$P/N$};
+    \draw[gray!50, ->] (0,0)--(0,2.3) node[above, font=\tiny] {Risk};
+    \draw[dashed, csA, thick] (1.8,0)--(1.8,2.2) node[above, font=\tiny] {$P=N$};
+    % Train risk
+    \draw[csE, thick] (0.2,1.6)..controls (0.9,0.6) and (1.4,0.15)..(1.8,0.03)--(4.0,0.03);
+    % Double descent test risk
+    \draw[csA, very thick] (0.2,1.8)..controls (0.7,0.75) and (1.1,0.85)..(1.65,2.15);
+    \draw[csA, very thick] (1.95,2.15)..controls (2.3,0.75) and (3.0,0.5)..(4.0,0.42);
+    % Ridge smooth curve
+    \draw[csD, thick, densely dotted] (0.2,1.75)..controls (1.0,0.7) and (2.2,0.55)..(4.0,0.40);
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Exact Squared-Error Decomposition}{%
+  \begin{minipage}[t]{0.61\linewidth}
+    \csfm{\E_{\mathcal D,\epsilon}\!\big[(y-\hat f_{\mathcal D}(\vecb x))^2\big]=\mathrm{Bias}^2+\mathrm{Var}+\sigma_\epsilon^2}
+    \begin{csbul}
+      \item $\bar f(\vecb x)\triangleq\E_{\mathcal D}[\hat f_{\mathcal D}(\vecb x)]$ (ensemble mean)
+      \item $\mathrm{Bias}^2=(\bar f(\vecb x)-f(\vecb x))^2$ (approx.\ error)
+      \item $\mathrm{Var}=\E_{\mathcal D}[(\hat f_{\mathcal D}(\vecb x)-\bar f(\vecb x))^2]$ (sensitivity)
+      \item $\sigma_\epsilon^2=\Var(\epsilon\mid\vecb x)$ (irreducible noise)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.36\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.46, every node/.style={font=\tiny}]
+      \draw[csDom, thick] (0,0) circle (1.35);
+      \draw[csDom, thin] (0,0) circle (0.85);
+      \fill[csD] (0,0) circle (2.5pt) node[below left] {$f$};
+      \fill[csA] (0.65,0.55) circle (2.5pt) node[right] {$\bar f$};
+      \draw[<->, csA, thick] (0,0)--(0.65,0.55) node[midway, above left] {Bias};
+      \foreach \dx/\dy in {0.4/0.8, 0.9/0.3, 0.5/0.2, 0.8/0.75}
+        \fill[csB] (\dx,\dy) circle (1.8pt);
+      \draw[csB, dashed] (0.65,0.55) circle (0.38);
+      \node[csB] at (0.7,-1.05) {spread = Var};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; FOUR REGIMES ACROSS $P/N$}{%
+  \renewcommand{\arraystretch}{1.10}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.95cm}>{\raggedright\arraybackslash}p{1.05cm}>{\raggedright\arraybackslash}p{2.05cm}>{\raggedright\arraybackslash}p{2.3cm}@{}}
+    \textbf{\textcolor{csB}{Regime}} & \textbf{\textcolor{csB}{$P/N$}} & \textbf{\textcolor{csB}{Bias$^2$ / Var}} & \textbf{\textcolor{csB}{Mechanism}}\\ \hline
+    Underparam. & $P\ll N$ & High / $\frac{P}{N}\sigma_\epsilon^2$ & Underfitting ($\hat R_N>0$)\\
+    Classical Opt. & $P<N$ & Balanced & U-curve sweet spot\\
+    Critical Cusp & $P\approx N$ & Low / $\frac{\sigma_\epsilon^2}{|1-P/N|}$ & $s_{\min}(\mat\Phi)\to 0$ blow-up\\
+    Overparam. & $P\gg N$ & Low / $\frac{N}{P-N}\sigma_\epsilon^2$ & Min-norm $\hat{\vecb w}_{\min}=\mat\Phi\pinv\vecb y$\\
+  \end{tabular}\par\vspace{1pt}
+  \footnotesize\textbf{Fixed-Design ($N>P$):} $\E[\hat R_N]=\sigma_\epsilon^2(1-\frac{P}{N})$,\; $\E[R_{\mathrm{fixed}}]=\sigma_\epsilon^2(1+\frac{P}{N})$.}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ Min-Norm \& Marchenko--Pastur}{%
+  \csfm{\hat{\vecb w}_{\min}=\argmin_{\mat\Phi\vecb w=\vecb y}\norm{\vecb w}_2=\mat\Phi\pinv\vecb y=\mat\Phi\T(\mat\Phi\mat\Phi\T)\inv\vecb y}
+  \begin{csbul}
+    \item \textbf{Bias$^2$ ($P>N$):} $\norm{\mat\Sigma^{1/2}(\eye_P-\mat\Phi\pinv\mat\Phi)\vecb w^\star}_2^2$ (nullspace projection)
+    \item \textbf{Variance:} $\sigma_\epsilon^2\Tr(\mat\Sigma(\mat\Phi\T\mat\Phi)\pinv)=\sigma_\epsilon^2\sum_{j=1}^N \frac{\vecb v_j\T\mat\Sigma\vecb v_j}{s_j^2(\mat\Phi)}$
+    \item \textbf{Singular Cusp:} $s_{\min}^2(\mat\Phi)\propto(\sqrt P-\sqrt N)^2\to 0$ at $P=N$; for $P\gg N$, $P-N$ extra directions absorb noise (\textbf{benign overfitting})
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ VC, Rademacher \& Implicit Bias}{%
+  \begin{csbul}
+    \item \textbf{VC Bound:} $R\le\hat R_N+\mathcal O(\sqrt{d_{\mathrm{VC}}\ln(N/d_{\mathrm{VC}})/N})$ (vacuous $P\ge N$)
+    \item \textbf{Rademacher:} $R\le\hat R_N+2\hat{\mathfrak R}_N(\mathcal F)+3\sqrt{\ln(2/\delta)/(2N)}$
+    \item \textbf{Norm Control:} $\norm{\vecb w}_2\le B\implies\hat{\mathfrak R}_N\le\frac{BR_\phi}{\sqrt N}$ (\emph{dim-free!})
+    \item \textbf{GD from $\zeros$:} stays in $\mathrm{row}(\mat\Phi)\to\hat{\vecb w}_{\min}$
+    \item \textbf{Grokking:} weight decay pulls $\norm{\vecb w}_2$ down long after $\hat R_N\approx 0$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Validation \& Primal/Dual Solvers}{%
+  \renewcommand{\arraystretch}{1.18}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.25cm}>{\raggedright\arraybackslash}p{2.35cm}>{\raggedright\arraybackslash}p{2.75cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Complexity}} & \textbf{\textcolor{csE}{Role}}\\ \hline
+    Primal OLS/Ridge & $\mathcal O(NP^2+P^3)$ & Best when $P<N$\\
+    Dual Min-Norm/Ridge & $\mathcal O(PN^2+N^3)$ & Best when $P>N$ ($\mat\Phi\mat\Phi\T$)\\
+    Nested $K$-Fold CV & $K_{\mathrm{out}}K_{\mathrm{in}}|\Lambda|$ fits & Unbiased $(\hat P^\star,\hat\lambda^\star)$ selection\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Ridge Smoothing:} $\lambda>0$ replaces $s_j^{-2}$ with $\frac{s_j^2}{(s_j^2+\lambda)^2}\le\frac{1}{4\lambda}$, erasing the $P=N$ variance spike completely.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ Navigating Capacity in Practice}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Small $N$ tabular:} tune Ridge $\lambda$ via Nested CV to stay in sweet spot
+      \item \textbf{Deep nets ($P\gg N$):} scale width past $P=N$ + weight decay + early stopping
+      \item \textbf{Noisy labels:} avoid $P\approx N$ cusp; damp $s_{\min}$ with $\lambda>0$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.44, every node/.style={font=\tiny}]
+      \draw[gray!50] (0,0) rectangle (3.6,2.2);
+      \fill[csA] (0.5,0.6) circle (2.5pt);
+      \fill[csA] (1.6,1.6) circle (2.5pt);
+      \fill[csA] (2.9,0.8) circle (2.5pt);
+      \draw[csB, thick, dashed] (0.2,0.2)..controls (0.5,2.1) and (1.2,-0.3)..(1.6,1.6)..controls (2.1,2.4) and (2.5,-0.2)..(3.3,1.2);
+      \draw[csD, very thick] (0.2,0.4)..controls (1.1,1.6) and (2.1,1.5)..(3.3,0.6);
+      \node[csB] at (1.8,2.5) {$P=N$ contorts};
+      \node[csD] at (1.8,-0.35) {$P\gg N$ smooth min-norm};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Classical U-Curve ($P<N$) $+$ Singular Cusp ($P=N$) $+$ Min-Norm Smoothing ($P\gg N$)}\\[2pt]
+  \footnotesize\mdseries \textbf{Overparameterization works when optimization selects small-norm interpolators ($\norm{\hat{\vecb w}_{\min}}_2$).}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Preprocessing leakage:} fitting scaler/PCA before CV split leaks test variance
+    \item \textbf{Normal eqs at $P\approx N$:} $s_{\min}(\mat\Phi)\to 0$ causes catastrophic noise blow-up
+    \item \textbf{Stopping at $\hat R_N=0$:} test NLL can rise; grokking lags
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Bias-Variance Decomposition, Overfitting, Generalization \& Double Descent}\;---\;Domain 02 $\cdot$ Supervised Learning \& Generalization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Pointwise Squared-Error Decomposition:\csfm{\E_{\mathcal D,\epsilon}\!\big[(y-\hat f_{\mathcal D}(\vecb x))^2\big]=\big(\bar f(\vecb x)-f(\vecb x)\big)^2+\E_{\mathcal D}\!\big[(\hat f_{\mathcal D}-\bar f)^2\big]+\sigma_\epsilon^2}
+    \item Parameter Estimator MSE:\csfm{\mathrm{MSE}(\hat{\vecb\theta}_N)=\norm{\mathrm{Bias}(\hat{\vecb\theta}_N)}_2^2+\Tr\!\big(\Cov(\hat{\vecb\theta}_N)\big)}
+    \item Fixed-Design Linear Risk ($N>P$, $\Tr(\mat H)=P$):\csfm{\E[\hat R_N]=\sigma_\epsilon^2\!\left(1-\frac{P}{N}\right),\quad \E[R_{\mathrm{fixed}}]=\sigma_\epsilon^2\!\left(1+\frac{P}{N}\right)}
+    \item Overparameterized Min-Norm ($P>N$):\csfm{\hat{\vecb w}_{\min}=\mat\Phi\T(\mat\Phi\mat\Phi\T)\inv\vecb y,\quad \mathrm{Var}=\sigma_\epsilon^2\sum_{j=1}^N\frac{\vecb v_j\T\mat\Sigma\vecb v_j}{s_j^2(\mat\Phi)}}
+    \item Norm-Constrained Rademacher Complexity:\csfm{\hat{\mathfrak R}_N(\mathcal F)\le\frac{B R_\phi}{\sqrt N}\quad\text{for }\norm{\vecb w}_2\le B,\;\norm{\vecb\phi(\vecb x)}_2\le R_\phi}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{NESTED $K$-FOLD CV \& DD SWEEP}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Split $\mathcal D$ into $K_{\mathrm{out}}$ outer folds $\mathcal D_k$; hold out $\mathcal D_{\mathrm{test}}^{(k)}=\mathcal D_k$
+    \item Split $\mathcal D_{\mathrm{train}}^{(k)}$ into $K_{\mathrm{in}}$ inner folds; standardize inside each fold
+    \item Pick $\lambda_k^\star=\argmin_{\lambda\in\Lambda}\mathrm{CV}_{\mathrm{in}}(\lambda)$ on inner validation folds
+    \item Refit $\hat f_{P,\lambda_k^\star}$ on $\mathcal D_{\mathrm{train}}^{(k)}$ (use $\mat\Phi\pinv\vecb y$ if $\lambda=0, P>N$)
+    \item Average outer test error $\hat R_{\mathrm{test}}(P)=\frac{1}{K_{\mathrm{out}}}\sum_k e_k(P)$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you observe\ldots} & \textbf{do this\ldots}\\ \hline
+    $\hat R_N$ high, $\hat R_{\mathrm{val}}\approx\hat R_N$ & High bias $\to$ increase $P$, lower $\lambda$\\
+    $\hat R_N\approx 0$, $\hat R_{\mathrm{val}}$ huge & Near $P\approx N$ cusp $\to$ add Ridge $\lambda>0$ or increase $P\gg N$\\
+    $P\gg N$ linear model & Solve dual $(\mat\Phi\mat\Phi\T+\lambda\eye_N)\inv\vecb y$ in $\mathcal O(PN^2)$\\
+    tuning both $P$ and $\lambda$ & Nested $K$-fold CV (never tune on test)\\
+    test NLL rises at $\hat R_N=0$ & Apply early stopping / weight decay\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{SCALING \& BOUNDS CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{Optimism gap ($N>P$):} $\E[R_{\mathrm{fixed}}-\hat R_N]=\frac{2P}{N}\sigma_\epsilon^2$
+    \item \textbf{Cusp scaling ($P\approx N$):} $\mathrm{Var}\propto \sigma_\epsilon^2/|1-P/N|$
+    \item \textbf{Benign overfitting ($P\gg N$):} $\mathrm{Var}\approx \sigma_\epsilon^2\frac{N}{P-N}\to 0$
+    \item \textbf{Ridge variance cap:} $\frac{s_j^2}{(s_j^2+\lambda)^2}\le\frac{1}{4\lambda}\;\forall s_j>0$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{DOUBLE DESCENT vs.\ OPTIMAL RIDGE ($\lambda>0$)}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=0.05, xmax=3.4, ymin=0, ymax=5.6,
+      xlabel={Capacity Ratio $P/N$}, ylabel={Excess Test Risk / $\sigma_\epsilon^2$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.98,0.95)}, anchor=north east, font=\tiny, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csE, dashed, thick, domain=0.05:0.86, samples=50] {0.85*x/(1-x)};
+      \addlegendentry{Var ($\lambda=0^+$)}
+      \addplot[csE, dashed, thick, domain=1.16:3.4, samples=50, forget plot] {0.85/(x-1)};
+      \addplot[csF, dotted, thick, domain=0.05:1.0, samples=40] {1.7*(1-x)^2+0.08};
+      \addlegendentry{$\mathrm{Bias}^2$}
+      \addplot[csF, dotted, thick, domain=1.0:3.4, samples=40, forget plot] {0.08+0.15/x};
+      \addplot[csA, very thick, domain=0.05:0.86, samples=50] {1.7*(1-x)^2+0.08+0.85*x/(1-x)};
+      \addlegendentry{Total ($\lambda=0^+$)}
+      \addplot[csA, very thick, domain=1.16:3.4, samples=50, forget plot] {0.08+0.15/x+0.85/(x-1)};
+      \addplot[csD, very thick, domain=0.05:3.4, samples=80] {1.7*(1-min(x,1))^2+0.12+0.85*x/((1-x)^2+0.45)};
+      \addlegendentry{Ridge ($\lambda>0$)}
+      \draw[gray, densely dashed, thick] (axis cs:1,0)--(axis cs:1,4.5);
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Validation/test leakage:} fitting feature selection, normalization, or hyperparameter grids on the full dataset before splitting invalidates generalization estimates
+    \item \textbf{Operating unregularized at $P\approx N$:} the design matrix has $s_{\min}(\mat\Phi)\approx 0$, forcing $\hat{\vecb w}$ to explode to interpolate noise $\vecb\epsilon$
+    \item \textbf{Applying VC bounds to overparameterized nets:} parameter-counting bounds ($d_{\mathrm{VC}}\propto P$) become vacuous when $P\ge N$; track weight norm $\norm{\vecb w}_2$ instead
+    \item \textbf{Confusing zero training error with calibration:} overparameterized classifiers can overfit confidence (diverging logits) even while 0--1 test error improves
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Classical regime ($P<N$):} adding parameters trades $\mathrm{Bias}^2\downarrow$ for $\mathrm{Var}\uparrow$.
+  \textbf{Interpolation threshold ($P=N$):} $s_{\min}(\mat\Phi)\to 0$ creates a variance singularity.
+  \textbf{Modern regime ($P\gg N$):} minimum-$\ell_2$-norm interpolation $\hat{\vecb w}_{\min}=\mat\Phi\pinv\vecb y$ spreads noise across $P-N$ extra dimensions, creating the second descent---while tuned Ridge ($\lambda>0$) smooths the peak entirely.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

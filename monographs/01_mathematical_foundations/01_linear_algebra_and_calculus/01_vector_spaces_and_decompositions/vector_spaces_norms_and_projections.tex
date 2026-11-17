@@ -1,0 +1,523 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Mathematical Foundations for Machine Intelligence}{Linear Algebra, Matrix Decompositions \& Vector Calculus}{Vector Spaces, Spectral Theory \& Matrix Factorizations}{Vector Spaces, Norms, Orthogonality \& Least-Squares Projections}{\bookcite{linear_algebra}{Ch. 4 \& 6}, \bookcite{mathematics_machine_learning_orienly}{Ch. 2 \& 3}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7 \& 11}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:vecnorm:formulation}
+% =============================================================================
+
+Modern machine learning parameterizes representations, predictions, and loss functionals inside finite-dimensional vector spaces equipped with inner products and norms. Whether fitting linear predictors via empirical risk minimization, projecting high-dimensional embeddings onto low-rank principal subspaces, or solving overdetermined linear systems $\mat{A}\vecb{x} \approx \vecb{b}$ when exact solutions do not exist, the core mathematical operation is \emph{orthogonal projection onto a linear or affine subspace} \bookcite{linear_algebra}{Ch. 6, pp. 349--367}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, pp. 81--90}.
+
+\subsection{Vector Spaces, Subspaces, and Matrix Operators}
+
+A \emph{real vector space} $(V, +, \cdot)$ is a nonempty set $V$ closed under vector addition $(\vecb{u}, \vecb{v}) \mapsto \vecb{u} + \vecb{v}$ and scalar multiplication $(c, \vecb{u}) \mapsto c\vecb{u}$ ($c \in \R$), satisfying the ten axioms of associativity, commutativity of addition, identity elements ($\zeros \in V$ and $1 \in \R$), additive inverses, and distributivity \bookcite{linear_algebra}{Ch. 4, Sec. 4.1, p. 192}, \bookcite{mathematics_machine_learning_orienly}{Ch. 2, Sec. 2.4, pp. 35--39}. A subset $W \subseteq V$ is a \emph{subspace} if and only if $\zeros \in W$ and $W$ is closed under linear combinations: $\alpha\vecb{u} + \beta\vecb{v} \in W$ for all $\vecb{u}, \vecb{v} \in W$ and $\alpha, \beta \in \R$. Shifting a subspace $U \subseteq V$ by a translation vector $\vecb{x}_0 \in V$ produces an \emph{affine subspace} $L = \vecb{x}_0 + U = \set{\vecb{x}_0 + \vecb{u} : \vecb{u} \in U}$, which models solution sets of consistent inhomogeneous systems and separating hyperplanes \bookcite{mathematics_machine_learning_orienly}{Ch. 2, Sec. 2.8, pp. 61--63}.
+
+Given a finite collection $\{\vecb{a}_1, \dots, \vecb{a}_n\} \subset V$, its \emph{span} is $\spn\{\vecb{a}_1, \dots, \vecb{a}_n\} \coloneqq \{\sum_{j=1}^n x_j \vecb{a}_j : x_j \in \R\}$. The vectors are \emph{linearly independent} if $\sum_{j=1}^n x_j \vecb{a}_j = \zeros$ forces $x_1 = \dots = x_n = 0$; otherwise they are linearly dependent \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Sec. 2.4, p. 38}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Sec. 1.7, p. 18}. A linearly independent spanning set forms a \emph{basis} of $V$, assigning every $\vecb{v} \in V$ unique coordinates, and every basis has the same cardinality $\dim(V)$ \bookcite{linear_algebra}{Ch. 4, Sec. 4.5, pp. 227--230}.
+
+Viewing a matrix $\mat{A} = [\vecb{a}_1, \dots, \vecb{a}_n] \in \R^{m \times n}$ as a linear map $\vecb{x} \mapsto \mat{A}\vecb{x}$ from $\R^n$ to $\R^m$ defines four fundamental subspaces:
+\begin{align}
+  \colsp(\mat{A}) &\coloneqq \set{\mat{A}\vecb{x} : \vecb{x} \in \R^n} = \spn\set{\vecb{a}_1, \dots, \vecb{a}_n} \subseteq \R^m, &
+  \nullsp(\mat{A}) &\coloneqq \set{\vecb{x} \in \R^n : \mat{A}\vecb{x} = \zeros} \subseteq \R^n, \label{eq:vecnorm:col_null} \\
+  \mathrm{Row}(\mat{A}) &\coloneqq \colsp(\mat{A}\T) \subseteq \R^n, &
+  \nullsp(\mat{A}\T) &\coloneqq \set{\vecb{y} \in \R^m : \mat{A}\T\vecb{y} = \zeros} \subseteq \R^m. \label{eq:vecnorm:row_lnull}
+\end{align}
+An arbitrary linear system $\mat{A}\vecb{x} = \vecb{b}$ is consistent if and only if $\vecb{b} \in \colsp(\mat{A})$. In overdetermined regression ($m > n$), noisy measurements generically force $\vecb{b} \notin \colsp(\mat{A})$, motivating the least-squares objective $\min_{\vecb{x} \in \R^n} \norm{\mat{A}\vecb{x} - \vecb{b}}_2^2$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.7.3, p. 268}.
+
+\subsection{Unified Notation \& Cross-Book Conventions}
+
+Throughout this leaf, column vectors are denoted by bold lowercase letters ($\vecb{x} \in \R^n$), matrices by bold uppercase letters ($\mat{A} \in \R^{m \times n}$), inner products by $\inner{\vecb{x}}{\vecb{y}}$ (defaulting to $\vecb{x}\T\vecb{y}$ in Euclidean space), vector $\ell_p$ norms by $\norm{\vecb{x}}_p$, orthogonal projectors onto subspace $W$ by $\mat{P}_W$, the Moore--Penrose pseudoinverse by $\mat{A}\pinv$, and the $\ell_2$ condition number by $\kappa_2(\mat{A})$. Table~\ref{tab:vecnorm:notation} reconciles the divergent symbols across all five synthesized textbooks.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Every source adopts slightly different typographical and domain conventions across linear algebra, machine learning, and deep learning. The table below maps each convention onto our unified monograph standard.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.24}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.45cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Lay et al.\ (2016)} & \textbf{Deisenroth et al.\ (2020)} & \textbf{Murphy (2022)} & \textbf{Goodfellow et al.\ (2016)} & \textbf{V\~{u} (2018) / Unified} \\
+\midrule
+Column vector / Matrix & $\mathbf{x}, \mathbf{u}$; $A$ (italic) & $\bm{x}$; $\bm{A}$ (bold italic) & $\mathbf{x}$; $\mathbf{A}$ (bold upright) & $\bm{x}$; $\bm{A}$ (bold italic) & $\vecb{x}$, $\mat{A}$ ($\mat{A}^{\mathsf{H}}$ in $\C$) \\
+Column / Null space & $\mathrm{Col}\,A$, $\mathrm{Nul}\,A$ & $\mathrm{Im}(\Phi)$, $\ker(\Phi)$ & $\mathrm{range}(\mathbf{A})$, $\mathrm{nullspace}(\mathbf{A})$ & Column space / range & $\colsp(\mat{A})$, $\nullsp(\mat{A})$ \\
+Inner product & $\mathbf{u} \cdot \mathbf{v} = \mathbf{u}\T\mathbf{v}$ & $\langle \bm{x}, \bm{y}\rangle = \hat{\bm{x}}\T\bm{A}\hat{\bm{y}}$ & $\langle \mathbf{x}, \mathbf{y}\rangle \triangleq \mathbf{x}\T\mathbf{y}$ & $\bm{x}\T\bm{y}$ & $\inner{\vecb{x}}{\vecb{y}}$; $\vecb{x}\T\vecb{y}$ in $\R^n$ \\
+Vector $\ell_p$ / Matrix norm & $\norm{\mathbf{v}}$ ($\ell_2$ only) & $\norm{\bm{x}}_1$, $\norm{\bm{x}}_2$ & $\norm{\mathbf{x}}_p$, $\norm{\mathbf{A}}_p$, $\norm{\mathbf{A}}_F$, $\norm{\mathbf{A}}_*$ & $\norm{\bm{x}}_p$ ($L^p$), $\norm{\bm{A}}_F$ & $\norm{\vecb{x}}_p$, $\norm{\mat{A}}_2$, $\norm{\mat{A}}_F$ \\
+Orthogonal projection & $\hat{\mathbf{y}} = \mathrm{proj}_W\mathbf{y} = UU\T\mathbf{y}$ & $\pi_U(\bm{x}) = \bm{P}_\pi\bm{x}$, $\bm{B}(\bm{B}\T\bm{B})^{-1}\bm{B}\T$ & $\mathrm{Proj}(\mathbf{y}; \mathbf{A}) = \mathbf{A}(\mathbf{A}\T\mathbf{A})^{-1}\mathbf{A}\T\mathbf{y}$ & $\bm{r}(\bm{x}) = \bm{D}\bm{D}\T\bm{x}$ (PCA) & $\mat{P}_W\vecb{y}$ ($= \mat{Q}\mat{Q}\T\vecb{y}$ for ONB) \\
+Pseudoinverse & $(A\T A)^{-1}A\T$ (full col.\ rank) & $(\bm{B}\T\bm{B})^{-1}\bm{B}\T$ & $\mathbf{A}^\dagger = \mathbf{V}\mathbf{S}^{-1}\mathbf{U}\T$ & $\bm{A}^+ = \bm{V}\bm{D}^+\bm{U}\T$ & $\mat{A}\pinv = \mat{V}\mat{\Sigma}\pinv\mat{U}\T$ \\
+Least-squares model & $A\mathbf{x} \approx \mathbf{b}$; $X\boldsymbol{\beta} = \mathbf{y} + \boldsymbol{\varepsilon}$ & $\bm{B}\bm{\lambda} \approx \bm{x}$ (subspace fit) & $\mathbf{X}\mathbf{w} \approx \mathbf{y}$ ($\mathrm{RSS}(\mathbf{w})$) & $\min_{\bm{D}}\norm{\bm{X} - \bm{X}\bm{d}\bm{d}\T}_F^2$ & $\min_{\vecb{x}}\norm{\mat{A}\vecb{x} - \vecb{b}}_2^2$ \\
+\bottomrule
+\end{tabularx}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\caption{Cross-book notation mapping across \bookcite{linear_algebra}{Ch. 4, 6}, \bookcite{mathematics_machine_learning_orienly}{Ch. 2, 3}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, 11}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2}, and \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1}.}
+\label{tab:vecnorm:notation}
+\end{table}
+
+\textbf{Four Crucial Conceptual Reconciliations:}
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{``$\ell_0$ Norm'' Misnomer:} Goodfellow et al.\ explicitly caution that counting nonzero entries $\sum_i \mathbb{I}(x_i \neq 0)$ is \emph{not} a norm because scaling $\vecb{x}$ by $\alpha \neq 0$ leaves the count unchanged, violating $\norm{\alpha\vecb{x}} = |\alpha|\norm{\vecb{x}}$; Murphy labels $\norm{\vecb{x}}_0$ a ``pseudo norm'' for the same reason \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Sec. 2.5, p. 40}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.1.3, p. 235}.
+  \item \textbf{``Orthogonal Matrix'' Terminology:} All five texts warn that an \emph{orthogonal matrix} $\mat{Q} \in \R^{n \times n}$ must be square with \emph{orthonormal} columns ($\mat{Q}\T\mat{Q} = \mat{Q}\mat{Q}\T = \eye_n$, so $\mat{Q}^{-1} = \mat{Q}\T$). A tall matrix $\hat{\mat{Q}} \in \R^{m \times n}$ ($m > n$) with orthonormal columns satisfies $\hat{\mat{Q}}\T\hat{\mat{Q}} = \eye_n$ (left inverse), whereas $\hat{\mat{Q}}\hat{\mat{Q}}\T \neq \eye_m$ is instead the rank-$n$ orthogonal projector onto $\colsp(\hat{\mat{Q}})$ \bookcite{linear_algebra}{Ch. 6, Sec. 6.2, p. 346}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Def. 3.8, p. 78}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.59, p. 241}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Sec. 1.9, p. 21}.
+  \item \textbf{General Inner Products vs.\ Dot Product:} Lay, Goodfellow et al., and V\~{u} largely specialize to the canonical Euclidean dot product $\vecb{x}\T\vecb{y}$, whereas Deisenroth et al.\ treat general symmetric positive definite (SPD) bilinear forms $\inner{\vecb{x}}{\vecb{y}}_{\mat{M}} = \vecb{x}\T\mat{M}\vecb{y}$ ($\mat{M} \succ 0$), demonstrating that angles and orthogonality depend critically on the chosen inner product \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Ex. 3.7, pp. 77--78}.
+  \item \textbf{Algebraic vs.\ Numerical Least Squares:} While Lay introduces the normal equations $\mat{A}\T\mat{A}\hat{\vecb{x}} = \mat{A}\T\vecb{b}$ first and defers numerical stability warnings to a remark, Murphy and Goodfellow et al.\ stress that directly inverting $\mat{A}\T\mat{A}$ or $\mat{A}$ is numerically hazardous and recommend QR or SVD solvers \bookcite{linear_algebra}{Ch. 6, p. 366}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Sec. 11.2.2.3, p. 375}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Sec. 2.3, p. 37}.
+\end{enumerate}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:vecnorm:derivations}
+% =============================================================================
+
+\subsection{Norms, SPD Inner Products, and Cauchy--Schwarz}
+
+\begin{coremath}[Vector Norms, $\ell_p$ Limit, and Matrix Operator/Frobenius Norms]
+A function $\norm{\cdot} : V \to \R$ is a \emph{norm} if for all $\vecb{x}, \vecb{y} \in V$ and $\alpha \in \R$ \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Def. 3.1, p. 71}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.1.3, pp. 234--235}:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Positive definiteness:} $\norm{\vecb{x}} \ge 0$ and $\norm{\vecb{x}} = 0 \iff \vecb{x} = \zeros$;
+  \item \textbf{Absolute homogeneity:} $\norm{\alpha \vecb{x}} = \abs{\alpha}\,\norm{\vecb{x}}$;
+  \item \textbf{Triangle inequality:} $\norm{\vecb{x} + \vecb{y}} \le \norm{\vecb{x}} + \norm{\vecb{y}}$.
+\end{enumerate}
+On $\R^n$, for any $p \in [1, \infty)$, the \emph{$\ell_p$ norm} is defined as $\norm{\vecb{x}}_p \coloneqq \bigl(\sum_{i=1}^n \abs{x_i}^p\bigr)^{1/p}$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Eq. 2.30, p. 39}. Setting $m = \max_{1 \le j \le n} \abs{x_j} > 0$, factoring out $m$ yields the $\ell_\infty$ limit \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Eq. 1.39--1.41, p. 28}:
+\begin{equation}
+  m \le \norm{\vecb{x}}_p = m \left( \sum_{j=1}^n \left(\frac{\abs{x_j}}{m}\right)^p \right)^{1/p} \le m\, n^{1/p}
+  \quad\Longrightarrow\quad
+  \lim_{p \to \infty} \norm{\vecb{x}}_p = \max_{1 \le j \le n} \abs{x_j} = \norm{\vecb{x}}_\infty,
+  \label{eq:vecnorm:linf_limit}
+\end{equation}
+since $\lim_{p\to\infty} n^{1/p} = 1$. Moreover, any two norms on $\R^n$ are topologically equivalent; for the canonical $\ell_1, \ell_2, \ell_\infty$ triple, Cauchy--Schwarz gives the sharp chain
+\begin{equation}
+  \norm{\vecb{x}}_\infty \le \norm{\vecb{x}}_2 \le \norm{\vecb{x}}_1 \le \sqrt{n}\,\norm{\vecb{x}}_2 \le n\,\norm{\vecb{x}}_\infty.
+  \label{eq:vecnorm:norm_equiv}
+\end{equation}
+
+For matrices $\mat{A} \in \R^{m \times n}$, two principal norms govern learning and stability \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.1.3.2, pp. 235--236}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Eq. 2.33 \& 2.49, pp. 40, 47}:
+\begin{align}
+  \norm{\mat{A}}_F &\coloneqq \sqrt{\sum_{i=1}^m \sum_{j=1}^n A_{ij}^2} = \sqrt{\Tr(\mat{A}\T\mat{A})} = \norm{\mathrm{vec}(\mat{A})}_2 = \sqrt{\sum_{k=1}^r \sigma_k(\mat{A})^2}, \label{eq:vecnorm:frobenius} \\
+  \norm{\mat{A}}_p &\coloneqq \sup_{\vecb{x} \neq \zeros} \frac{\norm{\mat{A}\vecb{x}}_p}{\norm{\vecb{x}}_p} = \max_{\norm{\vecb{x}}_p = 1} \norm{\mat{A}\vecb{x}}_p, \qquad \norm{\mat{A}}_2 = \sqrt{\lambda_{\max}(\mat{A}\T\mat{A})} = \sigma_{\max}(\mat{A}), \label{eq:vecnorm:operator}
+\end{align}
+where $\sigma_k(\mat{A})$ are the singular values of $\mat{A}$. Both $\norm{\cdot}_F$ and $\norm{\cdot}_2$ are \emph{orthogonally invariant}: for any orthogonal $\mat{U} \in \R^{m \times m}$ and $\mat{V} \in \R^{n \times n}$, $\norm{\mat{U}\mat{A}\mat{V}}_F = \norm{\mat{A}}_F$ (via trace cyclicity $\Tr(\mat{V}\T\mat{A}\T\mat{U}\T\mat{U}\mat{A}\mat{V}) = \Tr(\mat{A}\T\mat{A})$) and $\norm{\mat{U}\mat{A}\mat{V}}_2 = \norm{\mat{A}}_2$.
+\end{coremath}
+
+While every inner product induces a norm via $\norm{\vecb{x}} = \sqrt{\inner{\vecb{x}}{\vecb{x}}}$, the converse is false: a norm is induced by an inner product if and only if it satisfies the \emph{parallelogram law} $\norm{\vecb{u}+\vecb{v}}^2 + \norm{\vecb{u}-\vecb{v}}^2 = 2\norm{\vecb{u}}^2 + 2\norm{\vecb{v}}^2$ \bookcite{linear_algebra}{Ch. 6, Ex. 24, p. 339}. Hence $\ell_2$ arises from an inner product, whereas $\ell_1$ and $\ell_\infty$ (for $n \ge 2$) do not \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Sec. 3.3, p. 75}.
+
+\begin{coremath}[SPD Inner Products, Cauchy--Schwarz Inequality, and Pythagorean Theorem]
+Let $V$ be an $n$-dimensional real vector space with ordered basis $\mathcal{B} = (\vecb{b}_1, \dots, \vecb{b}_n)$ and coordinate map $\vecb{x} \mapsto \hat{\vecb{x}} \in \R^n$. By bilinearity, symmetry, and positive definiteness, $\inner{\cdot}{\cdot} : V \times V \to \R$ is an inner product if and only if there exists a symmetric positive definite (SPD) Gram matrix $\mat{M} \in \R^{n \times n}$ ($M_{ij} = \inner{\vecb{b}_i}{\vecb{b}_j}$, $\mat{M} = \mat{M}\T \succ 0$) such that \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Thm. 3.5, p. 74}
+\begin{equation}
+  \inner{\vecb{x}}{\vecb{y}}_{\mat{M}} = \hat{\vecb{x}}\T\mat{M}\hat{\vecb{y}}, \qquad \norm{\vecb{x}}_{\mat{M}} = \sqrt{\hat{\vecb{x}}\T\mat{M}\hat{\vecb{x}}}.
+  \label{eq:vecnorm:spd_inner}
+\end{equation}
+
+\textbf{Theorem (Cauchy--Schwarz Inequality).} \emph{For any $\vecb{u}, \vecb{v}$ in an inner-product space $(V, \inner{\cdot}{\cdot})$, $\abs{\inner{\vecb{u}}{\vecb{v}}} \le \norm{\vecb{u}}\norm{\vecb{v}}$, with equality if and only if $\vecb{u}$ and $\vecb{v}$ are linearly dependent} \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Eq. 3.17, p. 75}.
+
+\emph{Proof.} If $\vecb{v} = \zeros$, both sides equal $0$. Otherwise $\norm{\vecb{v}}^2 > 0$; for any $t \in \R$, positive definiteness yields
+\[
+  0 \le \norm{\vecb{u} - t\vecb{v}}^2 = \inner{\vecb{u} - t\vecb{v}}{\vecb{u} - t\vecb{v}} = \norm{\vecb{u}}^2 - 2t\inner{\vecb{u}}{\vecb{v}} + t^2\norm{\vecb{v}}^2.
+\]
+Setting $t = \inner{\vecb{u}}{\vecb{v}} / \norm{\vecb{v}}^2$ (the orthogonal projection coordinate) simplifies the inequality to
+\[
+  0 \le \norm{\vecb{u}}^2 - \frac{\inner{\vecb{u}}{\vecb{v}}^2}{\norm{\vecb{v}}^2} \quad\Longleftrightarrow\quad \inner{\vecb{u}}{\vecb{v}}^2 \le \norm{\vecb{u}}^2\norm{\vecb{v}}^2,
+\]
+with equality iff $\vecb{u} - t\vecb{v} = \zeros$. Taking square roots gives $\abs{\inner{\vecb{u}}{\vecb{v}}} \le \norm{\vecb{u}}\norm{\vecb{v}}$ and immediately proves the triangle inequality $\norm{\vecb{u}+\vecb{v}}^2 = \norm{\vecb{u}}^2 + 2\inner{\vecb{u}}{\vecb{v}} + \norm{\vecb{v}}^2 \le (\norm{\vecb{u}} + \norm{\vecb{v}})^2$, as well as defining the unique angle $\omega \in [0, \pi]$ via $\cos\omega = \inner{\vecb{u}}{\vecb{v}} / (\norm{\vecb{u}}\norm{\vecb{v}})$ for nonzero vectors. Two vectors are orthogonal ($\vecb{u} \perp \vecb{v}$) iff $\inner{\vecb{u}}{\vecb{v}} = 0$, which yields the \textbf{Pythagorean Theorem} \bookcite{linear_algebra}{Ch. 6, Thm. 2, p. 336}:
+\begin{equation}
+  \norm{\vecb{u} + \vecb{v}}^2 = \norm{\vecb{u}}^2 + \norm{\vecb{v}}^2 \iff \inner{\vecb{u}}{\vecb{v}} = 0.
+  \label{eq:vecnorm:pythagoras}
+\end{equation}
+\end{coremath}
+
+\subsection{The Four Fundamental Subspaces and Orthogonal Complements}
+
+For any subspace $W \subseteq \R^d$, its \emph{orthogonal complement} is $W^\perp \coloneqq \set{\vecb{z} \in \R^d : \inner{\vecb{z}}{\vecb{w}} = 0\ \forall\,\vecb{w} \in W}$. Notice $W^\perp$ is itself a subspace satisfying $W \cap W^\perp = \set{\zeros}$ (since $\vecb{v} \in W \cap W^\perp \implies \norm{\vecb{v}}^2 = \inner{\vecb{v}}{\vecb{v}} = 0 \implies \vecb{v} = \zeros$) \bookcite{linear_algebra}{Ch. 6, Sec. 6.1, p. 336}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Sec. 3.6, pp. 79--80}.
+
+\begin{coremath}[Fundamental Theorem of Linear Algebra (Rank--Nullity \& Orthogonal Duality)]
+Let $\mat{A} \in \R^{m \times n}$ have rank $r = \rank(\mat{A})$. Then \bookcite{linear_algebra}{Ch. 4, Thm. 14, p. 235; Ch. 6, Thm. 3, p. 337}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Sec. 1.7--1.8, pp. 19--20}:
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Dimension equality:} $\dim\colsp(\mat{A}) = \dim\mathrm{Row}(\mat{A}) = r$, with $\dim\nullsp(\mat{A}) = n - r$ and $\dim\nullsp(\mat{A}\T) = m - r$.
+  \item \textbf{Orthogonal complement duality (under the standard dot product):}
+  \begin{equation}
+    \mathrm{Row}(\mat{A})^\perp = \nullsp(\mat{A}) \subseteq \R^n, \qquad \colsp(\mat{A})^\perp = \nullsp(\mat{A}\T) \subseteq \R^m.
+    \label{eq:vecnorm:four_perp}
+  \end{equation}
+  \item \textbf{Direct-sum decompositions:} $\R^n = \mathrm{Row}(\mat{A}) \oplus \nullsp(\mat{A})$ and $\R^m = \colsp(\mat{A}) \oplus \nullsp(\mat{A}\T)$.
+\end{enumerate}
+
+\emph{Proof.} By the row--column rule, $\mat{A}\vecb{x} = \zeros$ holds iff every row $\mat{A}_{i,:}$ satisfies $\mat{A}_{i,:}\vecb{x} = 0$. Since the rows span $\mathrm{Row}(\mat{A})$, $\vecb{x} \in \nullsp(\mat{A})$ iff $\vecb{x}$ is orthogonal to every vector in $\mathrm{Row}(\mat{A})$, establishing $\mathrm{Row}(\mat{A})^\perp = \nullsp(\mat{A})$. Applying the identical argument to $\mat{A}\T$ and using $\mathrm{Row}(\mat{A}\T) = \colsp(\mat{A})$ gives $\colsp(\mat{A})^\perp = \nullsp(\mat{A}\T)$. Counting pivots and free columns in reduced row echelon form yields $r + \dim\nullsp(\mat{A}) = n$; via the SVD $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}\T$ (Section~\ref{sec:vecnorm:lsq_pinv}), the first $r$ columns of $\mat{V}$ and $\mat{U}$ span $\mathrm{Row}(\mat{A})$ and $\colsp(\mat{A})$, while the remaining $n-r$ columns of $\mat{V}$ and $m-r$ columns of $\mat{U}$ form orthonormal bases for $\nullsp(\mat{A})$ and $\nullsp(\mat{A}\T)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.5.4, p. 262}.
+\end{coremath}
+
+\begin{intuition}[Action of $\mat{A}$ Across the Four Subspaces]
+Think of $\mat{A} \in \R^{m \times n}$ as splitting both its input and output spaces along perpendicular fault lines. Every input $\vecb{x} \in \R^n$ decomposes uniquely as $\vecb{x} = \vecb{x}_r + \vecb{x}_n$ with $\vecb{x}_r \in \mathrm{Row}(\mat{A})$ and $\vecb{x}_n \in \nullsp(\mat{A})$. The operator $\mat{A}$ annihilates $\vecb{x}_n$ ($\mat{A}\vecb{x}_n = \zeros$) while mapping $\mathrm{Row}(\mat{A})$ \emph{bijectively} (and invertibly!) onto $\colsp(\mat{A}) \subseteq \R^m$. Conversely, any target $\vecb{b} \in \R^m$ decomposes into an attainable shadow $\hat{\vecb{b}} \in \colsp(\mat{A})$ and an orthogonal residual $\vecb{e} = \vecb{b} - \hat{\vecb{b}} \in \nullsp(\mat{A}\T)$ that no choice of $\vecb{x}$ can ever reach.
+\end{intuition}
+
+\subsection{Orthogonal Decomposition, Best Approximation, and Projector Algebra}
+
+\begin{coremath}[Orthogonal Decomposition, Best Approximation, and Projector Matrix]
+Let $W \subseteq \R^m$ be a subspace with basis matrix $\mat{B} = [\vecb{b}_1, \dots, \vecb{b}_r] \in \R^{m \times r}$ (columns linearly independent).
+
+\textbf{Theorem (Orthogonal Decomposition \& Best Approximation).} \emph{Every $\vecb{y} \in \R^m$ decomposes uniquely as $\vecb{y} = \hat{\vecb{y}} + \vecb{z}$ with $\hat{\vecb{y}} \in W$ and $\vecb{z} \in W^\perp$. Furthermore, $\hat{\vecb{y}}$ is the unique point in $W$ minimizing Euclidean distance to $\vecb{y}$:}
+\begin{equation}
+  \hat{\vecb{y}} = \argmin_{\vecb{v} \in W} \norm{\vecb{y} - \vecb{v}}_2, \qquad \norm{\vecb{y} - \vecb{v}}_2^2 = \norm{\vecb{y} - \hat{\vecb{y}}}_2^2 + \norm{\hat{\vecb{y}} - \vecb{v}}_2^2 > \norm{\vecb{y} - \hat{\vecb{y}}}_2^2 \quad \forall\,\vecb{v} \in W \setminus \set{\hat{\vecb{y}}}.
+  \label{eq:vecnorm:best_approx}
+\end{equation}
+\emph{Proof.} Writing $\hat{\vecb{y}} = \mat{B}\vecb{\lambda} \in W$, the orthogonality condition $\vecb{y} - \hat{\vecb{y}} \in W^\perp$ requires $\vecb{b}_j\T(\vecb{y} - \mat{B}\vecb{\lambda}) = 0$ for all $j = 1,\dots,r$, i.e., $\mat{B}\T\mat{B}\vecb{\lambda} = \mat{B}\T\vecb{y}$. Because $\mat{B}$ has linearly independent columns, the Gram matrix $\mat{B}\T\mat{B} \in \R^{r \times r}$ is symmetric positive definite ($\vecb{u}\T\mat{B}\T\mat{B}\vecb{u} = \norm{\mat{B}\vecb{u}}_2^2 > 0$ for $\vecb{u} \neq \zeros$) and invertible, giving $\vecb{\lambda} = (\mat{B}\T\mat{B})^{-1}\mat{B}\T\vecb{y}$ and the linear projection operator $\hat{\vecb{y}} = \mat{P}_W\vecb{y}$ \bookcite{linear_algebra}{Ch. 6, Thm. 8--9, pp. 350--352}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Eq. 3.55--3.59, pp. 86--87}:
+\begin{equation}
+  \mat{P}_W = \mat{B}(\mat{B}\T\mat{B})^{-1}\mat{B}\T.
+  \label{eq:vecnorm:proj_general}
+\end{equation}
+For uniqueness, if $\vecb{y} = \hat{\vecb{y}}_1 + \vecb{z}_1 = \hat{\vecb{y}}_2 + \vecb{z}_2$, then $\hat{\vecb{y}}_1 - \hat{\vecb{y}}_2 = \vecb{z}_2 - \vecb{z}_1 \in W \cap W^\perp = \set{\zeros}$. For any $\vecb{v} \in W \setminus \set{\hat{\vecb{y}}}$, writing $\vecb{y} - \vecb{v} = (\vecb{y} - \hat{\vecb{y}}) + (\hat{\vecb{y}} - \vecb{v})$ couples a vector in $W^\perp$ with a nonzero vector in $W$; applying the Pythagorean Theorem~\eqref{eq:vecnorm:pythagoras} yields~\eqref{eq:vecnorm:best_approx}.
+
+\textbf{Orthonormal Simplification \& Algebraic Characterization.} If $\mat{Q} = [\vecb{q}_1, \dots, \vecb{q}_r] \in \R^{m \times r}$ is an orthonormal basis ($\mat{Q}\T\mat{Q} = \eye_r$), then~\eqref{eq:vecnorm:proj_general} collapses without matrix inversion to \bookcite{linear_algebra}{Ch. 6, Thm. 10, p. 353}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Eq. 3.65, p. 88}
+\begin{equation}
+  \mat{P}_W = \mat{Q}\mat{Q}\T = \sum_{j=1}^r \vecb{q}_j \vecb{q}_j\T, \qquad \mat{P}_{W^\perp} = \eye_m - \mat{Q}\mat{Q}\T.
+  \label{eq:vecnorm:proj_onb}
+\end{equation}
+A square matrix $\mat{P} \in \R^{m \times m}$ is an orthogonal projector onto $\colsp(\mat{P})$ if and only if it is \emph{idempotent} ($\mat{P}^2 = \mat{P}$) and \emph{symmetric} ($\mat{P}\T = \mat{P}$). Its eigenvalues lie strictly in $\set{0, 1}$ ($\rank(\mat{P}) = \Tr(\mat{P}) = r$) and $\norm{\mat{P}}_2 = 1$ when $r \ge 1$. For an affine subspace $L = \vecb{x}_0 + U$, shifting to the origin gives $\pi_L(\vecb{x}) = \vecb{x}_0 + \mat{P}_U(\vecb{x} - \vecb{x}_0)$ \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Eq. 3.72, p. 90}.
+\end{coremath}
+
+Note the crucial distinction between \emph{oblique} projections ($\mat{P}^2 = \mat{P}$, $\mat{P}\T \neq \mat{P}$) and \emph{orthogonal} projections ($\mat{P}^2 = \mat{P} = \mat{P}\T$): only symmetry forces $\inner{\vecb{y} - \mat{P}\vecb{y}}{\mat{P}\vecb{v}} = \vecb{y}\T(\eye - \mat{P})\T\mat{P}\vecb{v} = \vecb{y}\T(\mat{P} - \mat{P}^2)\vecb{v} = 0$, guaranteeing minimum $\ell_2$ error. Notice also that in PCA reconstruction \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Sec. 2.12, pp. 48--51}, encoding $\vecb{c}^* = \mat{D}\T\vecb{x}$ and decoding $\mat{r}(\vecb{x}) = \mat{D}\mat{D}\T\vecb{x}$ for orthonormal $\mat{D} \in \R^{n \times \ell}$ ($\mat{D}\T\mat{D} = \eye_\ell$) is literally the orthogonal projector~\eqref{eq:vecnorm:proj_onb} minimizing $\norm{\mat{X} - \mat{X}\mat{D}\mat{D}\T}_F^2$.
+
+\subsection{Least Squares, Minimum-Norm Systems, and Moore--Penrose Pseudoinverse}
+\label{sec:vecnorm:lsq_pinv}
+
+\begin{coremath}[Normal Equations, Underdetermined Least-Norm, and Moore--Penrose Pseudoinverse]
+Consider $\mat{A}\vecb{x} \approx \vecb{b}$ with $\mat{A} \in \R^{m \times n}$ and $\vecb{b} \in \R^m$.
+
+\textbf{Case 1: Overdetermined / General Least Squares ($\min_{\vecb{x}} \frac{1}{2}\norm{\mat{A}\vecb{x} - \vecb{b}}_2^2$).}
+Let $f(\vecb{x}) = \frac{1}{2}(\mat{A}\vecb{x} - \vecb{b})\T(\mat{A}\vecb{x} - \vecb{b}) = \frac{1}{2}\vecb{x}\T\mat{A}\T\mat{A}\vecb{x} - \vecb{b}\T\mat{A}\vecb{x} + \frac{1}{2}\vecb{b}\T\vecb{b}$. Because $f$ is convex with $\hess f(\vecb{x}) = \mat{A}\T\mat{A} \succeq 0$, a vector $\hat{\vecb{x}}$ minimizes $f$ if and only if $\grad f(\hat{\vecb{x}}) = \zeros$, yielding the \emph{normal equations} \bookcite{linear_algebra}{Ch. 6, Thm. 13, p. 363}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.234--7.235, p. 269; Ch. 11, Eq. 11.7--11.8, p. 373}:
+\begin{equation}
+  \mat{A}\T\mat{A}\hat{\vecb{x}} = \mat{A}\T\vecb{b} \quad\Longleftrightarrow\quad \mat{A}\T(\vecb{b} - \mat{A}\hat{\vecb{x}}) = \zeros \quad\Longleftrightarrow\quad \vecb{b} - \mat{A}\hat{\vecb{x}} \in \nullsp(\mat{A}\T) = \colsp(\mat{A})^\perp.
+  \label{eq:vecnorm:normal_eq}
+\end{equation}
+Equivalently, $\mat{A}\hat{\vecb{x}} = \hat{\vecb{b}} = \mat{P}_{\colsp(\mat{A})}\vecb{b}$ is always unique, while $\hat{\vecb{x}}$ is unique iff $\nullsp(\mat{A}) = \set{\zeros}$ ($\rank(\mat{A}) = n$), in which case $\mat{A}\T\mat{A} \succ 0$ and $\hat{\vecb{x}} = (\mat{A}\T\mat{A})^{-1}\mat{A}\T\vecb{b}$ \bookcite{linear_algebra}{Ch. 6, Thm. 14, p. 365}.
+
+\textbf{Case 2: Underdetermined Least-Norm ($\min_{\vecb{x}} \norm{\vecb{x}}_2$ s.t.\ $\mat{A}\vecb{x} = \vecb{b}$, $m < n$, $\rank(\mat{A}) = m$).}
+Every solution has the affine form $\vecb{x}_p + \vecb{z}$ ($\vecb{z} \in \nullsp(\mat{A})$). Forming the Lagrangian $\mathcal{L}(\vecb{x}, \vecb{\lambda}) = \frac{1}{2}\vecb{x}\T\vecb{x} + \vecb{\lambda}\T(\mat{A}\vecb{x} - \vecb{b})$ gives $\grad_{\vecb{x}}\mathcal{L} = \vecb{x} + \mat{A}\T\vecb{\lambda} = \zeros \implies \vecb{x} = -\mat{A}\T\vecb{\lambda} \in \mathrm{Row}(\mat{A}) = \nullsp(\mat{A})^\perp$. Substituting into $\mat{A}\vecb{x} = \vecb{b}$ yields $\vecb{\lambda} = -(\mat{A}\mat{A}\T)^{-1}\vecb{b}$, hence the unique minimum-norm solution \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.222--7.228, p. 268}:
+\begin{equation}
+  \hat{\vecb{x}}_{\mathrm{LN}} = \mat{A}\T(\mat{A}\mat{A}\T)^{-1}\vecb{b}.
+  \label{eq:vecnorm:least_norm}
+\end{equation}
+
+\textbf{Case 3: Unified Moore--Penrose Pseudoinverse ($\mat{A}\pinv$).}
+For \emph{any} $\mat{A} \in \R^{m \times n}$ of arbitrary rank $r \le \min(m, n)$, the Moore--Penrose pseudoinverse $\mat{A}\pinv \in \R^{n \times m}$ is the unique matrix satisfying the four Penrose equations \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.186, p. 261}:
+\begin{equation}
+  \mat{A}\mat{A}\pinv\mat{A} = \mat{A}, \qquad \mat{A}\pinv\mat{A}\mat{A}\pinv = \mat{A}\pinv, \qquad (\mat{A}\mat{A}\pinv)\T = \mat{A}\mat{A}\pinv, \qquad (\mat{A}\pinv\mat{A})\T = \mat{A}\pinv\mat{A}.
+  \label{eq:vecnorm:penrose_axioms}
+\end{equation}
+Using the thin SVD $\mat{A} = \mat{U}_r \mat{\Sigma}_r \mat{V}_r\T$ ($\sigma_1 \ge \dots \ge \sigma_r > 0$), $\mat{A}\pinv$ equals both the Tikhonov limit and the explicit spectral formula \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Eq. 2.46--2.47, p. 46}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.191, p. 261}:
+\begin{equation}
+  \mat{A}\pinv = \lim_{\alpha \searrow 0} (\mat{A}\T\mat{A} + \alpha\eye_n)^{-1}\mat{A}\T = \mat{V}_r \mat{\Sigma}_r^{-1} \mat{U}_r\T = \sum_{k=1}^r \frac{1}{\sigma_k} \vecb{v}_k \vecb{u}_k\T.
+  \label{eq:vecnorm:pinv_svd}
+\end{equation}
+\textbf{Theorem (Minimum-Norm Least-Squares Property).} \emph{For any $\mat{A} \in \R^{m \times n}$ and $\vecb{b} \in \R^m$, $\hat{\vecb{x}}^* = \mat{A}\pinv\vecb{b}$ is the unique vector minimizing $\norm{\vecb{x}}_2$ among all minimizers of $\norm{\mat{A}\vecb{x} - \vecb{b}}_2$.}
+
+\emph{Proof.} By~\eqref{eq:vecnorm:penrose_axioms}, $\mat{A}\mat{A}\pinv = \mat{U}_r\mat{U}_r\T = \mat{P}_{\colsp(\mat{A})}$ and $\mat{A}\pinv\mat{A} = \mat{V}_r\mat{V}_r\T = \mat{P}_{\mathrm{Row}(\mat{A})}$. Any least-squares minimizer $\vecb{x}$ satisfies $\mat{A}\vecb{x} = \mat{P}_{\colsp(\mat{A})}\vecb{b} = \mat{A}\hat{\vecb{x}}^*$, so $\vecb{x} - \hat{\vecb{x}}^* \in \nullsp(\mat{A})$. Since $\hat{\vecb{x}}^* = \mat{V}_r\mat{\Sigma}_r^{-1}\mat{U}_r\T\vecb{b} \in \mathrm{Row}(\mat{A}) = \nullsp(\mat{A})^\perp$, Pythagoras~\eqref{eq:vecnorm:pythagoras} gives $\norm{\vecb{x}}_2^2 = \norm{\hat{\vecb{x}}^*}_2^2 + \norm{\vecb{x} - \hat{\vecb{x}}^*}_2^2 \ge \norm{\hat{\vecb{x}}^*}_2^2$, with strict inequality whenever $\vecb{x} \neq \hat{\vecb{x}}^*$.
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:vecnorm:algorithms}
+% =============================================================================
+
+Solving~\eqref{eq:vecnorm:normal_eq} numerically requires transforming $\mat{A} \in \R^{m \times n}$ ($m \ge n$) into an orthonormal basis without squaring the condition number. If $\mat{A} = \hat{\mat{Q}}\hat{\mat{R}}$ is an economy QR factorization where $\hat{\mat{Q}} \in \R^{m \times n}$ satisfies $\hat{\mat{Q}}\T\hat{\mat{Q}} = \eye_n$ and $\hat{\mat{R}} \in \R^{n \times n}$ is upper triangular with $R_{kk} > 0$, substituting into~\eqref{eq:vecnorm:normal_eq} yields $\hat{\mat{R}}\T\hat{\mat{Q}}\T\hat{\mat{Q}}\hat{\mat{R}}\hat{\vecb{x}} = \hat{\mat{R}}\T\hat{\mat{Q}}\T\vecb{b}$, which simplifies (since $\hat{\mat{R}}\T$ is nonsingular) directly to the triangular system \bookcite{linear_algebra}{Ch. 6, Thm. 15 \& Eq. 7, p. 367}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Eq. 11.19--11.21, p. 375}:
+\begin{equation}
+  \hat{\mat{R}}\hat{\vecb{x}} = \hat{\mat{Q}}\T\vecb{b},
+  \label{eq:vecnorm:qr_lsq}
+\end{equation}
+solved cleanly by back-substitution in $\mathcal{O}(n^2)$ operations.
+
+\subsection{Modified Gram--Schmidt vs.\ Householder Reflection QR}
+
+Gram--Schmidt constructs $\hat{\mat{Q}}$ column-by-column via successive projections onto $\spn\set{\vecb{q}_1,\dots,\vecb{q}_{k-1}}^\perp$ \bookcite{linear_algebra}{Ch. 6, Thm. 11--12, pp. 357--359}, \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Sec. 3.8.3, p. 89}. Crucially, \textbf{Classical Gram--Schmidt (CGS)} computes all inner products $r_{jk} = \vecb{q}_j\T\vecb{a}_k$ against the original column $\vecb{a}_k$ in batch, allowing floating-point roundoff to destroy orthogonality; \textbf{Modified Gram--Schmidt (MGS)} (Algorithm~\ref{alg:vecnorm:mgs}) immediately subtracts each rank-1 projection from the \emph{remaining} columns $\vecb{v}_j$ so rounding errors from earlier directions are re-projected out.
+
+\begin{algorithm}[htbp]
+\caption{Modified Gram--Schmidt (MGS) Economy QR Factorization}
+\label{alg:vecnorm:mgs}
+\KwIn{Full-column-rank matrix $\mat{A} = [\vecb{a}_1, \dots, \vecb{a}_n] \in \R^{m \times n}$ ($m \ge n$).}
+\KwOut{Orthonormal $\hat{\mat{Q}} \in \R^{m \times n}$ ($\hat{\mat{Q}}\T\hat{\mat{Q}} = \eye_n$) and upper triangular $\hat{\mat{R}} \in \R^{n \times n}$ with $\mat{A} = \hat{\mat{Q}}\hat{\mat{R}}$.}
+Initialize $\mat{V} \leftarrow \mat{A}$, $\hat{\mat{R}} \leftarrow \mat{0}_{n \times n}$\;
+\For{$k = 1, \dots, n$}{
+  $R_{kk} \leftarrow \norm{\vecb{v}_k}_2$\;
+  $\vecb{q}_k \leftarrow \vecb{v}_k / R_{kk}$ \tcp*{Normalize residual; CGS would keep $\vecb{a}_k$ fixed}
+  \For{$j = k+1, \dots, n$}{
+    $R_{kj} \leftarrow \vecb{q}_k\T \vecb{v}_j$ \tcp*{Project updated column $\vecb{v}_j$, not $\vecb{a}_j$}
+    $\vecb{v}_j \leftarrow \vecb{v}_j - R_{kj}\vecb{q}_k$ \tcp*{Remove component along $\vecb{q}_k$ immediately}
+  }
+}
+\Return{$\hat{\mat{Q}} = [\vecb{q}_1, \dots, \vecb{q}_n]$, $\hat{\mat{R}}$}\;
+\end{algorithm}
+
+Although MGS improves orthogonality over CGS, finite-precision orthogonality of MGS still degrades proportionally to $\kappa_2(\mat{A})$. For unconditional machine-precision orthogonality $\norm{\mat{Q}\T\mat{Q} - \eye}_2 = \mathcal{O}(\epsilon_{\mathrm{mach}})$, numerical linear algebra libraries (LAPACK \texttt{DGEQRF} / \texttt{DGELS}) left-multiply $\mat{A}$ by $n$ orthogonal \textbf{Householder reflectors} $\mat{H}_k = \eye_m - \beta_k \tilde{\vecb{v}}_k \tilde{\vecb{v}}_k\T$ (with $\beta_k = 2/\norm{\tilde{\vecb{v}}_k}_2^2$, $\mat{H}_k\T = \mat{H}_k$, $\mat{H}_k^2 = \eye_m$) to annihilate subdiagonal entries directly into $\mat{R} = \mat{H}_n \cdots \mat{H}_1 \mat{A}$ \bookcite{linear_algebra}{Ch. 6, Sec. 6.4, p. 360}. Choosing $s = \sign(z_1)\norm{\vecb{z}}_2$ and $v_1 = z_1 + s$ in Algorithm~\ref{alg:vecnorm:householder} (equivalently mapping $\vecb{z} \mapsto -s\,\vecb{e}_1$) enforces same-sign addition and prevents catastrophic cancellation.
+
+\begin{algorithm}[htbp]
+\caption{Householder QR Factorization \& Back-Substitution Least-Squares Solver}
+\label{alg:vecnorm:householder}
+\KwIn{Full-column-rank matrix $\mat{A} \in \R^{m \times n}$ ($m \ge n$) and target vector $\vecb{b} \in \R^m$.}
+\KwOut{Least-squares solution $\hat{\vecb{x}} = \argmin_{\vecb{x}}\norm{\mat{A}\vecb{x}-\vecb{b}}_2$ and residual norm $\norm{\vecb{r}}_2$.}
+Initialize $\mat{R} \leftarrow \mat{A}$, $\vecb{y} \leftarrow \vecb{b}$\;
+\For{$k = 1, \dots, n$}{
+  $\vecb{z} \leftarrow \mat{R}_{k:m,\, k}$ \tcp*{Subcolumn from diagonal $k$ to row $m$}
+  $s \leftarrow \sign(z_1)\norm{\vecb{z}}_2$ (taking $\sign(0) = +1$)\;
+  $\vecb{v} \leftarrow \vecb{z}$; \quad $v_1 \leftarrow z_1 + s$ \tcp*{Same-sign sum avoids cancellation; maps $\vecb{z} \mapsto -s\vecb{e}_1$}
+  $\beta \leftarrow 2 / (\vecb{v}\T\vecb{v})$\;
+  $\mat{R}_{k:m,\, k:n} \leftarrow \mat{R}_{k:m,\, k:n} - \beta\,\vecb{v}\bigl(\vecb{v}\T \mat{R}_{k:m,\, k:n}\bigr)$ \tcp*{Apply $\mat{H}_k$ implicitly in $\mathcal{O}((m-k)(n-k))$}
+  $\vecb{y}_{k:m} \leftarrow \vecb{y}_{k:m} - \beta\,\vecb{v}(\vecb{v}\T \vecb{y}_{k:m})$ \tcp*{Accumulate $\mat{Q}\T\vecb{b}$ without forming $\mat{Q}$}
+}
+Solve $\mat{R}_{1:n,\, 1:n}\hat{\vecb{x}} = \vecb{y}_{1:n}$ via back-substitution: $\hat{x}_i \leftarrow \bigl(y_i - \sum_{j=i+1}^n R_{ij}\hat{x}_j\bigr) / R_{ii}$ for $i = n, \dots, 1$\;
+\Return{$\hat{\vecb{x}}$ and $\norm{\vecb{r}}_2 = \norm{\vecb{y}_{n+1:m}}_2$}\;
+\end{algorithm}
+
+\subsection{Complexity, Accuracy, and Solver Selection Synthesis}
+
+Table~\ref{tab:vecnorm:solvers} summarizes the computational complexity and backward-stability hierarchy across direct least-squares methods for $\mat{A} \in \R^{m \times n}$ ($m \ge n$).
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.24}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{2.1cm} >{\raggedright\arraybackslash}p{2.75cm} >{\raggedright\arraybackslash}p{3.35cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Method} & \textbf{FLOPs ($m \ge n$)} & \textbf{Orthogonality Loss $\norm{\hat{\mat{Q}}\T\hat{\mat{Q}} - \eye}_2$} & \textbf{Relative Forward Error ($\epsilon = \epsilon_{\mathrm{mach}}$)} & \textbf{Rank-Deficient / Regime Suitability} \\
+\midrule
+Normal Eq.\ + Cholesky & $mn^2 + \tfrac{1}{3}n^3$ & N/A ($\mat{A}\T\mat{A}$ formed) & $\mathcal{O}\bigl(\epsilon\,\kappa_2(\mat{A})^2\bigr)$ & Fails if $\rank(\mat{A}) < n$; fast only when $\kappa_2(\mat{A})$ is small \\
+Classical GS (CGS) & $2mn^2$ & $\mathcal{O}\bigl(\epsilon\,\kappa_2(\mat{A})^2\bigr)$ & Unreliable (orthogonality lost) & Avoid in floating point without reorthogonalization \\
+Modified GS (MGS) & $2mn^2$ & $\mathcal{O}\bigl(\epsilon\,\kappa_2(\mat{A})\bigr)$ & $\mathcal{O}\bigl(\epsilon\,[\kappa_2(\mat{A}) + \kappa_2(\mat{A})^2\rho]\bigr)$ & Good if $\mat{Q}$ needed explicitly; needs pivoting if rank-deficient \\
+Householder QR & $2mn^2 - \tfrac{2}{3}n^3$ & $\mathcal{O}(\epsilon)$ (unconditional) & $\mathcal{O}\bigl(\epsilon\,[\kappa_2(\mat{A}) + \kappa_2(\mat{A})^2\rho]\bigr)$ & Preferred for full-rank tall/skinny systems ($m \gg n$) \\
+Thin SVD ($\mat{A}\pinv\vecb{b}$) & $\approx 2mn^2 + 11n^3$ & $\mathcal{O}(\epsilon)$ (for $\mat{U}, \mat{V}$) & $\mathcal{O}\bigl(\epsilon\,[\kappa_2(\mat{A}) + \kappa_2(\mat{A})^2\rho]\bigr)$ & Gold standard for rank-deficient or nearly singular $\mat{A}$ \\
+\bottomrule
+\end{tabularx}
+\caption{Comparison of direct least-squares solvers for $\mat{A} \in \R^{m \times n}$ ($m \ge n$), where $\rho = \norm{\vecb{b} - \mat{A}\hat{\vecb{x}}}_2 / (\norm{\mat{A}}_2\norm{\hat{\vecb{x}}}_2)$ measures residual-to-signal scale. Derived from \bookcite{linear_algebra}{Ch. 6, pp. 360, 366--367} and \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, p. 265; Ch. 11, p. 375}.}
+\label{tab:vecnorm:solvers}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Normal Equations, QR, SVD, and Iterative Solvers]
+Synthesizing perspectives across the five sources yields a clear computational decision hierarchy for linear systems and least squares:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Analytical vs.\ Numerical Viewpoint:} Lay et al.\ prioritize the normal equations $\mat{A}\T\mat{A}\hat{\vecb{x}} = \mat{A}\T\vecb{b}$ for pedagogical clarity and small exact examples, then highlight QR back-substitution $\hat{\mat{R}}\vecb{x} = \hat{\mat{Q}}\T\vecb{b}$ as the reliable numerical alternative \bookcite{linear_algebra}{Ch. 6, Sec. 6.5, pp. 363--367}. V\~{u} pairs Gram matrices $\mat{B}\T\mat{B} \succeq 0$ with Cholesky factorization $\mat{L}\mat{L}\T$ when $\mat{A}\T\mat{A}$ is strictly SPD \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Sec. 1.13, p. 26}.
+  \item \textbf{Production ML Solvers:} Murphy notes that \texttt{scipy.linalg.lstsq} (used inside \texttt{scikit-learn}) defaults to LAPACK's SVD driver \texttt{DGELSD} for rank robustness, recommends economy QR when $m \gg n$ (tall-skinny design matrices), and turns to matrix-free Krylov methods (Conjugate Gradient for SPD systems, GMRES for general sparse $\mat{A}$) when $n$ is too large for dense factorizations \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Sec. 11.2.2.3, pp. 375--376}.
+  \item \textbf{Regularized Stabilization:} Both Deisenroth et al.\ and Goodfellow et al.\ note that adding a small ridge/jitter term $\alpha\eye$ to $\mat{A}\T\mat{A}$ restores positive definiteness and yields the Tikhonov approximation whose limit as $\alpha \searrow 0$ recovers $\mat{A}\pinv$ \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Sec. 3.8.2, pp. 86--87}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Eq. 2.46, p. 46}.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:vecnorm:visuals}
+% =============================================================================
+
+Figure~\ref{fig:vecnorm:four_subspaces} and Figure~\ref{fig:vecnorm:lsq_lay} anchor the geometric bridge between the four fundamental subspaces of $\mat{A}$ and least-squares projection, while Figure~\ref{fig:vecnorm:qr_murphy} contrasts full and economy QR shapes across tall and wide matrices.
+
+\monographfig[0.54\textwidth]{linear_algebra_p354_fig1.png}{The four fundamental subspaces determined by $\mat{A} \in \R^{m \times n}$: orthogonal complements $\mathrm{Row}(\mat{A}) \perp \nullsp(\mat{A})$ in the domain $\R^n$ and $\colsp(\mat{A}) \perp \nullsp(\mat{A}\T)$ in the codomain $\R^m$. Reproduced from \bookcite{linear_algebra}{Ch. 6, Sec. 6.1, Fig. 8, p. 337}.}{fig:vecnorm:four_subspaces}
+
+\monographfig[0.58\textwidth]{linear_algebra_p380_fig2.png}{Geometric interpretation of the least-squares solution $\hat{\vecb{x}} \in \R^n$ mapping via $\mat{A}$ to the closest point $\hat{\vecb{b}} = \mat{A}\hat{\vecb{x}} \in \colsp(\mat{A}) \subseteq \R^m$, with orthogonal residual $\vecb{b} - \mat{A}\hat{\vecb{x}} \in \nullsp(\mat{A}\T)$. Reproduced from \bookcite{linear_algebra}{Ch. 6, Sec. 6.5, Fig. 2, p. 363}.}{fig:vecnorm:lsq_lay}
+
+\monographfig[0.72\textwidth]{probabilisticml_kevinmurphy_introduction_p295_fig1.png}{Full vs.\ economy (reduced) $\mat{Q}\mat{R}$ decomposition $\mat{A} = \mat{Q}\mat{R}$: (a) tall-skinny ($m > n$), where the shaded $m - n$ columns of $\mat{Q}$ span $\nullsp(\mat{A}\T)$ and multiply zero rows of $\mat{R}$; (b) short-wide ($m < n$). Reproduced from \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.6.2, Fig. 7.11, p. 265}.}{fig:vecnorm:qr_murphy}
+
+Figure~\ref{fig:vecnorm:tikz_proj} unifies the geometric projection triangle in $\R^m$ (showing why $\vecb{e} = \vecb{b} - \mat{A}\hat{\vecb{x}} \perp \colsp(\mat{A})$) with the algebraic four-subspace action of $\mat{A}$ and $\mat{A}\pinv$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth]
+  % --- LEFT PANEL: Geometric Projection onto Col(A) ---
+  \begin{scope}[shift={(0,0)}]
+    % Subspace plane Col(A)
+    \fill[monographNavyBg, draw=monographNavy, thick]
+      (-0.4,-0.75) -- (5.8,-0.75) -- (6.7,1.22) -- (0.5,1.22) -- cycle;
+    \node[font=\footnotesize\bfseries, text=monographNavy] at (3.75,-0.50) {$\colsp(\mat{A}) \subset \R^m$};
+
+    % Key coordinates
+    \coordinate (O) at (0.55,0.18);
+    \coordinate (Bhat) at (2.05,0.75);
+    \coordinate (Ax) at (5.35,0.42);
+    \coordinate (B) at (2.05,3.18);
+
+    % Right-angle marker at Bhat
+    \draw[monographCrimson, thick] ($(Bhat)+(-0.20,-0.075)$) -- ($(Bhat)+(-0.20,0.145)$) -- ($(Bhat)+(0,0.22)$);
+
+    % Basis direction hints inside Col(A)
+    \draw[->, monographSlate, thin, dashed] (O) -- (1.55,-0.45) node[left=1pt, font=\scriptsize] {$\vecb{a}_1$};
+    \draw[->, monographSlate, thin, dashed] (O) -- (0.92,0.88) node[above left=-2pt, font=\scriptsize] {$\vecb{a}_2$};
+
+    % Vectors
+    \draw[->, monographTeal, very thick] (O) -- (Bhat)
+      node[pos=0.62, above=1pt, sloped, font=\scriptsize] {$\hat{\vecb{b}} = \mat{A}\hat{\vecb{x}}$};
+    \draw[->, monographIndigo, thick] (O) -- (Ax);
+    \node[font=\scriptsize\bfseries, text=monographIndigo, above=1pt] at (Ax) {$\mat{A}\vecb{x}$};
+    \draw[->, monographNavy, very thick] (O) -- (B)
+      node[midway, above left, font=\small] {$\vecb{b}$};
+
+    % Orthogonal residual e = b - Ax_hat (cleanly above plane top edge y=1.22 and left of hypotenuse)
+    \draw[->, monographCrimson, very thick] (Bhat) -- (B)
+      node[pos=0.28, right=2pt, font=\scriptsize, align=left] {$\vecb{e} = \vecb{b} - \mat{A}\hat{\vecb{x}}$\\[-2pt]$\in \nullsp(\mat{A}\T)$};
+
+    % Hypotenuse to arbitrary Ax
+    \draw[monographSlate, thick, dashed] (Ax) -- (B);
+    \draw[monographTeal, thick, dotted] (Bhat) -- (Ax);
+
+    % Origin and dots
+    \fill[monographNavy] (O) circle (2pt) node[below left, font=\small] {$\zeros$};
+    \fill[monographTeal] (Bhat) circle (2pt);
+    \fill[monographIndigo] (Ax) circle (1.8pt);
+    \fill[monographNavy] (B) circle (2pt);
+
+    \node[font=\footnotesize\bfseries, text=monographSlate] at (3.1,3.55)
+      {(a) Best $\ell_2$ Approximation in $\colsp(\mat{A})$};
+  \end{scope}
+
+  % --- RIGHT PANEL: Four-Subspace Action of A and A^+ ---
+  \begin{scope}[shift={(7.4,0.05)}]
+    \node[font=\footnotesize\bfseries, text=monographSlate] at (3.75,3.50)
+      {(b) Bijection on $\mathrm{Row}(\mat{A}) \leftrightarrow \colsp(\mat{A})$};
+
+    \node[monoBox, text width=2.2cm] (rowA) at (1.05, 2.30)
+      {$\mathrm{Row}(\mat{A}) \subseteq \R^n$\\[1pt]\scriptsize $\dim = r$};
+    \node[monoWarnBox, text width=2.2cm] (nulA) at (1.05, 0.25)
+      {$\nullsp(\mat{A}) \subseteq \R^n$\\[1pt]\scriptsize $\dim = n - r$};
+
+    \node[monoTealBox, text width=2.55cm] (colA) at (6.45, 2.30)
+      {$\colsp(\mat{A}) \subseteq \R^m$\\[1pt]\scriptsize $\dim = r$};
+    \node[monoIndigoBox, text width=2.55cm] (nulAT) at (6.45, 0.25)
+      {$\nullsp(\mat{A}\T) \subseteq \R^m$\\[1pt]\scriptsize $\dim = m - r$};
+
+    % Zero target between nullspaces (eliminates crossing arrow collisions)
+    \node[circle, draw=monographSlate, fill=monographCodeBg, thick, inner sep=2.5pt, font=\small\bfseries, text=monographNavy] (zeroPt) at (3.68, 0.25) {$\zeros$};
+
+    % Orthogonality labels inside domain and codomain
+    \node[font=\scriptsize\bfseries, text=monographNavy] at ($(rowA.south)!0.5!(nulA.north)$)
+      {$\perp$ ($\oplus = \R^n$)};
+    \node[font=\scriptsize\bfseries, text=monographTeal] at ($(colA.south)!0.5!(nulAT.north)$)
+      {$\perp$ ($\oplus = \R^m$)};
+
+    % Mappings
+    \draw[monoArrow, monographNavy] (rowA.14) -- (colA.166)
+      node[midway, above=2pt, font=\scriptsize] {$\mat{A}$ (bijection)};
+    \draw[monoArrow, monographTeal] (colA.194) -- (rowA.346)
+      node[midway, below=2pt, font=\scriptsize] {$\mat{A}\pinv$ (min-norm)};
+    \draw[monoArrow, monographCrimson, dashed] (nulA.east) -- (zeroPt.west)
+      node[midway, above=2pt, font=\scriptsize] {$\mat{A}\vecb{x}_n$};
+    \draw[monoArrow, monographIndigo, dashed] (nulAT.west) -- (zeroPt.east)
+      node[midway, above=2pt, font=\scriptsize] {$\mat{A}\pinv\vecb{e}$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Geometric and algebraic structure of least-squares projection. (a) Any alternative $\mat{A}\vecb{x} \in \colsp(\mat{A})$ satisfies $\norm{\vecb{b} - \mat{A}\vecb{x}}_2^2 = \norm{\vecb{e}}_2^2 + \norm{\mat{A}\hat{\vecb{x}} - \mat{A}\vecb{x}}_2^2$. (b) Across the four fundamental subspaces, $\mat{A}$ restricts to a bijection between $\mathrm{Row}(\mat{A})$ and $\colsp(\mat{A})$ whose inverse is $\mat{A}\pinv$, while collapsing $\nullsp(\mat{A})$ and $\nullsp(\mat{A}\T)$ to zero.}
+\label{fig:vecnorm:tikz_proj}
+\end{figure}
+
+Figure~\ref{fig:vecnorm:pgf_norms} visualizes the geometry of $\ell_p$ unit balls in $\R^2$ alongside the quadratic-form level-set distortion induced by squaring $\mat{A}$ into the normal-equation Hessian $\mat{A}\T\mat{A}$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={
+    group size=2 by 1,
+    horizontal sep=1.7cm
+  },
+  width=0.41\textwidth,
+  height=0.41\textwidth,
+  axis equal,
+  grid=major,
+  grid style={monographRule!55, dashed},
+  tick label style={font=\scriptsize},
+  label style={font=\small},
+  title style={font=\small\bfseries, text=monographNavy}
+]
+  % --- Panel (a): Lp Unit Balls ---
+  \nextgroupplot[
+    title={(a) $\ell_p$ Unit Spheres $\norm{\vecb{x}}_p = 1$ in $\R^2$},
+    xlabel={$x_1$},
+    ylabel={$x_2$},
+    xmin=-1.35, xmax=1.35,
+    ymin=-1.35, ymax=1.35,
+    xtick={-1,-0.5,0,0.5,1},
+    ytick={-1,-0.5,0,0.5,1},
+    legend pos=south west,
+    legend style={font=\tiny, fill=white, fill opacity=0.88, draw=monographRule, inner sep=2pt}
+  ]
+    % p = infinity (square)
+    \addplot[monographIndigo, thick, solid] coordinates {(1,1) (-1,1) (-1,-1) (1,-1) (1,1)};
+    \addlegendentry{$p = \infty$}
+    % p = 4 (superellipse)
+    \addplot[monographTeal, thick, domain=0:360, samples=181]
+      ({(cos(x)>=0 ? 1 : -1)*sqrt(abs(cos(x)))}, {(sin(x)>=0 ? 1 : -1)*sqrt(abs(sin(x)))});
+    \addlegendentry{$p = 4$}
+    % p = 2 (Euclidean circle)
+    \addplot[monographNavy, very thick, domain=0:360, samples=181]
+      ({cos(x)}, {sin(x)});
+    \addlegendentry{$p = 2$}
+    % p = 1 (diamond)
+    \addplot[monographCrimson, very thick] coordinates {(1,0) (0,1) (-1,0) (0,-1) (1,0)};
+    \addlegendentry{$p = 1$}
+    % p = 0.5 (non-convex quasi-norm)
+    \addplot[monographSlate, thick, dashed, domain=0:360, samples=181]
+      ({cos(x)*abs(cos(x))^3}, {sin(x)*abs(sin(x))^3});
+    \addlegendentry{$p = 0.5$ (non-convex)}
+
+  % --- Panel (b): Condition-Number Squaring Geometry ---
+  \nextgroupplot[
+    title={(b) Condition Squaring: $\kappa_2(\mat{A}\T\mat{A}) = \kappa_2(\mat{A})^2$},
+    xlabel={$x_1$},
+    ylabel={$x_2$},
+    xmin=-2.3, xmax=2.3,
+    ymin=-2.3, ymax=2.3,
+    xtick={-2,-1,0,1,2},
+    ytick={-2,-1,0,1,2},
+    legend pos=south west,
+    legend style={font=\tiny, fill=white, fill opacity=0.88, draw=monographRule, inner sep=2pt}
+  ]
+    % Reference unit circle kappa = 1
+    \addplot[monographSlate, thick, dashed, domain=0:360, samples=181]
+      ({cos(x)}, {sin(x)});
+    \addlegendentry{$\norm{\vecb{x}}_2 = 1$ ($\kappa = 1$)}
+    % ||A x||_2 = 1 with sigma_1 = 1.5, sigma_2 = 0.7 (semi-axes 0.667, 1.429) rotated 30 deg
+    \addplot[monographTeal, very thick, domain=0:360, samples=181]
+      ({0.6667*cos(30)*cos(x) - 1.4286*sin(30)*sin(x)},
+       {0.6667*sin(30)*cos(x) + 1.4286*cos(30)*sin(x)});
+    \addlegendentry{$\norm{\mat{A}\vecb{x}}_2 = 1$ ($\kappa_2 \approx 2.14$)}
+    % ||A^T A x||_2 = 1 with eigenvalues 2.25, 0.49 (semi-axes 0.444, 2.041) rotated 30 deg
+    \addplot[monographCrimson, very thick, domain=0:360, samples=181]
+      ({0.4444*cos(30)*cos(x) - 2.0408*sin(30)*sin(x)},
+       {0.4444*sin(30)*cos(x) + 2.0408*cos(30)*sin(x)});
+    \addlegendentry{$\norm{\mat{A}\T\mat{A}\vecb{x}}_2 = 1$ ($\kappa_2^2 \approx 4.59$)}
+    % Principal singular direction axes v1, v2
+    \draw[->, monographNavy, thick] (axis cs:0,0) -- (axis cs:{0.6667*cos(30)},{0.6667*sin(30)})
+      node[pos=0.58, above left=-1pt, font=\tiny, fill=white, fill opacity=0.85, text opacity=1, inner sep=0.5pt] {$\vecb{v}_1$};
+    \draw[->, monographNavy, thick] (axis cs:0,0) -- (axis cs:{-2.0408*sin(30)},{2.0408*cos(30)})
+      node[left, font=\tiny] {$\vecb{v}_2$};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Norm geometry and conditioning. (a) Unit spheres $\norm{\vecb{x}}_p = 1$ transition from non-convex ($p = 0.5$) to sparse diamond corners ($p = 1$), isotropic Euclidean circle ($p = 2$), and hypercube ($p = \infty$) \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Fig. 3.3, p. 71}, \bookcite{machine_learning_co_ban_tiep_vu}{Ch. 1, Fig. 1.2, p. 27}. (b) For $\sigma_1 = 1.5, \sigma_2 = 0.7$, forming $\mat{A}\T\mat{A}$ squares the eccentricity from $\kappa_2(\mat{A}) = 2.14$ to $\kappa_2(\mat{A}\T\mat{A}) = 4.59$, shrinking the semi-axis along $\vecb{v}_1$ to $1/\sigma_1^2$ and elongating $\vecb{v}_2$ to $1/\sigma_2^2$.}
+\label{fig:vecnorm:pgf_norms}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:vecnorm:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Normal Equations Square the Condition Number: $\kappa_2(\mat{A}\T\mat{A}) = \kappa_2(\mat{A})^2$]
+From $\kappa_2(\mat{A}) = \norm{\mat{A}}_2 \norm{\mat{A}\pinv}_2 = \sigma_{\max}(\mat{A}) / \sigma_{\min}(\mat{A})$ and $\mat{A}\T\mat{A} = \mat{V}(\mat{\Sigma}\T\mat{\Sigma})\mat{V}\T$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Eq. 7.51 \& 7.180, pp. 238, 260}, the singular values square:
+\begin{equation}
+  \kappa_2(\mat{A}\T\mat{A}) = \frac{\sigma_{\max}(\mat{A})^2}{\sigma_{\min}(\mat{A})^2} = \kappa_2(\mat{A})^2.
+  \label{eq:vecnorm:kappa_sq}
+\end{equation}
+\textbf{Failure Example (L\"auchli Matrix):} Take $\varepsilon = 10^{-8}$ in IEEE-754 double precision ($\epsilon_{\mathrm{mach}} \approx 2.22 \times 10^{-16}$):
+\[
+  \mat{A} = \begin{bmatrix} 1 & 1 \\ \varepsilon & 0 \\ 0 & \varepsilon \end{bmatrix}
+  \quad\Longrightarrow\quad
+  \mat{A}\T\mat{A} = \begin{bmatrix} 1 + \varepsilon^2 & 1 \\ 1 & 1 + \varepsilon^2 \end{bmatrix}
+  \;\xrightarrow{\mathrm{fl}(1 + 10^{-16}) = 1}\;
+  \mathrm{fl}(\mat{A}\T\mat{A}) = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}.
+\]
+Although $\rank(\mat{A}) = 2$ with $\kappa_2(\mat{A}) = \sqrt{2 + \varepsilon^2}/\varepsilon \approx 1.41 \times 10^8$, rounding destroys independence; Cholesky on $\mat{A}\T\mat{A}$ breaks near $\kappa_2(\mat{A}) \gtrsim \epsilon_{\mathrm{mach}}^{-1/2} \approx 10^8$, whereas Householder QR or SVD holds up to $\kappa_2(\mat{A}) \lesssim \epsilon_{\mathrm{mach}}^{-1} \approx 10^{16}$ \bookcite{linear_algebra}{Ch. 6, p. 366}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Sec. 11.2.2.3, p. 375}.
+\end{pitfall}
+
+\begin{pitfall}[Classical vs.\ Modified Gram--Schmidt Loss of Orthogonality]
+In exact arithmetic, CGS and MGS (Algorithm~\ref{alg:vecnorm:mgs}) agree, yet in finite precision CGS evaluates $R_{jk} = \vecb{q}_j\T\vecb{a}_k$ against the unreduced column $\vecb{a}_k$ and subtracts $\sum_{j=1}^{k-1} R_{jk}\vecb{q}_j$ simultaneously. For nearly collinear columns, cancellation leaves residual components along $\vecb{q}_1,\dots,\vecb{q}_{k-1}$, degrading orthogonality to $\norm{\hat{\mat{Q}}\T\hat{\mat{Q}} - \eye_n}_2 \sim \mathcal{O}(\epsilon_{\mathrm{mach}}\kappa_2(\mat{A})^2)$. MGS reduces this drift to $\mathcal{O}(\epsilon_{\mathrm{mach}}\kappa_2(\mat{A}))$ by projecting updated vectors sequentially, while Householder QR (Algorithm~\ref{alg:vecnorm:householder}) guarantees $\mathcal{O}(\epsilon_{\mathrm{mach}})$ orthogonality unconditionally \bookcite{linear_algebra}{Ch. 6, Numerical Note 1, p. 360}.
+\end{pitfall}
+
+\begin{pitfall}[Rank Deficiency, Explicit Inversion, and Inner-Product Mismatch]
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt, topsep=2pt]
+  \item \textbf{Near-Zero Singular Values:} When $\sigma_k \approx 0$ (collinear features or $m < n$), $(\mat{A}\T\mat{A})^{-1}$ diverges and~\eqref{eq:vecnorm:pinv_svd} amplifies noise by $\sigma_k^{-1}$. Libraries truncate $\sigma_k < \max(m, n)\,\epsilon_{\mathrm{mach}}\,\sigma_1$ (LAPACK \texttt{DGELSD} / \texttt{scipy.linalg.lstsq}) or apply $\ell_2$ ridge $(\mat{A}\T\mat{A} + \lambda\eye_n)^{-1}\mat{A}\T\vecb{b}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Sec. 11.2.2.3 \& 11.3, pp. 375, 381}.
+  \item \textbf{Never Materialize $\mat{R}^{-1}$ or $(\mat{A}\T\mat{A})^{-1}$:} Explicit inversion wastes $\mathcal{O}(n^3)$ work and loses accuracy compared to triangular back-substitution \bookcite{linear_algebra}{Ch. 6, p. 367}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch. 2, Sec. 2.3, p. 37}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 7, Sec. 7.7.1, p. 267}.
+  \item \textbf{General SPD Inner-Product Mismatch:} Under metric $\mat{M} \succ 0$ ($\inner{\vecb{u}}{\vecb{v}}_{\mat{M}} = \vecb{u}\T\mat{M}\vecb{v}$), $\mat{A}(\mat{A}\T\mat{A})^{-1}\mat{A}\T$ is \emph{not} $\mat{M}$-orthogonal; enforcing $\mat{A}\T\mat{M}(\vecb{b} - \mat{A}\hat{\vecb{x}}) = \zeros$ gives $\mat{P}_{\mat{M}} = \mat{A}(\mat{A}\T\mat{M}\mat{A})^{-1}\mat{A}\T\mat{M}$, reducing to Weighted Least Squares for $\mat{M} = \diag(1/\sigma_1^2, \dots, 1/\sigma_m^2)$ \bookcite{mathematics_machine_learning_orienly}{Ch. 3, Sec. 3.4 \& 3.8, pp. 77, 86}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 11, Eq. 11.24, p. 376}.
+\end{enumerate}
+\end{pitfall}
+
+\end{document}

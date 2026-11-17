@@ -1,0 +1,8 @@
+{
+  "useMarkdownLinks": false,
+  "strictLineBreaks": false,
+  "readableLineLength": true,
+  "showLineNumber": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "02_Concepts"
+}

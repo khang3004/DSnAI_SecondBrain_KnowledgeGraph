@@ -1,0 +1,318 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 06: Reinforcement Learning \& Alignment}{Bandits, Markov Decision Processes \& Value-Based RL}{Multi-Armed Bandits, MDPs \& Dynamic Programming}{MDPs, Bellman Optimality Equations, Policy/Value Iteration \& GPI}{Sutton \& Barto Ch.~3--4, Murphy RL Ch.~1--2, Murphy Adv. Sec.~34.5--34.6, Prince Sec.~19.1--19.3}
+\sloppy\emergencystretch=3em
+
+\section{Problem Formulation \& Unified Notation}\label{sec:mdp:formulation}
+
+A finite \textbf{Markov Decision Process (MDP)} formalizes sequential decision-making under uncertainty when the environment state is fully observable (see \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, p.~48} and \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.1, p.~1128}). At discrete time steps $t = 0, 1, 2, \dots$, an agent observes state $S_t \in \States$, selects an action $A_t \in \Actions(S_t)$ according to a policy $\pi$, and transitions to a successor state $S_{t+1} \in \States$ while receiving a scalar reward $R_{t+1} \in \Rewards \subset \R$.
+
+\begin{coremath}[Finite MDP Tuple and Markov Property]
+A finite discounted MDP is specified by the tuple $\mathcal{M} = \langle \States, \Actions, p, R, \gamma, p_0 \rangle$, where $\States$ is a finite state space ($|\States| < \infty$), $\Actions$ is a finite action space ($|\Actions| < \infty$), $p_0 \in \Simplex(\States)$ is the initial state distribution, and $\gamma \in [0, 1)$ is the discount factor. The environment obeys the \textbf{Markov property}: the joint distribution of the next state and reward depends only on the current state-action pair $(S_t, A_t)$ and not on the prior history $H_t = (S_0, A_0, R_1, \dots, S_t)$:
+\begin{equation}\label{eq:mdp:dynamics}
+  p(s', r \mid s, a) \triangleq \Prob(S_{t+1} = s', R_{t+1} = r \mid S_t = s, A_t = a), \quad \forall s, s' \in \States,\; a \in \Actions(s),\; r \in \Rewards.
+\end{equation}
+Marginalizing over rewards yields the state-transition kernel $p(s' \mid s, a) = \sum_{r \in \Rewards} p(s', r \mid s, a)$, and taking expectations yields the expected immediate reward $R(s, a) \triangleq \E[R_{t+1} \mid S_t = s, A_t = a] = \sum_{s', r} r\, p(s', r \mid s, a)$.
+\end{coremath}
+
+When the environment state $w_t$ is hidden and the agent only receives noisy observations $o_t \sim p(o_t \mid w_t)$, the problem generalizes to a \textbf{Partially Observable MDP (POMDP)} \bookcite{reinforement_learning_kevin_murphy}{Sec.~1.2.1, p.~17}\bookcite{understandingdl_simonprince}{Sec.~19.1.3, p.~390}. A POMDP reduces to an MDP over continuous \emph{belief states} $b_t(w_t) = p(w_t \mid o_{1:t}, a_{1:t-1})$, which form a sufficient statistic for optimal control, though exact belief-space planning is PSPACE-hard \bookcite{reinforement_learning_kevin_murphy}{Sec.~1.2.1, p.~18}.
+
+\monographfig[0.74\textwidth]{reinforcement_learning_introduction_richard_s_su_p70_fig1.png}{The canonical agent--environment interaction loop in a finite MDP \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, Fig.~3.1, p.~48}.}{fig:mdp:agent_env}
+
+To evaluate long-horizon behavior, we define the \textbf{discounted return} $G_t$ from time $t$ onward:
+\begin{equation}\label{eq:mdp:return}
+  G_t \triangleq \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} = R_{t+1} + \gamma G_{t+1}.
+\end{equation}
+Episodic tasks that terminate at a random horizon $T$ are unified with continuing ($T = \infty$) tasks by introducing a special \emph{absorbing terminal state} $s_{\perp}$ that transitions only to itself with probability $1$ and emits zero reward thereafter \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~3.4, p.~57}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.3, p.~1131}.
+
+\monographfig[0.54\textwidth]{reinforement_learning_kevin_murphy_p18_fig1.png}{MDP represented as a finite state machine (FSM) with three discrete states ($S_0, S_1, S_2$), two actions ($a_0, a_1$), transition probabilities, and sparse non-zero rewards ($+5, -1$) \bookcite{reinforement_learning_kevin_murphy}{Ch.~1, Fig.~1.3, p.~18}.}{fig:mdp:fsm}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+Source textbooks index rewards and represent dynamics differently. Table~\ref{tab:mdp:notation} establishes a unified translation across all four references.
+\vspace{0.4em}
+\begin{center}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Sutton \& Barto} & \textbf{Murphy (RL / Adv.)} & \textbf{Prince (UDL)} & \textbf{Unified Monograph} \\
+\midrule
+Joint Dynamics & $p(s', r \mid s, a)$ & $p(s' \mid s, a)$ and $p_R(r \mid s, a, s')$ & $\Pr(s_{t+1} \mid s_t, a_t)$, $r[s_t, a_t]$ & $p(s', r \mid s, a)$ \\
+Reward Indexing & $R_{t+1}$ after $(S_t, A_t)$ & $r_t$ at step $t$ (after $s_t, a_t$) & $r_{t+1}$ after $(s_t, a_t)$ & $R_{t+1}$ (with $R(s, a) = \E[R_{t+1}]$) \\
+State Value & $v_\pi(s)$, $v_*(s)$ & $V_\pi(s)$, $V^*(s)$ (vector $\vecb{v}_\pi$) & $v[s_t \mid \pi]$ & $V^\pi(s)$, $V^*(s)$ (vector $\vecb{v}_\pi$) \\
+Action Value & $q_\pi(s, a)$, $q_*(s, a)$ & $Q_\pi(s, a)$, $Q^*(s, a)$ & $q[s_t, a_t \mid \pi]$ & $Q^\pi(s, a)$, $Q^*(s, a)$ \\
+Policy Transition & $\sum_a \pi(a \mid s) p(s' \mid s, a)$ & $\mat{T}(s' \mid s)$ (or $\mat{P}_\pi$) & $\sum_{a_t} \pi[a_t \mid s_t] \Pr(s_{t+1} \mid s_t, a_t)$ & $\mat{P}_\pi \in \R^{|\States| \times |\States|}$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Cross-book notation reconciliation across Sutton \& Barto \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3}, Murphy \bookcite{reinforement_learning_kevin_murphy}{Ch.~1--2}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5}, and Prince \bookcite{understandingdl_simonprince}{Sec.~19.1--19.2}.}\label{tab:mdp:notation}
+\end{center}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}\label{sec:mdp:derivations}
+
+\subsection{Policy Value Functions and Bellman Expectation Equations}
+Given a stationary stochastic policy $\pi(a \mid s) \triangleq \Prob(A_t = a \mid S_t = s)$, the \textbf{state-value function} $V^\pi(s)$ and \textbf{action-value function} $Q^\pi(s, a)$ quantify expected discounted returns:
+\begin{align}
+  V^\pi(s) &\triangleq \E_\pi\!\left[G_t \given S_t = s\right] = \sum_{a \in \Actions(s)} \pi(a \mid s)\, Q^\pi(s, a), \label{eq:mdp:vpi_def} \\
+  Q^\pi(s, a) &\triangleq \E_\pi\!\left[G_t \given S_t = s, A_t = a\right] = R(s, a) + \gamma \sum_{s' \in \States} p(s' \mid s, a)\, V^\pi(s'). \label{eq:mdp:qpi_def}
+\end{align}
+The \textbf{advantage function} $A^\pi(s, a) \triangleq Q^\pi(s, a) - V^\pi(s)$ measures the relative benefit of taking action $a$ in state $s$ before reverting to $\pi$, satisfying $\E_{a \sim \pi(\cdot \mid s)}[A^\pi(s, a)] = 0$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.4, p.~1131}.
+
+\begin{coremath}[Bellman Expectation Equations \& Exact Matrix-Vector Inversion]
+Substituting \eqref{eq:mdp:return} into \eqref{eq:mdp:vpi_def} and applying the law of total expectation over $A_t \sim \pi(\cdot \mid s)$ and $(S_{t+1}, R_{t+1}) \sim p(\cdot, \cdot \mid s, A_t)$ yields the \textbf{Bellman expectation equation} for $V^\pi$ \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, Eq.~(3.14), p.~59}:
+\begin{equation}\label{eq:mdp:bellman_exp_v}
+  V^\pi(s) = \sum_{a \in \Actions(s)} \pi(a \mid s) \sum_{s' \in \States,\, r \in \Rewards} p(s', r \mid s, a)\left[r + \gamma V^\pi(s')\right] = (\Bellman^\pi V^\pi)(s),
+\end{equation}
+where $\Bellman^\pi : \R^{|\States|} \to \R^{|\States|}$ is the \textbf{Bellman expectation operator}. Defining the policy-induced expected reward vector $\vecb{r}_\pi \in \R^{|\States|}$ with $r_\pi(s) = \sum_a \pi(a \mid s) R(s, a)$ and transition matrix $\mat{P}_\pi \in \R^{|\States| \times |\States|}$ with $[\mat{P}_\pi]_{s, s'} = \sum_a \pi(a \mid s) p(s' \mid s, a)$, \eqref{eq:mdp:bellman_exp_v} becomes a linear system \bookcite{reinforement_learning_kevin_murphy}{Sec.~2.2.3, p.~34}:
+\begin{equation}\label{eq:mdp:bellman_matrix}
+  \vecb{v}_\pi = \vecb{r}_\pi + \gamma \mat{P}_\pi \vecb{v}_\pi \implies (\eye - \gamma \mat{P}_\pi)\vecb{v}_\pi = \vecb{r}_\pi.
+\end{equation}
+Because $\mat{P}_\pi$ is row-stochastic, its spectral radius satisfies $\rho(\mat{P}_\pi) = 1$. For $\gamma \in [0, 1)$, all eigenvalues of $\gamma \mat{P}_\pi$ lie strictly inside the unit disk, so $\eye - \gamma \mat{P}_\pi$ is strictly diagonally dominant and nonsingular, yielding the unique closed-form solution:
+\begin{equation}\label{eq:mdp:neumann}
+  \vecb{v}_\pi = (\eye - \gamma \mat{P}_\pi)\inv \vecb{r}_\pi = \sum_{t=0}^{\infty} \gamma^t \mat{P}_\pi^t \vecb{r}_\pi.
+\end{equation}
+\end{coremath}
+
+\subsection{Bellman Optimality Equations and Contraction Mapping Theory}
+A policy $\pi^*$ is \textbf{optimal} if $V^{\pi^*}(s) \ge V^\pi(s)$ for all $s \in \States$ and all policies $\pi$. All optimal policies share the unique optimal state-value function $V^*(s) \triangleq \max_\pi V^\pi(s)$ and optimal action-value function $Q^*(s, a) \triangleq \max_\pi Q^\pi(s, a)$, and every finite MDP admits at least one deterministic optimal policy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.5, p.~1132}. Their self-consistency conditions form the \textbf{Bellman optimality equations} \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, Eqs.~(3.19)--(3.20), p.~63}:
+\begin{align}
+  V^*(s) &= \max_{a \in \Actions(s)} \sum_{s', r} p(s', r \mid s, a)\left[r + \gamma V^*(s')\right] \triangleq (\Bellman^* V^*)(s), \label{eq:mdp:bellman_opt_v} \\
+  Q^*(s, a) &= \sum_{s', r} p(s', r \mid s, a)\left[r + \gamma \max_{a' \in \Actions(s')} Q^*(s', a')\right]. \label{eq:mdp:bellman_opt_q}
+\end{align}
+
+\begin{coremath}[Banach $\gamma$-Contraction Proof for $\Bellman^*$ and $\Bellman^\pi$]
+Let $\mathcal{V} = (\R^{|\States|}, \norm{\cdot}_\infty)$ be the Banach space of bounded value functions equipped with the supremum norm $\norm{V}_\infty = \max_{s \in \States} \abs{V(s)}$. For any two vectors $U, V \in \R^{|\States|}$ and any state $s \in \States$:
+\begin{align}
+  \abs{(\Bellman^* U)(s) - (\Bellman^* V)(s)}
+  &= \Bigl|\max_{a \in \Actions(s)} \Bigl[ R(s, a) + \gamma \sum_{s'} p(s' \mid s, a) U(s') \Bigr] \nonumber \\
+  &\qquad - \max_{a \in \Actions(s)} \Bigl[ R(s, a) + \gamma \sum_{s'} p(s' \mid s, a) V(s') \Bigr]\Bigr| \nonumber \\
+  &\le \max_{a \in \Actions(s)} \abs*{\gamma \sum_{s' \in \States} p(s' \mid s, a)\left(U(s') - V(s')\right)} \nonumber \\
+  &\le \gamma \max_{a \in \Actions(s)} \sum_{s' \in \States} p(s' \mid s, a) \norm{U - V}_\infty = \gamma \norm{U - V}_\infty, \label{eq:mdp:contraction_proof}
+\end{align}
+where the first inequality uses $\abs{\max_a f(a) - \max_a g(a)} \le \max_a \abs{f(a) - g(a)}$ and the final equality uses $\sum_{s'} p(s' \mid s, a) = 1$. Taking the maximum over $s \in \States$ gives $\norm{\Bellman^* U - \Bellman^* V}_\infty \le \gamma \norm{U - V}_\infty$ (and identically $\norm{\Bellman^\pi U - \Bellman^\pi V}_\infty \le \gamma \norm{U - V}_\infty$). By the \textbf{Banach Fixed-Point Theorem}, for $\gamma \in [0, 1)$, $\Bellman^*$ has a unique fixed point $V^* = \Bellman^* V^*$, and iterative updates $V_{k+1} = \Bellman^* V_k$ converge geometrically from any $V_0 \in \R^{|\States|}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.6.1, p.~1134}:
+\begin{equation}\label{eq:mdp:banach_rate}
+  \norm{V_k - V^*}_\infty \le \gamma^k \norm{V_0 - V^*}_\infty.
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Why $V^*$ Turns Long-Term Planning into One-Step Lookahead]
+The optimal value function $V^*(s)$ compresses an infinite-horizon tree of future stochastic transitions into a single scalar per state. Once $V^*$ is known, an optimal policy $\pi^*(s) \in \argmax_{a \in \Actions(s)} \left[R(s,a) + \gamma \sum_{s'} p(s' \mid s, a) V^*(s')\right]$ requires only a greedy one-step lookahead; $Q^*(s, a)$ goes one step further by caching the lookahead expectations, making action selection $\pi^*(s) \in \argmax_a Q^*(s, a)$ model-free \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, p.~64}.
+\end{intuition}
+
+\subsection{Policy Improvement Theorem}
+To guarantee monotonic progress when alternating between evaluation and greedy action selection, Dynamic Programming relies on the \textbf{Policy Improvement Theorem} \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~4.2, p.~78}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.6.2, p.~1135}.
+
+\begin{coremath}[Policy Improvement Theorem (Telescopic \& Operator Proofs)]
+Let $\pi$ and $\pi'$ be any pair of deterministic policies such that for all $s \in \States$,
+\begin{equation}\label{eq:mdp:pi_cond}
+  Q^\pi(s, \pi'(s)) \ge V^\pi(s).
+\end{equation}
+Then $\pi'$ is as good as or better than $\pi$: $V^{\pi'}(s) \ge V^\pi(s)$ for all $s \in \States$. Moreover, if strict inequality holds at any state $s$, then $V^{\pi'}(s) > V^\pi(s)$ at that state.
+
+\textbf{Proof (Matrix-Operator Neumann Expansion):} In vector notation, \eqref{eq:mdp:pi_cond} states $\vecb{r}_{\pi'} + \gamma \mat{P}_{\pi'} \vecb{v}_\pi \ge \vecb{v}_\pi$ componentwise \bookcite{reinforement_learning_kevin_murphy}{Sec.~2.2.3, p.~34}. Since $\gamma \mat{P}_{\pi'}$ has nonnegative entries, it is a monotone linear operator ($\vecb{x} \le \vecb{y} \implies \gamma \mat{P}_{\pi'} \vecb{x} \le \gamma \mat{P}_{\pi'} \vecb{y}$). Applying $\Bellman^{\pi'}$ repeatedly gives:
+\begin{equation}\label{eq:mdp:pi_proof}
+  \vecb{v}_\pi \le \vecb{r}_{\pi'} + \gamma \mat{P}_{\pi'} \vecb{v}_\pi \le \vecb{r}_{\pi'} + \gamma \mat{P}_{\pi'} (\vecb{r}_{\pi'} + \gamma \mat{P}_{\pi'} \vecb{v}_\pi) \le \dots \le \sum_{t=0}^{\infty} \gamma^t \mat{P}_{\pi'}^t \vecb{r}_{\pi'} + \lim_{t \to \infty} \gamma^t \mat{P}_{\pi'}^t \vecb{v}_\pi = \vecb{v}_{\pi'},
+\end{equation}
+where $\lim_{t \to \infty} \gamma^t \mat{P}_{\pi'}^t \vecb{v}_\pi = \zeros$ since $\gamma < 1$. Setting $\pi'(s) \in \argmax_{a \in \Actions(s)} Q^\pi(s, a)$ satisfies \eqref{eq:mdp:pi_cond} by construction. If $V^{\pi'} = V^\pi$, then $V^\pi = \Bellman^* V^\pi$, so by uniqueness of the fixed point of $\Bellman^*$, $V^\pi = V^*$ and $\pi$ is optimal.
+\end{coremath}
+
+\begin{intuition}[The Discount Factor $\gamma$ as Geometric Survival Probability]
+Mathematically, $\gamma \in [0, 1)$ ensures bounded returns and $\gamma$-contraction. Probabilistically, $\gamma$ is equivalent to an undiscounted process in which the agent survives to the next step with probability $\gamma$ and is absorbed into a zero-reward terminal state with probability $1 - \gamma$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.3, p.~1131}. Setting $\gamma = 0$ yields a completely myopic agent, whereas $\gamma \to 1$ extends the effective planning horizon $1 / (1 - \gamma) \to \infty$.
+\end{intuition}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:mdp:algorithms}
+
+Dynamic Programming (DP) transforms the Bellman equations into iterative assignment operators \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~4, pp.~80--84}\bookcite{understandingdl_simonprince}{Sec.~19.3.1, p.~396}. \textbf{Policy Iteration (PI)} alternates full policy evaluation ($V \leftarrow V^\pi$) with greedy policy improvement ($\pi \leftarrow \mathrm{greedy}(V)$). Because a finite MDP has at most $|\Actions|^{|\States|}$ deterministic policies and each strict improvement eliminates suboptimal policies, PI terminates in finitely many steps. \textbf{Value Iteration (VI)} truncates policy evaluation to a single Bellman optimality sweep $V_{k+1} = \Bellman^* V_k$, extracting $\pi^*$ only after convergence.
+
+\begin{algorithm}[htbp]
+\caption{Policy Iteration (PI) with Consistent Tie-Breaking}\label{alg:mdp:policy_iteration}
+\KwIn{Finite MDP $\langle \States, \Actions, p, R, \gamma \rangle$, evaluation tolerance $\theta > 0$}
+\KwOut{Optimal value function $V^*$ and deterministic optimal policy $\pi^*$}
+Initialize $V(s) \leftarrow 0$ and $\pi(s) \in \Actions(s)$ arbitrarily for all $s \in \States$\;
+\Repeat{$\text{policy\_stable} = \mathrm{true}$}{
+  \tcp{1. Policy Evaluation (Iterative or Exact $(\eye - \gamma \mat{P}_\pi)\inv \vecb{r}_\pi$)}
+  \Repeat{$\Delta < \theta$}{
+    $\Delta \leftarrow 0$\;
+    \ForEach{$s \in \States$}{
+      $v_{\mathrm{old}} \leftarrow V(s)$\;
+      $V(s) \leftarrow \sum_{s', r} p(s', r \mid s, \pi(s))\,[r + \gamma V(s')]$\;
+      $\Delta \leftarrow \max(\Delta, \abs{v_{\mathrm{old}} - V(s)})$\;
+    }
+  }
+  \tcp{2. Policy Improvement}
+  $\text{policy\_stable} \leftarrow \mathrm{true}$\;
+  \ForEach{$s \in \States$}{
+    $a_{\mathrm{old}} \leftarrow \pi(s)$\;
+    $a^* \leftarrow \argmax_{a \in \Actions(s)} \sum_{s', r} p(s', r \mid s, a)\,[r + \gamma V(s')]$\;
+    \If{$Q_V(s, a^*) > Q_V(s, a_{\mathrm{old}})$}{
+      $\pi(s) \leftarrow a^*$; \quad $\text{policy\_stable} \leftarrow \mathrm{false}$\;
+    }
+  }
+}
+\Return{$V, \pi$}\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Value Iteration (VI) with Contraction Stopping Bound}\label{alg:mdp:value_iteration}
+\KwIn{Finite MDP $\langle \States, \Actions, p, R, \gamma \rangle$, target value error $\epsilon > 0$}
+\KwOut{$\epsilon$-optimal value function $V$ and greedy policy $\pi$}
+Initialize $V(s) \leftarrow 0$ for all $s \in \States$; \quad $\theta \leftarrow \epsilon(1 - \gamma) / (2\gamma)$\;
+\Repeat{$\Delta < \theta$}{
+  $\Delta \leftarrow 0$\;
+  \ForEach{$s \in \States$}{
+    $v_{\mathrm{old}} \leftarrow V(s)$\;
+    $V(s) \leftarrow \max_{a \in \Actions(s)} \sum_{s', r} p(s', r \mid s, a)\,[r + \gamma V(s')]$\;
+    $\Delta \leftarrow \max(\Delta, \abs{v_{\mathrm{old}} - V(s)})$\;
+  }
+}
+\ForEach{$s \in \States$}{
+  $\pi(s) \leftarrow \argmax_{a \in \Actions(s)} \sum_{s', r} p(s', r \mid s, a)\,[r + \gamma V(s')]$\;
+}
+\Return{$V, \pi$}\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\textwidth}{@{}l l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Per-Iteration Cost} & \textbf{Convergence Rate} & \textbf{Key Trade-off / Scope} \\
+\midrule
+Iterative Policy Eval. & $O(|\States|^2)$ & Linear: $O(\gamma^k)$ & Evaluates fixed $\pi$; avoids $O(|\States|^3)$ inversion of $(\eye - \gamma \mat{P}_\pi)$. \\
+Policy Iteration (PI) & $O(|\States|^3 + |\States|^2 |\Actions|)$ & Finite / superlinear & Few outer iterations in practice; exact evaluation is cubic in $|\States|$. \\
+Value Iteration (VI) & $O(|\States|^2 |\Actions|)$ & Linear: $O(\gamma^k)$ & Cheap sweeps, but slow when $\gamma \to 1$; requires $O\!\left(\frac{\log(1/\epsilon)}{1-\gamma}\right)$ sweeps. \\
+Modified PI / GPI & $O(m|\States|^2 + |\States|^2 |\Actions|)$ & Geometric to superlinear & Performs $m$ evaluation sweeps per improvement; interpolates VI ($m=1$) and PI ($m=\infty$). \\
+Linear Programming & $\mathrm{poly}(|\States|, |\Actions|)$ & Polynomial (interior pt.) & Primal $\min \vecb{p}_0\T \vecb{v}$ s.t. $\vecb{v} \ge \Bellman^* \vecb{v}$; impractical for large $|\States|$. \\
+\bottomrule
+\end{tabularx}
+\caption{Computational complexity and convergence comparison of exact MDP planning algorithms \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~4.7, p.~87}\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.6, pp.~1134--1136}.}\label{tab:mdp:complexity}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Generalized Policy Iteration, LP, and RTDP]
+\textbf{Generalized Policy Iteration (GPI)} unifies virtually all RL and DP methods as two competing yet cooperative processes: \emph{evaluation} drives $V \to V^\pi$ while \emph{improvement} drives $\pi \to \mathrm{greedy}(V)$ \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~4.6, p.~86}. Policy Iteration and Value Iteration sit at opposite ends of this spectrum, while \textbf{Asynchronous DP} and \textbf{Real-Time DP (RTDP)} focus Bellman backups on reachable states along simulated trajectories rather than full synchronous sweeps \bookcite{reinforement_learning_kevin_murphy}{Sec.~2.2.2, p.~34}. Conversely, Murphy highlights the \textbf{Linear Programming (LP)} dual formulation, which maximizes expected reward $\sum_{s,a} d(s,a) R(s,a)$ over normalized occupancy measures $d(s,a)$ satisfying Bellman flow conservation \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.6.3, p.~1136}; this dual view forms the mathematical bridge to off-policy RL and constrained MDPs.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:mdp:visuals}
+
+Figure~\ref{fig:mdp:gpi_backup} illustrates the geometric interplay of GPI alongside the structural contrast between Bellman expectation ($\Bellman^\pi$) and Bellman optimality ($\Bellman^*$) 1-step backup trees. Figure~\ref{fig:mdp:sutton_backups} reproduces the canonical backup diagrams for $V^*$ and $Q^*$, while Figure~\ref{fig:mdp:contraction_convergence} quantifies how the discount factor $\gamma$ governs the Banach $\ell_\infty$ error decay of Value Iteration relative to Policy Iteration's finite-step convergence.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.3cm and 1.6cm,
+  >=Stealth,
+  every node/.style={font=\small}
+]
+  % Left: GPI Interaction Loop
+  \node[monoBox, minimum width=3.3cm, minimum height=0.95cm] (eval) {\textbf{Policy Evaluation}\\$V \leftarrow \Bellman^\pi V$ ($V \to V^\pi$)};
+  \node[monoTealBox, below=1.8cm of eval, minimum width=3.3cm, minimum height=0.95cm] (imp) {\textbf{Policy Improvement}\\$\pi \leftarrow \mathrm{greedy}(V)$};
+  \node[monoIndigoBox, right=1.0cm of $(eval.east)!0.5!(imp.east)$, minimum width=2.4cm, align=center] (opt) {\textbf{Joint Fixed Point}\\$V = V^*$, $\pi = \pi^*$\\($\Bellman^\pi V = \Bellman^* V = V$)};
+
+  \draw[monoArrow] ([xshift=0.45cm]eval.south) to[bend left=20] node[right, font=\scriptsize, align=left] {greedy\\[-2pt]update} ([xshift=0.45cm]imp.north);
+  \draw[monoArrow] ([xshift=-0.45cm]imp.north) to[bend left=20] node[left, font=\scriptsize, align=right] {evaluate\\[-2pt]new $\pi$} ([xshift=-0.45cm]eval.south);
+  \draw[monoArrow, dashed, monographIndigo] (eval.east) -- (opt.north west);
+  \draw[monoArrow, dashed, monographIndigo] (imp.east) -- (opt.south west);
+
+  \node[above=0.25cm of eval, font=\small\bfseries\color{monographNavy}] {(a) Generalized Policy Iteration (GPI)};
+
+  % Right: Backup Trees
+  \begin{scope}[xshift=7.9cm, yshift=-0.1cm]
+    \node[font=\small\bfseries\color{monographNavy}] at (1.8, 1.0) {(b) 1-Step Bellman Backups};
+
+    % Expectation Backup (T^pi)
+    \node[circle, draw=monographNavy, thick, fill=white, inner sep=2.5pt, label=above:{\scriptsize $s$}] (s_pi) at (0, 0.2) {};
+    \node[circle, fill=monographNavy, inner sep=2pt] (a1_pi) at (-0.8, -0.9) {};
+    \node[circle, fill=monographNavy, inner sep=2pt, label=right:{\scriptsize $a$}] (a2_pi) at (0.8, -0.9) {};
+    \node[circle, draw=monographNavy, thick, fill=white, inner sep=2pt] (sp1_pi) at (-1.1, -2.0) {};
+    \node[circle, draw=monographNavy, thick, fill=white, inner sep=2pt] (sp2_pi) at (-0.5, -2.0) {};
+    \node[circle, draw=monographNavy, thick, fill=white, inner sep=2pt] (sp3_pi) at (0.5, -2.0) {};
+    \node[circle, draw=monographNavy, thick, fill=white, inner sep=2pt, label=right:{\scriptsize $s'$}] (sp4_pi) at (1.1, -2.0) {};
+
+    \draw[->] (s_pi) -- node[left, font=\scriptsize] {$\pi$} (a1_pi);
+    \draw[->] (s_pi) -- (a2_pi);
+    \draw[->] (a1_pi) -- (sp1_pi);
+    \draw[->] (a1_pi) -- (sp2_pi);
+    \draw[->] (a2_pi) -- node[left, font=\scriptsize] {$p$} (sp3_pi);
+    \draw[->] (a2_pi) -- node[right, font=\scriptsize] {$r$} (sp4_pi);
+    \node[font=\scriptsize\color{monographSlate}] at (0, -2.6) {$\Bellman^\pi$: $\E_\pi[\cdot]$};
+
+    % Optimality Backup (T*)
+    \node[circle, draw=monographTeal, thick, fill=white, inner sep=2.5pt, label=above:{\scriptsize $s$}] (s_opt) at (3.6, 0.2) {};
+    \node[circle, fill=monographTeal, inner sep=2pt] (a1_opt) at (2.8, -0.9) {};
+    \node[circle, fill=monographTeal, inner sep=2pt, label=right:{\scriptsize $a$}] (a2_opt) at (4.4, -0.9) {};
+    \node[circle, draw=monographTeal, thick, fill=white, inner sep=2pt] (sp1_opt) at (2.5, -2.0) {};
+    \node[circle, draw=monographTeal, thick, fill=white, inner sep=2pt] (sp2_opt) at (3.1, -2.0) {};
+    \node[circle, draw=monographTeal, thick, fill=white, inner sep=2pt] (sp3_opt) at (4.1, -2.0) {};
+    \node[circle, draw=monographTeal, thick, fill=white, inner sep=2pt, label=right:{\scriptsize $s'$}] (sp4_opt) at (4.7, -2.0) {};
+
+    \draw[->] (s_opt) -- (a1_opt);
+    \draw[->] (s_opt) -- (a2_opt);
+    \draw[monographCrimson, thick] (3.15, -0.42) arc[start angle=-125, end angle=-55, radius=0.78cm];
+    \node[font=\scriptsize\color{monographCrimson}] at (2.65, -0.32) {$\max_a$};
+    \draw[->] (a1_opt) -- (sp1_opt);
+    \draw[->] (a1_opt) -- (sp2_opt);
+    \draw[->] (a2_opt) -- node[left, font=\scriptsize] {$p$} (sp3_opt);
+    \draw[->] (a2_opt) -- node[right, font=\scriptsize] {$r$} (sp4_opt);
+    \node[font=\scriptsize\color{monographSlate}] at (3.6, -2.6) {$\Bellman^*$: $\max_a[\cdot]$};
+  \end{scope}
+\end{tikzpicture}
+\caption{(a) Generalized Policy Iteration (GPI) interleaves evaluation and greedy improvement until reaching the unique optimal fixed point $(V^*, \pi^*)$. (b) 1-step backup trees contrast expectation over $\pi$ ($\Bellman^\pi$) with maximization over actions ($\Bellman^*$).}\label{fig:mdp:gpi_backup}
+\end{figure}
+
+\monographfig[0.72\textwidth]{reinforcement_learning_introduction_richard_s_su_p86_fig1.png}{Extracted 300~DPI backup diagrams for $v_*$ and $q_*$ showing the maximization arc at agent decision nodes and stochastic transitions at environment chance nodes \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~3, Fig.~3.4, p.~64}.}{fig:mdp:sutton_backups}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.86\textwidth,
+  height=6.2cm,
+  ymode=log,
+  xmin=0, xmax=40,
+  ymin=1e-5, ymax=1.5,
+  xlabel={Iteration $k$},
+  ylabel={Normalized Error Bound $\norm{V_k - V^*}_\infty / \norm{V_0 - V^*}_\infty$},
+  grid=both,
+  grid style={monographRule!45},
+  legend pos=south west,
+  legend style={font=\footnotesize, fill=white, draw=monographRule},
+  tick label style={font=\footnotesize},
+  label style={font=\small\color{monographNavy}}
+]
+  \addplot[monographTeal, very thick, domain=0:20, samples=21] {0.5^x};
+  \addlegendentry{VI ($\gamma = 0.5$): $\gamma^k$}
+
+  \addplot[monographIndigo, very thick, domain=0:40, samples=41] {0.9^x};
+  \addlegendentry{VI ($\gamma = 0.9$): $\gamma^k$}
+
+  \addplot[monographCrimson, very thick, domain=0:40, samples=41] {0.99^x};
+  \addlegendentry{VI ($\gamma = 0.99$): $\gamma^k$}
+
+  \addplot[monographNavy, very thick, dashed, mark=*, mark size=1.8pt] coordinates {
+    (0, 1.0) (1, 0.25) (2, 0.03) (3, 0.0015) (4, 0.00002)
+  };
+  \addlegendentry{Policy Iteration (superlinear / finite-step)}
+\end{axis}
+\end{tikzpicture}
+\caption{Banach $\ell_\infty$ contraction bounds $\norm{V_k - V^*}_\infty / \norm{V_0 - V^*}_\infty \le \gamma^k$ for Value Iteration across discount factors $\gamma \in \{0.5, 0.9, 0.99\}$, contrasted with the rapid superlinear convergence of Policy Iteration.}\label{fig:mdp:contraction_convergence}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:mdp:pitfalls}
+
+\begin{pitfall}[Policy Oscillation Under Arbitrary Tie-Breaking in Policy Iteration]
+In naive Policy Iteration \bookcite{reinforcement_learning_introduction_richard_s_su}{Ch.~4, Ex.~4.4, p.~82}, if two actions $a_1, a_2 \in \Actions(s)$ achieve identical optimal value $Q_V(s, a_1) = Q_V(s, a_2)$ and $\argmax$ breaks ties arbitrarily, $\pi(s)$ can cycle indefinitely between $a_1$ and $a_2$, causing $\text{policy\_stable}$ to remain \texttt{false}. \textbf{Remedy:} Only update $\pi(s) \leftarrow a^*$ when $Q_V(s, a^*) > Q_V(s, \pi(s))$ strictly (as enforced in Algorithm~\ref{alg:mdp:policy_iteration}), or use a fixed deterministic tie-breaking order.
+\end{pitfall}
+
+\begin{pitfall}[Stopping Criterion Error Amplification as $\gamma \to 1$]
+Terminating Value Iteration when $\Delta_k = \norm{V_k - V_{k-1}}_\infty < \theta$ does \emph{not} imply $\norm{V_k - V^*}_\infty < \theta$. By the triangle inequality and $\gamma$-contraction:
+\begin{equation}\label{eq:mdp:vi_bound}
+  \norm{V_k - V^*}_\infty \le \frac{\gamma}{1 - \gamma} \norm{V_k - V_{k-1}}_\infty.
+\end{equation}
+When $\gamma = 0.999$, $\frac{\gamma}{1-\gamma} = 999$, so $\Delta_k = 10^{-3}$ still permits a value error of $\approx 1.0$. Furthermore, extracting the greedy policy from $V_k$ guarantees $\norm{V^{\pi_k} - V^*}_\infty \le \frac{2\gamma}{1-\gamma}\norm{V_k - V_{k-1}}_\infty$, motivating the scaled threshold $\theta = \frac{\epsilon(1-\gamma)}{2\gamma}$ in Algorithm~\ref{alg:mdp:value_iteration}.
+\end{pitfall}
+
+\begin{pitfall}[Singularity for $\gamma = 1$ in Continuing Tasks and Curse of Dimensionality]
+If $\gamma = 1$ in a continuing (non-episodic) MDP, $\eye - \mat{P}_\pi$ is singular because $\mat{P}_\pi \ones = \ones$, causing $(\eye - \gamma \mat{P}_\pi)\inv$ in \eqref{eq:mdp:neumann} to diverge and $\Bellman^*$ to lose its contraction property \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~34.5.3, p.~1131}. Undiscounted continuing MDPs require the \emph{average-reward} Bellman formulation instead. Additionally, tabular DP scales as $O(|\States|^2 |\Actions|)$, which becomes intractable under the \textbf{curse of dimensionality} when $|\States|$ grows exponentially with state variables, motivating Approximate Dynamic Programming (ADP) and function approximation \bookcite{reinforcement_learning_introduction_richard_s_su}{Sec.~4.7, p.~87}.
+\end{pitfall}
+
+\end{document}

@@ -1,0 +1,396 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Autoencoders, VAEs, Normalizing Flows, EBMs \& GANs}{Energy-Based Models, Score Matching \& Adversarial Networks}{Energy-Based Models, Partition Functions, Contrastive Divergence \& Score Matching}{Murphy Adv. Ch.~24, Goodfellow Ch.~18 \& 20, Diffusion Principles Sec.~B.2, Chan Sec.~3.2--3.3}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:ebm:formulation}
+% =============================================================================
+
+Directed generative models (variational autoencoders, autoregressive models, and normalizing flows) construct normalized probability densities by composing locally normalized conditionals or tractable Jacobians. By contrast, \emph{Energy-Based Models} (EBMs) specify an unnormalized Gibbs--Boltzmann density directly over $\vecb{x} \in \R^D$ via a scalar energy function $E_\theta : \R^D \to \R$ parameterized by $\theta$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~24, p.~849 (PDF p.~883)}:
+\begin{equation}
+  p_\theta(\vecb{x}) = \frac{\exp(-E_\theta(\vecb{x}))}{Z_\theta}, \qquad Z_\theta = \int_{\R^D} \exp(-E_\theta(\vecb{x})) \, \mathrm{d}\vecb{x},
+  \label{eq:ebm:gibbs}
+\end{equation}
+where $Z_\theta$ is the \emph{partition function} ensuring $\int_{\R^D} p_\theta(\vecb{x})\,\mathrm{d}\vecb{x} = 1$, or a discrete sum $\sum_{\vecb{x}} \exp(-E_\theta(\vecb{x}))$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~18, p.~605 (PDF p.~620)}. Lower energy $E_\theta(\vecb{x})$ corresponds to higher probability density. Because $E_\theta$ is not constrained to integrate to unity, any smooth scalar neural network architecture is admissible, and independent constraints combine additively via Products of Experts (PoE), $E_{12}(\vecb{x}) = E_1(\vecb{x}) + E_2(\vecb{x})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.1.1, p.~850 (PDF p.~884)}.
+
+However, this architectural freedom comes at a steep computational price: in high dimensions $D$, evaluating $Z_\theta$ requires an intractable $D$-dimensional integral, rendering exact likelihood evaluation $p_\theta(\vecb{x})$ and direct ancestral sampling impossible. Addressing this intractability motivates two broad families of methods:
+\begin{enumerate}
+  \item \textbf{Partition-Gradient Approximation (MLE / MCMC / CD / PCD / NCE):} Estimating $\nabla_\theta \log Z_\theta$ via Markov Chain Monte Carlo (MCMC) or bypassing it via binary classification against a tractable noise distribution.
+  \item \textbf{Partition-Free Score Estimation (SM / SSM / DSM):} Eliminating $Z_\theta$ entirely by differentiating $\log p_\theta(\vecb{x})$ with respect to the data $\vecb{x}$ rather than $\theta$, yielding the \emph{Stein score} $\nabla_{\vecb{x}} \log p_\theta(\vecb{x}) = -\nabla_{\vecb{x}} E_\theta(\vecb{x})$.
+\end{enumerate}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:ebm:notation}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Unified Monograph} & \textbf{Murphy Adv. / Goodfellow} & \textbf{Diff. Principles / Chan} \\
+\midrule
+Energy / Potential & $E_\theta(\vecb{x}) \in \R$ & $E_\theta(\vecb{x})$ (Murphy); $\tilde{p}(\vecb{x};\theta) = e^{-E(\vecb{x};\theta)}$ (Goodfellow) & $E_\phi(\vecb{x})$ (Diff. Princ.); $U(\vecb{x})$ (Chan) \\
+Model Parameters & $\theta$ & $\theta$ (both) & $\phi$ (Diff. Princ.); $\theta$ (Chan) \\
+Stein Score ($\vecb{x}$-grad) & $\vecb{s}_\theta(\vecb{x}) = \nabla_{\vecb{x}} \log p_\theta(\vecb{x})$ & $\vecb{s}_\theta(\vecb{x})$ (Hyv\"arinen score, Murphy Ch.~24) & $\vecb{s}_\phi(\vecb{x})$ (Diff. Princ.); $\vecb{s}_\theta(\vecb{x})$ vs.\ $\vecb{s}_{\vecb{x}}(\theta)$ (Chan) \\
+Data / Noisy Density & $p_{\mathcal{D}}(\vecb{x})$, $q_\sigma(\tilde{\vecb{x}})$ & $p_D(\vecb{x})$, $q(\tilde{\vecb{x}})$ (Murphy); $p_{\mathrm{data}}, p_{\mathrm{smoothed}}$ (Goodfellow) & $p_{\mathrm{data}}(\vecb{x})$, $p_\sigma(\tilde{\vecb{x}})$ (Diff. Princ.); $q(\vecb{x})$ (Chan) \\
+Score Matching Loss & $D_F(p_{\mathcal{D}} \| p_\theta)$ & $D_F(p_D \| p_\theta)$ (Fisher divergence) & $L_{\mathrm{SM}}(\phi)$ (Diff. Princ.); $J_{\mathrm{ESM}}(\theta)$ (Chan) \\
+\bottomrule
+\end{tabularx}
+\vspace{0.4em}
+\small\textit{Note:} \bookcite{diffusionmodels_stanleychan}{Sec.~3.2, p.~33} explicitly warns against conflating \emph{Stein's score function} $\vecb{s}_\theta(\vecb{x}) = \nabla_{\vecb{x}} \log p_\theta(\vecb{x})$ (used in Langevin dynamics and score matching) with the \emph{ordinary Fisher score} $\vecb{s}_{\vecb{x}}(\theta) = \nabla_\theta \log p_\theta(\vecb{x})$ (used in maximum likelihood estimation).
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:ebm:derivations}
+% =============================================================================
+
+\subsection{Maximum Likelihood Gradient: Positive \& Negative Phases}
+\label{sec:ebm:mle}
+
+Fitting $p_\theta(\vecb{x})$ to an empirical data distribution $p_{\mathcal{D}}(\vecb{x})$ by maximizing $\ell(\theta) = \E_{\vecb{x} \sim p_{\mathcal{D}}}[\log p_\theta(\vecb{x})]$ is equivalent to minimizing $\KL{p_{\mathcal{D}}}{p_\theta}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.2, p.~851 (PDF p.~885)}. Differentiating $\ell(\theta)$ with respect to $\theta$ exposes the partition function bottleneck.
+
+\begin{coremath}[Theorem: EBM Log-Likelihood Gradient Decomposition]
+Assume $\tilde{p}_\theta(\vecb{x}) = \exp(-E_\theta(\vecb{x}))$ is Lebesgue-integrable and satisfies Leibniz regularity conditions for differentiating under the integral sign \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.1, pp.~606--607 (PDF pp.~621--622)}. Then the gradient of the log-partition function is
+\begin{equation}
+  \nabla_\theta \log Z_\theta = \E_{\vecb{x} \sim p_\theta}[-\nabla_\theta E_\theta(\vecb{x})],
+  \label{eq:ebm:logz_grad}
+\end{equation}
+and consequently the expected log-likelihood gradient decomposes into a \emph{positive phase} and a \emph{negative phase}:
+\begin{equation}
+  \nabla_\theta \ell(\theta) = \underbrace{\E_{\vecb{x} \sim p_{\mathcal{D}}}[-\nabla_\theta E_\theta(\vecb{x})]}_{\text{Positive phase (push energy down)}} - \underbrace{\E_{\tilde{\vecb{x}} \sim p_\theta}[-\nabla_\theta E_\theta(\tilde{\vecb{x}})]}_{\text{Negative phase (push energy up)}}.
+  \label{eq:ebm:mle_grad}
+\end{equation}
+\textit{Proof.} Expanding $\nabla_\theta \log Z_\theta$ directly via the chain rule and Leibniz's rule yields:
+\begin{align*}
+  \nabla_\theta \log Z_\theta
+  &= \frac{1}{Z_\theta} \nabla_\theta \int_{\R^D} \exp(-E_\theta(\vecb{x})) \, \mathrm{d}\vecb{x}
+   = \frac{1}{Z_\theta} \int_{\R^D} \nabla_\theta \exp(-E_\theta(\vecb{x})) \, \mathrm{d}\vecb{x} \\
+  &= \int_{\R^D} \frac{\exp(-E_\theta(\vecb{x}))}{Z_\theta} \bigl(-\nabla_\theta E_\theta(\vecb{x})\bigr) \, \mathrm{d}\vecb{x}
+   = \E_{\vecb{x} \sim p_\theta}\bigl[-\nabla_\theta E_\theta(\vecb{x})\bigr].
+\end{align*}
+Substituting this identity into $\nabla_\theta \log p_\theta(\vecb{x}) = -\nabla_\theta E_\theta(\vecb{x}) - \nabla_\theta \log Z_\theta$ and taking expectations under $p_{\mathcal{D}}$ gives \eqref{eq:ebm:mle_grad} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eqs.~24.7--24.15, p.~851 (PDF p.~885)}. \hfill $\square$
+\end{coremath}
+
+\begin{intuition}[Wake--Sleep Dynamics of the Positive and Negative Phases]
+As detailed in \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.1, pp.~608--609 (PDF pp.~623--624)}, equation~\eqref{eq:ebm:mle_grad} balances two opposing forces:
+\begin{itemize}
+  \item \textbf{Positive (clamped / Hebbian) phase:} Evaluates $-\nabla_\theta E_\theta(\vecb{x})$ on real data $\vecb{x} \sim p_{\mathcal{D}}$, lowering energy (raising unnormalized density) on the data manifold.
+  \item \textbf{Negative (unclamped / anti-Hebbian) phase:} Evaluates $+\nabla_\theta E_\theta(\tilde{\vecb{x}})$ on model-generated samples (``fantasy particles'') $\tilde{\vecb{x}} \sim p_\theta$, raising energy in regions where the model places spurious probability mass.
+\end{itemize}
+At equilibrium ($p_\theta = p_{\mathcal{D}}$), the two expectations cancel identically and $\nabla_\theta \ell(\theta) = \vecb{0}$.
+\end{intuition}
+
+\monographfig[0.80\textwidth]{deep_learning_goodfellow_bengio_courville_2017_p624_fig1.png}{Positive and negative phases of EBM maximum likelihood training. Left: the positive phase pushes up $p_{\mathrm{model}}(x)$ on real data samples. Right: the negative phase pushes down $p_{\mathrm{model}}(x)$ on model samples, preventing trivial energy collapse \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~18, Fig.~18.1, p.~609 (PDF p.~624)}.}{fig:ebm:pos_neg_goodfellow}
+
+\subsection{Contrastive Divergence \& Langevin MCMC}
+\label{sec:ebm:cd}
+
+Drawing exact independent samples $\tilde{\vecb{x}} \sim p_\theta$ at every gradient step is computationally prohibitive. \emph{Overdamped Langevin MCMC} exploits the fact that the Stein score is independent of $Z_\theta$ \bookcite{theprinciple_diffusion_models}{Sec.~3.1.4, p.~61 (PDF p.~66)}:
+\begin{equation}
+  \vecb{x}_{k+1} = \vecb{x}_k - \frac{\epsilon^2}{2}\nabla_{\vecb{x}} E_\theta(\vecb{x}_k) + \epsilon \vecb{z}_k, \qquad \vecb{z}_k \sim \Normal(\vecb{0}, \eye),
+  \label{eq:ebm:langevin}
+\end{equation}
+where step size $\epsilon > 0$ (alternatively written with $\eta = \epsilon^2/2$ as $\vecb{x}_{k+1} = \vecb{x}_k + \eta \vecb{s}_\theta(\vecb{x}_k) + \sqrt{2\eta}\,\vecb{z}_k$ \bookcite{diffusionmodels_stanleychan}{Eq.~75, p.~33}). In the limit $\epsilon \to 0$, \eqref{eq:ebm:langevin} is the Euler--Maruyama discretization of the Langevin SDE $\mathrm{d}\vecb{x}(t) = -\nabla_{\vecb{x}} E_\theta(\vecb{x}(t))\,\mathrm{d}t + \sqrt{2}\,\mathrm{d}\vecb{w}(t)$, whose unique stationary distribution is $p_\theta(\vecb{x})$.
+
+To avoid burning in MCMC chains from random noise at each iteration, \emph{$k$-step Contrastive Divergence} ($\mathrm{CD}_k$) initializes the chain at a data point $\vecb{x}_0 \sim p_{\mathcal{D}}$ and runs only $k$ MCMC steps (e.g., $k=1$ block Gibbs or Langevin steps) to obtain $\vecb{x}_k \sim p_k$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.2.2, p.~852 (PDF p.~886)}. Rather than minimizing $\KL{p_{\mathcal{D}}}{p_\theta}$, $\mathrm{CD}_k$ approximately minimizes the difference of KL divergences:
+\begin{equation}
+  \mathrm{CD}_k = \KL{p_0}{p_\infty} - \KL{p_k}{p_\infty},
+  \label{eq:ebm:cd_obj}
+\end{equation}
+where $p_0 = p_{\mathcal{D}}$ and $p_\infty = p_\theta$. Alternatively, \emph{Persistent Contrastive Divergence} (PCD / Stochastic Maximum Likelihood, SML) maintains a persistent buffer of Markov chains across updates, assuming $\theta$ evolves slowly enough that chains track $p_\theta$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.2, pp.~610--612 (PDF pp.~625--627)}.
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    node distance=0.85cm and 0.45cm,
+    every node/.style={font=\footnotesize}
+  ]
+    % Top track: MLE / Contrastive Divergence
+    \node[monoBox, minimum width=2.0cm, align=center] (data) {Data\\$\vecb{x} \sim p_{\mathcal{D}}$};
+    \node[monoTealBox, right=of data, minimum width=2.5cm, align=center] (pos) {Positive Phase\\$-\nabla_\theta E_\theta(\vecb{x})$\\(Push $E_\theta$ down)};
+    \node[monoWarnBox, right=of pos, minimum width=2.6cm, align=center] (neg) {Negative Phase\\$+\nabla_\theta E_\theta(\tilde{\vecb{x}})$\\(Push $E_\theta$ up)};
+    \node[monoBox, right=of neg, minimum width=2.3cm, align=center] (mcmc) {Samples $\tilde{\vecb{x}} \sim p_\theta$\\(Langevin / $\mathrm{CD}_k$)};
+
+    \draw[monoArrow] (data) -- (pos);
+    \draw[monoArrow] (mcmc) -- (neg);
+    \draw[monoArrow, dashed] (pos.north) .. controls +(0,0.55) and +(0,0.55) .. node[above, font=\scriptsize\sffamily, text=monographNavy] {MLE Balance: $\nabla_\theta \ell(\theta) = 0$ at $p_\theta = p_{\mathcal{D}}$} (neg.north);
+
+    % Bottom track: Partition-Free Score Matching
+    \node[monoIndigoBox, below=1.35cm of data, minimum width=2.3cm, align=center] (score) {Stein Score\\$\vecb{s}_\theta = -\nabla_{\vecb{x}} E_\theta$\\($Z_\theta$ cancels!)};
+    \node[monoBox, right=0.45cm of score, minimum width=2.4cm, align=center] (ism) {Hyv\"arinen ISM\\$\frac{1}{2}\|\vecb{s}_\theta\|_2^2 + \Tr(\nabla_{\vecb{x}}\vecb{s}_\theta)$};
+    \node[monoBox, right=0.45cm of ism, minimum width=2.3cm, align=center] (ssm) {Sliced SM (SSM)\\Hutchinson JVP\\$O(D)$ trace};
+    \node[monoTealBox, right=0.45cm of ssm, minimum width=2.5cm, align=center] (dsm) {Vincent DSM\\$\frac{1}{2}\|\vecb{s}_\theta(\tilde{\vecb{x}}) + \frac{\tilde{\vecb{x}}-\vecb{x}}{\sigma^2}\|_2^2$\\(No Hessian!)};
+
+    \draw[monoArrow] (score) -- (ism);
+    \draw[monoArrow] (ism) -- (ssm);
+    \draw[monoArrow] (ssm) -- (dsm);
+    \draw[monoArrow, monographIndigo, dashed] (data.south) -- node[right, font=\scriptsize\sffamily, text=monographIndigo] {Bypass $Z_\theta$} (score.north);
+  \end{tikzpicture}%
+  }
+  \caption{Two paradigms for confronting the intractable partition function $Z_\theta$. Top: Maximum likelihood / Contrastive Divergence balances a positive phase on data against a negative phase on MCMC/CD samples. Bottom: Score-based training differentiates $\log p_\theta(\vecb{x})$ w.r.t.\ $\vecb{x}$ so $\nabla_{\vecb{x}} \log Z_\theta = \vecb{0}$, progressing from $O(D^2)$ Implicit Score Matching to $O(D)$ Sliced SM and Hessian-free Denoising Score Matching.}
+  \label{fig:ebm:pos_neg_phase}
+\end{figure}
+
+\subsection{Hyv\"arinen's Implicit Score Matching (ISM)}
+\label{sec:ebm:ism}
+
+To bypass $Z_\theta$ and MCMC sampling during training, \emph{Score Matching} minimizes the \emph{Fisher divergence} between the data score $\nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x})$ and the model score $\vecb{s}_\theta(\vecb{x}) = \nabla_{\vecb{x}} \log p_\theta(\vecb{x}) = -\nabla_{\vecb{x}} E_\theta(\vecb{x})$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.3, p.~856 (PDF p.~890)}:
+\begin{equation}
+  D_F(p_{\mathcal{D}} \| p_\theta) = \frac{1}{2} \E_{\vecb{x} \sim p_{\mathcal{D}}}\!\left[ \norm{\vecb{s}_\theta(\vecb{x}) - \nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x})}_2^2 \right].
+  \label{eq:ebm:fisher_div}
+\end{equation}
+Although $\nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x})$ is unknown, Hyv\"arinen (2005) showed that integration by parts eliminates it completely.
+
+\begin{coremath}[Theorem: Hyv\"arinen's Implicit Score Matching Identity]
+Suppose $p_{\mathcal{D}}(\vecb{x})$ and $\vecb{s}_\theta(\vecb{x})$ are continuously differentiable on $\R^D$, $\E_{p_{\mathcal{D}}}[\norm{\vecb{s}_\theta(\vecb{x})}_2^2] < \infty$, $\E_{p_{\mathcal{D}}}[\norm{\nabla_{\vecb{x}}\log p_{\mathcal{D}}(\vecb{x})}_2^2] < \infty$, and the boundary condition $\lim_{|x_i| \to \infty} p_{\mathcal{D}}(\vecb{x}) s_{\theta,i}(\vecb{x}) = 0$ holds for all $i \in \{1,\dots,D\}$ \bookcite{theprinciple_diffusion_models}{Prop.~3.2.1, p.~65 (PDF p.~70)}. Then:
+\begin{equation}
+  D_F(p_{\mathcal{D}} \| p_\theta) = \E_{\vecb{x} \sim p_{\mathcal{D}}}\!\left[ \frac{1}{2}\norm{\vecb{s}_\theta(\vecb{x})}_2^2 + \Tr\bigl(\nabla_{\vecb{x}} \vecb{s}_\theta(\vecb{x})\bigr) \right] + C,
+  \label{eq:ebm:ism}
+\end{equation}
+where $C = \frac{1}{2}\E_{p_{\mathcal{D}}}[\norm{\nabla_{\vecb{x}}\log p_{\mathcal{D}}(\vecb{x})}_2^2]$ is independent of $\theta$. For an EBM $\vecb{s}_\theta = -\nabla_{\vecb{x}} E_\theta$, $\Tr(\nabla_{\vecb{x}}\vecb{s}_\theta(\vecb{x})) = -\Tr(\nabla_{\vecb{x}}^2 E_\theta(\vecb{x}))$.
+
+\textit{Proof.} Expanding the squared norm in \eqref{eq:ebm:fisher_div} gives
+\[
+  D_F(p_{\mathcal{D}} \| p_\theta) = \frac{1}{2}\E_{p_{\mathcal{D}}}\!\left[\norm{\vecb{s}_\theta(\vecb{x})}_2^2\right] - \E_{p_{\mathcal{D}}}\!\left[\vecb{s}_\theta(\vecb{x})\T \nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x})\right] + C.
+\]
+Using $\nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x}) = \frac{\nabla_{\vecb{x}} p_{\mathcal{D}}(\vecb{x})}{p_{\mathcal{D}}(\vecb{x})}$, the cross-term integrates by parts coordinatewise:
+\begin{align*}
+  -\E_{p_{\mathcal{D}}}\!\left[\vecb{s}_\theta(\vecb{x})\T \nabla_{\vecb{x}} \log p_{\mathcal{D}}(\vecb{x})\right]
+  &= -\sum_{i=1}^D \int_{\R^D} s_{\theta,i}(\vecb{x}) \frac{\partial p_{\mathcal{D}}(\vecb{x})}{\partial x_i} \, \mathrm{d}\vecb{x} \\
+  &= -\sum_{i=1}^D \underbrace{\Bigl[ s_{\theta,i}(\vecb{x}) p_{\mathcal{D}}(\vecb{x}) \Bigr]_{x_i=-\infty}^{x_i=+\infty}}_{=0} + \sum_{i=1}^D \int_{\R^D} p_{\mathcal{D}}(\vecb{x}) \frac{\partial s_{\theta,i}(\vecb{x})}{\partial x_i} \, \mathrm{d}\vecb{x} \\
+  &= \E_{p_{\mathcal{D}}}\!\left[\Tr\bigl(\nabla_{\vecb{x}} \vecb{s}_\theta(\vecb{x})\bigr)\right].
+\end{align*}
+Substituting this back yields \eqref{eq:ebm:ism}. \hfill $\square$
+\end{coremath}
+
+\begin{intuition}[Geometric Meaning of Stationarity and Negative Divergence]
+As highlighted in \bookcite{theprinciple_diffusion_models}{Sec.~3.2.1, pp.~65--66 (PDF pp.~70--71)}, the two terms of \eqref{eq:ebm:ism} shape the score field around data modes:
+\begin{itemize}
+  \item The magnitude term $\frac{1}{2}\norm{\vecb{s}_\theta(\vecb{x})}_2^2$ drives $\vecb{s}_\theta(\vecb{x}) \to \vecb{0}$ on high-density regions, making data modes stationary points.
+  \item The divergence term $\Tr(\nabla_{\vecb{x}}\vecb{s}_\theta(\vecb{x})) = \nabla_{\vecb{x}} \cdot \vecb{s}_\theta(\vecb{x})$ penalizes positive divergence, encouraging nearby score vectors to converge inward so stationary points act as attractive sinks.
+\end{itemize}
+\end{intuition}
+
+\subsection{Sliced Score Matching \& Denoising Score Matching}
+\label{sec:ebm:ssm_dsm}
+
+Computing $\Tr(\nabla_{\vecb{x}}\vecb{s}_\theta(\vecb{x}))$ in \eqref{eq:ebm:ism} requires $D$ backward passes (an $O(D^2)$ Hessian-diagonal cost), which is prohibitive for high-dimensional images. Two scalable alternatives resolve this bottleneck:
+
+\paragraph{1. Sliced Score Matching (SSM).}
+Song et al.\ (2019) project both scores onto random isotropic probe vectors $\vecb{v} \sim p(\vecb{v})$ satisfying $\E[\vecb{v}\vecb{v}\T] = \eye$ (e.g., $\Normal(\vecb{0},\eye)$ or Rademacher), as reviewed in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.3.3, pp.~858--859 (PDF pp.~892--893)}. By Hutchinson's trace identity $\Tr(\mat{A}) = \E_{\vecb{v}}[\vecb{v}\T \mat{A} \vecb{v}]$, the sliced Fisher divergence becomes
+\begin{equation}
+  D_{\mathrm{SF}}(p_{\mathcal{D}} \| p_\theta) = \E_{p_{\mathcal{D}}(\vecb{x})} \E_{p(\vecb{v})}\!\left[\frac{1}{2}\bigl(\vecb{v}\T \vecb{s}_\theta(\vecb{x})\bigr)^2 + \vecb{v}\T \bigl(\nabla_{\vecb{x}}\vecb{s}_\theta(\vecb{x})\bigr)\vecb{v}\right] + C.
+  \label{eq:ebm:ssm}
+\end{equation}
+Because $\vecb{v}\T (\nabla_{\vecb{x}}\vecb{s}_\theta(\vecb{x})) \vecb{v} = \vecb{v}\T \nabla_{\vecb{x}}(\vecb{v}\T \vecb{s}_\theta(\vecb{x}))$, it is evaluated in $O(D)$ time via a single Jacobian-vector or vector-Jacobian product (JVP/VJP) \bookcite{theprinciple_diffusion_models}{Sec.~3.3.1, p.~68 (PDF p.~73)}.
+
+\paragraph{2. Denoising Score Matching (DSM) \& Tweedie's Formula.}
+Instead of matching scores on raw data (where $p_{\mathcal{D}}$ may lie on a low-dimensional manifold and lack a smooth density), Vincent (2011) perturbs data $\vecb{x} \sim p_{\mathcal{D}}$ with a known kernel $q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})$, forming the smoothed marginal $q_\sigma(\tilde{\vecb{x}}) = \int q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}) p_{\mathcal{D}}(\vecb{x})\,\mathrm{d}\vecb{x}$ \bookcite{diffusionmodels_stanleychan}{Sec.~3.3, pp.~36--38}.
+
+\begin{coremath}[Theorem: Vincent's DSM Equivalence \& Tweedie's Formula]
+For any fixed noise kernel $q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})$, the explicit score matching objective on the smoothed marginal $q_\sigma(\tilde{\vecb{x}})$ is equivalent, up to a $\theta$-independent constant $C$, to regressing $\vecb{s}_\theta(\tilde{\vecb{x}})$ onto the conditional score $\nabla_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})$ \bookcite{diffusionmodels_stanleychan}{Eq.~87, pp.~37--38}:
+\begin{equation}
+  \underbrace{\frac{1}{2}\E_{q_\sigma(\tilde{\vecb{x}})}\!\left[\norm{\vecb{s}_\theta(\tilde{\vecb{x}}) - \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}})}_2^2\right]}_{J_{\mathrm{ESM}}(\theta;\sigma)}
+  = \underbrace{\frac{1}{2}\E_{p_{\mathcal{D}}(\vecb{x}) q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})}\!\left[\norm{\vecb{s}_\theta(\tilde{\vecb{x}}) - \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})}_2^2\right]}_{J_{\mathrm{DSM}}(\theta;\sigma)} + C.
+  \label{eq:ebm:dsm_equiv}
+\end{equation}
+\textit{Proof.} Expanding $J_{\mathrm{ESM}}(\theta;\sigma)$ leaves $\frac{1}{2}\E_{q_\sigma}[\norm{\vecb{s}_\theta(\tilde{\vecb{x}})}_2^2] - \E_{q_\sigma}[\vecb{s}_\theta(\tilde{\vecb{x}})\T \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}})] + C_1$. Rewriting the cross-term via $q_\sigma(\tilde{\vecb{x}}) = \int p_{\mathcal{D}}(\vecb{x}) q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})\,\mathrm{d}\vecb{x}$:
+\begin{align*}
+  \E_{q_\sigma(\tilde{\vecb{x}})}\!\left[\vecb{s}_\theta(\tilde{\vecb{x}})\T \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}})\right]
+  &= \int_{\R^D} \vecb{s}_\theta(\tilde{\vecb{x}})\T \nabla_{\tilde{\vecb{x}}} \left(\int_{\R^D} p_{\mathcal{D}}(\vecb{x}) q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})\,\mathrm{d}\vecb{x}\right) \mathrm{d}\tilde{\vecb{x}} \\
+  &= \iint \vecb{s}_\theta(\tilde{\vecb{x}})\T p_{\mathcal{D}}(\vecb{x}) q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}) \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})\,\mathrm{d}\vecb{x}\,\mathrm{d}\tilde{\vecb{x}} \\
+  &= \E_{p_{\mathcal{D}}(\vecb{x}) q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})}\!\left[\vecb{s}_\theta(\tilde{\vecb{x}})\T \nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x})\right],
+\end{align*}
+which matches the cross-term of $J_{\mathrm{DSM}}(\theta;\sigma)$, leaving only $\theta$-independent constants $C = C_1 - C_2$. \hfill $\square$
+
+\textbf{Gaussian Specialization \& Tweedie's Formula:} For $q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}) = \Normal(\tilde{\vecb{x}} \mid \vecb{x}, \sigma^2 \eye)$ with $\tilde{\vecb{x}} = \vecb{x} + \sigma \vecb{\epsilon}$, $\vecb{\epsilon} \sim \Normal(\vecb{0}, \eye)$, the conditional score is $\nabla_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}) = -\frac{\tilde{\vecb{x}} - \vecb{x}}{\sigma^2} = -\frac{\vecb{\epsilon}}{\sigma}$, giving
+\begin{equation}
+  J_{\mathrm{DSM}}(\theta;\sigma) = \frac{1}{2}\E_{\vecb{x} \sim p_{\mathcal{D}},\, \vecb{\epsilon} \sim \Normal(\vecb{0},\eye)}\!\left[\norm{\vecb{s}_\theta(\vecb{x} + \sigma\vecb{\epsilon}) + \frac{\vecb{\epsilon}}{\sigma}}_2^2\right].
+  \label{eq:ebm:dsm_gauss}
+\end{equation}
+Furthermore, by \emph{Tweedie's formula} \bookcite{theprinciple_diffusion_models}{Lemma~3.3.2, p.~73 (PDF p.~78)}, the posterior mean denoiser satisfies
+\begin{equation}
+  \E[\vecb{x} \mid \tilde{\vecb{x}}] = \tilde{\vecb{x}} + \sigma^2 \nabla_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}}),
+  \label{eq:ebm:tweedie}
+\end{equation}
+establishing that the optimal score $\vecb{s}_{\theta^*}(\tilde{\vecb{x}})$ points directly from the noisy sample toward the minimum-MSE denoised reconstruction.
+\end{coremath}
+
+\paragraph{Unifying CD-1 and Score Matching via de Bruijn's Identity.}
+Although Contrastive Divergence (KL-based) and Score Matching (Fisher-divergence-based) appear distinct, Hyv\"arinen (2007) proved—as summarized in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~24.45, p.~860 (PDF p.~894)}—that 1-step Langevin MCMC from $\vecb{x} \sim p_{\mathcal{D}}$ with step size $\epsilon$ yields a $\mathrm{CD}_1$ gradient whose leading-order expansion is $\frac{\epsilon^2}{2}\nabla_\theta D_F(p_{\mathcal{D}} \| p_\theta) + o(\epsilon^2)$. This reflects \emph{de Bruijn's identity}, linking KL and Fisher divergences under Gaussian smoothing $\tilde{\vecb{x}}_t \sim \Normal(\vecb{x}, t\eye)$:
+\begin{equation}
+  \frac{\mathrm{d}}{\mathrm{d}t} \KL{q_t}{p_{\theta,t}} = -\frac{1}{2} D_F(q_t \| p_{\theta,t}).
+  \label{eq:ebm:debruijn}
+\end{equation}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:ebm:algorithms}
+% =============================================================================
+
+We present the two canonical training algorithms: Persistent Contrastive Divergence (PCD) with Langevin MCMC (Algorithm~\ref{alg:ebm:pcd}) and Denoising Score Matching (DSM) with Langevin sampling (Algorithm~\ref{alg:ebm:dsm}).
+
+\begin{algorithm}[htbp]
+  \caption{Persistent Contrastive Divergence (PCD / SML) with Langevin MCMC}
+  \label{alg:ebm:pcd}
+  \KwIn{Dataset $\mathcal{D}$, initial $\theta$, replay buffer $\mathcal{B} = \{\tilde{\vecb{x}}^{(j)}\}_{j=1}^M$, learning rate $\alpha$, Langevin step $\epsilon$, MCMC steps $K$.}
+  \KwOut{Trained energy parameters $\theta$.}
+  Initialize buffer particles $\tilde{\vecb{x}}^{(j)} \sim p_0$ (e.g., Uniform or $\Normal(\vecb{0},\eye)$) for $j=1,\dots,M$\;
+  \While{not converged}{
+    Sample minibatch $\{\vecb{x}^{(i)}\}_{i=1}^B \sim \mathcal{D}$ and persistent states $\{\tilde{\vecb{x}}^{(i)}_0\}_{i=1}^B \sim \mathcal{B}$\;
+    \For{$k = 0$ \KwTo $K-1$}{
+      Sample $\vecb{z}_k^{(i)} \sim \Normal(\vecb{0}, \eye)$ for $i=1,\dots,B$\;
+      $\tilde{\vecb{x}}_{k+1}^{(i)} \leftarrow \tilde{\vecb{x}}_k^{(i)} - \frac{\epsilon^2}{2} \nabla_{\vecb{x}} E_\theta(\tilde{\vecb{x}}_k^{(i)}) + \epsilon \vecb{z}_k^{(i)}$ \tcp*{Langevin negative-phase update}
+    }
+    Replace sampled buffer entries in $\mathcal{B}$ with $\{\tilde{\vecb{x}}_K^{(i)}\}_{i=1}^B$\;
+    $\vecb{g} \leftarrow \frac{1}{B}\sum_{i=1}^B \nabla_\theta E_\theta(\vecb{x}^{(i)}) - \frac{1}{B}\sum_{i=1}^B \nabla_\theta E_\theta(\tilde{\vecb{x}}_K^{(i)})$ \tcp*{Negative log-likelihood grad}
+    $\theta \leftarrow \theta - \alpha \vecb{g}$\;
+  }
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+  \caption{Denoising Score Matching (DSM) Training \& Langevin Sampling}
+  \label{alg:ebm:dsm}
+  \KwIn{Dataset $\mathcal{D}$, noise scale $\sigma > 0$, score network $\vecb{s}_\theta$, learning rate $\alpha$, sampling step $\eta$, steps $T$.}
+  \KwOut{Trained score model $\vecb{s}_\theta$ and generated sample $\vecb{x}_T$.}
+  \While{training not converged}{
+    Sample minibatch $\{\vecb{x}^{(i)}\}_{i=1}^B \sim \mathcal{D}$ and $\vecb{\epsilon}^{(i)} \sim \Normal(\vecb{0}, \eye)$\;
+    Construct perturbed inputs $\tilde{\vecb{x}}^{(i)} \leftarrow \vecb{x}^{(i)} + \sigma \vecb{\epsilon}^{(i)}$\;
+    $\mathcal{L}_{\mathrm{DSM}}(\theta) \leftarrow \frac{1}{2B}\sum_{i=1}^B \norm[\big]{\vecb{s}_\theta(\tilde{\vecb{x}}^{(i)}) + \vecb{\epsilon}^{(i)}/\sigma}_2^2$\;
+    $\theta \leftarrow \theta - \alpha \nabla_\theta \mathcal{L}_{\mathrm{DSM}}(\theta)$\;
+  }
+  Initialize $\vecb{x}_0 \sim \Normal(\vecb{0}, \eye)$\;
+  \For{$t = 0$ \KwTo $T-1$}{
+    Sample $\vecb{z}_t \sim \Normal(\vecb{0}, \eye)$\;
+    $\vecb{x}_{t+1} \leftarrow \vecb{x}_t + \eta \vecb{s}_\theta(\vecb{x}_t) + \sqrt{2\eta}\,\vecb{z}_t$ \tcp*{Euler--Maruyama Langevin dynamics}
+  }
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparative synthesis of EBM and score-based training objectives \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~24, pp.~851--863} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~18, pp.~606--626}.}
+\label{tab:ebm:comparison}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\textwidth}{@{}l l l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Partition $Z_\theta$} & \textbf{Per-Step Cost} & \textbf{Consistency} & \textbf{Primary Bottleneck} \\
+\midrule
+Exact MCMC MLE & Estimates $\nabla_\theta \log Z_\theta$ & $O(K_{\mathrm{burn}})$ MCMC & Consistent & Prohibitive burn-in per step \\
+$\mathrm{CD}_k$ & Biased $\nabla_\theta \log Z_\theta$ & $O(k)$ MCMC ($k \approx 1$) & Biased & Spurious modes far from data \\
+PCD / SML & Persistent $\nabla_\theta \log Z_\theta$ & $O(K)$ persistent & Asymptotic & Chain mixing vs.\ $\theta$ drift \\
+Hyv\"arinen ISM & Eliminated & $O(D^2)$ Hessian trace & Consistent & Quadratic scaling in $D$ \\
+Sliced SM (SSM) & Eliminated & $O(D)$ JVP/VJP & Consistent & Probe variance; manifold fragility \\
+Vincent DSM & Eliminated & $O(1)$ forward/back & Matches $q_\sigma$ & Bias vs.\ $\sigma\!\to\!0$ variance \\
+NCE & Learns $c \approx -\log Z_\theta$ & $O(1)$ binary loss & Consistent & Designing high-$D$ noise $p_n$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Noise Contrastive Estimation (NCE) \& Partition Estimation (AIS)]
+Both \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.6--18.7, pp.~620--626 (PDF pp.~635--641)} and \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.4, pp.~860--862 (PDF pp.~894--896)} highlight two complementary approaches when $Z_\theta$ itself is required:
+\begin{itemize}
+  \item \textbf{Noise Contrastive Estimation (NCE):} Treats $c = -\log Z_\theta$ as a learnable scalar parameter in $\log p_\theta(\vecb{x}) = -E_\theta(\vecb{x}) + c$ and trains a binary logistic classifier distinguishing $\vecb{x} \sim p_{\mathcal{D}}$ ($y=1$) from a tractable noise density $p_n(\vecb{x})$ ($y=0$) via posterior $p_{n,\theta}(y=1\mid\vecb{x}) = \sigmoid(\log p_\theta(\vecb{x}) - \log p_n(\vecb{x}))$. At the optimum, $p_{\theta^*} \equiv p_{\mathcal{D}}$ and $c^* = -\log Z_{\theta^*}$ (yielding a self-normalized EBM). Moreover, setting $p_n(\vecb{x}) = p_{\mathcal{D}}(\vecb{x}-\vecb{v})$ and Taylor-expanding as $\norm{\vecb{v}}_2 \to 0$ recovers Sliced Score Matching \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~24.58, p.~862 (PDF p.~896)}.
+  \item \textbf{Annealed Importance Sampling (AIS):} For evaluating test log-likelihoods after training, simple importance sampling from a tractable proposal $p_0$ suffers catastrophic weight variance when $\KL{p_0}{p_1}$ is large. AIS bridges $p_0$ and $p_1 = p_\theta$ through intermediate annealed distributions $p_{\eta_0}, \dots, p_{\eta_n}$ ($0 = \eta_0 < \dots < \eta_n = 1$) with MCMC transitions, estimating the ratio $Z_1 / Z_0$ reliably \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.7.1, pp.~625--626 (PDF pp.~640--641)}.
+\end{itemize}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:ebm:visuals}
+% =============================================================================
+
+Figure~\ref{fig:ebm:score_vector_field} illustrates the exact 1D correspondence between an asymmetric double-well energy landscape $E_\theta(x)$ and its Stein score $s_\theta(x) = -\partial_x E_\theta(x)$. Zero-crossings of $s_\theta(x)$ with negative slope ($\partial_x s_\theta(x) < 0$) correspond to stable probability modes (energy valleys), whereas the zero-crossing with positive slope ($\partial_x s_\theta(x) > 0$) marks the unstable energy barrier (saddle). In 2D (Figure~\ref{fig:ebm:score_field_2d}), the score vector field $\nabla_{\vecb{x}}\log p(\vecb{x})$ points orthogonally across density contours directly toward high-density modes.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=topaxis,
+      width=0.88\textwidth,
+      height=4.4cm,
+      xmin=-2.4, xmax=2.4,
+      ymin=-0.2, ymax=2.8,
+      ylabel={$E_\theta(x)$},
+      title={\small\bfseries Bimodal Energy Landscape $E_\theta(x) = 0.35(x^2 - 2.25)^2 + 0.12x$},
+      grid=major,
+      grid style={dashed, gray!25},
+      axis lines=left,
+      xtick={-2,-1.5,-1,0,1,1.5,2},
+      xticklabels={},
+      legend pos=north east,
+      legend style={font=\footnotesize, draw=gray!40}
+    ]
+      \addplot[monographNavy, very thick, domain=-2.2:2.2, samples=120] {0.35*(x^2 - 2.25)^2 + 0.12*x};
+      \addlegendentry{$E_\theta(x)$}
+      % Mark local minima and central barrier
+      \addplot[only marks, mark=*, mark size=2.3pt, monographTeal] coordinates {(-1.519, -0.181) (1.481, 0.179)};
+      \addplot[only marks, mark=triangle*, mark size=2.8pt, monographCrimson] coordinates {(0.038, 1.776)};
+      \node[font=\footnotesize, text=monographTeal, above] at (axis cs:-1.52,0.12) {Mode $x_1^\star$};
+      \node[font=\footnotesize, text=monographTeal, above] at (axis cs:1.48,0.45) {Mode $x_2^\star$};
+      \node[font=\footnotesize, text=monographCrimson, above] at (axis cs:0.04,1.95) {Barrier $x_s$};
+    \end{axis}
+
+    \begin{axis}[
+      at={(topaxis.below south west)},
+      anchor=north west,
+      yshift=-0.75cm,
+      width=0.88\textwidth,
+      height=4.4cm,
+      xmin=-2.4, xmax=2.4,
+      ymin=-5.2, ymax=5.2,
+      xlabel={$x$},
+      ylabel={$s_\theta(x) = -\partial_x E_\theta(x)$},
+      title={\small\bfseries Stein Score Field $s_\theta(x) = -1.4x(x^2 - 2.25) - 0.12$},
+      grid=major,
+      grid style={dashed, gray!25},
+      axis lines=left,
+      xtick={-2,-1.5,-1,0,1,1.5,2},
+      legend pos=north east,
+      legend style={font=\footnotesize, draw=gray!40}
+    ]
+      \addplot[monographIndigo, very thick, domain=-2.2:2.2, samples=120] {-1.4*x*(x^2 - 2.25) - 0.12};
+      \addlegendentry{$s_\theta(x)$}
+      \addplot[black!50, dashed, domain=-2.4:2.4] {0};
+      \addplot[only marks, mark=*, mark size=2.3pt, monographTeal] coordinates {(-1.519, 0) (1.481, 0)};
+      \addplot[only marks, mark=triangle*, mark size=2.8pt, monographCrimson] coordinates {(0.038, 0)};
+      % Arrows indicating drift direction
+      \draw[->, thick, monographTeal] (axis cs:-2.05,-1.2) -- (axis cs:-1.65,-1.2);
+      \draw[->, thick, monographTeal] (axis cs:-0.7,-1.2) -- (axis cs:-1.3,-1.2);
+      \draw[->, thick, monographTeal] (axis cs:0.7,1.2) -- (axis cs:1.3,1.2);
+      \draw[->, thick, monographTeal] (axis cs:2.05,1.2) -- (axis cs:1.65,1.2);
+      \node[font=\footnotesize, text=monographTeal] at (axis cs:-1.4,-2.5) {$\partial_x s_\theta < 0$ (sink)};
+      \node[font=\footnotesize, text=monographCrimson] at (axis cs:0.04,2.2) {$\partial_x s_\theta > 0$ (repeller)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Top: Asymmetric bimodal energy landscape $E_\theta(x)$ with stable minima $x_1^\star, x_2^\star$ and an energy barrier $x_s$. Bottom: Corresponding Stein score $s_\theta(x) = -\partial_x E_\theta(x)$. Zero-crossings with negative slope act as attractive sinks for Langevin dynamics, while $x_s$ acts as an unstable repeller.}
+  \label{fig:ebm:score_vector_field}
+\end{figure}
+
+\monographfig[0.72\textwidth]{theprinciple_diffusion_models_p64_fig1.png}{2D bimodal data distribution and its Stein score vector field $\nabla_{\vecb{x}}\log p(\vecb{x})$, illustrating how score vectors point toward high-density modes across the ambient space \bookcite{theprinciple_diffusion_models}{Sec.~3.1.2, Fig.~3.2, p.~59 (PDF p.~64)}.}{fig:ebm:score_field_2d}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:ebm:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Spurious Modes in Short-Run Contrastive Divergence ($\mathrm{CD}_k$)]
+When $k$ is small (e.g., $\mathrm{CD}_1$) and chains are initialized at data points, MCMC samples rarely travel far enough to explore modes of $p_\theta(\vecb{x})$ separated by high energy barriers \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~18.2, Fig.~18.2, p.~611 (PDF p.~626)}. Consequently, the negative phase fails to push down spurious modes far from the training data (Figure~\ref{fig:ebm:cd_spurious}). \textbf{Remedy:} Use Persistent CD (PCD) with a replay buffer, or regularize energy magnitudes (e.g., $L_2$ penalty on $E_\theta(\vecb{x})$).
+\end{pitfall}
+
+\monographfig[0.74\textwidth]{deep_learning_goodfellow_bengio_courville_2017_p626_fig1.png}{Failure of short-run Contrastive Divergence ($\mathrm{CD}_k$) to suppress spurious modes of $p_{\mathrm{model}}(x)$ located far from $p_{\mathrm{data}}(x)$, because $k$-step chains initialized at data cannot cross low-density valleys \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~18, Fig.~18.2, p.~611 (PDF p.~626)}.}{fig:ebm:cd_spurious}
+
+\begin{pitfall}[Manifold Hypothesis \& Ill-Defined Scores in Low-Density Regions]
+Natural data (e.g., images) often concentrate on a low-dimensional manifold embedded in $\R^D$. Away from the manifold, $p_{\mathcal{D}}(\vecb{x}) \approx 0$, so $\nabla_{\vecb{x}}\log p_{\mathcal{D}}(\vecb{x})$ is undefined or uninformative, and score matching receives no training signal in low-density regions—causing Langevin chains initialized from noise to stall \bookcite{theprinciple_diffusion_models}{Sec.~3.3.3, p.~72 (PDF p.~77)}. \textbf{Remedy:} Perturb data with multi-scale Gaussian noise $\{\sigma_i\}_{i=1}^L$ as in Noise Conditional Score Networks (NCSN) and sample via annealed Langevin dynamics.
+\end{pitfall}
+
+\begin{pitfall}[Variance Explosion of DSM as $\sigma \to 0$]
+While DSM is biased toward the smoothed density $q_\sigma(\tilde{\vecb{x}})$ rather than $p_{\mathcal{D}}(\vecb{x})$, shrinking $\sigma \to 0$ to reduce bias triggers severe Monte Carlo variance explosion \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.3.2.1, Eq.~24.36, p.~858 (PDF p.~892)}. Expanding \eqref{eq:ebm:dsm_gauss} around $\sigma \approx 0$ yields cross-terms scaling as $\vecb{\epsilon}\T \vecb{s}_\theta(\vecb{x}) / \sigma$ and $\norm{\vecb{\epsilon}}_2^2 / \sigma^2$, whose variance grows as $O(1/\sigma^2)$. \textbf{Remedy:} Weight multi-scale DSM losses by $\lambda(\sigma) = \sigma^2$ (as in NCSN/DDPM) to normalize target variance across noise scales.
+\end{pitfall}
+
+\begin{pitfall}[Non-Conservative Score Fields \& Langevin Discretization Bias]
+Directly parameterizing a vector-valued network $\vecb{s}_\theta : \R^D \to \R^D$ rather than $-\nabla_{\vecb{x}} E_\theta(\vecb{x})$ does not guarantee a conservative vector field (i.e., $\nabla_{\vecb{x}} \vecb{s}_\theta$ need not be symmetric), so $\vecb{s}_\theta$ may not correspond to the gradient of any scalar log-density \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~24.3.5, p.~860 (PDF p.~894)}. Moreover, finite step sizes $\epsilon > 0$ in \eqref{eq:ebm:langevin} introduce discretization bias unless corrected via a Metropolis--Hastings accept/reject step (MALA) or annealed step-size decay.
+\end{pitfall}
+
+\end{document}

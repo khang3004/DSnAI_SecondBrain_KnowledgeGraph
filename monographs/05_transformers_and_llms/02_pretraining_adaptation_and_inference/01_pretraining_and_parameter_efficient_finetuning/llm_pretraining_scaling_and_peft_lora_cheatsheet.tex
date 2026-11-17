@@ -1,0 +1,212 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{5}{LLM Pretraining, PEFT \& Inference}{Self-Supervised Pretraining, Scaling Laws, Instruction Fine-Tuning \& LoRA/QLoRA}
+  {Predict the next token at scale $\cdot$ balance $N^*\propto C^{0.5}$ and $D^*\propto C^{0.5}$ $\cdot$ adapt via rank-$r$ bypass $\frac{\alpha}{r}\mat{B}\mat{A}$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Pretrain \& PEFT\\ \footnotesize\mdseries CLM $\cdot$ Chinchilla $\cdot$ QLoRA}{%
+  \begin{tikzpicture}[scale=0.62, every node/.style={font=\tiny\sffamily}]
+    % Frozen W0 + LoRA B*A bypass diagram
+    \node[draw=csDom, fill=csDom!12, rounded corners=2pt, inner sep=2.5pt, align=center] (w0) at (0,0) {\textbf{Frozen}\\$\tilde{\mat{W}}_0$ (NF4)};
+    \node[draw=csB, fill=csB!18, rounded corners=2pt, inner sep=2pt] (a) at (2.2,-0.55) {$\mat{A}_{r\times d_{\mathrm{in}}}$};
+    \node[draw=csA, fill=csA!18, rounded corners=2pt, inner sep=2pt] (b) at (2.2,0.55) {$\mat{B}_{d_{\mathrm{out}}\times r}$};
+    \node[draw=csD, fill=csD!20, circle, inner sep=1.2pt] (plus) at (1.0,1.35) {$+$};
+    \coordinate (in) at (0,-1.15);
+    \draw[-{Stealth}, thick, csDom] (in)--(w0.south);
+    \draw[-{Stealth}, thick, csB] (in) -| (a.south);
+    \draw[-{Stealth}, thick, csB] (a)--(b) node[midway, right, inner sep=1.5pt] {$\scriptstyle r\ll d$};
+    \draw[-{Stealth}, thick, csDom] (w0.north) |- (plus.west);
+    \draw[-{Stealth}, thick, csA] (b.north) |- (plus.east) node[pos=0.72, above, inner sep=1.5pt] {$\frac{\alpha}{r}$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; PRETRAINING $-$ CLM, MLM \& Perplexity}{%
+  \csfm{\mathcal{L}_{\mathrm{CE}}(\theta;\vecb{x}) = -\frac{1}{m}\sum_{i=0}^{m-1}\log\Prob_\theta(x_{i+1}\mid x_{\le i}),\quad \mathrm{PPL} = \exp(\mathcal{L}_{\mathrm{CE}})}
+  \begin{csbul}
+    \item \textbf{MLE equivalence:} minimizing $\mathcal{L}_{\mathrm{CE}} \iff \argmax_\theta \sum\log\Prob_\theta(\vecb{x})$
+    \item \textbf{Branching factor:} $\mathrm{PPL}=K \iff$ uniform uncertainty over $K$ tokens
+    \item \textbf{Untrained check:} at init, $\mathcal{L}_{\mathrm{CE}}\approx \ln|\mathcal{V}| \implies \mathrm{PPL}\approx |\mathcal{V}|$
+    \item \textbf{MLM (15\% corrupted):} 80\% \texttt{[MASK]}, 10\% random, 10\% unchanged
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; SCALING LAWS $-$ Chinchilla vs.\ Kaplan}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \csfm{L(N,D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},\quad C \approx 6ND}
+    \begin{csbul}
+      \item \textbf{Lagrangian optimum:} $\alpha A N^{-\alpha} = \beta B D^{-\beta}$
+      \item \textbf{Chinchilla ($\alpha{\approx}0.34,\beta{\approx}0.28$):} $N^*\propto C^{0.45}$, $D^*\propto C^{0.55}$ ($\approx 20$ tokens/param)
+      \item \textbf{Kaplan:} $N^*\propto C^{0.73}, D^*\propto C^{0.27}$ (undertrained!)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{3pt}
+    \begin{tikzpicture}[scale=0.56, every node/.style={font=\tiny\sffamily}]
+      \draw[-{Stealth}] (0,0)--(3.3,0) node[right] {$\log N$};
+      \draw[-{Stealth}] (0,0)--(0,2.5) node[above] {$L$};
+      \draw[csE, thick] plot[smooth] coordinates {(0.3,2.2) (1.15,1.35) (2.15,1.8) (2.8,2.35)};
+      \draw[csB, thick] plot[smooth] coordinates {(0.5,1.8) (1.55,0.85) (2.55,1.35) (3.0,1.9)};
+      \fill[csA] (1.15,1.35) circle (2.2pt);
+      \fill[csA] (1.55,0.85) circle (2.2pt);
+      \draw[csA, dashed, thick] (0.9,1.65)--(1.8,0.55) node[below right, inner sep=1pt] {$N^*$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; INSTRUCTION SFT $-$ Masking \& Packing}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mathcal{L}_{\mathrm{SFT}} = -\frac{\sum_{t:y_t\neq -100}\log\Prob_\theta(y_t\mid x_{\le t})}{\sum_t \mathbb{I}[y_t\neq -100]}}
+    \begin{csbul}
+      \item \textbf{Chat roles:} \texttt{<|im\_start|>user} / \texttt{assistant}
+      \item \textbf{Target mask:} set prompt/user tokens $y_t=-100$
+      \item \textbf{Packing:} concatenate short samples with \textbf{block-diagonal} causal mask + reset RoPE IDs
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny\sffamily}]
+      \fill[gray!25] (0,1.25) rectangle (1.65,2.05); \node at (0.825,1.65) {Prompt};
+      \fill[csC!25] (1.65,1.25) rectangle (3.55,2.05); \node at (2.60,1.65) {Response};
+      \draw[thick] (0,1.25) rectangle (3.55,2.05);
+      \fill[csA!18] (0,0) rectangle (1.65,0.80); \node[csA] at (0.825,0.40) {$-100$};
+      \fill[csD!22] (1.65,0) rectangle (3.55,0.80); \node[csD!80!black] at (2.60,0.40) {$x_{t+1}$ loss};
+      \draw[thick] (0,0) rectangle (3.55,0.80);
+      \draw[-{Stealth}] (1.78,1.22)--(1.78,0.83);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; LoRA $-$ Low-Rank Adaptation Math}{%
+  \csfm{\vecb{h} = \mat{W}_0\vecb{x} + \frac{\alpha}{r}\mat{B}\mat{A}\vecb{x},\qquad \mat{A}\in\R^{r\times d_{\mathrm{in}}},\;\mat{B}\in\R^{d_{\mathrm{out}}\times r}}
+  \begin{csbul}
+    \item \textbf{Zero-perturbation init:} $\mat{A}\sim\mathcal{N}(0,\sigma^2),\;\mat{B}=\mat{0}\implies \Delta\mat{W}_0=\mat{0}$ at $t=0$
+    \item \textbf{Gradients:} $\pd{\mathcal{L}}{\mat{B}}=\frac{\alpha}{r}(\pd{\mathcal{L}}{\vecb{h}})(\mat{A}\vecb{x})\T \neq \mat{0}$ at step 1; $\pd{\mathcal{L}}{\mat{A}}=\frac{\alpha}{r}\mat{B}\T(\pd{\mathcal{L}}{\vecb{h}})\vecb{x}\T$
+    \item \textbf{Param savings:} $r(d_{\mathrm{in}}+d_{\mathrm{out}})$ vs.\ $d_{\mathrm{out}}d_{\mathrm{in}}$ ($\sim 0.5\%$ of 8B for $r=16$)
+    \item \textbf{Zero inference overhead:} merge $\mat{W}_{\mathrm{eff}}=\mat{W}_0+\frac{\alpha}{r}\mat{B}\mat{A}$ offline
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; QLoRA \& DISTRIBUTED MEMORY TABLE}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.85cm}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{1.35cm}>{\raggedright\arraybackslash}p{1.9cm}@{}}
+    \textbf{\textcolor{csE}{Regime}} & \textbf{\textcolor{csE}{Bytes/Param}} & \textbf{\textcolor{csE}{7B VRAM}} & \textbf{\textcolor{csE}{Notes}}\\ \hline
+    Full FT (AdamW) & $16\text{ B}$ ($4{+}4{+}8$) & $\sim 112\text{ GB}$ & FP32 master + opt\\
+    ZeRO-3 ($P$ GPUs) & $16/P\text{ B}$ & $\sim 14\text{ GB}$ & All-gather comm.\\
+    LoRA (BF16) & $2\text{ B}+O(r/d)$ & $\sim 15\text{ GB}$ & Frozen BF16 base\\
+    QLoRA (NF4) & $0.5\text{ B}+O(r/d)$ & $\sim 9.3\text{ GB}$ & NF4 + paged 8-bit\\
+  \end{tabular}\par\vspace{2pt}
+  \small \textbf{QLoRA:} 4-bit NF4 $\tilde{\mat{W}}_0$ + FP8 scales + Paged AdamW 8-bit.}
+
+\csbranch{6}{F}{6\;\; SYSTEMS RECIPE $-$ Checkpointing \& Parallelism}{%
+  \begin{csbul}
+    \item \textbf{Compute budget:} $C\approx 6ND$ FLOPs ($2ND$ forward + $4ND$ backward)
+    \item \textbf{Activation checkpointing:} $O(\sqrt{L})$ memory for $+1$ forward recompute
+    \item \textbf{3D Parallelism:} Data (DP/ZeRO) $\times$ Tensor (intra-layer) $\times$ Pipeline (inter-layer)
+    \item \textbf{LoRA targets:} apply to \emph{all} linear layers ($Q,K,V,O,\mathrm{MLP}$) with $\alpha=2r$
+  \end{csbul}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{$C=6ND$ Sets the Scale $\cdot$ $-100$ Masks the Prompt $\cdot$ $\mat{B}\mat{A}$ Adapts the Rank} \\[1pt]
+  \footnotesize\mdseries \textbf{Freeze $\tilde{\mat{W}}_0$ in 4-bit NF4, train BF16 $(\mat{A},\mat{B})$, and merge at inference with zero latency.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item $\mat{A}=\mat{0},\mat{B}=\mat{0}$ is a dead saddle ($\grad\mat{A}=\grad\mat{B}=\mat{0}$ forever)
+    \item packing without block-diagonal causal masks leaks context
+    \item $\alpha/r \gg 2$ or high SFT LR causes catastrophic forgetting
+    \item FP16/BF16 all-reduce is non-associative $\Rightarrow$ keep FP32 master
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Self-Supervised Pretraining, Scaling Laws, Instruction Fine-Tuning \& LoRA/QLoRA}\;---\;Domain 05 $\cdot$ LLM Pretraining, PEFT \& Inference}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Causal LM Cross-Entropy \& Perplexity:\csfm{\mathcal{L}_{\mathrm{CE}} = -\frac{1}{m}\sum_{i=0}^{m-1}\log\Prob_\theta(x_{i+1}\mid x_{\le i}),\quad \mathrm{PPL} = e^{\mathcal{L}_{\mathrm{CE}}}}
+    \item Chinchilla Scaling Law ($C \approx 6ND$):\csfm{L(N,D) = E + A N^{-\alpha} + B D^{-\beta},\quad \alpha A N^{-\alpha} = \beta B D^{-\beta}}
+    \item Compute-Optimal Frontier:\csfm{N^*(C) \propto C^{\frac{\beta}{\alpha+\beta}}\approx C^{0.45},\quad D^*(C) \propto C^{\frac{\alpha}{\alpha+\beta}}\approx C^{0.55}}
+    \item LoRA Forward \& Exact Gradients:\csfm{\vecb{h} = \mat{W}_0\vecb{x} + \frac{\alpha}{r}\mat{B}\mat{A}\vecb{x},\quad \pd{\mathcal{L}}{\mat{B}} = \frac{\alpha}{r}\pd{\mathcal{L}}{\vecb{h}}(\mat{A}\vecb{x})\T,\quad \pd{\mathcal{L}}{\mat{A}} = \frac{\alpha}{r}\mat{B}\T\pd{\mathcal{L}}{\vecb{h}}\vecb{x}\T}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{QLoRA INSTRUCTION SFT RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Quantize base weights $\mat{W}_0\to\tilde{\mat{W}}_0$ in 4-bit NF4 + double-quantized FP8 scales.
+    \item Attach BF16 $\mat{A}\sim\mathcal{N}(0,\sigma^2)$, $\mat{B}=\mat{0}$ on $\{Q,K,V,O,\mathrm{MLP}\}$ ($r=16,\alpha=32$).
+    \item Apply chat template; set target $y_t=-100$ on system/user turns; pack with block-diagonal mask.
+    \item Dequantize $\tilde{\mat{W}}_0\to\text{BF16}$ on-the-fly in forward/backward with gradient checkpointing.
+    \item Step $(\mat{A},\mat{B})$ via Paged AdamW 8-bit ($\eta \approx 1\text{--}5\times 10^{-5}$).
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    fixed pretraining FLOPs $C$ & Chinchilla $D^*\approx 20\,N^*$ allocation\\
+    inference-heavy deployment & overtrain smaller $N < N^*$ on $D \gg D^*$\\
+    single 12--24\,GB GPU for 7B & QLoRA (NF4 + double quant + paged 8b)\\
+    multi-tenant serving & LoRA hot-swapping over shared base $\mat{W}_0$\\
+    short SFT examples & sequence packing + block-diagonal mask\\
+    OOM from long activations & activation checkpointing ($O(\sqrt{L})$ mem)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{MEMORY \& FLOP CHEAT-LINE}
+  \begin{csbul}
+    \item Pretraining FLOPs: $C \approx 6ND$ ($2ND$ fwd + $4ND$ bwd)
+    \item Full AdamW state: $4\text{B (W)} + 4\text{B (G)} + 8\text{B (m,v)} = 16\text{B/param}$
+    \item LoRA trainable ratio on $d\times d$: $2r/d$ (e.g.\ $r=16, d=4096 \Rightarrow 0.78\%$)
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CHINCHILLA IsoFLOP LOSS FRONTIER}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.2cm, xmode=log,
+      xmin=1e8, xmax=1e11, ymin=1.88, ymax=3.80,
+      xlabel={Parameters $N$}, ylabel={Test Loss $L(N,C/(6N))$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.5,0.92)}, anchor=north, font=\tiny, fill=white, fill opacity=0.92},
+      legend columns=3]
+      \addplot[csE, thick, domain=1e8:1e11, samples=60] {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e20/(6*x))^(-0.28))};
+      \addlegendentry{$C=10^{20}$}
+      \addplot[csF, very thick, domain=1e8:1e11, samples=60] {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e21/(6*x))^(-0.28))};
+      \addlegendentry{$C=10^{21}$}
+      \addplot[csD, very thick, domain=1e8:1e11, samples=60] {1.69 + 406.4*(x^(-0.34)) + 410.7*((1e22/(6*x))^(-0.28))};
+      \addlegendentry{$C=10^{22}$}
+      \addplot[csA, only marks, mark=*, mark size=2pt] coordinates {(1.56e9,2.212)(4.42e9,2.078)(1.25e10,1.979)};
+      \addplot[csA, dashed, thick, forget plot] coordinates {(5.5e8,2.39)(1.56e9,2.212)(4.42e9,2.078)(1.25e10,1.979)};
+    \end{axis}
+  \end{tikzpicture}\par
+  {\scriptsize Red dots trace the compute-optimal valley $N^*(C)\propto C^{0.452}$.}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Asymmetric LoRA init is mandatory:} set $\mat{A}\sim\mathcal{N}(0,\sigma^2)$ and $\mat{B}=\mat{0}$; both zero freezes gradients, both random perturbs $t=0$.
+    \item \textbf{Over-scaling $\alpha/r$:} $\alpha/r \gg 2$ overwrites pretrained features; keep $\alpha=2r$ (or rank-stabilized $\alpha/\sqrt{r}$) and SFT LR $10\text{--}100\times$ below pretraining.
+    \item \textbf{Target attention + MLP:} applying LoRA to $\mat{W}_Q,\mat{W}_V$ only underperforms all-linear adaptation at the same total parameter count.
+    \item \textbf{Packing cross-contamination:} always reset position IDs and apply block-diagonal causal masks between packed SFT examples.
+    \item \textbf{Chat template mismatch:} serving with different role delimiters than SFT breaks instruction compliance and EOS stopping.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Self-supervised CLM minimizes next-token cross-entropy ($\mathrm{PPL}=e^{\mathcal{L}_{\mathrm{CE}}}$) along the \textbf{Chinchilla frontier} ($C\approx 6ND$, $D^*\approx 20N^*$). Post-training masks user prompts with $-100$ and adapts frozen 4-bit \textbf{NF4} weights via trainable low-rank bypasses $\frac{\alpha}{r}\mat{B}\mat{A}\vecb{x}$, slashing 7B fine-tuning VRAM from $112\text{ GB}$ to $9.3\text{ GB}$.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

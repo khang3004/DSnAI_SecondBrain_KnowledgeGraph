@@ -1,0 +1,336 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Neural Architectures, Representations \& Regularization}{Convolutional, Graph, Recurrent \& State-Space Architectures}{Convolutional Networks \& Graph Neural Networks}{Graph Neural Networks, Message Passing \& Graph Convolutional Architectures}{\bookcite{deep_learning_foundations_concepts}{Ch. 13}, \bookcite{understandingdl_simonprince}{Ch. 13}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23}, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 30}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:gnn:formulation}
+% =============================================================================
+
+Unlike Euclidean grid data (images) or linear sequences (text), relational data lack a canonical coordinate system or ordering. Let $G = (\mathcal{V}, \mathcal{E})$ denote a graph with $|\mathcal{V}| = N$ nodes indexed arbitrarily by $i \in \{1,\dots,N\}$ and $|\mathcal{E}| = M$ edges $(i,j) \in \mathcal{E}$ \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 410}. Each node $i$ carries a feature vector $\vecb{x}_i \in \R^D$, stacked row-wise into the node feature matrix $\mat{X} \in \R^{N \times D}$, while optional edge attributes are denoted $\vecb{e}_{ij} \in \R^{D_e}$. The topology is encoded by the adjacency matrix $\mat{A} \in \{0,1\}^{N \times N}$ (or weighted affinity $\mat{A} \in \R_{\ge 0}^{N \times N}$), where $A_{ij} > 0$ iff $(i,j) \in \mathcal{E}$. The open neighborhood of node $i$ is $\mathcal{N}(i) = \{j \in \mathcal{V} : (i,j) \in \mathcal{E}\}$, its degree is $d_i = \sum_{j=1}^N A_{ij}$, and $\mat{D} = \diag(d_1,\dots,d_N)$ is the degree matrix. Adding self-loops yields $\tilde{\mat{A}} = \mat{A} + \eye_N$ and $\tilde{\mat{D}} = \mat{D} + \eye_N$ with $\tilde{d}_i = d_i + 1$.
+
+Because node indexing is arbitrary, any relabeling by a permutation matrix $\mat{P} \in \{0,1\}^{N \times N}$ ($\mat{P}\T\mat{P} = \eye_N$) transforms the inputs as $(\mat{X}, \mat{A}) \mapsto (\mat{P}\mat{X}, \mat{P}\mat{A}\mat{P}\T)$ \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 412}, \bookcite{understandingdl_simonprince}{Ch. 13, p. 249}. Rather than learning over $N!$ permutations via data augmentation, graph neural networks (GNNs) enforce two structural inductive biases by construction:
+\begin{align}
+  f(\mat{P}\mat{X}, \mat{P}\mat{A}\mat{P}\T) &= f(\mat{X}, \mat{A}) \quad &&\text{(Permutation Invariance: graph-level tasks)}, \label{eq:gnn:invariance}\\
+  \mat{F}(\mat{P}\mat{X}, \mat{P}\mat{A}\mat{P}\T) &= \mat{P}\mat{F}(\mat{X}, \mat{A}) \quad &&\text{(Permutation Equivariance: node/edge-level tasks)}. \label{eq:gnn:equivariance}
+\end{align}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:gnn:notation}
+Source textbooks---Bishop \& Bishop \bookcite{deep_learning_foundations_concepts}{Ch. 13}, Prince \bookcite{understandingdl_simonprince}{Ch. 13}, and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23}---adopt different matrix orientations and symbol conventions for node features, neighborhoods, and adjacency operators. Table~\ref{tab:gnn:notation} reconciles these into a unified row-major monograph standard.
+\vspace{4pt}
+
+\noindent
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Bishop \& Bishop} & \textbf{Prince} & \textbf{Murphy / Unified} \\
+\midrule
+Node features & $\mat{X} \in \R^{N \times D}$ (rows) & $\mat{X} \in \R^{D \times N}$ (columns) & $\mat{X} \in \R^{N \times D}$ (row $i$ is $\vecb{x}_i\T$) \\
+Hidden states & $\mat{H}^{(l)} \in \R^{N \times d_l}$ & $\mat{H}_k \in \R^{d_k \times N}$ & $\mat{H}^{(\ell)} \in \R^{N \times d_\ell}$ (row $i$ is $(\vecb{h}_i^{(\ell)})\T$) \\
+Adjacency / Affinity & $\mat{A} \in \{0,1\}^{N \times N}$ & $\mat{A} \in \{0,1\}^{N \times N}$ & $\mat{W}$ (Murphy) / $\mat{A}$ (Unified); $\tilde{\mat{A}} = \mat{A} + \eye_N$ \\
+Permutation action & $\mat{P}\mat{X},\; \mat{P}\mat{A}\mat{P}\T$ & $\mat{H}_k\mat{P},\; \mat{P}\T\mat{A}\mat{P}$ & $\mat{P}\mat{H}^{(\ell)},\; \mat{P}\mat{A}\mat{P}\T$ \\
+Neighborhood set & $\mathcal{N}(n)$ & $\mathrm{ne}[n]$ & $\mathrm{nbr}(v_i)$ (Murphy) / $\mathcal{N}(i)$ (Unified) \\
+Layer weights & $\mat{W}_{\mathrm{self}}, \mat{W}_{\mathrm{neigh}}$ & $\mat{\Omega}_k, \mat{\Psi}_k, \vecb{\beta}_k$ & $\mat{\Theta}^{(\ell)}$ (Murphy) / $\mat{W}^{(\ell)} \in \R^{d_\ell \times d_{\ell+1}}$ \\
+\bottomrule
+\end{tabularx}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:gnn:derivations}
+% =============================================================================
+
+\subsection{Spectral Graph Theory, Chebyshev Localization \& Kipf--Welling GCN}
+\label{sec:gnn:spectral}
+
+On a regular grid, convolution is diagonalized by the Discrete Fourier Transform. On an undirected graph, the analogous Fourier basis is given by the eigendecomposition of the graph Laplacian \bookcite{understandingdl_simonprince}{Ch. 13, p. 262}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 763}.
+
+\begin{coremath}[Spectral Graph Laplacian \& Graph Fourier Transform]
+\label{box:gnn:laplacian}
+For an undirected graph with symmetric adjacency $\mat{A}$ and degree matrix $\mat{D}$, the unnormalized and symmetric normalized graph Laplacians are
+\begin{equation}
+  \mat{L} = \mat{D} - \mat{A}, \qquad \mat{L}_{\mathrm{sym}} = \mat{D}^{-1/2}\mat{L}\mat{D}^{-1/2} = \eye_N - \mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2}. \label{eq:gnn:laplacians}
+\end{equation}
+For any signal $\vecb{x} \in \R^N$, the quadratic form (Dirichlet energy) satisfies $\vecb{x}\T\mat{L}\vecb{x} = \frac{1}{2}\sum_{i,j} A_{ij}(x_i - x_j)^2 \ge 0$, proving $\mat{L} \succeq 0$ and $\mat{L}_{\mathrm{sym}} \succeq 0$. Moreover, $\mat{L}_{\mathrm{sym}}$ admits an orthonormal eigendecomposition $\mat{L}_{\mathrm{sym}} = \mat{U}\mat{\Lambda}\mat{U}\T$ with eigenvalues $0 = \lambda_1 \le \lambda_2 \le \dots \le \lambda_N \le 2$. Defining the Graph Fourier Transform $\hat{\vecb{x}} = \mat{U}\T\vecb{x}$ and its inverse $\vecb{x} = \mat{U}\hat{\vecb{x}}$, a spectral convolution with filter $g_\theta(\mat{\Lambda}) = \diag(\theta_1,\dots,\theta_N)$ is
+\begin{equation}
+  g_\theta \star_G \vecb{x} = \mat{U}\, g_\theta(\mat{\Lambda})\, \mat{U}\T \vecb{x}. \label{eq:gnn:spectral_conv}
+\end{equation}
+\end{coremath}
+
+Direct evaluation of \eqref{eq:gnn:spectral_conv} suffers from three bottlenecks: (i) $O(N^3)$ eigendecomposition of $\mat{L}_{\mathrm{sym}}$, (ii) $O(N^2)$ dense multiplication by $\mat{U}$, and (iii) non-localized filters that depend on the fixed eigenbasis $\mat{U}$ and cannot transfer across graphs \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 763}. ChebNet and the Kipf--Welling Graph Convolutional Network (GCN) resolve all three via polynomial approximation.
+
+\begin{coremath}[Chebyshev Polynomial Localization to 1-Hop GCN]
+\label{box:gnn:cheb_gcn}
+Approximating $g_\theta(\mat{\Lambda})$ by a $K$-th order truncated expansion in Chebyshev polynomials $T_k(z)$ ($T_0(z)=1$, $T_1(z)=z$, $T_k(z)=2zT_{k-1}(z)-T_{k-2}(z)$) on the rescaled spectrum $\tilde{\mat{\Lambda}} = \frac{2}{\lambda_{\max}}\mat{\Lambda} - \eye_N \in [-\eye_N, \eye_N]$ yields a $K$-localized spatial operator \bookcite{understandingdl_simonprince}{Ch. 13, p. 262}:
+\begin{equation}
+  g_\theta \star_G \vecb{x} \approx \sum_{k=0}^K \theta_k T_k(\tilde{\mat{L}})\vecb{x}, \qquad \tilde{\mat{L}} = \frac{2}{\lambda_{\max}}\mat{L}_{\mathrm{sym}} - \eye_N. \label{eq:gnn:chebnet}
+\end{equation}
+Setting $K=1$ and $\lambda_{\max} \approx 2$ gives $\tilde{\mat{L}} = \mat{L}_{\mathrm{sym}} - \eye_N = -\mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2}$, so
+\begin{equation}
+  g_\theta \star_G \vecb{x} \approx \theta_0 \vecb{x} - \theta_1 \mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2}\vecb{x}.
+\end{equation}
+Constraining $\theta = \theta_0 = -\theta_1$ to prevent overfitting reduces this to $\theta(\eye_N + \mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2})\vecb{x}$. Because $\eye_N + \mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2}$ has eigenvalues in $[0, 2]$, repeated application causes numerical instability. Applying the \emph{renormalization trick} $\eye_N + \mat{D}^{-1/2}\mat{A}\mat{D}^{-1/2} \mapsto \tilde{\mat{D}}^{-1/2}\tilde{\mat{A}}\tilde{\mat{D}}^{-1/2}$ (with $\tilde{\mat{A}} = \mat{A} + \eye_N$ and $\tilde{D}_{ii} = d_i + 1$) and generalizing to $d_\ell$ input channels and $d_{\ell+1}$ output channels yields the Kipf--Welling GCN layer \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 416}, \bookcite{understandingdl_simonprince}{Ch. 13, p. 258}:
+\begin{equation}
+  \mat{H}^{(\ell+1)} = \sigma\!\left(\hat{\mat{A}}\mat{H}^{(\ell)}\mat{W}^{(\ell)}\right), \qquad \hat{\mat{A}} := \tilde{\mat{D}}^{-1/2}\tilde{\mat{A}}\tilde{\mat{D}}^{-1/2}, \label{eq:gnn:gcn_layer}
+\end{equation}
+where $\mat{W}^{(\ell)} \in \R^{d_\ell \times d_{\ell+1}}$ is a shared linear projection and $\sigma(\cdot)$ is an element-wise nonlinearity.
+\end{coremath}
+
+\begin{intuition}[Why Symmetric Kipf Normalization Down-Weights High-Degree Hubs]
+\label{box:gnn:kipf_intuition}
+In node-wise form, \eqref{eq:gnn:gcn_layer} computes $\vecb{h}_i^{(\ell+1)} = \sigma\!\Big((\mat{W}^{(\ell)})\T \sum_{j \in \mathcal{N}(i)\cup\{i\}} \frac{1}{\sqrt{\tilde{d}_i \tilde{d}_j}} \vecb{h}_j^{(\ell)}\Big)$. Unlike unnormalized summation $\sum_j \vecb{h}_j^{(\ell)}$ (which scales linearly with degree) or row-stochastic mean $\tilde{\mat{D}}^{-1}\tilde{\mat{A}}$ (which normalizes only by $\tilde{d}_i$), symmetric normalization divides by $\sqrt{\tilde{d}_i \tilde{d}_j}$. Messages from high-degree hubs ($\tilde{d}_j \gg 1$) are attenuated because hubs broadcast to many neighbors and carry less node-specific information \bookcite{understandingdl_simonprince}{Ch. 13, p. 258}, while keeping $\hat{\mat{A}}$ symmetric with spectrum in $(-1, 1]$.
+\end{intuition}
+
+\subsection{Message Passing Neural Networks (MPNN), GAT \& GraphSAGE}
+\label{sec:gnn:mpnn}
+
+Spatial methods generalize GCNs by defining local neighborhood aggregation directly on $G$, decoupling the architecture from a fixed Laplacian \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 415}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 763}.
+
+\begin{coremath}[General MPNN Framework \& Permutation Equivariance Proof]
+\label{box:gnn:mpnn_proof}
+A Message Passing Neural Network (MPNN) updates every node $i \in \mathcal{V}$ at layer $\ell$ via three stages \bookcite{deep_learning_foundations_concepts}{Ch. 13, pp. 415--424}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 763}:
+\begin{equation}
+  \vecb{m}_i^{(\ell+1)} = \bigoplus_{j \in \mathcal{N}(i)} \psi_{\mathrm{msg}}^{(\ell)}\!\left(\vecb{h}_i^{(\ell)}, \vecb{h}_j^{(\ell)}, \vecb{e}_{ij}\right), \qquad \vecb{h}_i^{(\ell+1)} = \psi_{\mathrm{upd}}^{(\ell)}\!\left(\vecb{h}_i^{(\ell)}, \vecb{m}_i^{(\ell+1)}\right), \label{eq:gnn:mpnn}
+\end{equation}
+where $\bigoplus$ is any differentiable, permutation-invariant multiset operator (e.g., $\sum$, $\mathrm{mean}$, $\max$), and $\psi_{\mathrm{msg}}^{(\ell)}, \psi_{\mathrm{upd}}^{(\ell)}$ are shared learnable functions (typically MLPs or linear maps). For graph-level tasks, a permutation-invariant readout maps $\mat{H}^{(L)}$ to $\vecb{h}_G = \mathrm{READOUT}(\{\!\!\{\vecb{h}_i^{(L)} : i \in \mathcal{V}\}\!\!\})$.
+
+\textbf{Proof of Equivariance and Invariance:} Let $\pi$ be the bijection corresponding to permutation matrix $\mat{P}$ ($P_{ij} = \delta_{i,\pi(j)}$). Under relabeling, node $i$ moves to index $\pi(i)$ with neighborhood $\mathcal{N}'(\pi(i)) = \{\pi(j) : j \in \mathcal{N}(i)\}$. Because $\bigoplus$ is symmetric in its multiset arguments and $\psi_{\mathrm{msg}}^{(\ell)}, \psi_{\mathrm{upd}}^{(\ell)}$ share parameters across all nodes, the aggregated message at $\pi(i)$ is $\vecb{m}_{\pi(i)}^{\prime(\ell+1)} = \vecb{m}_i^{(\ell+1)}$, hence $\vecb{h}_{\pi(i)}^{\prime(\ell+1)} = \vecb{h}_i^{(\ell+1)}$, which in matrix form is $\mat{F}(\mat{P}\mat{H}^{(\ell)}, \mat{P}\mat{A}\mat{P}\T) = \mat{P}\mat{F}(\mat{H}^{(\ell)}, \mat{A})$. By induction over $L$ layers, the node representations are permutation-equivariant; applying a symmetric $\mathrm{READOUT}$ yields $f(\mat{P}\mat{X}, \mat{P}\mat{A}\mat{P}\T) = f(\mat{X}, \mat{A})$. $\square$
+\end{coremath}
+
+Two major spatial instantiations overcome the fixed isotropic edge weights of GCNs and the full-neighborhood dependency of spectral methods:
+\begin{itemize}
+  \item \textbf{Graph Attention Networks (GAT)} \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 421}, \bookcite{understandingdl_simonprince}{Ch. 13, p. 259}: Instead of fixed degree weights $1/\sqrt{\tilde{d}_i\tilde{d}_j}$, GAT computes data-dependent anisotropic edge weights via masked self-attention over $j \in \mathcal{N}(i) \cup \{i\}$:
+  \begin{equation}
+    e_{ij}^{(\ell)} = \mathrm{LeakyReLU}\!\left(\vecb{a}\T \left[\mat{W}\vecb{h}_i^{(\ell)} \,\|\, \mat{W}\vecb{h}_j^{(\ell)}\right]\right), \qquad \alpha_{ij}^{(\ell)} = \frac{\exp(e_{ij}^{(\ell)})}{\sum_{k \in \mathcal{N}(i)\cup\{i\}} \exp(e_{ik}^{(\ell)})}, \label{eq:gnn:gat}
+  \end{equation}
+  updating $\vecb{h}_i^{(\ell+1)} = \sigma\!\left(\sum_{j \in \mathcal{N}(i)\cup\{i\}} \alpha_{ij}^{(\ell)}\mat{W}\vecb{h}_j^{(\ell)}\right)$ (or concatenating $K$ independent attention heads).
+  \item \textbf{GraphSAGE}: For inductive mini-batch training on large graphs, GraphSAGE samples a fixed-size subset $\mathcal{N}_S(i) \subseteq \mathcal{N}(i)$ of cardinality $q$ at each layer and concatenates the self-embedding with the aggregated neighborhood (\bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 764}; \bookcite{understandingdl_simonprince}{Ch. 13, p. 254}):
+  \begin{equation}
+    \vecb{h}_i^{(\ell+1)} = \sigma\!\left(\mat{W}_1^{(\ell)}\vecb{h}_i^{(\ell)} + \mat{W}_2^{(\ell)} \mathrm{AGG}\!\left(\{\!\!\{\vecb{h}_j^{(\ell)} : j \in \mathcal{N}_S(i)\}\!\!\}\right)\right), \label{eq:gnn:graphsage}
+  \end{equation}
+  followed by optional $\ell_2$-normalization $\vecb{h}_i^{(\ell+1)} \leftarrow \vecb{h}_i^{(\ell+1)} / \norm{\vecb{h}_i^{(\ell+1)}}_2$.
+\end{itemize}
+
+\subsection{Expressive Power: 1-Weisfeiler--Lehman (1-WL) Test \& GIN Injectivity}
+\label{sec:gnn:wl}
+
+{\sloppy A fundamental question is which non-isomorphic graphs an MPNN can distinguish \bookcite{understandingdl_simonprince}{Ch. 13, p. 262}. The 1-Weisfeiler--Lehman (1-WL) color-refinement test \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 416} iteratively updates discrete node colors via $c_i^{(\ell+1)} = \mathrm{HASH}\big(c_i^{(\ell)}, \{\!\!\{c_j^{(\ell)} : j \in \mathcal{N}(i)\}\!\!\}\big)$.\par}
+
+\begin{coremath}[1-WL Expressivity Bound \& Graph Isomorphism Network (GIN)]
+\label{box:gnn:gin}
+\textbf{Theorem (Xu et al., 2019; Morris et al., 2019):} Any standard MPNN of the form \eqref{eq:gnn:mpnn} is at most as powerful as the 1-WL test in distinguishing non-isomorphic graphs: if 1-WL assigns identical color multisets to $G_1$ and $G_2$, then any MPNN produces identical graph representations $\vecb{h}_{G_1} = \vecb{h}_{G_2}$. An MPNN achieves exact 1-WL expressive power if and only if its aggregation, update, and graph-level readout maps are \emph{injective} over countable multisets.
+
+By the Deep Sets universal representation theorem \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 417}, any injective multiset function over a countable universe can be written as $\mathrm{MLP}\!\left((1+\epsilon)\vecb{h}_i^{(\ell)} + \sum_{j \in \mathcal{N}(i)} \vecb{h}_j^{(\ell)}\right)$, yielding the Graph Isomorphism Network (GIN) update:
+\begin{equation}
+  \vecb{h}_i^{(\ell+1)} = \mathrm{MLP}^{(\ell)}\!\left((1 + \epsilon^{(\ell)})\vecb{h}_i^{(\ell)} + \sum_{j \in \mathcal{N}(i)} \vecb{h}_j^{(\ell)}\right), \label{eq:gnn:gin}
+\end{equation}
+where $\epsilon^{(\ell)}$ is a learnable scalar (or fixed to $0$). Crucially, \emph{mean} and \emph{max} aggregators are strictly less expressive than \emph{sum} aggregation: mean aggregation fails to distinguish multisets with identical proportions but different cardinalities (e.g., $\{\!\!\{a, b\}\!\!\}$ vs.\ $\{\!\!\{a, a, b, b\}\!\!\}$), while max aggregation collapses multiplicities entirely ($\{\!\!\{a, b\}\!\!\}$ vs.\ $\{\!\!\{a, a, b\}\!\!\}$) \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 416}.
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:gnn:algorithms}
+% =============================================================================
+
+Full-batch GCNs require storing intermediate activations for all $N$ nodes across $L$ layers. Algorithm~\ref{alg:gnn:minibatch} details mini-batch neighbor-sampled MPNN training \bookcite{understandingdl_simonprince}{Ch. 13, pp. 254--255}, \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 764}, constructing a bounded $L$-hop computation subgraph backward from batch $\mathcal{B}$ before forward message passing.
+
+\begin{algorithm}[htbp]
+\caption{Mini-Batch Neighbor-Sampled MPNN / GraphSAGE Forward Pass}
+\label{alg:gnn:minibatch}
+\KwIn{Graph $G=(\mathcal{V},\mathcal{E})$, features $\mat{X} \in \R^{N\times D}$, target mini-batch $\mathcal{B} \subseteq \mathcal{V}$, depth $L$, fanouts $\{q_1,\dots,q_L\}$, weights $\{\mat{W}_1^{(\ell)}, \mat{W}_2^{(\ell)}\}_{\ell=0}^{L-1}$}
+\KwOut{Target node embeddings $\{\vecb{h}_i^{(L)} : i \in \mathcal{B}\}$}
+$\mathcal{B}^{(L)} \leftarrow \mathcal{B}$\;
+\For(\tcp*[f]{Top-down $L$-hop neighborhood sampling}){$\ell = L, L-1, \dots, 1$}{
+  $\mathcal{B}^{(\ell-1)} \leftarrow \mathcal{B}^{(\ell)}$\;
+  \For{$i \in \mathcal{B}^{(\ell)}$}{
+    Sample $\mathcal{N}_S^{(\ell)}(i) \leftarrow \mathrm{Sample}(\mathcal{N}(i), q_\ell)$ without replacement\;
+    $\mathcal{B}^{(\ell-1)} \leftarrow \mathcal{B}^{(\ell-1)} \cup \mathcal{N}_S^{(\ell)}(i)$\;
+  }
+}
+Initialize $\vecb{h}_i^{(0)} \leftarrow \vecb{x}_i$ for all $i \in \mathcal{B}^{(0)}$\;
+\For(\tcp*[f]{Bottom-up message passing}){$\ell = 0, 1, \dots, L-1$}{
+  \For{$i \in \mathcal{B}^{(\ell+1)}$}{
+    $\vecb{m}_i^{(\ell+1)} \leftarrow \mathrm{AGG}\!\left(\{\!\!\{\vecb{h}_j^{(\ell)} : j \in \mathcal{N}_S^{(\ell+1)}(i)\}\!\!\}\right)$ \tcp*{Sum, Mean, Max, or Attention}
+    $\vecb{h}_i^{(\ell+1)} \leftarrow \sigma\!\left(\mat{W}_1^{(\ell)}\vecb{h}_i^{(\ell)} + \mat{W}_2^{(\ell)}\vecb{m}_i^{(\ell+1)}\right)$\;
+    $\vecb{h}_i^{(\ell+1)} \leftarrow \vecb{h}_i^{(\ell+1)} / \max(\norm{\vecb{h}_i^{(\ell+1)}}_2, \varepsilon)$\;
+  }
+}
+\Return{$\{\vecb{h}_i^{(L)} : i \in \mathcal{B}\}$}\;
+\end{algorithm}
+
+Table~\ref{tab:gnn:complexity} summarizes the asymptotic complexity and structural trade-offs across canonical GNN families, assuming $L$ layers, hidden dimension $d$, average degree $\bar{d}$, and $K$-hop or $H$-head parameters.
+
+\begin{table}[htbp]
+\centering
+\caption{Complexity and expressive power comparison across graph neural network architectures ($N=|\mathcal{V}|$, $M=|\mathcal{E}|$, $B=|\mathcal{B}|$ batch size, $q$ sample fanout, $H$ attention heads).}
+\label{tab:gnn:complexity}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{1.95cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Architecture} & \textbf{Time / Layer} & \textbf{Memory} & \textbf{Inductive?} & \textbf{Edge Weights} & \textbf{1-WL Expressivity} \\
+\midrule
+Spectral CNN & $O(N^3 + N^2 d)$ & $O(N^2 + LNd)$ & No & Fixed eigenbasis & $\le$ 1-WL (fixed graph) \\
+ChebNet ($K$-hop) & $O(K M d + N d^2)$ & $O(L N d + M)$ & Partial & Isotropic $T_k(\tilde{\mat{L}})$ & $\le$ 1-WL \\
+GCN (Kipf--Welling) & $O(M d + N d^2)$ & $O(L N d + M)$ & Full-graph & Fixed $1/\sqrt{\tilde{d}_i\tilde{d}_j}$ & $<$ 1-WL (mean-like) \\
+GraphSAGE ($q$-sample) & $O(B q^L d^2)$ & $O(B q^L d)$ & Yes & Uniform / learned & $<$ 1-WL (mean/max) \\
+GAT ($H$ heads) & $O(H(M d + N d^2))$ & $O(L(Nd + HM))$ & Yes & Data-driven $\alpha_{ij}$ & $<$ 1-WL (normalized) \\
+GIN (Sum + MLP) & $O(M d + N d^2)$ & $O(L N d + M)$ & Yes & Sum + $(1+\epsilon)\eye$ & \textbf{Exact 1-WL} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Transductive vs.\ Inductive Regimes \& Latent Topology]
+\label{box:gnn:synthesis}
+Across the four synthesized texts, GNN training regimes and graph assumptions divide into three complementary axes:
+\begin{enumerate}
+  \item \textbf{Transductive vs.\ Inductive Node Splits:} Bishop \& Bishop \bookcite{deep_learning_foundations_concepts}{Ch. 13, pp. 419--420} partition nodes into $\mathcal{V}_{\mathrm{train}}$ (labeled, in training loss and message passing), $\mathcal{V}_{\mathrm{trans}}$ (unlabeled, participate in message passing during training/inference), and $\mathcal{V}_{\mathrm{induct}}$ (unseen during training, added at inference). Prince \bookcite{understandingdl_simonprince}{Ch. 13, pp. 254--256} shows how neighbor sampling and METIS-style graph partitioning convert massive transductive graphs into inductive mini-batches.
+  \item \textbf{Encoder--Decoder \& Non-Euclidean Geometry:} Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, pp. 765--768} unifies GNNs under GraphEDM, extending message passing to unsupervised contrastive objectives (Deep Graph Infomax) and Hyperbolic GCNs (HGCN) that embed hierarchical trees in tangent spaces with lower distortion than Euclidean $\R^d$.
+  \item \textbf{Observed vs.\ Inferred Graph Topology:} Whereas Ch.~13 of Bishop and Prince assume $G$ is fixed and observed, Murphy \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch. 30, pp. 1043--1045} addresses settings where $\mat{A}$ is latent or unknown---inferring sparse undirected precision graphs via graphical lasso or directed causal DAGs from $\mat{X} \in \R^{N \times D}$ prior to downstream reasoning.
+\end{enumerate}
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:gnn:visuals}
+% =============================================================================
+
+Figure~\ref{fig:gnn:receptive_field} illustrates how stacking $L$ local message-passing layers expands each node's effective receptive field to its $L$-hop neighborhood, directly paralleling spatial receptive fields in CNNs.
+
+\monographfig[0.84\textwidth]{understandingdl_simonprince_p268_fig1.png}{Expansion of a node's receptive field across two GNN layers: the target node in hidden layer~2 aggregates from its 1-hop neighborhood in layer~1, which in turn aggregates from its 2-hop neighborhood in the input graph \bookcite{understandingdl_simonprince}{Ch. 13, Fig. 13.9, p. 254}.}{fig:gnn:receptive_field}
+
+Figure~\ref{fig:gnn:gcn_vs_gat} contrasts isotropic adjacency weighting in GCNs, dense all-to-all Transformer self-attention, and topology-masked attention in GATs, while Figure~\ref{fig:gnn:graphsage} depicts GraphSAGE's three-stage inductive pipeline.
+
+\monographfig[0.74\textwidth]{understandingdl_simonprince_p273_fig1.png}{Structural comparison of (a) Graph Convolutional Networks with fixed adjacency weighting $\mat{A}+\eye$, (b) dense dot-product self-attention, and (c) Graph Attention Networks masking attention scores by $\mat{A}+\eye$ \bookcite{understandingdl_simonprince}{Ch. 13, Fig. 13.12, p. 259}.}{fig:gnn:gcn_vs_gat}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_introduction_p794_fig1.png}{Inductive GraphSAGE pipeline: (1) uniform $k$-hop neighborhood sampling ($k=1,2$), (2) hierarchical feature aggregation, and (3) downstream context or label prediction \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, Fig. 23.5, p. 764}.}{fig:gnn:graphsage}
+
+To visualize the algebraic difference between fixed-degree GCN aggregation and data-dependent GAT attention at the single-node level, Figure~\ref{fig:gnn:tikz_mpnn} diagrams the permutation-equivariant MPNN update pipeline.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.1cm and 1.3cm, scale=0.92, every node/.style={transform shape}]
+  % Neighbors
+  \node[monoBox, minimum width=1.8cm] (h1) {$\vecb{h}_1^{(\ell)}$\\[-2pt]{\scriptsize deg $\tilde{d}_1$}};
+  \node[monoBox, minimum width=1.8cm, below=0.55cm of h1] (h2) {$\vecb{h}_2^{(\ell)}$\\[-2pt]{\scriptsize deg $\tilde{d}_2$}};
+  \node[monoBox, minimum width=1.8cm, below=0.55cm of h2] (h3) {$\vecb{h}_3^{(\ell)}$\\[-2pt]{\scriptsize deg $\tilde{d}_3$}};
+  \node[monoTealBox, minimum width=1.8cm, below=0.65cm of h3] (hi) {Self $\vecb{h}_i^{(\ell)}$\\[-2pt]{\scriptsize deg $\tilde{d}_i$}};
+
+  % Message / Weighting Stage
+  \node[monoIndigoBox, right=1.5cm of h2, text width=3.5cm] (msg) {
+    \textbf{Edge Weighting $\gamma_{ij}^{(\ell)}$}\\[2pt]
+    {\scriptsize \textbf{GCN:} $\gamma_{ij} = (\tilde{d}_i \tilde{d}_j)^{-1/2}$}\\[1pt]
+    {\scriptsize \textbf{GAT:} $\gamma_{ij} = \softmax_j(e_{ij}^{(\ell)})$}
+  };
+
+  % Aggregation Stage
+  \node[monoBox, right=1.3cm of msg, text width=2.8cm] (agg) {
+    \textbf{Invariant $\bigoplus$}\\[2pt]
+    $\vecb{m}_i^{(\ell+1)} = \sum_j \gamma_{ij}^{(\ell)} \mat{W}\vecb{h}_j^{(\ell)}$
+  };
+
+  % Update Stage
+  \node[monoTealBox, right=1.0cm of agg, text width=3.3cm] (upd) {
+    \textbf{Equivariant Update}\\[2pt]
+    $\vecb{h}_i^{(\ell+1)} = \sigma\!\big(\psi_{\mathrm{upd}}(\vecb{h}_i^{(\ell)}, \vecb{m}_i^{(\ell+1)})\big)$
+  };
+
+  % Arrows
+  \draw[monoArrow] (h1.east) -- (msg.west |- h1.east) |- (msg.west);
+  \draw[monoArrow] (h2.east) -- (msg.west);
+  \draw[monoArrow] (h3.east) -- (msg.west |- h3.east) |- (msg.west);
+  \draw[monoArrow] (hi.east) -| (upd.south);
+  \draw[monoArrow] (msg.east) -- (agg.west);
+  \draw[monoArrow] (agg.east) -- (upd.west);
+\end{tikzpicture}
+\caption{Permutation-equivariant MPNN message-passing pipeline at node $i$. Symmetric aggregation $\bigoplus$ over $\mathcal{N}(i)$ ensures invariance to neighbor ordering, while weight sharing across nodes guarantees global equivariance.}
+\label{fig:gnn:tikz_mpnn}
+\end{figure}
+
+Figure~\ref{fig:gnn:oversmoothing_plot} quantifies the over-smoothing phenomenon via the normalized Dirichlet energy ratio $E(\mat{H}^{(\ell)}) / E(\mat{H}^{(0)})$ across depth $L = 1 \dots 16$, contrasting exponential spectral collapse in a vanilla GCN against residual connections, PairNorm, and DropEdge.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.86\textwidth,
+  height=6.2cm,
+  xlabel={GNN Depth $L$ (Number of Message-Passing Layers)},
+  ylabel={Normalized Dirichlet Energy $E(\mat{H}^{(L)}) / E(\mat{H}^{(0)})$},
+  ymode=log,
+  xmin=1, xmax=16,
+  ymin=1e-4, ymax=1.2,
+  xtick={1,2,4,6,8,10,12,14,16},
+  grid=both,
+  grid style={monographRule, dotted},
+  legend style={at={(0.98,0.97)}, anchor=north east, font=\footnotesize, draw=monographRule, fill=white, fill opacity=0.9},
+  thick
+]
+  % Vanilla GCN: exponential decay ~ (0.58)^L
+  \addplot[color=monographCrimson, mark=square*, mark size=1.8pt, line width=1.3pt] coordinates {
+    (1, 0.58) (2, 0.336) (3, 0.195) (4, 0.113) (5, 0.0656) (6, 0.038)
+    (7, 0.022) (8, 0.0128) (9, 0.0074) (10, 0.0043) (11, 0.0025) (12, 0.00145)
+    (13, 0.00084) (14, 0.00049) (15, 0.00028) (16, 0.00016)
+  };
+  \addlegendentry{Vanilla GCN (exponential collapse)}
+
+  % DropEdge: slower decay ~ (0.74)^L
+  \addplot[color=monographIndigo, mark=triangle*, mark size=2.0pt, dashed, line width=1.2pt] coordinates {
+    (1, 0.74) (2, 0.548) (3, 0.405) (4, 0.300) (5, 0.222) (6, 0.164)
+    (7, 0.122) (8, 0.090) (9, 0.0666) (10, 0.0493) (11, 0.0365) (12, 0.0270)
+    (13, 0.0200) (14, 0.0148) (15, 0.0109) (16, 0.0081)
+  };
+  \addlegendentry{GCN + DropEdge}
+
+  % PairNorm: stabilizes around plateau ~ 0.18
+  \addplot[color=monographTeal, mark=o, mark size=1.8pt, line width=1.3pt] coordinates {
+    (1, 0.70) (2, 0.52) (3, 0.41) (4, 0.34) (5, 0.29) (6, 0.26)
+    (7, 0.24) (8, 0.225) (9, 0.215) (10, 0.208) (11, 0.203) (12, 0.200)
+    (13, 0.198) (14, 0.196) (15, 0.195) (16, 0.194)
+  };
+  \addlegendentry{GCN + PairNorm}
+
+  % Residual GCN (ResGCN): preserves high-frequency energy ~ 0.45-0.55
+  \addplot[color=monographNavy, mark=diamond*, mark size=2.0pt, line width=1.4pt] coordinates {
+    (1, 0.82) (2, 0.72) (3, 0.65) (4, 0.60) (5, 0.56) (6, 0.53)
+    (7, 0.51) (8, 0.495) (9, 0.485) (10, 0.478) (11, 0.472) (12, 0.468)
+    (13, 0.465) (14, 0.463) (15, 0.461) (16, 0.460)
+  };
+  \addlegendentry{ResGCN ($\vecb{h}^{(\ell+1)} = f(\cdot) + \vecb{h}^{(\ell)}$)}
+\end{axis}
+\end{tikzpicture}
+\caption{Theoretical Dirichlet energy decay $E(\mat{H}^{(L)})/E(\mat{H}^{(0)})$ across GNN depth $L$ (log scale). Repeated low-pass filtering in Vanilla GCN contracts node features exponentially toward $\ker(\tilde{\mat{L}}_{\mathrm{sym}})$, whereas Residual connections, PairNorm, and DropEdge preserve feature discriminability.}
+\label{fig:gnn:oversmoothing_plot}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:gnn:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Over-Smoothing: Exponential Collapse to $\ker(\tilde{\mat{L}}_{\mathrm{sym}})$]
+\label{pit:gnn:oversmoothing}
+The normalized adjacency $\hat{\mat{A}} = \tilde{\mat{D}}^{-1/2}\tilde{\mat{A}}\tilde{\mat{D}}^{-1/2} = \eye_N - \tilde{\mat{L}}_{\mathrm{sym}}$ acts as a low-pass graph filter with eigenvalues $1 = \mu_1 > \mu_2 \ge \dots \ge \mu_N > -1$ on a connected non-bipartite graph. As depth $L \to \infty$, $\hat{\mat{A}}^L \to \vecb{u}_1\vecb{u}_1\T$ where $\vecb{u}_1 = \tilde{\mat{D}}^{1/2}\ones / \norm{\tilde{\mat{D}}^{1/2}\ones}_2$ spans $\ker(\tilde{\mat{L}}_{\mathrm{sym}})$. Consequently, if the singular values of $\mat{W}^{(\ell)}$ do not counteract $\mu_2 < 1$, all node embeddings converge exponentially fast to a rank-1 subspace proportional to $\sqrt{\tilde{d}_i}$, destroying class separability \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 422}.\\
+\textbf{Remedies:} Add residual skip connections $\vecb{h}_i^{(\ell+1)} = \mathrm{Update}(\cdot) + \vecb{h}_i^{(\ell)}$ \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 422}, concatenate multi-scale layer outputs via Jumping Knowledge ($\vecb{y}_i = f(\vecb{h}_i^{(1)} \oplus \dots \oplus \vecb{h}_i^{(L)})$) \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 423}, apply PairNorm to maintain constant pairwise feature distance, or mask random edges during training (DropEdge) \bookcite{deep_learning_foundations_concepts}{Ch. 13, p. 423}.
+\end{pitfall}
+
+\begin{pitfall}[Over-Squashing at Tree-Like Bottlenecks]
+\label{pit:gnn:oversquashing}
+In graphs with exponential neighborhood growth (e.g., trees or scale-free networks), the $L$-hop receptive field of node $i$ contains $O(d^L)$ nodes, yet all incoming information must be compressed into a fixed-dimensional vector $\vecb{h}_i^{(L)} \in \R^d$. Across narrow bridges with small Cheeger constant or negative Ollivier--Ricci curvature, the Jacobian sensitivity $\norm{\partial \vecb{h}_i^{(L)} / \partial \vecb{x}_j}$ decays exponentially with shortest-path distance $d_G(i,j)$, preventing long-range signal propagation even without over-smoothing.\\
+\textbf{Remedies:} Introduce a virtual super-node connected to all $N$ nodes \bookcite{deep_learning_foundations_concepts}{Ch. 13, pp. 416--417}, apply curvature-based graph rewiring, or hybridize with global self-attention (Graph Transformers).
+\end{pitfall}
+
+\begin{pitfall}[1-WL Expressivity Ceiling: $C_6$ vs.\ $2 \times C_3$]
+\label{pit:gnn:wl_ceiling}
+Because every standard MPNN is bounded by 1-WL, it cannot distinguish any two $r$-regular graphs of the same size---most famously, a 6-cycle $C_6$ versus two disjoint triangles $2 \times C_3$ (both 2-regular on 6 nodes with uniform node features). In both graphs, every node sees an identical infinite computation tree of degree-2 neighbors, so any MPNN (including GIN) outputs identical node and graph embeddings and cannot count triangles or cycle lengths.\\
+\textbf{Remedies:} Augment node features with structural or positional encodings (Laplacian eigenvectors, random-walk landing probabilities) or adopt higher-order $k$-WL / subgraph GNNs.
+\end{pitfall}
+
+\begin{pitfall}[Neighbor Explosion ($O(d^L)$ Memory) in Large-Graph Training]
+\label{pit:gnn:neighbor_explosion}
+Computing exact $L$-layer gradients for a mini-batch of $B$ nodes touches up to $O(B \bar{d}^L)$ nodes, which rapidly saturates GPU memory on dense or hub-heavy graphs (the graph expansion problem) \bookcite{understandingdl_simonprince}{Ch. 13, p. 254}.\\
+\textbf{Remedies:} Use fixed-fanout neighbor sampling (Algorithm~\ref{alg:gnn:minibatch}) with $q_\ell \ll \bar{d}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Ch. 23, p. 764}, or partition the graph into dense clusters via METIS (Cluster-GCN) and sample clusters as mini-batches \bookcite{understandingdl_simonprince}{Ch. 13, pp. 254--256}.
+\end{pitfall}
+
+\end{document}

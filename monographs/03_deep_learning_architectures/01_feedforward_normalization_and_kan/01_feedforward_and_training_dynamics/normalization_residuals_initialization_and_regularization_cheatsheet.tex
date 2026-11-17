@@ -1,0 +1,201 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{MLPs, KANs, Residuals \& Regularization}{He/Xavier Initialization, Batch/Layer/RMSNorm, Residual Connections \& Dropout}
+  {Calibrate variance at $t=0$, standardize features, open an $\eye$ gradient highway, filter flat directions}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{ Conditioning \\ \footnotesize\mdseries Init $\cdot$ Norm $\cdot$ ResNet}{%
+  \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+    \node[draw=csDom, rounded corners=2pt, fill=csDom!10, inner sep=2.5pt] (x) at (0,0) {$\vecb x^{(l)}$};
+    \node[draw=csB, rounded corners=2pt, fill=csB!15, inner sep=2.5pt] (f) at (1.9,0) {$\mathcal{F}_l(\mathrm{Norm})$};
+    \node[draw=csD, circle, fill=csD!20, inner sep=1.5pt] (p) at (3.6,0) {$+$};
+    \draw[-{Stealth}, thick, csDom] (x) -- (f);
+    \draw[-{Stealth}, thick, csB] (f) -- (p);
+    \draw[-{Stealth}, very thick, csA] (x.north) -- ++(0,0.68) -| (p.north)
+      node[pos=0.25, above, font=\tiny\bfseries, csA] {Identity $\eye$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; INIT $-$ Variance Preservation at $t=0$}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \csfm{\Var(f_i^{(l)})=D_{l-1}\sigma_l^2\,\E\bigl[(h_j^{(l-1)})^2\bigr]}
+    \begin{csbul}
+      \item \textbf{Xavier ($\tanh$/linear):} $\E[h^2]\approx\Var(f)$
+        $\Rightarrow \sigma^2=\frac{2}{D_{l-1}+D_l}$
+      \item \textbf{Kaiming/He ($\ReLU$):} clips negative half $\Rightarrow \E[h^2]=\frac{1}{2}\Var(f)\Rightarrow \sigma^2=\frac{2}{D_{l-1}}$
+      \item Without $\times 2$, variance decays as $2^{-L}$!
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.40, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0) -- (3.3,0) node[right] {$l$};
+      \draw[->, gray] (0,-1.2) -- (0,1.4) node[above] {$\log\Var$};
+      \draw[csA, very thick, dashed] (0,0) -- (3.0,1.2) node[right] {$\frac{4}{D}$};
+      \draw[csD, very thick] (0,0) -- (3.0,0) node[pos=0.65, above] {He $\frac{2}{D}$};
+      \draw[csF, very thick, dotted] (0,0) -- (3.0,-1.1) node[right] {$\frac{1}{D}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; NORMALIZATION $-$ Which Axes to Slice?}{%
+  \renewcommand{\arraystretch}{1.14}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{2.5cm}@{}}
+    \textbf{\textcolor{csB}{Method}} & \textbf{\textcolor{csB}{Axes $\mathcal{S}_i$}} & \textbf{\textcolor{csB}{Gain}} & \textbf{\textcolor{csB}{Key Property}}\\ \hline
+    BatchNorm & $(N,H,W)$ & $2C$ & couples batch; EMA at eval\\
+    LayerNorm & $(C,H,W)$ or $D$ & $2D$ & batch-free; exact at eval\\
+    RMSNorm & feature $D$ & $D$ & no mean $\mu$; fast LLM norm\\
+    GroupNorm & $(C/G,H,W)$ & $2C$ & $G{=}1\to\text{LN}$, $G{=}C\to\text{IN}$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{RMSNorm:} $\bar x_i = x_i/\sqrt{\frac{1}{D}\sum_{j=1}^D x_j^2+\epsilon},\; y_i=\gamma_i\bar x_i$.}
+
+\csbranch{3}{C}{3\;\; RESIDUALS $-$ The $\eye$ Gradient Highway}{%
+  \begin{minipage}[t]{0.62\linewidth}
+    \csfm{\pd{\mathcal{L}}{\vecb x^{(l)}}=\pd{\mathcal{L}}{\vecb x^{(L)}}\!\left(\eye+\pd{}{\vecb x^{(l)}}\sum_{k=l}^{L-1}\mathcal{F}_k\right)}
+    \begin{csbul}
+      \item Fixes \textbf{shattered gradients} \& smooths loss landscape
+      \item Implicit ensemble of $2^L$ paths
+      \item \textbf{Unnormalized ResNet:} scale branch by $1/\sqrt{L}$ so $\Var(\vecb x^{(L)})=\mathcal{O}(1)$ instead of $2^L$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.35\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.38, every node/.style={font=\tiny}]
+      \draw[csA, thick, domain=0:3.2, samples=35] plot (\x, {1.4+0.55*sin(\x*260)+0.35*cos(\x*430)});
+      \node[csA] at (1.6,2.35) {Plain 56L (chaotic)};
+      \draw[csD, very thick, domain=0:3.2, samples=30] plot (\x, {0.25*(\x-1.6)^2-0.4});
+      \node[csD] at (1.6,-0.75) {ResNet (smooth)};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; PRE-LN vs.\ POST-LN $-$ Transformer Conditioning}{%
+  \begin{csbul}
+    \item \textbf{Post-LN:} $\vecb x^{(l+1)}=\mathrm{Norm}(\vecb x^{(l)}+\mathcal{F}_l(\vecb x^{(l)}))$ $\Rightarrow$ skip path passes \emph{through} Norm Jacobian at every layer; gradients attenuate with depth $\Rightarrow$ requires LR warmup
+    \item \textbf{Pre-LN:} $\vecb x^{(l+1)}=\vecb x^{(l)}+\mathcal{F}_l(\mathrm{Norm}(\vecb x^{(l)}))$ $\Rightarrow$ clean identity $\eye$ highway from input to output; stable gradients at $t=0$ without warmup (standard in GPT/LLaMA)
+    \item \textbf{Final Norm:} Pre-LN requires one final $\mathrm{Norm}$ right before the readout head
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; REGULARIZATION $-$ Curvature \& Ensembles}{%
+  \begin{csbul}
+    \item \textbf{$L_2$ Weight Decay ($\frac{\lambda}{2}\norm{\vecb w}_2^2$):} $\tilde w_i'=\frac{\Lambda_{ii}}{\Lambda_{ii}+\lambda}(w_i^*)'$ in Hessian eigenbasis $\mat H=\mat Q\mat\Lambda\mat Q\T$; shrinks flat directions ($\Lambda_{ii}\ll\lambda$), keeps sharp ones ($\Lambda_{ii}\gg\lambda$)
+    \item \textbf{Inverted Dropout:} $\tilde{\vecb h}=\frac{1}{p}(\vecb m\odot\vecb h)$, $m_j\sim\Bernoulli(p)$; test time uses untouched weights; exact geometric-mean ensemble of $2^D$ sub-networks for softmax
+    \item \textbf{Early Stopping ($T$ steps):} acts like $L_2$ penalty with $\lambda_{\text{eff}}\propto (\eta T)^{-1}$
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; DATA \& TARGET REGULARIZERS}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item \textbf{Label Smoothing:} $\tilde{\vecb y}=(1-\varepsilon)\vecb y+\frac{\varepsilon}{K}\ones$ prevents logit blow-up $\norm{\vecb z}\to\infty$
+      \item \textbf{Mixup:} $\tilde{\vecb x}=\alpha\vecb x_i+(1-\alpha)\vecb x_j$, $\tilde{\vecb y}=\alpha\vecb y_i+(1-\alpha)\vecb y_j$ ($\alpha\sim\mathrm{Beta}(\nu,\nu)$) linearizes between manifolds
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.42, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(3.0,0); \draw[->, gray] (0,0)--(0,2.0);
+      \draw[csF, thick] (0,0) ellipse (1.8 and 0.45);
+      \draw[-{Stealth}, thick, csA] (1.6,1.5) -- (0.6,0.3);
+      \node[above] at (1.5,1.5) {$\Lambda_{ii}\ll\lambda$ shrunk};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{He Init ($\times 2$) $\cdot$ Pre-LN Skip ($\eye$) $\cdot$ Curvature Shrink ($\frac{\Lambda}{\Lambda+\lambda}$)} \\[1pt]
+  \footnotesize\mdseries \textbf{Keep signals $\mathcal{O}(1)$ forward, keep $\eye$ open backward, and damp zero-curvature weights.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Xavier on ReLU:} misses $1/2$ clipping factor $\Rightarrow 2^{-L}$ collapse
+    \item \textbf{BatchNorm ($N\le 4$) / no \texttt{eval()}:} noisy stats or test leakage (use GN/LN)
+    \item \textbf{Dropout before BN:} $1/p$ train var inflates $\hat\sigma_{\text{run}}^2$, breaking eval
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{He/Xavier Initialization, Batch/Layer/RMSNorm, Residual Connections \& Dropout}\;---\;Domain 03 $\cdot$ Deep Learning Architectures}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Xavier vs.\ Kaiming/He Init:\csfm{\sigma_{\text{Xavier}}^2=\frac{2}{D_{l-1}+D_l},\qquad \sigma_{\text{He}}^2=\frac{2}{D_{l-1}}}
+    \item General Norm \& RMSNorm:\csfm{Y_i=\gamma_c\frac{X_i-\mu_i}{\sqrt{\sigma_i^2+\epsilon}}+\beta_c,\qquad y_i=\gamma_i\frac{x_i}{\sqrt{\frac{1}{D}\sum_{j=1}^D x_j^2+\epsilon}}}
+    \item BatchNorm Coupled Backward Gradient:\csfm{\pd{\mathcal{L}}{x_n}=\frac{1}{\sqrt{\sigma_B^2+\epsilon}}\!\left[\pd{\mathcal{L}}{\hat x_n}-\frac{1}{N}\sum_{m=1}^N\pd{\mathcal{L}}{\hat x_m}-\frac{\hat x_n}{N}\sum_{m=1}^N\pd{\mathcal{L}}{\hat x_m}\hat x_m\right]}
+    \item Pre-LN Residual Block:\csfm{\vecb x^{(l+1)}=\vecb x^{(l)}+\mathcal{F}_l\!\left(\mathrm{Norm}(\vecb x^{(l)})\right)}
+    \item $L_2$ Weight Decay Spectral Filter:\csfm{\tilde w_i'=\frac{\Lambda_{ii}}{\Lambda_{ii}+\lambda}(w_i^*)'\quad (\mat H=\mat Q\mat\Lambda\mat Q\T)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE: PRE-LN RMSNORM + BN TRAIN/EVAL}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Pre-LN RMSNorm:} compute $\mathrm{rms}=\sqrt{\frac{1}{D}\sum_j (x_j^{(l)})^2+\epsilon}$, scale $\bar{\vecb x}=\vecb\gamma\odot(\vecb x^{(l)}/\mathrm{rms})$, and add to clean highway $\vecb x^{(l+1)}=\vecb x^{(l)}+\mathcal{F}_l(\bar{\vecb x})$.
+    \item \textbf{BN Train:} compute $\vecb\mu_B,\vecb\sigma_B^2$ over $(N,H,W)$, normalize, and update EMA buffers $\hat{\vecb\mu}\leftarrow(1-\rho)\hat{\vecb\mu}+\rho\vecb\mu_B$, $\hat{\vecb\sigma}^2\leftarrow(1-\rho)\hat{\vecb\sigma}^2+\frac{N}{N-1}\rho\vecb\sigma_B^2$.
+    \item \textbf{BN Eval:} freeze running $(\hat{\vecb\mu},\hat{\vecb\sigma}^2)$ so inference is deterministic per sample.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    ReLU / GELU / SiLU MLP or CNN & Kaiming/He init ($\sigma^2=2/D_{\text{in}}$)\\
+    $\tanh$ / sigmoid layer & Xavier/Glorot init ($\sigma^2=2/(D_{\text{in}}{+}D_{\text{out}})$)\\
+    LLM / Transformer backbone & Pre-LN with RMSNorm\\
+    CNN with small batch $N\le 4$ & GroupNorm ($G=32$), not BatchNorm\\
+    overconfident logits & Label smoothing $\varepsilon\approx 0.1$ + Weight Decay\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{VARIANCE \& SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{ReLU second moment:} $\E[\ReLU(f)^2]=\frac{1}{2}\Var(f)$ for symmetric zero-mean $p(f)$
+    \item \textbf{Norm-free ResNet scaling:} multiply $\mathcal{F}_l$ by $1/\sqrt{L}$ (or $1/\sqrt{2L}$) to stop $2^L$ blowup
+    \item \textbf{Inverted dropout:} scale by $1/p$ in \texttt{train()}, multiply by $1$ in \texttt{eval()}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{FORWARD VARIANCE ACROSS 30 ReLU LAYERS}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.1cm, ymode=log, xmin=0, xmax=30, ymin=1e-9, ymax=1e12,
+      xlabel={Layer Depth $l$}, ylabel={$\Var(f^{(l)})$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,10,20,30}, ytick={1e-9,1e-4,1,1e4,1e9}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.91)}, anchor=north west, font=\tiny, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csA, very thick, dashed, domain=0:30, samples=16] {2^x};
+      \addlegendentry{Over-scaled $4/D$: $2^l$}
+      \addplot[csD, very thick, domain=0:30, samples=16] {1};
+      \addlegendentry{He $2/D$: $\Var=1$}
+      \addplot[csF, very thick, dotted, domain=0:30, samples=16] {2^(-x)};
+      \addlegendentry{Xavier $1/D$: $2^{-l}$}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing $\sqrt{2}$ in ReLU init:} shrinks variance by $2^{-30}\approx 10^{-9}$ at $L=30$
+    \item \textbf{Post-LN without warmup:} large output gradients destabilize early Adam steps
+    \item \textbf{Forgetting \texttt{model.eval()}:} BatchNorm \& Dropout corrupt test predictions
+    \item \textbf{Dropout $\to$ BatchNorm disharmony:} train variance $(1/p)$ mismatches eval variance
+    \item \textbf{Penalizing biases/norm gains:} apply weight decay only to weight matrices $\mat W^{(l)}$, never to $\vecb b,\vecb\gamma,\vecb\beta$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Deep networks train reliably when four mechanisms lock together: \textbf{He initialization} ($\sigma^2=2/D_{\text{in}}$) preserves unit variance at step $0$; \textbf{Normalization} (BN/LN/RMSNorm) conditions feature scales; \textbf{Pre-LN Residual connections} preserve an unmodulated $\eye$ gradient highway across $2^L$ paths; and \textbf{Weight Decay + Dropout} damp low-curvature noise directions.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

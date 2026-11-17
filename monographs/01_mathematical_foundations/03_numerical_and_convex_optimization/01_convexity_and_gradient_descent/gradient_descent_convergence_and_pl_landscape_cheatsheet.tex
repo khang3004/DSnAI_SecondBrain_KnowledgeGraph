@@ -1,0 +1,240 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{1}{Numerical \& Convex Optimization}{Gradient Descent, L-Smoothness, Strong Convexity, PL \& Saddle Points}
+  {$L$-smoothness caps the step size; $\mu$-strong convexity or $\mu$-PL turns $O(1/T)$ crawl into $(1-\mu/L)^T$ contraction}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{GD \& Landscapes\\ \footnotesize\mdseries $L$-Smooth $\cdot$ $\mu$-SC $\cdot$ $\mu$-PL}{%
+  \begin{tikzpicture}[scale=0.52, >=Stealth]
+    % Quadratic upper & lower bounds sandwiching f(x)
+    \draw[csA, thick, dashed, domain=-1.3:1.3, samples=25] plot (\x,{0.85*\x*\x});
+    \draw[csDom, very thick, domain=-1.3:1.3, samples=25] plot (\x,{0.48*\x*\x});
+    \draw[csD, thick, dashed, domain=-1.3:1.3, samples=25] plot (\x,{0.22*\x*\x});
+    \node[font=\tiny, csA] at (1.15,1.15) {$L$};
+    \node[font=\tiny, csD] at (1.25,0.22) {$\mu$};
+    % Zig-zag GD steps on right ellipse
+    \begin{scope}[xshift=3.1cm, yshift=0.55cm]
+      \draw[csF!60, thick] (0,0) ellipse (1.35 and 0.45);
+      \draw[csF!40, thin] (0,0) ellipse (0.80 and 0.27);
+      \draw[->, csB, very thick] (-1.15,0.28)--(-0.55,-0.32)--(0.15,0.20)--(0,0);
+      \fill[csA] (0,0) circle (2.2pt);
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; $L$-SMOOTHNESS \& DESCENT LEMMA}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\norm{\grad f(\vecb y)-\grad f(\vecb x)}_2\le L\norm{\vecb y-\vecb x}_2}
+    \begin{csbul}
+      \item \textbf{Majorant:} $f(\vecb y)\le f(\vecb x)+\inner{\grad f(\vecb x)}{\vecb y-\vecb x}+\tfrac{L}{2}\norm{\vecb y-\vecb x}_2^2$
+      \item \textbf{1-step drop:} $f(\vecb x_{t+1})-f(\vecb x_t)\le -\eta(1-\tfrac{\eta L}{2})\norm{\grad f(\vecb x_t)}_2^2$
+      \item \textbf{Stability:} $\eta\in(0,2/L)$; $\eta=1/L$ drops $\tfrac{1}{2L}\norm{\grad f}_2^2$
+      \item \textbf{Non-convex FOSP:} $\min_{t<T}\norm{\grad f(\vecb x_t)}_2\le\sqrt{2L\Delta_0/T}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[csDom, very thick, domain=-1.2:1.5, samples=25] plot (\x,{0.35*\x*\x});
+      \draw[csA, thick, dashed, domain=-0.6:1.7, samples=25] plot (\x,{0.35 + 0.7*(\x-1.0) + 0.75*(\x-1.0)*(\x-1.0)});
+      \fill[csDom] (1.0,0.35) circle (2.2pt) node[right] {$\vecb x_t$};
+      \fill[csA] (0.53,0.19) circle (2.2pt);
+      \draw[->, csA, thick] (1.0,0.35)--(0.53,0.19);
+      \node[csA, anchor=south] at (0.4,1.05) {$\frac{L}{2}$ majorant};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; CONVEX $L$-SMOOTH $-$ co-coercivity \& $O(1/T)$}{%
+  \csfm{\inner{\grad f(\vecb y)-\grad f(\vecb x)}{\vecb y-\vecb x}\ge\frac{1}{L}\norm{\grad f(\vecb y)-\grad f(\vecb x)}_2^2}
+  \begin{csbul}
+    \item \textbf{Fej\'er monotonicity ($\eta\le 2/L$):} $\norm{\vecb x_{t+1}-\vecb x^*}_2\le\norm{\vecb x_t-\vecb x^*}_2\le R_0$ (traps trajectory inside $\mathbb B(\vecb x^*,R_0)$)
+    \item \textbf{Sublinear gap ($\eta\le 1/L$):} $f(\vecb x_T)-f^*\le\frac{\norm{\vecb x_0-\vecb x^*}_2^2}{2\eta T}=O(1/T)$ via Lyapunov $E_t=\frac{1}{2\eta}\norm{\vecb x_t-\vecb x^*}_2^2+t(f(\vecb x_t)-f^*)$
+    \item \textbf{Fast gradient norm:} $\min_{t<T}\norm{\grad f(\vecb x_t)}_2\le\frac{2L R_0}{T}\implies T=O(LR_0/\varepsilon)$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; $\mu$-STRONG CONVEXITY $-$ linear contraction}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{\mu\eye_d\preceq\hess f(\vecb x)\preceq L\eye_d,\qquad \kappa=\frac{L}{\mu}\ge 1}
+    \begin{csbul}
+      \item \textbf{Standard $\eta=1/L$:} $\norm{\vecb x_t-\vecb x^*}_2^2\le(1-\kappa\inv)^t R_0^2$, $T=O(\kappa\log\frac{1}{\varepsilon})$
+      \item \textbf{Exact map $\eta\in(0,2/L)$:} $\rho(\eta)=\max\{\abs{1-\eta\mu},\abs{1-\eta L}\}$
+      \item \textbf{Optimal $\eta^*=\frac{2}{\mu+L}$:} balances extreme modes to
+        $\rho(\eta^*)=\frac{\kappa-1}{\kappa+1}\implies T=\frac{\kappa+1}{2}\log\frac{1}{\varepsilon}$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, gray] (0,0)--(2.6,0) node[right] {$\eta$};
+      \draw[->, gray] (0,0)--(0,1.6) node[above] {$\rho(\eta)$};
+      \draw[csC!85!black, very thick] (0,1.3)--(1.1,0.35)--(2.2,1.3);
+      \draw[csA, dotted, thick] (1.1,0)--(1.1,0.35);
+      \fill[csA] (1.1,0.35) circle (2.2pt) node[above] {$\frac{\kappa-1}{\kappa+1}$};
+      \node[anchor=north] at (1.1,0) {$\frac{2}{\mu+L}$};
+      \node[anchor=north] at (2.2,0) {$\frac{2}{L}$};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{4}{D}{4\;\; POLYAK--\L{}OJASIEWICZ (PL) \& KL LANDSCAPES}{%
+  \csfm{\tfrac{1}{2}\norm{\grad f(\vecb x)}_2^2\ge\mu\bigl(f(\vecb x)-f^*\bigr)\quad(\text{no convexity needed!})}
+  \begin{csbul}
+    \item \textbf{Hierarchy:} $\mu\text{-SC}\implies\mu\text{-PL}\implies\text{QG: }f(\vecb x)-f^*\ge\tfrac{\mu}{2}\mathrm{dist}(\vecb x,\mathcal X^*)^2$
+    \item \textbf{No spurious traps:} $\grad f(\vecb x)=\zeros\iff f(\vecb x)=f^*$ (curved $\mathcal X^*$ OK)
+    \item \textbf{Global linear rate ($\eta=1/L$):} $f(\vecb x_T)-f^*\le(1-\mu/L)^T(f(\vecb x_0)-f^*)$
+    \item \textbf{Examples:} $n<d$ least squares, overparam.\ NTK nets, $t^2+3\sin^2 t$
+    \item \textbf{KL ($\theta\in(1/2,1)$):} $\norm{\grad f}_2\ge c(f-f^*)^\theta \implies O(T^{-1/(2\theta-1)})$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; SADDLE ESCAPE $-$ Stable Manifold \& Perturbed GD}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \begin{csbul}
+      \item \textbf{Strict saddle:} $\grad f(\bar{\vecb x})=\zeros$, $\lambda_{\min}(\hess f(\bar{\vecb x}))<0$
+      \item \textbf{Thm (Stable Manifold):} for $\eta<1/L$, $T(\vecb x)=\vecb x-\eta\grad f(\vecb x)$ is a diffeomorphism; stable set has \textbf{measure $0$} ($\Prob(\vecb x_t\to\bar{\vecb x})=0$)
+      \item \textbf{Perturbed GD (PGD):} ball kick $\vecb\xi_t\sim\mathrm{Unif}(\mathbb B_0(r))$ when $\norm{\grad f}_2\le\varepsilon$ escapes thin pancake in $\tilde O(L\Delta_0/\varepsilon^2)$ to $(\varepsilon,\sqrt{\rho\varepsilon})$-SOSP
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.45, >=Stealth, every node/.style={font=\tiny}]
+      \draw[->, csA, thick] (-1.2,0)--(0,0);
+      \draw[->, csA, thick] (1.2,0)--(0,0);
+      \draw[->, csD, thick] (0,0.1)--(0,1.1);
+      \draw[->, csD, thick] (0,-0.1)--(0,-1.1);
+      \draw[csF, very thick] (-1.0,0.18)..controls(-0.2,0.22)..(-0.15,1.05);
+      \draw[csF, very thick] (1.0,-0.18)..controls(0.2,-0.22)..(0.15,-1.05);
+      \fill[csA] (0,0) circle (2.5pt);
+      \node[csA, anchor=north west] at (0.05,-0.02) {saddle};
+      \node[csD, anchor=west] at (0.1,0.9) {escape};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; ADAPTIVE DETERMINISTIC STEPS $-$ Armijo \& BB}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{3.9cm}>{\raggedright\arraybackslash}p{1.6cm}@{}}
+    \textbf{\textcolor{csF}{Rule}} & \textbf{\textcolor{csF}{Formula ($\vecb s_{t-1}=\Delta\vecb x$, $\vecb y_{t-1}=\Delta\grad f$)}} & \textbf{\textcolor{csF}{Needs $L$?}}\\ \hline
+    Armijo backtrack & $f(\vecb x_t-\eta\vecb g_t)\le f(\vecb x_t)-c_1\eta\norm{\vecb g_t}_2^2$, $\eta\gets\beta\eta$ & No ($\ge\frac{2\beta(1-c_1)}{L}$)\\
+    BB1 (long secant) & $\eta_t^{\mathrm{BB1}}=\frac{\norm{\vecb s_{t-1}}_2^2}{\inner{\vecb s_{t-1}}{\vecb y_{t-1}}}\in\bigl[\frac{1}{L},\frac{1}{\mu}\bigr]$ & No\\
+    BB2 (short secant) & $\eta_t^{\mathrm{BB2}}=\frac{\inner{\vecb s_{t-1}}{\vecb y_{t-1}}}{\norm{\vecb y_{t-1}}_2^2}\le\eta_t^{\mathrm{BB1}}$ & No\\
+  \end{tabular}\par\vspace{2pt}
+  \footnotesize \textbf{ERM stopping:} opt.\ error $(1-\eta\mu)^{t/2}$ hits $O(n^{-1/2})$ stat.\ floor in $T=O(\log n)$ steps.}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\small\sffamily\bfseries\textcolor{csG}{Smoothness ($L$) caps $\eta<2/L$; curvature ($\mu$-SC / $\mu$-PL) gives $(1-1/\kappa)^T$.} \\[1pt]
+  \footnotesize\mdseries \textbf{No convexity? $\mu$-PL still gives global linear convergence; strict saddles have measure-zero basins.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Step $\eta>2/L$:} $\abs{1-\eta\lambda_{\max}}>1$ explodes exponentially; quartics lack global $L$ outside $\mathbb B(\vecb x^*,r)$
+    \item \textbf{Unscaled features:} in OLS, $\kappa(\mat X\T\mat X)=\kappa(\mat X)^2$ turns elongated valleys into orthogonal zig-zagging
+    \item \textbf{Non-strict saddles:} monkey saddle $x_1^3-3x_1x_2^2$ has $\hess f(\zeros)=\zeros$, stalling both GD and PGD
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Gradient Descent Dynamics: Strong Convexity, Smoothness, PL Condition \& Saddle Escape}\;---\;Domain 01 $\cdot$ Numerical \& Convex Optimization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item $L$-smooth descent lemma \& gradient upper bound:
+      \csfm{f(\vecb x_{t+1})\le f(\vecb x_t)-\eta\!\left(1-\frac{\eta L}{2}\right)\norm{\grad f(\vecb x_t)}_2^2,\quad \frac{\norm{\grad f(\vecb x)}_2^2}{2L}\le f(\vecb x)-f^*}
+    \item Nesterov refined co-coercivity ($\mu$-SC + $L$-smooth):
+      \csfm{\inner{\grad f(\vecb x)-\grad f(\vecb y)}{\vecb x-\vecb y}\ge\frac{\mu L}{\mu+L}\norm{\vecb x-\vecb y}_2^2+\frac{1}{\mu+L}\norm{\grad f(\vecb x)-\grad f(\vecb y)}_2^2}
+    \item Optimal fixed step $\eta^*=\frac{2}{\mu+L}$ linear contraction ($\kappa=L/\mu$):
+      \csfm{\norm{\vecb x_T-\vecb x^*}_2\le\left(\frac{\kappa-1}{\kappa+1}\right)^T\norm{\vecb x_0-\vecb x^*}_2}
+    \item Polyak--\L{}ojasiewicz ($\mu$-PL) global contraction ($\eta\in(0,2/L)$):
+      \csfm{\frac{1}{2}\norm{\grad f(\vecb x)}_2^2\ge\mu\bigl(f(\vecb x)-f^*\bigr)\implies f(\vecb x_T)-f^*\le\bigl(1-2\eta\mu(1-\tfrac{\eta L}{2})\bigr)^T\Delta_0}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ ARMIJO-BB \& PERTURBED GD}
+  \footnotesize
+  \textbf{Safeguarded Barzilai--Borwein + Armijo Backtracking:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item If $t\ge 1$ and $\inner{\vecb s_{t-1}}{\vecb y_{t-1}}>0$, set trial $\eta=\mathrm{clip}\bigl(\frac{\norm{\vecb s_{t-1}}_2^2}{\inner{\vecb s_{t-1}}{\vecb y_{t-1}}},\eta_{\min},\eta_{\max}\bigr)$.
+    \item While $f(\vecb x_t-\eta\vecb g_t)>f(\vecb x_t)-c_1\eta\norm{\vecb g_t}_2^2$, shrink $\eta\gets\beta\eta$ ($c_1=10^{-4}$).
+    \item Update $\vecb x_{t+1}=\vecb x_t-\eta\vecb g_t$, record $\vecb s_t=\vecb x_{t+1}-\vecb x_t$, $\vecb y_t=\vecb g_{t+1}-\vecb g_t$.
+  \end{enumerate}
+  \vspace{1pt}
+  \textbf{Perturbed GD (PGD) for $(\varepsilon,\sqrt{\rho\varepsilon})$-SOSP:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=0.5pt, topsep=1pt, parsep=0pt]
+    \item When $\norm{\grad f(\vecb x_t)}_2\le\varepsilon$, add kick $\vecb\xi_t\sim\mathrm{Unif}(\mathbb B_0(r))$, $r=\tilde\Theta(\varepsilon/L)$.
+    \item Run $t_{\mathrm{thresh}}=\tilde\Theta(L/\sqrt{\rho\varepsilon})$ GD steps; if drop $<f_{\mathrm{thresh}}$, return $\varepsilon$-SOSP.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.12}\footnotesize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{Landscape class} & \textbf{Step $\eta$ \& Complexity $T(\varepsilon)$}\\ \hline
+    $L$-smooth non-convex & $\eta=1/L \to O(L\Delta_0/\varepsilon^2)$ for $\norm{\grad f}_2\le\varepsilon$\\
+    $L$-smooth + $\rho$-Hess.-Lip. & PGD $\eta\le 1/L \to \tilde O(L\Delta_0/\varepsilon^2)$ to $\varepsilon$-SOSP\\
+    Convex + $L$-smooth & $\eta=1/L \to O(LR_0^2/\varepsilon)$ gap; $O(LR_0/\varepsilon)$ grad\\
+    KL ($\theta\in(1/2,1)$) & $\eta\le 1/L \to O(\varepsilon^{-(2\theta-1)})$ sublinear\\
+    $\mu$-PL + $L$-smooth & $\eta=1/L \to \kappa\log(1/\varepsilon)$ (non-convex OK)\\
+    $\mu$-SC + $L$-smooth & $\eta^*=\frac{2}{\mu+L} \to \frac{\kappa+1}{2}\log(1/\varepsilon)$\\
+    Unknown $L_{\mathrm{loc}}$ & BB1 trial + Armijo backtracking\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{KEY BOUNDS / SCALING CHEAT-LINE}
+  \footnotesize
+  \begin{csbul}
+    \item \textbf{Eigenmode recursion:} on $\frac{1}{2}(\vecb x-\vecb x^*)\T\mat H(\vecb x-\vecb x^*)$, mode $i$ evolves as $\alpha_i^{(t)}=(1-\eta\lambda_i)^t\alpha_i^{(0)}$
+    \item \textbf{Conditioning bottleneck:} $\eta=1/L$ kills $\lambda_{\max}=L$ in 1 step, but crawls on $\lambda_{\min}=\mu$ by $1-1/\kappa$
+    \item \textbf{Localization:} Fej\'er / SC contraction keeps $\vecb x_t\in\mathbb B(\vecb x^*,R_0)$, so local $L,\mu$ on $\mathbb B(\vecb x^*,R_0)$ suffice!
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CONVERGENCE REGIMES \& STEP-SIZE STABILITY}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.3cm, ymode=log, xmin=0, xmax=35, ymin=1e-6, ymax=25,
+      xlabel={Iteration $t$}, ylabel={Normalized gap $(f(\vecb x_t)-f^*)/\Delta_0$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.98,0.03)}, anchor=south east, draw=gray!40, fill=white, fill opacity=0.92}]
+      \addplot[csA, dashed, very thick, domain=0:22, samples=23] {(0.1*((1-0.208)^2)^x + ((1-2.08)^2)^x)/1.1};
+      \addlegendentry{$\eta=2.08/L>2/L$ (diverges)}
+      \addplot[csB, thick, domain=0:35, samples=36] {1/(1+0.4*x)};
+      \addlegendentry{Convex $O(1/t)$}
+      \addplot[csC, very thick, domain=0:35, samples=36] {(1-1/12)^x};
+      \addlegendentry{SC/PL ($\kappa=12,\;\eta=1/L$)}
+      \addplot[csD, very thick, domain=0:35, samples=36] {(1-1/4)^x};
+      \addlegendentry{SC/PL ($\kappa=4,\;\eta=1/L$)}
+      \addplot[csF, very thick, domain=0:13.5, samples=28] {((4-1)/(4+1))^(2*x)};
+      \addlegendentry{SC ($\kappa=4,\;\eta^*=\frac{2}{\mu+L}$)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Condition number squaring:} forming $\mat X\T\mat X$ squares $\kappa(\mat X\T\mat X)=\kappa(\mat X)^2$; standardize features to zero mean / unit variance first
+    \item \textbf{Local vs.\ global smoothness:} polynomial/quartic losses have $\norm{\hess f(\vecb x)}_2\to\infty$ as $\norm{\vecb x}_2\to\infty$; fixed $\eta$ diverges without warm start or Armijo backtracking
+    \item \textbf{Symmetric initialization trap:} initializing on a symmetry subspace (e.g.\ identical weights or $(z,0)$) lands directly on the measure-zero stable manifold of strict saddles
+    \item \textbf{Worst-case $O(1/T)$ vs.\ KL:} flat convex bowls like $\theta^4$ decay as $O(t^{-2})$ ($\theta_{\mathrm{KL}}=3/4$), slower than linear $(1-\mu/L)^t$ because $\mu=0$ at the minimum
+    \item \textbf{Degenerate saddles:} when $\lambda_{\min}(\hess f(\bar{\vecb x}))=0$, first-order PGD has no negative-curvature escape mode; use cubic-regularized second-order steps
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Descent needs an upper parabola} ($L$-smoothness $\implies \eta<2/L$); \textbf{fast convergence needs a lower parabola} ($\mu$-SC or $\mu$-PL $\implies (1-\mu/L)^T$).
+  At $\eta^*=\frac{2}{\mu+L}$, steep and flat eigenmodes contract equally at $\frac{\kappa-1}{\kappa+1}$.
+  Even without convexity, \textbf{$\mu$-PL} guarantees every stationary point is a global minimum, while \textbf{strict saddles} are escaped almost surely (and in polylog$(d)$ time via ball kicks).
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

@@ -1,0 +1,351 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf
+  {Classical, Kernel \& Probabilistic Machine Learning}
+  {Latent Variables, Graphical Models, VI \& MCMC Sampling}
+  {Graphical Models, Gaussian Processes, Variational Inference \& MCMC}
+  {Probabilistic Graphical Models, Message Passing \& Gaussian Processes}
+  {\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, 9, 18}, \bookcite{deep_learning_foundations_concepts}{Ch.~11}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~17.2}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~16}}
+
+\sloppy
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:pgmgp:formulation}
+% =============================================================================
+
+High-dimensional probabilistic modeling faces an exponential curse of dimensionality: a joint distribution over $D$ discrete variables with $K$ states requires $K^D - 1$ parameters in general \bookcite{deep_learning_foundations_concepts}{Ch.~11, p.~346}, while a joint distribution over continuous functions $f: \mathcal{X} \to \R$ is infinite-dimensional \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~17.2, p.~574}. Two complementary paradigms render inference and learning tractable:
+\begin{enumerate}
+  \item \textbf{Probabilistic Graphical Models (PGMs)} encode conditional independence (CI) structure via graphs $\mathcal{G} = (\mathcal{V}, \mathcal{E})$, factorizing $p(\vecb{x})$ into local conditional probability distributions (CPDs) on Directed Acyclic Graphs (DAGs) or non-negative clique potentials $\psi_c(\vecb{x}_c)$ on Undirected Markov Random Fields (MRFs) and bipartite factor graphs \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, pp.~149, 165, 202}.
+  \item \textbf{Gaussian Processes (GPs)} place a coherent, non-parametric Gaussian prior directly over function space, $f \sim \mathcal{GP}(m, k)$, so that any finite collection $\vecb{f}_X = [f(\vecb{x}_1),\dots,f(\vecb{x}_N)]\T$ is jointly Gaussian with covariance $\mat{K}_{X,X} = [k(\vecb{x}_i, \vecb{x}_j)]_{i,j=1}^N$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, p.~684}. Viewed as a graphical model, a GP forms a dense Gaussian MRF over latent function values $\vecb{f}_X$ and test evaluations $\vecb{f}_*$ with noisy local emissions $y_i \mid f_i \sim \Normal(f_i, \sigma_y^2)$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~17.2, Fig.~17.6, p.~574}.
+\end{enumerate}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:pgmgp:notation}
+{\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Murphy (Adv / Intro)} & \textbf{Bishop / Goodfellow} & \textbf{Unified Notation} \\
+\midrule
+DAG Factorization & $p(\vecb{x}) = \prod_i p(x_i \mid \vecb{x}_{\mathrm{pa}(i)})$ & $p(\vecb{x}) = \prod_k p(x_k \mid \mathrm{pa}(k))$ & $p(\vecb{x}) = \prod_{i=1}^D p(x_i \mid \vecb{x}_{\mathrm{pa}(i)})$ \\
+Clique Potential & $\psi_c(\vecb{x}_c; \vecb{\theta}_c)$ & $\phi_c(\vecb{x}_c)$ (Goodfellow Ch.~16) & $\psi_c(\vecb{x}_c) = \exp(-E_c(\vecb{x}_c)) > 0$ \\
+Partition Function & $Z(\vecb{\theta}) = \sum_{\vecb{x}} \prod_c \psi_c(\vecb{x}_c)$ & $Z = \int \tilde{p}(\vecb{x})\,\mathrm{d}\vecb{x}$ & $Z = \sum_{\vecb{x}} \prod_{c \in \mathcal{C}} \psi_c(\vecb{x}_c)$ \\
+BP Message & $m_{s \to t}(z_t)$ & $\mu_{\alpha \to x}(x)$ (standard) & $m_{s \to t}(x_t)$ / $m_{f \to x}(x)$ \\
+GP Covariance & $\mat{K}_{\sigma} = \mat{K} + \sigma_y^2 \eye$ & --- & $\mat{K}_y = \mat{K}_{X,X} + \sigma_y^2 \eye_N$ \\
+Inducing Matrix & $\mat{Q}_{A,B} = \mat{K}_{A,Z}\mat{K}_{Z,Z}\inv\mat{K}_{Z,B}$ & --- & $\mat{Q}_{A,B} = \mat{K}_{A,Z}\mat{K}_{Z,Z}\inv\mat{K}_{Z,B}$, $M \ll N$ \\
+\bottomrule
+\end{tabularx}}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:pgmgp:derivations}
+% =============================================================================
+
+\subsection{Directed Acyclic Graphs: d-Separation, Explaining Away \& Markov Blankets}
+
+\begin{coremath}[Global Markov Property (d-Separation) \& Markov Blanket]
+\label{thm:pgmgp:dsep}
+Let $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ be a DAG encoding $p(\vecb{x}) = \prod_{i=1}^D p(x_i \mid \vecb{x}_{\mathrm{pa}(i)})$. An undirected path $P$ between $A$ and $B$ is \textbf{blocked} (d-separated) by evidence set $C$ if and only if $P$ contains at least one triple $(s, m, t)$ satisfying \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, Eq.~(4.17), p.~149} \bookcite{deep_learning_foundations_concepts}{Ch.~11, p.~341}:
+\begin{enumerate}
+  \item \textbf{Chain (head-to-tail)} $s \to m \to t$ or $s \leftarrow m \leftarrow t$, with $m \in C$;
+  \item \textbf{Fork (tail-to-tail)} $s \leftarrow m \to t$, with $m \in C$;
+  \item \textbf{Collider (v-structure, head-to-head)} $s \to m \leftarrow t$, where \emph{neither} $m$ nor any descendant $\mathrm{desc}(m)$ is in $C$.
+\end{enumerate}
+Sets $A$ and $B$ are d-separated given $C$ ($\vecb{x}_A \indep_{\mathcal{G}} \vecb{x}_B \mid \vecb{x}_C$) iff every path between $A$ and $B$ is blocked by $C$. Furthermore, the conditional distribution of $x_i$ given all other nodes $\vecb{x}_{-i}$ depends only on its \textbf{Markov blanket} $\mathrm{MB}(i)$ \bookcite{deep_learning_foundations_concepts}{Ch.~11, p.~348} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, Fig.~4.7, p.~154}:
+\begin{equation}
+\label{eq:pgmgp:markov_blanket}
+p(x_i \mid \vecb{x}_{-i})
+= \frac{p(x_i \mid \vecb{x}_{\mathrm{pa}(i)}) \prod_{k \in \mathrm{ch}(i)} p(x_k \mid \vecb{x}_{\mathrm{pa}(k)})}{\int p(x_i \mid \vecb{x}_{\mathrm{pa}(i)}) \prod_{k \in \mathrm{ch}(i)} p(x_k \mid \vecb{x}_{\mathrm{pa}(k)})\,\mathrm{d}x_i},
+\quad
+\mathrm{MB}(i) = \mathrm{pa}(i) \cup \mathrm{ch}(i) \cup \mathrm{coparents}(i).
+\end{equation}
+\end{coremath}
+
+\begin{intuition}[Bayes Ball \& Explaining Away in V-Structures]
+In a chain $X \to Y \to Z$ or fork $X \leftarrow Y \to Z$, observing $Y$ blocks information flow because $p(x, z \mid y) = p(x \mid y)p(z \mid y)$. In a collider $X \to Y \leftarrow Z$, $X$ and $Z$ are marginally independent ($p(x, z) = p(x)p(z)$), so an unobserved collider blocks the path. Conditioning on $Y$ (or a descendant $Y'$) couples $X$ and $Z$ via \textbf{explaining away}: in Bishop's fuel-gauge network ($B \to G \leftarrow F$ with battery $B$, fuel $F$, gauge $G$), observing an empty gauge $G=0$ raises $p(F=0 \mid G=0) \approx 0.257$ above the prior $p(F=0)=0.1$, whereas subsequently observing a flat battery $B=0$ explains away the gauge reading and drops $p(F=0 \mid G=0, B=0) \approx 0.111$ \bookcite{deep_learning_foundations_concepts}{Ch.~11, Eqs.~(11.34)--(11.35), p.~342}.
+\end{intuition}
+
+\subsection{Undirected MRFs, Hammersley--Clifford Theorem \& Factor Graphs}
+
+\begin{coremath}[Hammersley--Clifford Theorem \& Gibbs Representation]
+\label{thm:pgmgp:hammersley}
+Let $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ be an undirected graph with maximal cliques $\mathcal{C}$. A strictly positive distribution $p(\vecb{x}) > 0$ satisfies the Markov properties of $\mathcal{G}$ (where $\vecb{x}_A \indep \vecb{x}_B \mid \vecb{x}_C$ whenever $C$ separates $A$ and $B$ by graph separation) if and only if $p$ factorizes as a Gibbs distribution over $\mathcal{C}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, Eqs.~(4.69)--(4.73), p.~166} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~16, Eq.~(16.7), p.~570}:
+\begin{equation}
+\label{eq:pgmgp:gibbs}
+p(\vecb{x} \mid \vecb{\theta}) = \frac{1}{Z(\vecb{\theta})} \prod_{c \in \mathcal{C}} \psi_c(\vecb{x}_c; \vecb{\theta}_c)
+= \frac{1}{Z(\vecb{\theta})} \exp\!\left(- \sum_{c \in \mathcal{C}} E_c(\vecb{x}_c; \vecb{\theta}_c)\right),
+\quad
+Z(\vecb{\theta}) = \sum_{\vecb{x}} \prod_{c \in \mathcal{C}} \psi_c(\vecb{x}_c; \vecb{\theta}_c),
+\end{equation}
+where $\psi_c(\vecb{x}_c) = \exp(-E_c(\vecb{x}_c)) > 0$ are positive clique potentials and $Z(\vecb{\theta})$ is the partition function. Unlike DAGs, an undirected node's Markov blanket is simply its immediate graph neighborhood $\mathrm{nbr}(i)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, p.~165}.
+\end{coremath}
+
+To unify directed and undirected models and resolve clique-factorization ambiguity (e.g., a $3$-clique $\{a,b,c\}$ could represent a single $3$-way factor $f(a,b,c)$ or three pairwise factors $f_1(a,b)f_2(b,c)f_3(a,c)$), we construct a bipartite \textbf{factor graph} $\mathcal{F} = (\mathcal{V}_{\mathrm{var}}, \mathcal{V}_{\mathrm{fac}}, \mathcal{E})$ \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~16, Fig.~16.13, p.~580} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, p.~202}. Converting a DAG to an MRF requires \textbf{moralization}: adding undirected edges between all unmarried parents sharing a child and dropping edge directions, ensuring every CPD $p(x_i \mid \vecb{x}_{\mathrm{pa}(i)})$ fits inside a clique \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, p.~196}. Conversely, converting an MRF to a DAG requires \textbf{triangulation} (adding chords to all cycles of length $\ge 4$ to form a chordal graph) followed by topological edge orientation \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~16, Fig.~16.12, p.~579}.
+
+\subsection{Exact Tree Belief Propagation, Loopy BP \& Junction Tree Triangulation}
+
+\begin{coremath}[Sum-Product \& Max-Product Belief Propagation on Trees]
+\label{thm:pgmgp:bp}
+Consider a pairwise tree MRF $p(\vecb{z} \mid \vecb{y}) \propto \prod_s \psi_s(z_s) \prod_{(s,t) \in \mathcal{E}} \psi_{st}(z_s, z_t)$. Rooting the tree and orienting edges away from the root, the \textbf{Sum-Product} algorithm computes exact posterior marginals $\mathrm{bel}_s(z_s) = p(z_s \mid \vecb{y})$ in two passes (leaves-to-root post-order, then root-to-leaves pre-order) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, Eqs.~(9.58)--(9.62), pp.~414--415}:
+\begin{equation}
+\label{eq:pgmgp:sum_product}
+\mathrm{bel}_s(z_s) \propto \psi_s(z_s) \prod_{u \in \mathrm{nbr}(s)} m_{u \to s}(z_s),
+\qquad
+m_{s \to t}(z_t) = \sum_{z_s} \psi_{st}(z_s, z_t) \, \psi_s(z_s) \prod_{u \in \mathrm{nbr}(s) \setminus \{t\}} m_{u \to s}(z_s).
+\end{equation}
+Using the identity $\prod_{u \in \mathrm{nbr}(s) \setminus \{t\}} m_{u \to s}(z_s) = \mathrm{bel}_s(z_s) / m_{t \to s}(z_s)$ avoids redundant products. Replacing $\sum_{z_s}$ with $\max_{z_s}$ yields the \textbf{Max-Product} algorithm (operating in the max-product semiring, or max-sum in log-space), which computes exact max-marginals $\zeta_i(k) = \max_{\vecb{z}_{-i}} p(z_i = k, \vecb{z}_{-i} \mid \vecb{y})$ for MAP decoding \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, Eq.~(9.64), p.~416}.
+\end{coremath}
+
+When $\mathcal{G}$ contains cycles, two routes exist:
+\begin{itemize}
+  \item \textbf{Exact Inference via Junction Tree Algorithm (JTA):} Symbolic variable elimination adds fill-in edges to produce a \emph{chordal} (triangulated) graph; maximal cliques are organized into a \emph{junction tree} (clique tree) satisfying the running intersection property, on which tree message passing is exact in time exponential in the treewidth $w^*$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, p.~434}.
+  \item \textbf{Approximate Inference via Loopy BP:} Applying Eq.~\eqref{eq:pgmgp:sum_product} iteratively on cyclic graphs corresponds to finding stationary points of the Bethe free energy. Damped asynchronous updates and priority-scheduled \textbf{residual BP} (ranking edges by $\norm{\log m_{s \to t}^{(k+1)} - \log m_{s \to t}^{(k)}}_{\infty}$) substantially improve convergence over synchronous flooding \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, Eq.~(9.80), pp.~421--422}.
+\end{itemize}
+
+\subsection{Gaussian Processes: Weight-Space Duality, Kernels \& Closed-Form Inference}
+
+\begin{coremath}[Weight-Space vs.\ Function-Space Duality \& Closed-Form GP Posterior]
+\label{thm:pgmgp:gp_posterior}
+Consider Bayesian linear regression $y = f(\vecb{x}) + \epsilon$ with $f(\vecb{x}) = \vecb{w}\T \vecb{\phi}(\vecb{x})$, $\vecb{w} \sim \Normal(\zeros, \mat{\Sigma}_w)$, and $\epsilon \sim \Normal(0, \sigma_y^2)$. Defining $\mat{K}_{X,X} = \mat{\Phi}\mat{\Sigma}_w\mat{\Phi}\T$ and $\mat{k}_* = \mat{\Phi}\mat{\Sigma}_w\vecb{\phi}(\vecb{x}_*)$ with kernel $k(\vecb{x}, \vecb{x}') = \vecb{\phi}(\vecb{x})\T \mat{\Sigma}_w \vecb{\phi}(\vecb{x}')$, applying the matrix inversion lemma to the weight-space posterior $\vecb{w} \mid \mathcal{D} \sim \Normal(\sigma_y^{-2}\mat{A}\inv \mat{\Phi}\T \vecb{y}, \mat{A}\inv)$ ($\mat{A} = \sigma_y^{-2}\mat{\Phi}\T\mat{\Phi} + \mat{\Sigma}_w\inv$) yields the identical function-space GP posterior predictive distribution \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~17.2.4, Eqs.~(17.41)--(17.46), p.~577} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, p.~695}:
+\begin{align}
+\label{eq:pgmgp:gp_post}
+p(\vecb{f}_* \mid \mat{X}_*, \mathcal{D}) &= \Normal(\vecb{f}_* \mid \vecb{\mu}_*, \mat{\Sigma}_*), \\
+\vecb{\mu}_* &= \vecb{m}(\mat{X}_*) + \mat{K}_{*,X} \mat{K}_y\inv \bigl(\vecb{y} - \vecb{m}(\mat{X})\bigr), \qquad
+\mat{\Sigma}_* = \mat{K}_{*,*} - \mat{K}_{*,X} \mat{K}_y\inv \mat{K}_{X,*},
+\end{align}
+where $\mat{K}_y = \mat{K}_{X,X} + \sigma_y^2 \eye_N$. Function-space inference remains valid even when $\vecb{\phi}(\vecb{x})$ is infinite-dimensional, as for the stationary \textbf{Squared Exponential (SE/RBF)} and \textbf{Mat\'ern-$\nu$} kernels ($r = \norm{\vecb{x} - \vecb{x}'}_2$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Eqs.~(18.8)--(18.13), pp.~684--685}:
+\begin{equation}
+\label{eq:pgmgp:kernels}
+k_{\mathrm{SE}}(r; \ell) = \sigma_f^2 \exp\!\left(-\frac{r^2}{2\ell^2}\right), \qquad
+k_{\mathrm{Mat\acute{e}rn}}(r; \nu, \ell) = \sigma_f^2 \frac{2^{1-\nu}}{\Gamma(\nu)} \left(\frac{\sqrt{2\nu}\,r}{\ell}\right)^{\nu} K_{\nu}\!\left(\frac{\sqrt{2\nu}\,r}{\ell}\right).
+\end{equation}
+Sample paths from a Mat\'ern-$\nu$ GP are $k$-times mean-square differentiable iff $\nu > k$: $\nu = 1/2$ yields rough Ornstein--Uhlenbeck paths ($C^0$), $\nu = 3/2$ yields $C^1$ paths, and $\nu \to \infty$ recovers the $C^\infty$ SE kernel. Replacing $r^2/\ell^2$ by $\sum_{d=1}^D (x_d - x'_d)^2/\ell_d^2$ gives the Automatic Relevance Determination (ARD) kernel \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Eq.~(18.11), p.~684}.
+\end{coremath}
+
+\subsection{Log Marginal Likelihood (Occam's Razor) \& Inducing-Point Sparse GPs}
+
+\begin{coremath}[Empirical Bayes Marginal Likelihood \& Inducing-Point Sparse GPs]
+\label{thm:pgmgp:lml_sparse}
+Integrating out the latent function values $\vecb{f}_X \sim \Normal(\zeros, \mat{K}_{X,X})$ under Gaussian likelihood $p(\vecb{y} \mid \vecb{f}_X) = \Normal(\vecb{y} \mid \vecb{f}_X, \sigma_y^2\eye_N)$ gives the exact log marginal likelihood \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Eq.~(18.163), p.~718}:
+\begin{align}
+\label{eq:pgmgp:lml}
+\log p(\vecb{y} \mid \mat{X}, \vecb{\theta})
+&= \underbrace{-\frac{1}{2} \vecb{y}\T \mat{K}_y\inv \vecb{y}}_{\text{data-fit term}}
+  \underbrace{-\frac{1}{2} \log\det \mat{K}_y}_{\text{complexity penalty}}
+  -\frac{N}{2}\log(2\pi), \\
+\pd{}{\theta_j}\log p(\vecb{y} \mid \mat{X}, \vecb{\theta})
+&= \frac{1}{2}\Tr\!\left((\vecb{\alpha}\vecb{\alpha}\T - \mat{K}_y\inv)\pd{\mat{K}_y}{\theta_j}\right),
+\end{align}
+with $\vecb{\alpha} = \mat{K}_y\inv \vecb{y}$. To overcome the $\mathcal{O}(N^3)$ bottleneck of $\mat{K}_y\inv$, \textbf{inducing-point sparse GPs} introduce $M \ll N$ pseudo-inputs $\mat{Z} \in \R^{M \times D}$ with latent values $\vecb{u} = f(\mat{Z})$ and assume conditional independence $\vecb{f}_* \indep \vecb{f}_X \mid \vecb{u}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Eqs.~(18.116)--(18.129), pp.~707--709}. Using the Nystr\"om low-rank matrix $\mat{Q}_{A,B} = \mat{K}_{A,Z}\mat{K}_{Z,Z}\inv\mat{K}_{Z,B}$ and $\mat{\Sigma} = (\sigma_y^{-2}\mat{K}_{Z,X}\mat{K}_{X,Z} + \mat{K}_{Z,Z})\inv$:
+\begin{itemize}
+  \item \textbf{SOR / DIC:} $q(\vecb{f}_X, \vecb{f}_*)$ replaces $\mat{K}$ with $\mat{Q}$ everywhere, yielding $\mu_* = \sigma_y^{-2}\mat{K}_{*,Z}\mat{\Sigma}\mat{K}_{Z,X}\vecb{y}$ and variance $\mat{K}_{*,Z}\mat{\Sigma}\mat{K}_{Z,*}$ (rank-$M$, underestimates uncertainty far from $\mat{Z}$).
+  \item \textbf{DTC:} Retains exact test prior $\mat{K}_{*,*}$, giving variance $\mat{K}_{*,*} - \mat{Q}_{*,*} + \mat{K}_{*,Z}\mat{\Sigma}\mat{K}_{Z,*}$.
+  \item \textbf{FITC:} Uses diagonal correction $\mat{K}_{X,X} \approx \mat{Q}_{X,X} + \diag(\mat{K}_{X,X} - \mat{Q}_{X,X})$ so $q(\vecb{f}_X \mid \vecb{u})$ factorizes across data points.
+\end{itemize}
+All three reduce training from $\mathcal{O}(N^3)$ to $\mathcal{O}(NM^2 + M^3)$ and per-test prediction to $\mathcal{O}(M)$ mean / $\mathcal{O}(M^2)$ variance.
+\end{coremath}
+
+\begin{intuition}[Automatic Occam's Razor in Marginal Likelihood]
+Equation~\eqref{eq:pgmgp:lml} automatically balances fit and complexity without cross-validation: a short lengthscale $\ell$ makes $\mat{K}_{X,X} \approx \sigma_f^2 \eye_N$, achieving near-zero residual $\vecb{y}\T\mat{K}_y\inv\vecb{y}$ at the cost of a large $\log\det\mat{K}_y$ penalty (high effective degrees of freedom); an overly long $\ell$ produces a rank-deficient, near-constant $\mat{K}_{X,X}$ with small $\log\det\mat{K}_y$ but poor data fit $\vecb{y}\T\mat{K}_y\inv\vecb{y}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, p.~718}.
+\end{intuition}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:pgmgp:algorithms}
+% =============================================================================
+
+\begin{algorithm}[htbp]
+\caption{Tree Sum-Product Belief Propagation (Collect--Distribute)}
+\label{alg:pgmgp:tree_bp}
+\KwIn{Tree MRF $\mathcal{T} = (\mathcal{V}, \mathcal{E})$, node potentials $\{\psi_s(z_s)\}$, edge potentials $\{\psi_{st}(z_s, z_t)\}$, root $r \in \mathcal{V}$}
+\KwOut{Exact posterior node marginals $\{\mathrm{bel}_s(z_s)\}_{s \in \mathcal{V}}$}
+Orient edges away from root $r$ to define $\mathrm{pa}(s)$ and $\mathrm{ch}(s)$\;
+\ForEach{node $s \in \mathcal{V} \setminus \{r\}$ in post-order (leaves to root)}{
+  $\mathrm{bel}_s(z_s) \gets \psi_s(z_s) \prod_{c \in \mathrm{ch}(s)} m_{c \to s}(z_s)$, normalize $\mathrm{bel}_s$\;
+  $t \gets \mathrm{pa}(s)$\;
+  $m_{s \to t}(z_t) \gets \sum_{z_s} \psi_{st}(z_s, z_t)\, \mathrm{bel}_s(z_s)$\;
+}
+$\mathrm{bel}_r(z_r) \gets \psi_r(z_r) \prod_{c \in \mathrm{ch}(r)} m_{c \to r}(z_r)$, normalize $\mathrm{bel}_r$\;
+\ForEach{node $t \in \mathcal{V} \setminus \{r\}$ in pre-order (root to leaves)}{
+  $s \gets \mathrm{pa}(t)$\;
+  $m_{s \to t}(z_t) \gets \sum_{z_s} \psi_{st}(z_s, z_t)\, \frac{\mathrm{bel}_s(z_s)}{m_{t \to s}(z_s)}$\;
+  $\mathrm{bel}_t(z_t) \gets \mathrm{bel}_t(z_t)\, m_{s \to t}(z_t)$, normalize $\mathrm{bel}_t$\;
+}
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{Numerically Stable Cholesky GP Regression \& Marginal Likelihood}
+\label{alg:pgmgp:cholesky_gp}
+\KwIn{Training data $(\mat{X}, \vecb{y})$, kernel $k(\cdot,\cdot;\vecb{\theta})$, noise $\sigma_y^2$, jitter $\epsilon = 10^{-6}$, test inputs $\mat{X}_*$}
+\KwOut{Predictive mean $\vecb{\mu}_*$, covariance $\mat{\Sigma}_*$, log marginal likelihood $\log p(\vecb{y} \mid \mat{X}, \vecb{\theta})$}
+Compute $\mat{K}_y \gets k(\mat{X}, \mat{X}; \vecb{\theta}) + (\sigma_y^2 + \epsilon)\eye_N$\;
+Factor $\mat{L} \gets \mathrm{cholesky}(\mat{K}_y)$ \tcp*{Lower triangular $\mat{L}\mat{L}\T = \mat{K}_y$, $\mathcal{O}(N^3)$}
+Solve $\vecb{\alpha} \gets \mat{L}\T \backslash (\mat{L} \backslash \vecb{y})$ \tcp*{Forward/backward substitution, $\mathcal{O}(N^2)$}
+$\vecb{\mu}_* \gets \mat{K}_{*,X} \vecb{\alpha}$\;
+Solve $\mat{V} \gets \mat{L} \backslash \mat{K}_{X,*}$; \quad $\mat{\Sigma}_* \gets \mat{K}_{*,*} - \mat{V}\T \mat{V}$\;
+$\log p(\vecb{y} \mid \mat{X}, \vecb{\theta}) \gets -\frac{1}{2}\vecb{y}\T\vecb{\alpha} - \sum_{i=1}^N \log L_{ii} - \frac{N}{2}\log(2\pi)$\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Asymptotic time and space complexity across exact/approximate PGM inference and GP regression \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, 18}.}
+\label{tab:pgmgp:complexity}
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm} l l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Method} & \textbf{Train / Setup} & \textbf{Query / Pass} & \textbf{Space} & \textbf{Exactness \& Scope} \\
+\midrule
+Tree Sum-Product BP & --- & $\mathcal{O}(|\mathcal{E}| K^2)$ & $\mathcal{O}(|\mathcal{E}| K)$ & Exact marginals on trees/polytrees \\
+Junction Tree (JTA) & Triangulation & $\mathcal{O}(|\mathcal{C}| K^{w^*+1})$ & $\mathcal{O}(|\mathcal{C}| K^{w^*+1})$ & Exact on general graphs ($w^*$ = treewidth) \\
+Loopy BP (Residual) & --- & $\mathcal{O}(T_{\mathrm{it}}|\mathcal{E}| K^2)$ & $\mathcal{O}(|\mathcal{E}| K)$ & Approx.\ (Bethe stationary points) \\
+Exact Cholesky GP & $\mathcal{O}(N^3)$ & $\mathcal{O}(N)$ / $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)$ & Exact Gaussian posterior mean / var \\
+Sparse GP (SOR/DTC/FITC) & $\mathcal{O}(NM^2 + M^3)$ & $\mathcal{O}(M)$ / $\mathcal{O}(M^2)$ & $\mathcal{O}(NM)$ & $M \ll N$ inducing points $\mat{Z}$ \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Structural Factorization, Inference \& Non-Parametric Scaling]
+Murphy (Adv.~Ch.~4, 9) and Goodfellow et al.~(Ch.~16) emphasize that graph topology governs both statistical expressivity and computational tractability: DAGs permit $\mathcal{O}(D)$ ancestral sampling without partition functions, whereas MRFs trade global normalization $Z$ for symmetric spatial potentials and superior conditional discrimination (CRFs). Bishop (DLFC Ch.~11) grounds d-separation in the generative fuel-gauge collider, demonstrating how explaining away necessitates co-parents in the Markov blanket. Finally, Murphy (Intro Sec.~17.2; Adv.~Ch.~18) bridges finite-dimensional Bayesian linear models to non-parametric GPs: exact Cholesky inference (Alg.~\ref{alg:pgmgp:cholesky_gp}) provides calibrated $\pm 2\sigma$ uncertainty and automatic Occam's razor via $\log\det\mat{K}_y$, while inducing-point factorizations ($\mat{f}_* \indep \vecb{f}_X \mid \vecb{u}$) apply graphical conditional independence directly to dense kernel matrices to recover $\mathcal{O}(NM^2)$ scalability.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:pgmgp:visuals}
+% =============================================================================
+
+\monographfig[0.64\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p184_fig1.png}{Bayes ball rules for d-separation in DAGs \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~4, Fig.~4.4, p.~150}. Shaded nodes denote observed evidence $C$: (a)--(d) chains and forks block paths when observed; (e)--(f) colliders (v-structures) block paths when unobserved and unblock (explaining away) when observed.}{fig:pgmgp:bayes_ball}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  var/.style={circle, draw=monographNavy, fill=monographNavyBg, thick, minimum size=0.66cm, font=\small},
+  obs/.style={circle, draw=monographNavy, fill=monographNavy!22, thick, minimum size=0.66cm, font=\small},
+  fac/.style={rectangle, draw=monographTeal, fill=monographTealBg, thick, minimum size=0.48cm, font=\footnotesize}
+]
+  % --- Panel 1: DGM (V-structure / Explaining Away) ---
+  \node[var] (d1) at (0,0) {$X_1$};
+  \node[var] (d2) at (1.6,0) {$X_2$};
+  \node[obs] (d3) at (0.8,-1.3) {$X_3$};
+  \draw[monoArrow] (d1) -- (d3);
+  \draw[monoArrow] (d2) -- (d3);
+  \node[font=\small\bfseries, text=monographNavy] at (0.8, 0.72) {(a) DAG (V-Structure)};
+  \node[font=\scriptsize, text=monographSlate] at (0.8, -2.05) {Observed $X_3 \implies X_1 \not\indep X_2 \mid X_3$};
+
+  % --- Arrow DGM -> MRF ---
+  \draw[->, >=stealth, very thick, monographIndigo] (2.25,-0.65) -- node[above=2pt, font=\scriptsize\bfseries, text=monographIndigo] {Moralize} (3.45,-0.65);
+
+  % --- Panel 2: Moralized MRF ---
+  \node[var] (m1) at (4.1,0) {$X_1$};
+  \node[var] (m2) at (5.7,0) {$X_2$};
+  \node[obs] (m3) at (4.9,-1.3) {$X_3$};
+  \draw[thick, monographNavy] (m1) -- (m3);
+  \draw[thick, monographNavy] (m2) -- (m3);
+  \draw[thick, dashed, monographCrimson] (m1) -- (m2);
+  \node[font=\small\bfseries, text=monographNavy] at (4.9, 0.72) {(b) Moralized MRF};
+  \node[font=\scriptsize, text=monographCrimson] at (4.9, -2.05) {Marry parents: $X_1 - X_2$};
+
+  % --- Arrow MRF -> Factor Graph ---
+  \draw[->, >=stealth, very thick, monographIndigo] (6.35,-0.65) -- node[above=2pt, font=\scriptsize\bfseries, text=monographIndigo] {Factorize} (7.55,-0.65);
+
+  % --- Panel 3: Bipartite Factor Graph ---
+  \node[fac] (f1) at (8.15,0) {$f_1$};
+  \node[var] (x1) at (9.1,0) {$X_1$};
+  \node[var] (x2) at (10.9,0) {$X_2$};
+  \node[fac] (f2) at (11.85,0) {$f_2$};
+  \node[fac] (f3) at (10.0,-0.95) {$f_3$};
+  \node[obs] (x3) at (10.0,-1.85) {$X_3$};
+  \draw[thick, monographTeal] (f1) -- (x1);
+  \draw[thick, monographTeal] (f2) -- (x2);
+  \draw[thick, monographTeal] (x1) -- (f3);
+  \draw[thick, monographTeal] (x2) -- (f3);
+  \draw[thick, monographTeal] (f3) -- (x3);
+  \node[font=\small\bfseries, text=monographTeal] at (10.0, 0.72) {(c) Factor Graph};
+  \node[font=\scriptsize, text=monographSlate] at (10.0, -2.55) {$f_3(x_1,x_2,x_3) = p(x_3 \mid x_1,x_2)$};
+\end{tikzpicture}
+\caption{Conversion from (a) a DAG v-structure ($X_1 \to X_3 \leftarrow X_2$) with observed collider $X_3$ (explaining away) to (b) a moralized MRF with dashed moral edge $X_1 - X_2$, and (c) an unambiguous bipartite factor graph separating unary priors $f_1, f_2$ from the $3$-way CPD factor $f_3$.}
+\label{fig:pgmgp:conversion}
+\end{figure}
+
+\monographfig[0.86\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p728_fig1.png}{GP prior and posterior samples with SE kernel \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Fig.~18.7, p.~694}. (a) Prior draws $f \sim \mathcal{GP}(0, k_{\mathrm{SE}})$. (b) Noise-free observations ($\sigma_y=0$) collapse predictive variance to zero at data points. (c) Noisy observations ($\sigma_y > 0$) retain non-zero uncertainty bands ($\mu_* \pm 2\sigma_*$).}{fig:pgmgp:gp_samples}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.25cm},
+  width=0.43\textwidth, height=4.8cm,
+  grid=major, grid style={monographRule!50},
+  title style={font=\small\bfseries, text=monographNavy},
+  label style={font=\small}, tick label style={font=\footnotesize},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9}
+]
+\nextgroupplot[
+  title={Stationary Kernel Decay $k(r; \ell=1)$},
+  xlabel={Distance $r = \norm{\vecb{x} - \vecb{x}'}_2$},
+  ylabel={Covariance $k(r)$},
+  xmin=0, xmax=4, ymin=0, ymax=1.08
+]
+  \addplot[monographCrimson, thick, dashed, domain=0:4, samples=100] {exp(-x)};
+  \addlegendentry{Mat\'ern-$1/2$ ($C^0$)}
+  \addplot[monographTeal, thick, domain=0:4, samples=100] {(1 + sqrt(3)*x)*exp(-sqrt(3)*x)};
+  \addlegendentry{Mat\'ern-$3/2$ ($C^1$)}
+  \addplot[monographNavy, very thick, domain=0:4, samples=100] {exp(-0.5*x^2)};
+  \addlegendentry{SE / RBF ($C^\infty$)}
+
+\nextgroupplot[
+  title={GP Posterior Mean $\mu_* \pm 2\sigma_*$},
+  xlabel={Input $x$},
+  ylabel={Output $f(x)$},
+  xmin=-3, xmax=3, ymin=-2.1, ymax=2.3,
+  legend pos=north west
+]
+  % Synthetic calibrated GP posterior band: mu(x) = sin(x)*exp(-0.08*x^2), sigma(x) shrinks near obs x in {-2, -0.5, 1, 2.2}
+  \addplot[name path=upper, draw=none, domain=-3:3, samples=90]
+    {sin(deg(x))*exp(-0.08*x^2) + 2*(0.15 + 0.65*(1 - exp(-1.8*(x+2)^2) - exp(-1.8*(x+0.5)^2) - exp(-1.8*(x-1)^2) - exp(-1.8*(x-2.2)^2)))};
+  \addplot[name path=lower, draw=none, domain=-3:3, samples=90]
+    {sin(deg(x))*exp(-0.08*x^2) - 2*(0.15 + 0.65*(1 - exp(-1.8*(x+2)^2) - exp(-1.8*(x+0.5)^2) - exp(-1.8*(x-1)^2) - exp(-1.8*(x-2.2)^2)))};
+  \addplot[monographTeal!22, draw=none, area legend] fill between[of=upper and lower];
+  \addlegendentry{$\pm 2\sigma_*$ credible band}
+  \addplot[monographNavy, very thick, domain=-3:3, samples=90]
+    {sin(deg(x))*exp(-0.08*x^2)};
+  \addlegendentry{Posterior mean $\mu_*(x)$}
+  \addplot[only marks, mark=*, mark size=2.2pt, monographCrimson]
+    coordinates {(-2,-0.66) (-0.5,-0.47) (1,0.78) (2.2,0.55)};
+  \addlegendentry{Noisy observations}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Left: Mat\'ern-$1/2$ exhibits a sharp cusp at $r=0$ (rough $C^0$ paths), whereas Mat\'ern-$3/2$ ($C^1$) and SE ($C^\infty$) are smooth at the origin. Right: GP posterior mean $\mu_*(x)$ with $\pm 2\sigma_*(x)$ credible band contracting near observed data and reverting toward prior uncertainty in extrapolation gaps.}
+\label{fig:pgmgp:kernel_and_band}
+\end{figure}
+
+\monographfig[0.84\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p752_fig1.png}{Effect of GP hyperparameters $(\ell, \sigma_f, \sigma_y)$ on 1D SE regression \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, Fig.~18.15, p.~718}. (a) $(\ell,\sigma_f,\sigma_y)=(1.0,1.0,0.1)$ captures signal structure with tight uncertainty. (b) $(\ell,\sigma_f,\sigma_y)=(3.0,1.16,0.89)$ corresponds to an alternative local optimum of the marginal likelihood that over-smooths the signal as observation noise.}{fig:pgmgp:gp_hparams}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:pgmgp:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Loopy BP Non-Convergence, Oscillation \& Overconfident Marginals]
+\label{pit:pgmgp:loopy_bp}
+On graphs with short, strongly coupled cycles (e.g., ferromagnetic Ising grids at low temperature), synchronous Loopy BP frequently oscillates or diverges because messages reinforce their own echoes around cycles. Even when convergent, Bethe marginals can be severely overconfident. \textbf{Remedy:} Use damped asynchronous updates $m^{(k+1)} \gets (1-\alpha)m^{(k)} + \alpha m^{\mathrm{new}}$ ($\alpha \in (0, 0.5]$), residual BP scheduling (Eq.~\eqref{eq:pgmgp:sum_product}), or convexified BP / Junction Tree triangulation when treewidth permits \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~9, pp.~421--423}.
+\end{pitfall}
+
+\begin{pitfall}[Naive $\mat{K}_y\inv$ Inversion Instability vs.\ Jittered Cholesky]
+\label{pit:pgmgp:cholesky}
+For smooth kernels like SE ($C^\infty$) with closely spaced inputs or small noise $\sigma_y^2$, $\mat{K}_y$ is exponentially ill-conditioned ($\kappa(\mat{K}_y) > 10^{12}$). Explicit inversion $\mat{K}_y\inv$ causes catastrophic cancellation and negative predictive variances $\sigma_*^2 < 0$. \textbf{Remedy:} Always compute $\mat{L}\mat{L}\T = \mat{K}_y + \epsilon \eye_N$ via Cholesky with adaptive diagonal jitter ($\epsilon \approx 10^{-6}\sigma_f^2$) and evaluate $\log\det\mat{K}_y = 2\sum_{i=1}^N \log L_{ii}$ as in Algorithm~\ref{alg:pgmgp:cholesky_gp} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~17.2.5, p.~578}.
+\end{pitfall}
+
+\begin{pitfall}[Cubic $\mathcal{O}(N^3)$ Bottleneck \& Inconsistent Nystr\"om Variances]
+\label{pit:pgmgp:nystrom}
+Exact GP inference scales as $\mathcal{O}(N^3)$ time and $\mathcal{O}(N^2)$ memory, becoming intractable for $N > 10^4$. Furthermore, substituting the Nystr\"om approximation $\mat{Q}_{X,X}$ only in $\mat{K}_{X,X}$ while keeping exact $\mat{K}_{*,X}$ can produce negative predictive variances. \textbf{Remedy:} Use consistent inducing-point priors (DTC, FITC, or variational Titsias/SVGP) with $M \ll N$ inducing points, guaranteeing positive semidefinite covariances in $\mathcal{O}(NM^2 + M^3)$ time \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, pp.~707--709}.
+\end{pitfall}
+
+\begin{pitfall}[Marginal Likelihood Hyperparameter Local Optima]
+\label{pit:pgmgp:lml_optima}
+The GP log marginal likelihood $\log p(\vecb{y} \mid \mat{X}, \vecb{\theta})$ is non-convex in $(\ell, \sigma_f, \sigma_y)$ and routinely exhibits multiple local optima: one explaining variation as short-lengthscale signal with low noise (Fig.~\ref{fig:pgmgp:gp_hparams}a), and another explaining it as long-lengthscale trend with high observation noise (Fig.~\ref{fig:pgmgp:gp_hparams}b). \textbf{Remedy:} Optimize $\log p(\vecb{y} \mid \mat{X}, \vecb{\theta})$ from multiple log-space restarts, place weakly informative hyperpriors on $(\ell, \sigma_y)$, or marginalize $\vecb{\theta}$ via HMC/quadrature \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~18, pp.~718--720}.
+\end{pitfall}
+
+\end{document}

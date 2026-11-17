@@ -1,0 +1,329 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 05: Transformers \& Large Language Models}{Tokenization, Embeddings, Attention \& Transformer Architectures}{Subword Tokenization \& Vector Semantics}{Words, Byte-Pair Encoding (BPE), Distributional Embeddings \& Positional Encodings}{Jurafsky \& Martin Ch.~2, 5, 7.4; Raschka Ch.~2; Murphy Intro Sec.~20.5}
+\sloppy\emergencystretch=3em
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+\label{sec:tok:formulation}
+% =============================================================================
+
+Modern sequence models and large language models (LLMs) operate over continuous tensor spaces $\R^{N \times d}$, whereas human language arrives as discrete, variable-length character streams. Bridging this discrete--continuous divide requires a three-stage mathematical pipeline: (1) deterministic segmentation of raw UTF-8 byte streams into a finite subword vocabulary $\mathcal{V}$ of size $\abs{\mathcal{V}}$; (2) projection of discrete token indices $w_t \in \{1,\dots,\abs{\mathcal{V}}\}$ into dense semantic vectors $\vecb{e}_t \in \R^d$ that preserve distributional similarity; and (3) injection of sequence order so that permutation-equivariant self-attention layers can distinguish token positions $t \in \{1,\dots,N\}$.
+
+Let $\mathcal{C}$ denote a training corpus over an alphabet $\Sigma_0$ (typically the $256$ raw UTF-8 bytes $\{0,\dots,255\}$ in byte-level schemes). A tokenizer defines an encoding map $\tau: \Sigma_0^* \to \mathcal{V}^N$ and an inverse decoding map $\tau\inv: \mathcal{V}^N \to \Sigma_0^*$ satisfying $\tau\inv(\tau(s)) = s$ for every valid UTF-8 string $s$ \bookcite{speech_language_processing_aug26}{Ch.~2, pp.~40--43 (PDF pp.~48--51)}. Given a tokenized sequence $\vecb{w} = (w_1, \dots, w_N) \in \{1,\dots,\abs{\mathcal{V}}\}^N$, each token index $w_t$ corresponds to a one-hot basis vector $\vecb{o}_t \in \{0,1\}^{\abs{\mathcal{V}}}$ with $(\vecb{o}_t)_j = \mathbb{I}[j = w_t]$. Multiplying by the learnable token embedding matrix $\mat{E} \in \R^{\abs{\mathcal{V}} \times d}$ performs a linear row-selection lookup:
+\begin{equation}
+  \vecb{e}_t = \mat{E}\T \vecb{o}_t = \mat{E}_{w_t, :} \in \R^d,
+  \label{eq:tok:lookup}
+\end{equation}
+as formalized both as a one-hot matrix product in \bookcite{speech_language_processing_aug26}{Ch.~7.4, p.~192 (PDF p.~200)} and as an equivalent PyTorch \texttt{nn.Embedding} lookup layer in \bookcite{build_large_language_model_from_scratch}{Ch.~2.7, pp.~126--128}. Finally, positional information is combined either additively at the input layer, $\mat{X}_0 = \mat{E}_{\vecb{w}} + \mat{P}_{1:N} \in \R^{N \times d}$, or multiplicatively inside each attention head via relative rotation operators $\mat{R}_{\Theta, t}^d$ \bookcite{speech_language_processing_aug26}{Ch.~7.4, p.~193 (PDF p.~201)}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+The three primary references adopt distinct conventions for vocabulary size, embedding dimension, target-versus-context matrices, and sequence indices. Table~\ref{tab:tok:notation} establishes a unified symbol set used throughout this monograph.
+\par\medskip
+\noindent
+\begin{tabularx}{\linewidth}{@{}l l l l X@{}}
+  \toprule
+  \textbf{Concept} & \textbf{Unified} & \textbf{J\&M} & \textbf{Raschka} & \textbf{Murphy Intro} \\
+  \midrule
+  Vocabulary size & $\abs{\mathcal{V}}$ & $\abs{V}$ & \texttt{vocab\_size} & $M$ (Sec.~20.5, p.~705) \\
+  Embedding dim. & $d$ & $d$ & \texttt{output\_dim} & $D$ (Sec.~20.5, p.~705) \\
+  Context length & $N$ & $N$ & \texttt{max\_length} & $T$ (Sec.~20.5.2, p.~708) \\
+  Embedding matrix & $\mat{E} \in \R^{\abs{\mathcal{V}}\times d}$ & $\mat{E}$ & \texttt{emb.weight} & $\mat{V}, \mat{U} \in \R^{D \times M}$ \\
+  Target / context vec. & $\vecb{w}_i, \vecb{c}_j \in \R^d$ & $\vecb{w}, \vecb{c}$ & $\vecb{e}_t$ (tied) & $\vecb{v}_i, \vecb{u}_j \in \R^D$ \\
+  Neg. samples count & $k$ & $k$ & --- (autoregressive) & $K$ (Sec.~20.5.2.3, p.~709) \\
+  Context half-window & $L$ & $L$ & \texttt{stride} (sliding) & $m$ or $h$ \\
+  \bottomrule
+\end{tabularx}
+\captionof{table}{Unified notation reconciling Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~2, 5, 7.4}, Raschka \bookcite{build_large_language_model_from_scratch}{Ch.~2}, and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5}.}
+\label{tab:tok:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+\label{sec:tok:derivations}
+% =============================================================================
+
+\subsection{Unicode, Byte-Pair Encoding (BPE), and Edit Distance}
+
+Representing arbitrary multilingual text cannot rely on ASCII ($7$-bit, $128$ codes) or fixed word-level dictionaries, which suffer from out-of-vocabulary (OOV) failures and morphological explosion across polysynthetic or agglutinative languages \bookcite{speech_language_processing_aug26}{Ch.~2.2--2.3, pp.~37--41 (PDF pp.~45--49)}. Unicode assigns each character a unique code point in $\texttt{U+0000}$--$\texttt{U+10FFFF}$ ($1{,}114{,}111$ slots), and UTF-8 encodes each code point into $1$ to $4$ bytes in a prefix-free, self-synchronizing, ASCII-compatible format.
+
+\begin{coremath}[BPE Greedy Pair-Merge Objective \& Minimum Edit Distance]
+Let $\mathcal{C}_{\mathrm{pre}}$ be a multiset of pre-tokenized strings segmented at whitespace/punctuation boundaries (e.g., via regex pre-tokenization \bookcite{speech_language_processing_aug26}{Ch.~2.6, p.~55 (PDF p.~63)}), where each string $s \in \mathcal{C}_{\mathrm{pre}}$ has corpus multiplicity $f(s)$ and is initialized as a sequence of base symbols from $\Sigma_0$. At merge iteration $m \in \{1,\dots,k\}$, given current vocabulary $\mathcal{V}_{m-1}$, BPE selects the adjacent symbol pair $(a^*, b^*) \in \mathcal{V}_{m-1} \times \mathcal{V}_{m-1}$ maximizing total corpus co-occurrence frequency:
+\begin{equation}
+  (a^*, b^*) = \argmax_{(a, b) \in \mathcal{V}_{m-1}^2} \sum_{s \in \mathcal{C}_{\mathrm{pre}}} f(s) \cdot \mathrm{count}(ab \text{ in } s),
+  \label{eq:tok:bpe_merge}
+\end{equation}
+replaces every non-overlapping occurrence of $(a^*, b^*)$ with a new merged symbol $z_m = a^* b^*$, and sets $\mathcal{V}_m = \mathcal{V}_{m-1} \cup \{z_m\}$, yielding $\abs{\mathcal{V}_k} = \abs{\Sigma_0} + k$ \bookcite{speech_language_processing_aug26}{Ch.~2.4.1, pp.~43--44 (PDF pp.~51--52)}.
+
+To measure lexical similarity or align noisy/misspelled strings prior to tokenization, the \textbf{Minimum Edit Distance} (Levenshtein) between source string $X_{1:n}$ and target string $Y_{1:m}$ satisfies the dynamic programming recurrence for $D[i, j]$ with $D[0,0]=0$, $D[i,0]=\sum_{r=1}^i \mathrm{del}(X_r)$, $D[0,j]=\sum_{s=1}^j \mathrm{ins}(Y_s)$:
+\begin{equation}
+  D[i, j] = \min \begin{cases}
+    D[i-1, j] + \mathrm{del}(X_i), \\
+    D[i, j-1] + \mathrm{ins}(Y_j), \\
+    D[i-1, j-1] + \mathrm{sub}(X_i, Y_j),
+  \end{cases}
+  \label{eq:tok:edit_dist}
+\end{equation}
+where standard Levenshtein weights set $\mathrm{del}=\mathrm{ins}=1$ and $\mathrm{sub}(x,y) = 2\,\mathbb{I}[x \neq y]$ (or $1$ for unit substitution cost) \bookcite{speech_language_processing_aug26}{Ch.~2.9, pp.~62--63 (PDF pp.~70--71)}.
+\end{coremath}
+
+\begin{intuition}[Why Subword BPE Eliminates \texttt{<|unk|>} Without Character-Level Blowup]
+Pure word-level tokenizers require an \texttt{<|unk|>} fallback for unseen compounds (e.g., \texttt{someunknownPlace} or \texttt{Akwirw ier} in \bookcite{build_large_language_model_from_scratch}{Ch.~2.5, pp.~104--106}), destroying morphological and lexical signal. Conversely, pure character-level models inflate sequence length $N$, forcing $O(N^2)$ self-attention to expend capacity learning spelling. BPE interpolates smoothly: frequent words compress into single tokens, rare words decompose into reusable morphemes (\texttt{low} + \texttt{er}), and arbitrary unseen bytes fall back to the base alphabet $\Sigma_0$.
+\end{intuition}
+
+\subsection{Distributional Semantics, Cosine Similarity, and SGNS}
+
+By the distributional hypothesis \bookcite{speech_language_processing_aug26}{Ch.~5.2, p.~131 (PDF p.~139)}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5, p.~705 (PDF p.~735)}, words occurring in similar local contexts share semantic or syntactic roles. Measuring vector similarity via the raw dot product $\vecb{v}\T \vecb{w}$ is biased toward frequent words whose co-occurrence counts produce larger Euclidean norms $\norm{\vecb{v}}_2$. Dividing by the norms yields scale-invariant \textbf{cosine similarity}:
+\begin{equation}
+  \mathrm{sim}_{\cos}(\vecb{v}, \vecb{w}) = \frac{\vecb{v}\T \vecb{w}}{\norm{\vecb{v}}_2 \norm{\vecb{w}}_2} = 1 - \frac{1}{2}\norm{\hat{\vecb{v}} - \hat{\vecb{w}}}_2^2,
+  \label{eq:tok:cosine}
+\end{equation}
+where $\hat{\vecb{v}} = \vecb{v}/\norm{\vecb{v}}_2$ \bookcite{speech_language_processing_aug26}{Ch.~5.4, p.~135 (PDF p.~143)}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.1, p.~707 (PDF p.~737)}.
+
+While sparse count vectors of dimension $\abs{\mathcal{V}}$ capture co-occurrence directly, dense low-rank embeddings $\vecb{w}_i, \vecb{c}_j \in \R^d$ ($d \ll \abs{\mathcal{V}}$) generalize better across rare contexts. In \textbf{Skip-Gram with Negative Sampling (SGNS)}, rather than normalizing a full $\abs{\mathcal{V}}$-way softmax over all context words, the model trains a binary logistic classifier to distinguish true co-occurring pairs $(w, c_{\mathrm{pos}})$ within window $\pm L$ from $k$ noise pairs $(w, c_{\mathrm{neg}, i})$ drawn from a smoothed unigram distribution \bookcite{speech_language_processing_aug26}{Ch.~5.5.2, pp.~139--141 (PDF pp.~147--149)}, \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.2.3, p.~709 (PDF p.~739)}.
+
+\begin{coremath}[SGNS Objective, Smoothed Noise Distribution, and Exact Gradients]
+For a target word $w \in \R^d$ (row of target matrix $\mat{W} \in \R^{\abs{\mathcal{V}}\times d}$) and context word $c \in \R^d$ (row of context matrix $\mat{C} \in \R^{\abs{\mathcal{V}}\times d}$), SGNS models the probability that $(w, c)$ is a genuine corpus pair ($D=1$) via the logistic sigmoid $\sigma(z) = (1 + e^{-z})\inv$:
+\begin{equation}
+  P(D=1 \mid w, c) = \sigma(\vecb{c}\T \vecb{w}), \qquad P(D=0 \mid w, c) = 1 - \sigma(\vecb{c}\T \vecb{w}) = \sigma(-\vecb{c}\T \vecb{w}).
+  \label{eq:tok:sgns_prob}
+\end{equation}
+Noise words $c_{\mathrm{neg}, 1}, \dots, c_{\mathrm{neg}, k}$ are sampled independently from the $\alpha$-smoothed unigram distribution with $\alpha = 3/4$:
+\begin{equation}
+  P_\alpha(w') = \frac{\mathrm{count}(w')^\alpha}{\sum_{u \in \mathcal{V}} \mathrm{count}(u)^\alpha},
+  \label{eq:tok:noise_dist}
+\end{equation}
+which upweights rare words relative to raw unigram frequencies \bookcite{speech_language_processing_aug26}{Eq.~(5.19), p.~140 (PDF p.~148)}. Minimizing the negative log-likelihood of one positive pair and $k$ negative samples defines the per-instance SGNS loss:
+\begin{equation}
+  \mathcal{L}_{\mathrm{SGNS}}(\vecb{w}, \vecb{c}_{\mathrm{pos}}, \{\vecb{c}_{\mathrm{neg},i}\}_{i=1}^k)
+  = -\log \sigma(\vecb{c}_{\mathrm{pos}}\T \vecb{w}) - \sum_{i=1}^k \log \sigma(-\vecb{c}_{\mathrm{neg},i}\T \vecb{w}).
+  \label{eq:tok:sgns_loss}
+\end{equation}
+Using $\dd{}{z}\log\sigma(z) = 1 - \sigma(z)$ and $\dd{}{z}\log\sigma(-z) = -\sigma(z)$, the exact gradients with respect to $\vecb{c}_{\mathrm{pos}}$, $\vecb{c}_{\mathrm{neg},i}$, and $\vecb{w}$ are:
+\begin{align}
+  \pd{\mathcal{L}_{\mathrm{SGNS}}}{\vecb{c}_{\mathrm{pos}}} &= \bigl(\sigma(\vecb{c}_{\mathrm{pos}}\T \vecb{w}) - 1\bigr)\vecb{w}, \label{eq:tok:sgns_grad_pos} \\
+  \pd{\mathcal{L}_{\mathrm{SGNS}}}{\vecb{c}_{\mathrm{neg},i}} &= \sigma(\vecb{c}_{\mathrm{neg},i}\T \vecb{w})\vecb{w}, \label{eq:tok:sgns_grad_neg} \\
+  \pd{\mathcal{L}_{\mathrm{SGNS}}}{\vecb{w}} &= \bigl(\sigma(\vecb{c}_{\mathrm{pos}}\T \vecb{w}) - 1\bigr)\vecb{c}_{\mathrm{pos}} + \sum_{i=1}^k \sigma(\vecb{c}_{\mathrm{neg},i}\T \vecb{w})\vecb{c}_{\mathrm{neg},i}. \label{eq:tok:sgns_grad_w}
+\end{align}
+\end{coremath}
+
+\subsection{Implicit Matrix Factorization: Shifted PMI SVD and GloVe}
+
+Although Word2Vec is framed as predictive neural classification, both Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.1--20.5.3, pp.~706--710} and Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~5.5.3, p.~142} highlight a deep equivalence between SGNS and classical count-matrix factorization.
+
+\begin{coremath}[Levy \& Goldberg Shifted-PMI Equivalence and GloVe Objective]
+Let $x_{ij}$ denote the corpus co-occurrence count of target word $i$ and context word $j$, with marginals $x_i = \sum_j x_{ij}$, $x_j = \sum_i x_{ij}$, and total pairs $\abs{D} = \sum_{i,j} x_{ij}$. Summing Eq.~\eqref{eq:tok:sgns_loss} over the corpus yields an expected objective whose stationary point with respect to $z_{ij} = \vecb{w}_i\T \vecb{c}_j$ satisfies:
+\begin{equation}
+  \pd{}{z_{ij}} \Bigl[ x_{ij}\log\sigma(z_{ij}) + k \cdot x_i P_\alpha(j) \log\sigma(-z_{ij}) \Bigr] = 0
+  \;\implies\;
+  x_{ij}(1 - \sigma(z_{ij})) - k\, x_i P_\alpha(j)\sigma(z_{ij}) = 0.
+\end{equation}
+Solving for $e^{z_{ij}} = \sigma(z_{ij}) / (1 - \sigma(z_{ij}))$ gives the exact optimal inner product:
+\begin{equation}
+  \vecb{w}_i\T \vecb{c}_j = \log\!\left(\frac{x_{ij}}{x_i P_\alpha(j)}\right) - \log k = \mathrm{PMI}_\alpha(i, j) - \log k,
+  \label{eq:tok:shifted_pmi}
+\end{equation}
+where $\mathrm{PMI}(i, j) = \log \frac{P(i,j)}{P(i)P(j)}$ \bookcite{probabilisticml_kevinmurphy_introduction}{Eq.~(20.143), p.~707 (PDF p.~737)}. Thus, SGNS implicitly performs a rank-$d$ factorization of the $\log k$-shifted PMI matrix.
+
+\textbf{GloVe} \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.3, Eq.~(20.156), p.~710 (PDF p.~740)} makes this factorization explicit via weighted least squares on log co-occurrence counts with learnable scalar biases $b_i, c_j$:
+\begin{equation}
+  \mathcal{L}_{\mathrm{GloVe}} = \sum_{i,j \in \mathcal{V}} h(x_{ij})\bigl(\vecb{u}_j\T \vecb{v}_i + b_i + c_j - \log x_{ij}\bigr)^2, \qquad
+  h(x) = \begin{cases} (x/x_{\max})^{0.75} & x < x_{\max}, \\ 1 & x \ge x_{\max}, \end{cases}
+  \label{eq:tok:glove}
+\end{equation}
+where $x_{\max} = 100$ prevents ultra-frequent stopword pairs from dominating the squared loss.
+\end{coremath}
+
+\subsection{Positional Encodings: Absolute, Sinusoidal, and RoPE}
+
+Self-attention layers compute pairwise interactions $\vecb{q}_m\T \vecb{k}_n$ that are inherently permutation-equivariant: permuting the input rows of $\mat{E}_{\vecb{w}}$ permutes the outputs identically. As noted in \bookcite{build_large_language_model_from_scratch}{Ch.~2.8, pp.~129--131}, Transformers restore sequence order through three primary positional mechanisms:
+
+\begin{enumerate}
+  \item \textbf{Learned Absolute Positional Embeddings}: Used in GPT-2/3 and detailed in \bookcite{build_large_language_model_from_scratch}{Ch.~2.8, pp.~131--136} and \bookcite{speech_language_processing_aug26}{Ch.~7.4, p.~193}, a learnable table $\mat{E}_{\mathrm{pos}} \in \R^{N_{\max} \times d}$ is added to token embeddings: $\mat{X}_0[t, :] = \mat{E}[w_t, :] + \mat{E}_{\mathrm{pos}}[t, :]$.
+  \item \textbf{Sinusoidal Positional Encodings}: To avoid parameterizing every position up to $N_{\max}$ and enable length generalization, the original Transformer assigns fixed multi-frequency waves across dimension pairs $2i, 2i+1$ ($0 \le i < d/2$):
+\begin{equation}
+  \mathrm{PE}_{(p, 2i)} = \sin\!\left(\frac{p}{10000^{2i/d}}\right), \qquad
+  \mathrm{PE}_{(p, 2i+1)} = \cos\!\left(\frac{p}{10000^{2i/d}}\right).
+  \label{eq:tok:sinusoid}
+\end{equation}
+  \item \textbf{Rotary Position Embeddings (RoPE)}: Rather than adding position at the input layer, RoPE rotates query and key vectors inside each attention head by position-dependent angles \bookcite{speech_language_processing_aug26}{Ch.~7.4, p.~193 (PDF p.~201)}.
+\end{enumerate}
+
+\begin{coremath}[Linear Relative-Shift Property of Sinusoids and RoPE Inner-Product Invariance]
+For any fixed offset $\Delta p$, each $(2i, 2i+1)$ pair of sinusoidal coordinates at position $p + \Delta p$ is a linear orthogonal rotation of the coordinates at $p$ with angular frequency $\omega_i = 10000^{-2i/d}$:
+\begin{equation}
+  \begin{bmatrix} \mathrm{PE}_{(p+\Delta p, 2i)} \\ \mathrm{PE}_{(p+\Delta p, 2i+1)} \end{bmatrix}
+  = \begin{bmatrix} \cos(\omega_i \Delta p) & \sin(\omega_i \Delta p) \\ -\sin(\omega_i \Delta p) & \cos(\omega_i \Delta p) \end{bmatrix}
+  \begin{bmatrix} \mathrm{PE}_{(p, 2i)} \\ \mathrm{PE}_{(p, 2i+1)} \end{bmatrix}.
+  \label{eq:tok:sinusoid_shift}
+\end{equation}
+RoPE elevates this rotation directly into the attention dot product. Partitioning $\vecb{q}_m, \vecb{k}_n \in \R^{d_h}$ into $d_h/2$ two-dimensional subspaces (identified with $\C^{d_h/2}$), RoPE applies the block-diagonal rotation matrix $\mat{R}_{\Theta, m}^{d_h} = \mathrm{diag}\bigl(\mat{R}(\theta_0 m), \dots, \mat{R}(\theta_{d_h/2-1} m)\bigr)$ where $\theta_i = 10000^{-2i/d_h}$:
+\begin{equation}
+  \tilde{\vecb{q}}_m = \mat{R}_{\Theta, m}^{d_h} \vecb{q}_m, \qquad
+  \tilde{\vecb{k}}_n = \mat{R}_{\Theta, n}^{d_h} \vecb{k}_n.
+\end{equation}
+Because rotation matrices satisfy $(\mat{R}_{\Theta, m}^{d_h})\T \mat{R}_{\Theta, n}^{d_h} = \mat{R}_{\Theta, n-m}^{d_h}$, the attention logit depends \emph{strictly} on the relative displacement $n - m$:
+\begin{equation}
+  \tilde{\vecb{q}}_m\T \tilde{\vecb{k}}_n = \vecb{q}_m\T \bigl(\mat{R}_{\Theta, m}^{d_h}\bigr)\T \mat{R}_{\Theta, n}^{d_h} \vecb{k}_n = \vecb{q}_m\T \mat{R}_{\Theta, n-m}^{d_h} \vecb{k}_n.
+  \label{eq:tok:rope_rel}
+\end{equation}
+\end{coremath}
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+\label{sec:tok:algorithms}
+% =============================================================================
+
+Algorithm~\ref{alg:tok:bpe} unifies the two-phase BPE procedure from Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~2.4, pp.~43--45} with the byte-level \texttt{tiktoken} encoding pipeline in Raschka \bookcite{build_large_language_model_from_scratch}{Ch.~2.5, pp.~102--106}.
+
+\begin{algorithm}[htbp]
+\caption{Byte-Level BPE Merge Training and Greedy Encoding}
+\label{alg:tok:bpe}
+\KwIn{Corpus $\mathcal{C}$, target merges $k$, base byte alphabet $\Sigma_0 = \{0,\dots,255\}$, test string $s_{\mathrm{test}}$}
+\KwOut{Vocabulary $\mathcal{V}_k$, ordered merge table $\mathcal{M} = [(a_m, b_m, r_m)]_{m=1}^k$, token IDs $\vecb{w}$}
+\tcp{Phase 1: Training (Inducing Vocabulary and Merge Ranks)}
+Pre-tokenize $\mathcal{C}$ via regex into word-frequency multiset $\mathcal{C}_{\mathrm{pre}} = \{(s, f(s))\}$\;
+Convert each $s$ to UTF-8 byte sequence; initialize $\mathcal{V}_0 \leftarrow \Sigma_0$, $\mathcal{M} \leftarrow []$\;
+\For{$m = 1$ \KwTo $k$}{
+  Compute pair counts $C(a, b) \leftarrow \sum_{(s, f) \in \mathcal{C}_{\mathrm{pre}}} f \cdot \mathrm{count}((a, b) \text{ in } s)$\;
+  \If{$C$ is empty}{\textbf{break}\;}
+  $(a^*, b^*) \leftarrow \argmax_{(a,b)} C(a, b)$\;
+  $\mathcal{V}_m \leftarrow \mathcal{V}_{m-1} \cup \{a^* b^*\}$; append $(a^*, b^*, m)$ to $\mathcal{M}$\;
+  Replace all non-overlapping adjacent $(a^*, b^*)$ with $a^* b^*$ in every $s \in \mathcal{C}_{\mathrm{pre}}$\;
+}
+\tcp{Phase 2: Greedy Rank-Ordered Encoding}
+Segment $s_{\mathrm{test}}$ via regex into pre-tokens; map each pre-token to UTF-8 bytes\;
+\ForEach{byte sequence $\vecb{u} = (u_1, \dots, u_L)$}{
+  \While{$\abs{\vecb{u}} \ge 2$}{
+    Find adjacent pair $(u_j, u_{j+1})$ with minimum merge rank $r_m$ in $\mathcal{M}$\;
+    \If{no adjacent pair exists in $\mathcal{M}$}{\textbf{break}\;}
+    Merge all occurrences of $(u_j, u_{j+1})$ into $u_j u_{j+1}$ in $\vecb{u}$\;
+  }
+  Append vocabulary IDs of $\vecb{u}$ to $\vecb{w}$\;
+}
+\Return{$\mathcal{V}_k, \mathcal{M}, \vecb{w}$}\;
+\end{algorithm}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Asymptotic time and space complexity across tokenization, static embedding, and positional encoding methods ($\abs{\mathcal{C}}$: corpus tokens; $k$: BPE merges; $N$: sequence length; $d$: embedding dimension).}
+  \label{tab:tok:complexity}
+  \begin{tabularx}{\linewidth}{@{}l l l X@{}}
+    \toprule
+    \textbf{Method} & \textbf{Time Complexity} & \textbf{Space / Params} & \textbf{Key Operational Trade-off} \\
+    \midrule
+    BPE Training (naive) & $O(k \cdot \abs{\mathcal{C}}_{\mathrm{uniq}})$ & $O(\abs{\mathcal{V}} + \abs{\mathcal{C}}_{\mathrm{uniq}})$ & Heap-indexed pair counts reduce update cost to $O(\log \abs{\mathcal{V}})$ per occurrence. \\
+    BPE Encoding & $O(N \log N)$ or $O(N \cdot k_{\mathrm{local}})$ & $O(\abs{\mathcal{V}})$ & Deterministic greedy merge by training rank; no \texttt{<|unk|>} tokens needed. \\
+    SGNS (Word2Vec) & $O(\abs{\mathcal{C}} \cdot L \cdot k \cdot d)$ & $2\abs{\mathcal{V}} d$ & Avoids $O(\abs{\mathcal{V}})$ softmax via $k$ negative samples; static per type. \\
+    GloVe & $O(\abs{\mathrm{nnz}(\mat{X})} \cdot d)$ / epoch & $2\abs{\mathcal{V}}(d+1)$ & Trains on non-zero co-occurrences $\abs{\mathrm{nnz}(\mat{X})} \ll \abs{\mathcal{V}}^2$; global statistics. \\
+    Learned Abs. PE & $O(N d)$ & $N_{\max} d$ & Expressive for $t \le N_{\max}$; cannot extrapolate beyond $N_{\max}$. \\
+    Sinusoidal PE & $O(N d)$ & $0$ (buffers) & Parameter-free; linear relative-shift property, weak long-range extrapolation. \\
+    RoPE & $O(N d)$ per layer & $0$ (buffers) & Exact relative inner product $\tilde{\vecb{q}}_m\T \tilde{\vecb{k}}_n$; supports base-$\theta$ context scaling. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Static Vectors vs.\ Contextual LLM Input Pipelines]
+Jurafsky \& Martin \bookcite{speech_language_processing_aug26}{Ch.~5, pp.~139--143} and Murphy \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5, pp.~707--711} treat embeddings primarily as \emph{static} lexical representations learned via SGNS, GloVe, or shifted-PMI SVD, where word analogies ($\vecb{v}_{\text{queen}} \approx \vecb{v}_{\text{king}} - \vecb{v}_{\text{man}} + \vecb{v}_{\text{woman}}$) emerge from log-linear co-occurrence geometry (justified theoretically by the RAND-WALK latent discourse model \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.5, p.~711}). By contrast, Raschka \bookcite{build_large_language_model_from_scratch}{Ch.~2.6--2.8, pp.~107--139} constructs embeddings as the trainable first layer of an autoregressive Transformer: a sliding window of length \texttt{max\_length} and stride $s$ extracts input--target tensor pairs $(\mat{X}_{t:t+N-1}, \mat{X}_{t+1:t+N})$, \texttt{nn.Embedding} maps IDs to $\R^d$, and positional vectors are added before self-attention. In modern LLMs, $\mat{E}$ is frequently weight-tied to the unembedding head $\mat{U} = \mat{E}\T$ \bookcite{speech_language_processing_aug26}{Ch.~7.5, pp.~194--195 (PDF pp.~202--203)}, unifying input representation and next-token logit projection.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+\label{sec:tok:visuals}
+% =============================================================================
+
+Figure~\ref{fig:tok:pipeline_tikz} synthesizes the complete end-to-end transformation from raw UTF-8 text through byte-level BPE, embedding lookup, and positional injection into the Transformer input tensor $\mat{X}_0$.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=0.55cm and 0.42cm,
+    every node/.style={font=\footnotesize\sffamily}
+  ]
+    % Top row: Discrete Tokenization Pipeline
+    \node[monoBox, text width=2.05cm] (raw) {\textbf{Raw UTF-8 Text}\\{\scriptsize\texttt{"Akwirw ier"}}};
+    \node[monoTealBox, right=of raw, text width=2.35cm] (bytes) {\textbf{Pre-Tokenize \& Bytes}\\{\scriptsize UTF-8 $\in \{0,\dots,255\}$}};
+    \node[monoTealBox, right=of bytes, text width=2.55cm] (bpe) {\textbf{Greedy BPE Merges}\\{\scriptsize Rank-ordered $\mathcal{M}$\\ \texttt{"Ak", "w", "ir", "w", " ", "ier"}}};
+    \node[monoIndigoBox, right=of bpe, text width=2.1cm] (ids) {\textbf{Token IDs $\vecb{w}$}\\{\scriptsize\texttt{[33901, 86, 343, \dots]}}};
+
+    % Bottom row: Continuous Embedding & Position Pipeline
+    \node[monoIndigoBox, below=1.0cm of ids, text width=2.5cm] (emb) {\textbf{Token Lookup $\mat{E}$}\\{\scriptsize $\vecb{e}_t = \mat{E}_{w_t,:} \in \R^d$}};
+    \node[monoWarnBox, left=0.95cm of emb, text width=2.85cm] (pos) {\textbf{Positional Encoding}\\{\scriptsize Sinusoidal / Learned $\mat{P}_{1:N}$\\or RoPE $\mat{R}_{\Theta,t}^{d_h}$ (in attn)}};
+    \node[monoBox, left=0.75cm of pos, text width=3.0cm] (x0) {\textbf{Transformer Input $\mat{X}_0$}\\{\scriptsize $\mat{X}_0 = \mat{E}_{\vecb{w}} + \mat{P}_{1:N} \in \R^{N \times d}$}};
+
+    % Arrows
+    \draw[monoArrow] (raw) -- (bytes);
+    \draw[monoArrow] (bytes) -- (bpe);
+    \draw[monoArrow] (bpe) -- (ids);
+    \draw[monoArrow] (ids) -- (emb);
+    \draw[monoArrow] (emb) -- node[above, font=\scriptsize] {$+$ / $\mat{R}_\Theta$} (pos);
+    \draw[monoArrow] (pos) -- (x0);
+  \end{tikzpicture}
+  \caption{End-to-end LLM input representation pipeline: raw UTF-8 text undergoes regex pre-tokenization, byte-level BPE merging, vocabulary ID mapping, linear embedding lookup $\mat{E}$, and positional injection (additive $\mat{P}_{1:N}$ or multiplicative RoPE $\mat{R}_{\Theta,t}^{d_h}$) to yield $\mat{X}_0 \in \R^{N \times d}$.}
+  \label{fig:tok:pipeline_tikz}
+\end{figure}
+
+When encountering rare or out-of-vocabulary strings, BPE gracefully backs off along its merge hierarchy without emitting \texttt{<|unk|>}, as illustrated in Figure~\ref{fig:tok:bpe_unk}.
+
+\monographfig[0.72\textwidth]{build_large_language_model_from_scratch_p105_fig1.png}{Subword fallback in GPT-2 byte-level BPE (\texttt{tiktoken}): the unseen string \texttt{"Akwirw ier"} is segmented into known subwords and individual characters with exact round-trip decodability \bookcite{build_large_language_model_from_scratch}{Ch.~2.5, Fig.~2.11, p.~105}.}{fig:tok:bpe_unk}
+
+In static distributional embedding spaces, CBOW and Skip-Gram represent dual formulations of local context prediction (Figure~\ref{fig:tok:cbow_skipgram}), while SGNS gradient updates (Figure~\ref{fig:tok:sgns_grad}) pull target vectors toward observed context embeddings and push them away from $k$ negative noise samples.
+
+\monographfig[0.76\textwidth]{probabilisticml_kevinmurphy_introduction_p738_fig1.png}{Comparison of Word2Vec architectures for window half-size $m=2$: (a) Continuous Bag of Words (CBOW) averages context vectors to predict $w_t$; (b) Skip-Gram predicts surrounding context words $w_{t\pm j}$ from center word $w_t$ \bookcite{probabilisticml_kevinmurphy_introduction}{Sec.~20.5.2, Fig.~20.44, p.~708 (PDF p.~738)}.}{fig:tok:cbow_skipgram}
+
+\monographfig[0.72\textwidth]{speech_language_processing_aug26_p149_fig1.png}{Geometric intuition of one SGNS gradient descent step from Eqs.~\eqref{eq:tok:sgns_grad_pos}--\eqref{eq:tok:sgns_grad_w}: increasing $\vecb{c}_{\mathrm{pos}}\T \vecb{w}$ for observed pair (\emph{apricot}, \emph{jam}) while decreasing $\vecb{c}_{\mathrm{neg},i}\T \vecb{w}$ for $k=2$ noise words (\emph{matrix}, \emph{Tolstoy}) \bookcite{speech_language_processing_aug26}{Ch.~5.5.2, Fig.~5.7, p.~141 (PDF p.~149)}.}{fig:tok:sgns_grad}
+
+Figure~\ref{fig:tok:sinusoid_spectrum} plots the multi-scale sinusoidal basis $\mathrm{PE}_{(p, 2i)} = \sin(p / 10000^{2i/d})$ for $d=512$ across positions $p \in [0, 100]$. Low-index dimensions ($i=0$, wavelength $2\pi$) oscillate rapidly to resolve fine local offsets, whereas higher-index dimensions ($i=64, 128$) vary slowly to encode coarse global position.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.88\textwidth,
+      height=5.8cm,
+      xlabel={Sequence Position $p$},
+      ylabel={$\mathrm{PE}_{(p, 2i)} = \sin\!\left(p \cdot 10000^{-2i/d}\right)$},
+      xmin=0, xmax=100,
+      ymin=-1.18, ymax=1.42,
+      grid=major,
+      grid style={dashed, monographRule!60},
+      legend pos=north east,
+      legend columns=3,
+      legend style={font=\scriptsize, fill=white, fill opacity=0.95},
+      tick label style={font=\scriptsize},
+      label style={font=\small}
+    ]
+      % i=0: omega = 1.0 rad/pos
+      \addplot[monographCrimson, thick, domain=0:100, samples=450] {sin(deg(x))};
+      \addlegendentry{$i=0$ ($\omega_0=1$)}
+      % i=64, d=512: 2i/d = 0.25 => 10000^(-0.25) = 0.1 rad/pos
+      \addplot[monographTeal, very thick, domain=0:100, samples=160] {sin(deg(0.1*x))};
+      \addlegendentry{$i=64$ ($\omega_{64}=0.1$)}
+      % i=128, d=512: 2i/d = 0.50 => 10000^(-0.5) = 0.01 rad/pos
+      \addplot[monographNavy, ultra thick, dashed, domain=0:100, samples=120] {sin(deg(0.01*x))};
+      \addlegendentry{$i=128$ ($\omega_{128}=0.01$)}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Multi-scale frequency spectrum of sinusoidal positional encodings ($d=512$, Eq.~\eqref{eq:tok:sinusoid}). High-frequency dimensions ($i=0$) distinguish adjacent tokens, while low-frequency dimensions ($i=128$) track long-range position without wrapping.}
+  \label{fig:tok:sinusoid_spectrum}
+\end{figure}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+\label{sec:tok:pitfalls}
+% =============================================================================
+
+\begin{pitfall}[Multilingual Over-Segmentation and Fertility Inflation]
+When a BPE tokenizer is trained on an English-dominated corpus, non-English scripts receive far fewer merge rules, inflating \emph{token fertility} (tokens per word) by $2\times$--$5\times$ \bookcite{speech_language_processing_aug26}{Ch.~2.4.3, pp.~46--47 (PDF pp.~54--55)}. For example, a $16$-word Spanish sentence can fragment into $33$ tokens (splitting \emph{hondo} into \texttt{h} + \texttt{ondo}), whereas its $14$-word English translation requires only $19$ tokens. Because self-attention scales as $O(N^2)$, over-segmentation directly increases inference latency, exhausts finite context windows, and degrades cross-lingual semantic quality. \textbf{Remedy}: Balance training corpora across target languages during BPE induction and monitor per-language fertility.
+\end{pitfall}
+
+\begin{pitfall}[Unsmoothed Noise Sampling ($\alpha=1$) and Raw Dot-Product Bias]
+Using unsmoothed unigram probabilities ($\alpha=1$) in SGNS over-samples high-frequency stopwords as negatives while starving rare content words of contrastive updates; setting $\alpha=0.75$ in Eq.~\eqref{eq:tok:noise_dist} boosts rare-word sampling probability (e.g., from $0.01$ to $0.03$ in a two-word illustration) \bookcite{speech_language_processing_aug26}{Ch.~5.5.2, p.~140 (PDF p.~148)}. Similarly, ranking word similarity by unnormalized dot product $\vecb{v}\T \vecb{w}$ conflates semantic relatedness with word frequency; always normalize via cosine similarity~\eqref{eq:tok:cosine} or evaluate shifted PMI~\eqref{eq:tok:shifted_pmi}.
+\end{pitfall}
+
+\begin{pitfall}[Learned Positional Extrapolation Failure and Context Truncation]
+Learned absolute positional tables $\mat{E}_{\mathrm{pos}} \in \R^{N_{\max} \times d}$ suffer from two failure modes: (1) outer positions $t \approx N_{\max}$ receive far fewer gradient updates if training documents are shorter than $N_{\max}$, leaving those rows under-trained \bookcite{speech_language_processing_aug26}{Ch.~7.4, p.~193 (PDF p.~201)}; and (2) sequences exceeding $N_{\max}$ cannot be indexed and must be truncated \bookcite{build_large_language_model_from_scratch}{Ch.~2.8, p.~135}. \textbf{Remedy}: Use RoPE~\eqref{eq:tok:rope_rel} with base-$\theta$ frequency scaling (YaRN / NTK-aware interpolation) when context-length extrapolation is required.
+\end{pitfall}
+
+\end{document}

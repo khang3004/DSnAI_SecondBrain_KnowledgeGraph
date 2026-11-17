@@ -1,0 +1,308 @@
+\documentclass[../../../../master.tex]{subfiles}
+\begin{document}
+
+\monographleaf{Domain 07: Agentic AI \& Production ML Systems}{Production ML Systems, Evaluation, Observability \& AgentOps}{ML Systems Design, Data Pipelines \& Distribution Shifts}{Iterative ML Systems Design, Feature Engineering, Leakage, Distribution Shift \& Continual Learning}{Chip Huyen Ch.~1--5 \& 7--10, LLM Engineer's Handbook Ch.~1--3}
+
+\begingroup
+\emergencystretch=4em
+\sloppy
+
+\section{Problem Formulation \& Unified Notation}\label{sec:mlsys:formulation}
+
+Production machine learning systems differ fundamentally from research prototypes: whereas research optimizes offline predictive accuracy on static benchmark splits, production systems must satisfy coupled operational and business constraints under continuous data evolution \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~1, p.~32}. Following \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~2, pp.~46--52}, an ML system is engineered iteratively around four non-functional pillars---reliability, scalability, maintainability, and adaptability---while explicitly mapping offline ML metrics (cross-entropy loss, F1, AUC-ROC, p99 latency) to business objectives (conversion rate, take-rate, fraud loss prevented).
+
+At the architectural level, monolithic batch scripts that couple feature extraction, model training, and inference inside a single pipeline fail to scale horizontally across heterogeneous compute tiers and impede feature reuse \bookcite{llm_engineer_s_handbook}{Ch.~1, pp.~10--12 (PDF pp.~39--41)}. Both \bookcite{llm_engineer_s_handbook}{Ch.~1, pp.~13--15 (PDF pp.~42--44)} and \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, pp.~204--205 (PDF pp.~224--225)} converge on decoupling the lifecycle into three independent, artifact-mediated pipelines---the \textbf{Feature--Training--Inference (FTI)} architecture:
+\begin{enumerate}
+  \item \textbf{Feature Pipeline ($\mathcal{P}_F$):} Ingests raw events from transactional databases, NoSQL document stores (e.g., MongoDB), or real-time streams, computes deterministic transformations $\vecb{x}_t = \phi(\vecb{r}_{\le t})$, and writes versioned feature vectors and labels $(\vecb{x}_t, y_t)$ to a \emph{feature store} or logical vector warehouse (e.g., Qdrant) \bookcite{llm_engineer_s_handbook}{Ch.~1--2, pp.~14, 47--48 (PDF pp.~43, 76--77)}.
+  \item \textbf{Training Pipeline ($\mathcal{P}_T$):} Queries point-in-time consistent snapshots $\mathcal{D}_{\mathrm{train}} = \{(\vecb{x}_i, y_i)\}_{i=1}^N$ from the feature store, optimizes parameters $\theta^* \in \Theta$, logs lineage metadata (e.g., via ZenML artifacts and Comet ML), and publishes versioned weights to a \emph{model registry} \bookcite{llm_engineer_s_handbook}{Ch.~2, pp.~39--45 (PDF pp.~68--74)}.
+  \item \textbf{Inference Pipeline ($\mathcal{P}_I$):} Loads a registered model $f_{\theta^*}$ and retrieves online/batch features from the feature store (or vector embeddings for RAG) to emit predictions $\hat{y}_t = f_{\theta^*}(\vecb{x}_t)$ synchronously via REST/gRPC or asynchronously in batch, logging inputs and predictions for drift monitoring \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7--8, pp.~197--199, 251 (PDF pp.~217--219, 271)}.
+\end{enumerate}
+
+Let $\mathcal{X} \subseteq \R^d$ denote the engineered feature space and $\mathcal{Y}$ the target space. Training data are drawn from a source joint distribution $P_{\mathrm{src}}(X, Y)$, whereas production inference queries arrive from a time-varying target distribution $P_{\mathrm{tgt}}^{(t)}(X, Y)$ at epoch $t$. Table~\ref{tab:mlsys:notation} reconciles the notation and systems terminology across our primary sources.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:mlsys:notation}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Concept} & \textbf{Designing ML Systems (Ch.~3--9)} & \textbf{LLM Engineer's Handbook (Ch.~1--3)} & \textbf{Unified Monograph Convention} \\
+\midrule
+Pipeline Decoupling & Unified batch/stream feature store eliminating train-serving skew & FTI pattern: Feature, Training, Inference pipelines via Feature Store & $\mathcal{P}_F \to \mathcal{S}_F \to \mathcal{P}_T \to \mathcal{R}_M \to \mathcal{P}_I$ with versioned contracts \\
+Raw vs.\ Vector Storage & Relational (OLTP/OLAP) vs.\ NoSQL; row- vs.\ column-major (Parquet) & MongoDB (unstructured raw docs) + Qdrant (chunked vector index) & Raw warehouse $\mathcal{W}_{\mathrm{raw}}$ feeding logical feature/vector store $\mathcal{S}_F$ \\
+Lineage \& Artifact & Model store + data/model lineage tracking (MLflow, Stitch Fix) & ZenML step artifacts, metadata store, Hugging Face registry & Versioned tuple $(v_{\mathrm{data}}, v_{\phi}, v_{\theta})$ \\
+Distribution Shift & $P(X,Y)$ split into Covariate $P(X)$, Label $P(Y)$, Concept $P(Y|X)$ & Prompt/query monitoring (Opik) and CT/CI/CD retrain triggers & $P_{\mathrm{src}}(X,Y)$ vs.\ $P_{\mathrm{tgt}}^{(t)}(X,Y)$ monitored on sliding windows $W_t$ \\
+Model Updating & Stateless retraining (from scratch) vs.\ stateful training (fine-tuning) & Continuous Training (CT) triggered by new data/artifacts & Stateless $\theta^{(k)} \leftarrow \mathcal{A}(\mathcal{D}_{t-L:t})$ vs.\ stateful $\theta^{(k)} \leftarrow \mathcal{A}(\theta^{(k-1)}, \mathcal{D}_{t-1:t})$ \\
+\bottomrule
+\end{tabularx}
+\vspace{4pt}
+{\footnotesize\textit{Sources reconciled:} \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~3--9} and \bookcite{llm_engineer_s_handbook}{Ch.~1--3}.}
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}\label{sec:mlsys:math}
+
+\subsection{Class Imbalance, Resampling Bounds, and Loss Reweighting}
+
+Real-world production tasks (fraud detection, rare-event click prediction, fault diagnosis) exhibit severe class imbalance where minority class priors $\pi_c = \Prob(Y = c) \ll 1/K$ \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~4, pp.~102--105 (PDF pp.~122--125)}. Standard empirical risk minimization $\mathcal{L}(X; \theta) = \frac{1}{N} \sum_{i=1}^N \ell(\vecb{x}_i, y_i; \theta)$ weights every instance equally, biasing gradient updates toward majority classes and yielding degenerate decision boundaries.
+
+Data-level resampling alters the training distribution via random undersampling (RUS), random oversampling (ROS), Tomek links (removing majority-class members of opposite-class nearest-neighbor pairs), or SMOTE (synthesizing minority points via convex combinations $\tilde{\vecb{x}} = \vecb{x}_i + \lambda(\vecb{x}_{\mathrm{nn}} - \vecb{x}_i)$, $\lambda \sim \Uniform(0,1)$) \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~4, pp.~109--110 (PDF pp.~129--130)}. However, distance-based resampling degrades in high-dimensional spaces ($d \gg 100$) due to distance concentration, and evaluation must \emph{never} be performed on resampled splits. Algorithm-level methods preserve the true data distribution while modifying the objective.
+
+\begin{coremath}[Cost-Sensitive, Class-Balanced, and Focal Loss Formulations]
+Let $C_{ij} \ge 0$ denote the domain cost of predicting class $j$ when the true class is $i$ ($C_{ii} = 0$), and let $P(j \mid \vecb{x}; \theta)$ be the model's predicted posterior probability \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~4, pp.~111--112 (PDF pp.~131--132)}:
+\begin{enumerate}
+  \item \textbf{Cost-Sensitive Loss:} For an instance $\vecb{x}$ of true class $i$, the expected misclassification cost is
+  \begin{equation}\label{eq:mlsys:cost_sensitive}
+    \mathcal{L}_{\mathrm{CS}}(\vecb{x}, i; \theta) = \sum_{j=1}^{K} C_{ij}\, P(j \mid \vecb{x}; \theta).
+  \end{equation}
+  \item \textbf{Class-Balanced Loss:} Assigning inverse-frequency class weights $W_i = N / N_i$ (where $N_i$ is the sample count of class $i$) yields $\mathcal{L}_{\mathrm{CB}}(\vecb{x}, i; \theta) = W_i \sum_{j=1}^{K} P(j \mid \vecb{x}; \theta)\,\mathrm{Loss}(\vecb{x}, j)$. Accounting for sample overlap via the \emph{effective number of samples} $E_{N_i} = (1 - \beta^{N_i})/(1 - \beta)$ with $\beta \in [0, 1)$ refines the weight to $W_i^{\mathrm{eff}} = (1 - \beta)/(1 - \beta^{N_i})$.
+  \item \textbf{Focal Loss:} To down-weight well-classified majority examples and concentrate gradients on hard examples, let $p_t \in (0, 1]$ be the model's predicted probability for the ground-truth class. With focusing parameter $\gamma \ge 0$ and balancing factor $\alpha_t$, Focal Loss is defined as
+  \begin{equation}\label{eq:mlsys:focal_loss}
+    \mathcal{L}_{\mathrm{FL}}(p_t) = -\alpha_t (1 - p_t)^{\gamma} \log(p_t).
+  \end{equation}
+  For an easy example with $p_t = 0.9$ and $\gamma = 2$, the modulating factor $(1 - p_t)^2 = 0.01$ suppresses its loss contribution by $100\times$ relative to standard cross-entropy ($\gamma = 0$), preventing easy majority-class gradients from overwhelming the minority class.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why Resampling Requires Post-Training Calibration]
+Oversampling minority examples by factor $r > 1$ (or applying class weights $W_i$) shifts the effective training prior from $\pi_1$ to $\tilde{\pi}_1 = \frac{r \pi_1}{r \pi_1 + (1 - \pi_1)}$. Consequently, a classifier trained with cross-entropy outputs shifted posterior probabilities $\tilde{p}(y=1 \mid \vecb{x})$ rather than true calibrated probabilities. Before thresholding for downstream business decisions, probabilities must be recalibrated via Bayes' rule odds correction or Platt/isotonic scaling \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~4, p.~110; Ch.~6, p.~184 (PDF pp.~130, 204)}.
+\end{intuition}
+
+\subsection{Split-Invariant Feature Transformations and Causal Leakage}
+
+Feature scaling normalizes heterogeneous feature magnitudes (e.g., age $\in [20, 40]$ vs.\ income $\in [10^4, 1.5\times 10^5]$) via min-max rescaling to $[a, b]$ or $z$-score standardization, while $\log(1+x)$ transforms compress heavy-tailed skew \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~5, pp.~126--127 (PDF pp.~146--147)}. Crucially, every transformation operator $\mathcal{T}_{\psi}$ parameterized by dataset statistics $\psi$ (mean $\mu$, standard deviation $\sigma$, quantiles, imputation medians) must satisfy \textbf{split invariance}:
+\begin{equation}\label{eq:mlsys:split_invariance}
+  \psi^* = \mathcal{A}_{\mathrm{fit}}(\mathcal{D}_{\mathrm{train}}), \qquad
+  \tilde{\vecb{x}} = \mathcal{T}_{\psi^*}(\vecb{x}) \quad \forall\, \vecb{x} \in \mathcal{D}_{\mathrm{train}} \cup \mathcal{D}_{\mathrm{val}} \cup \mathcal{D}_{\mathrm{test}}.
+\end{equation}
+Computing $\psi^*$ over $\mathcal{D}_{\mathrm{train}} \cup \mathcal{D}_{\mathrm{test}}$ prior to splitting leaks test-distribution moments into training representations. For time-indexed data $\{(\vecb{x}_t, y_t)\}_{t=1}^T$, random splitting violates temporal causality; splits must obey $t_{\mathrm{train}} < t_{\mathrm{val}} < t_{\mathrm{test}}$ with point-in-time feature joins restricted to $\tau \le t$ \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~5, pp.~137--138 (PDF pp.~157--158)}.
+
+\subsection{Distribution Shift Taxonomy: Factorizing $P(X, Y)$}
+
+In supervised production ML, a model learns $P_{\mathrm{src}}(Y \mid X)$ from samples drawn from $P_{\mathrm{src}}(X, Y)$. Distribution shift occurs when $P_{\mathrm{tgt}}(X, Y) \ne P_{\mathrm{src}}(X, Y)$. Factorizing the joint distribution in two equivalent ways yields three canonical shift regimes \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8, pp.~237--240 (PDF pp.~257--260)}:
+
+\begin{coremath}[Canonical Factorization of Joint Distribution Shift]
+Using $P(X, Y) = P(Y \mid X) P(X) = P(X \mid Y) P(Y)$, distribution shifts decompose as:
+\begin{enumerate}
+  \item \textbf{Covariate Shift ($P(X)$ shifts, $P(Y \mid X)$ invariant):}
+  \begin{equation}\label{eq:mlsys:covariate_shift}
+    P_{\mathrm{tgt}}(X) \ne P_{\mathrm{src}}(X), \qquad P_{\mathrm{tgt}}(Y \mid X) = P_{\mathrm{src}}(Y \mid X).
+  \end{equation}
+  The input feature density changes (e.g., younger patient demographics at inference than in training), while the true conditional risk given features is unchanged. Under shared support ($\mathrm{supp}(P_{\mathrm{tgt}}) \subseteq \mathrm{supp}(P_{\mathrm{src}})$), unbiased risk estimation under $P_{\mathrm{tgt}}$ is recovered via \emph{importance weighting}:
+  \begin{equation}\label{eq:mlsys:importance_weight}
+    \E_{(\vecb{x}, y) \sim P_{\mathrm{tgt}}}\!\bigl[\ell(\vecb{x}, y; \theta)\bigr] = \E_{(\vecb{x}, y) \sim P_{\mathrm{src}}}\!\left[\frac{P_{\mathrm{tgt}}(\vecb{x})}{P_{\mathrm{src}}(\vecb{x})}\,\ell(\vecb{x}, y; \theta)\right].
+  \end{equation}
+  \item \textbf{Label Shift ($P(Y)$ shifts, $P(X \mid Y)$ invariant):}
+  \begin{equation}\label{eq:mlsys:label_shift}
+    P_{\mathrm{tgt}}(Y) \ne P_{\mathrm{src}}(Y), \qquad P_{\mathrm{tgt}}(X \mid Y) = P_{\mathrm{src}}(X \mid Y).
+  \end{equation}
+  Typical when $Y \to X$ is causal (e.g., disease prevalence surges during an outbreak while symptom profiles given disease remain constant). Black Box Shift Estimation (BBSE) estimates target class priors $\vecb{\pi}_{\mathrm{tgt}}$ without target labels by inverting the source confusion matrix $\mat{C}_{\mathrm{src}}$ against predicted target label marginals $\hat{\vecb{\mu}}_{\mathrm{tgt}} = \mat{C}_{\mathrm{src}} \vecb{w}$ where $w_y = P_{\mathrm{tgt}}(y)/P_{\mathrm{src}}(y)$.
+  \item \textbf{Concept Drift ($P(Y \mid X)$ shifts, $P(X)$ invariant):}
+  \begin{equation}\label{eq:mlsys:concept_drift}
+    P_{\mathrm{tgt}}(Y \mid X) \ne P_{\mathrm{src}}(Y \mid X), \qquad P_{\mathrm{tgt}}(X) = P_{\mathrm{src}}(X).
+  \end{equation}
+  The underlying input-to-output mapping changes (e.g., ride-share demand or housing prices for identical features before vs.\ during a macroeconomic shock). Because $P(X)$ is unchanged, unsupervised input monitoring cannot detect concept drift; delayed ground-truth labels $Y$ or proxy feedback signals are required.
+\end{enumerate}
+\end{coremath}
+
+\subsection{Statistical Two-Sample Tests and Drift Metrics}
+
+When ground-truth labels $Y$ are unavailable or delayed in production, monitoring pipelines track divergence between a reference window $P$ (source) and a sliding production window $Q$ (target) \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8, pp.~242--247 (PDF pp.~262--267)}.
+
+\begin{coremath}[KS Test, Population Stability Index (PSI), and Maximum Mean Discrepancy]
+\begin{enumerate}
+  \item \textbf{Kolmogorov--Smirnov (KS) Two-Sample Test (1D):} Given empirical cumulative distribution functions $F_{1,n}(x)$ (source, size $n$) and $F_{2,m}(x)$ (target, size $m$), the nonparametric KS statistic is
+  \begin{equation}\label{eq:mlsys:ks_stat}
+    D_{n,m} = \sup_{x \in \R} \abs*{F_{1,n}(x) - F_{2,m}(x)}.
+  \end{equation}
+  The null hypothesis $H_0: P = Q$ is rejected at significance level $\alpha$ if $D_{n,m} > c(\alpha)\sqrt{\frac{n+m}{nm}}$, where $c(\alpha) = \sqrt{-\frac{1}{2}\ln(\alpha/2)}$. KS is restricted to 1D scalar features or predictions and can trigger excessive false alarms at large $n, m$ \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8, p.~244 (PDF p.~264)}.
+  \item \textbf{Population Stability Index (PSI):} Partitioning a scalar feature or model score into $B$ bins with reference proportions $p_b$ and production proportions $q_b$ ($\sum_b p_b = \sum_b q_b = 1$), PSI equals the symmetrized Kullback--Leibler (Jeffreys) divergence:
+  \begin{equation}\label{eq:mlsys:psi}
+    \mathrm{PSI}(P, Q) = \sum_{b=1}^{B} (q_b - p_b)\ln\!\left(\frac{q_b}{p_b}\right) = \KL{Q}{P} + \KL{P}{Q}.
+  \end{equation}
+  Standard production thresholds classify $\mathrm{PSI} < 0.10$ as stable, $0.10 \le \mathrm{PSI} < 0.25$ as moderate shift (warning), and $\mathrm{PSI} \ge 0.25$ as significant shift (retrain trigger).
+  \item \textbf{Maximum Mean Discrepancy (MMD, Multivariate):} For high-dimensional features $\vecb{x} \in \R^d$, let $\mathcal{H}$ be a Reproducing Kernel Hilbert Space (RKHS) with kernel $k(\vecb{x}, \vecb{x}') = \inner{\phi(\vecb{x})}{\phi(\vecb{x}')}_{\mathcal{H}}$. The squared MMD is
+  \begin{equation}\label{eq:mlsys:mmd}
+  \begin{aligned}
+    \mathrm{MMD}^2(\mathcal{H}, P, Q)
+    &= \norm*{\E_{X \sim P}[\phi(X)] - \E_{Y \sim Q}[\phi(Y)]}_{\mathcal{H}}^2 \\
+    &= \E[k(X, X')] + \E[k(Y, Y')] - 2\,\E[k(X, Y)].
+  \end{aligned}
+  \end{equation}
+  For characteristic kernels (e.g., Gaussian RBF), $\mathrm{MMD}(\mathcal{H}, P, Q) = 0 \iff P = Q$. In practice, dimensionality reduction (PCA or untuned autoencoder projections) precedes two-sample testing to preserve statistical power \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8, p.~244 (PDF p.~264)}.
+\end{enumerate}
+\end{coremath}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:mlsys:algorithms}
+
+Production continual learning bridges feature engineering, drift detection, and champion--challenger deployment. Algorithm~\ref{alg:mlsys:drift_retrain} formalizes a unified point-in-time feature join, sliding-window drift detector, and stateful/stateless retraining loop with champion--challenger gating \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8--9, pp.~246, 264--266, 277--278 (PDF pp.~266, 284--286, 297--298)}.
+
+\begin{algorithm}[htbp]
+\caption{Point-in-Time Feature Join, Sliding-Window Drift Detection \& Continual Retraining}
+\label{alg:mlsys:drift_retrain}
+\KwIn{Event stream $\mathcal{E}$, Feature Store $\mathcal{S}_F$, Champion model $\theta_{\mathrm{champ}}$, reference window $\mathcal{W}_{\mathrm{ref}}$, thresholds $(\tau_{\mathrm{warn}}, \tau_{\mathrm{crit}})$, mode $\in \{\mathrm{stateful}, \mathrm{stateless}\}$}
+\KwOut{Updated production model $\theta_{\mathrm{prod}}$ and logged lineage artifact}
+\For{each serving epoch $t = 1, 2, \dots$}{
+  Construct point-in-time feature vector $\vecb{x}_t \leftarrow \mathrm{AsOfJoin}(\mathcal{S}_F, \text{entity}_t, \tau \le t)$ \Comment*{Zero future leakage}
+  Emit prediction $\hat{y}_t \leftarrow f_{\theta_{\mathrm{champ}}}(\vecb{x}_t)$ and log $(\vecb{x}_t, \hat{y}_t, t)$ to monitoring store\;
+  Aggregate sliding window $\mathcal{W}_t \leftarrow \{\vecb{x}_s : t - \Delta \le s \le t\}$\;
+  Compute univariate $\mathrm{PSI}_j(\mathcal{W}_{\mathrm{ref}}, \mathcal{W}_t)$ via \eqref{eq:mlsys:psi} and multivariate $\widehat{\mathrm{MMD}}^2(\mathcal{W}_{\mathrm{ref}}, \mathcal{W}_t)$ via \eqref{eq:mlsys:mmd}\;
+  \If{$\max_j \mathrm{PSI}_j \ge \tau_{\mathrm{crit}}$ \textbf{or} $\widehat{\mathrm{MMD}}^2$ $p$-value $< \alpha$}{
+    Trigger drift alert and assemble labeled window $\mathcal{D}_{\mathrm{new}}$ via delayed natural labels (Log-and-Wait)\;
+    \eIf{$\mathrm{mode} = \mathrm{stateful}$}{
+      $\theta_{\mathrm{chal}} \leftarrow \mathrm{FineTune}(\theta_{\mathrm{champ}}, \mathcal{D}_{\mathrm{new}})$ \Comment*{Incremental checkpoint update}
+    }{
+      $\theta_{\mathrm{chal}} \leftarrow \mathrm{TrainFromScratch}(\mathcal{D}_{t-L:t})$ \Comment*{Stateless full-window retrain}
+    }
+    Evaluate $\theta_{\mathrm{chal}}$ vs.\ $\theta_{\mathrm{champ}}$ on holdout temporal split $\mathcal{D}_{\mathrm{eval}}$\;
+    \If{$\mathrm{Metric}(\theta_{\mathrm{chal}}, \mathcal{D}_{\mathrm{eval}}) > \mathrm{Metric}(\theta_{\mathrm{champ}}, \mathcal{D}_{\mathrm{eval}}) + \delta_{\min}$}{
+      Promote $\theta_{\mathrm{champ}} \leftarrow \theta_{\mathrm{chal}}$ in Model Registry with ZenML lineage $(\mathcal{D}_{\mathrm{new}}, \theta_{\mathrm{champ}})$\;
+      Update reference baseline $\mathcal{W}_{\mathrm{ref}} \leftarrow \mathcal{W}_t$\;
+    }
+  }
+}
+\end{algorithm}
+
+\subsection{Serving Paradigms and Model Compression Trade-Offs}
+
+Choosing between batch prediction, online prediction with batch features, and streaming prediction (online + streaming features) governs both feature-store architecture and tail latency \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, pp.~197--205 (PDF pp.~217--225)}. When synchronous inference exceeds latency SLAs (e.g., $< 20\text{ ms}$ p50), four model compression techniques trade minimal accuracy for substantial throughput gains \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, pp.~206--211 (PDF pp.~226--231)}: low-rank factorization (replacing $m \times n$ convolutions with depthwise-separable $m \times k$ and $k \times n$ factors), knowledge distillation (training a compact student to match a teacher's soft logits), pruning (zeroing low-magnitude weights or structured channels), and quantization (FP32 $\to$ FP16/BF16/INT8 fixed-point arithmetic). Table~\ref{tab:mlsys:serving_compression} summarizes these operational regimes.
+
+\begin{table}[htbp]
+\centering
+\caption{Serving Architectures and Model Compression Trade-Offs \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, pp.~197--211}}
+\label{tab:mlsys:serving_compression}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}X @{}}
+\toprule
+\textbf{Paradigm / Method} & \textbf{Feature Access} & \textbf{Latency / Compute Profile} & \textbf{Primary Failure Mode / Trade-Off} \\
+\midrule
+Batch Prediction & Batch warehouse only & High throughput; minutes--hours lag & Stale predictions under rapid user-state changes \\
+Online (Batch Features) & Precomputed KV store & Low latency (ms); CPU/GPU serving & Cannot react to sub-minute session context \\
+Streaming Prediction & Batch KV + Flink/stream & Sub-100\,ms; unified stream engine & Train--serving skew if batch/stream code diverges \\
+Knowledge Distillation & N/A (architecture) & $2\times$--$4\times$ faster student inference & Student capacity ceiling on complex tasks \\
+INT8 Quantization & N/A (precision) & Up to $7\times$ latency cut, $8\times$ throughput & Rounding underflow/overflow without QAT \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Feature Stores, Lineage, and Continual Retraining]
+Synthesizing \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~9--10, pp.~265--278, 321--325} and \bookcite{llm_engineer_s_handbook}{Ch.~1--2, pp.~13--15, 39--48}, production maturity progresses through four stages: manual updates (Stage 1), scheduled stateless retraining (Stage 2), automated stateful incremental training (Stage 3, yielding up to $45\times$ compute savings in Grubhub's production deployment), and drift-triggered continual learning (Stage 4). While \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~9, p.~277} highlights the \emph{Log-and-Wait} pattern---reusing online-extracted features during retraining to eliminate train--serving skew---\bookcite{llm_engineer_s_handbook}{Ch.~2, pp.~39--45} operationalizes this contract via ZenML step artifacts and metadata tracking, pairing MongoDB (raw unstructured documents) with Qdrant (chunked vector embeddings) as a logical feature store for LLM and RAG pipelines.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:mlsys:visuals}
+
+Figure~\ref{fig:mlsys:fti_and_drift_loop} illustrates the end-to-end decoupled FTI architecture integrated with a point-in-time feature store and a closed-loop drift-monitoring controller that routes Covariate, Label, and Concept shifts to stateful or stateless retraining.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.88, transform shape, node distance=1.1cm and 1.3cm]
+  % Top row: Feature Pipeline -> Feature Store -> Training Pipeline -> Model Registry
+  \node[monoTealBox, text width=2.8cm] (raw) {\textbf{Raw Sources}\\OLTP / NoSQL\\Real-time Stream};
+  \node[monoBox, right=of raw, text width=3.0cm] (feat) {\textbf{Feature Pipeline ($\mathcal{P}_F$)}\\As-of Join $\tau \le t$\\Split-Invariant Scale};
+  \node[monoIndigoBox, right=of feat, text width=3.0cm] (fstore) {\textbf{Feature Store ($\mathcal{S}_F$)}\\Offline Warehouse\\Online KV / Vector DB};
+  \node[monoBox, right=of fstore, text width=3.0cm] (train) {\textbf{Training Pipeline ($\mathcal{P}_T$)}\\Stateful / Stateless\\ZenML Lineage};
+
+  % Bottom row: Model Registry, Inference Pipeline, Drift Monitor
+  \node[monoIndigoBox, below=1.4cm of train, text width=3.0cm] (reg) {\textbf{Model Registry ($\mathcal{R}_M$)}\\Champion $\theta_{\mathrm{champ}}$\\Challenger $\theta_{\mathrm{chal}}$};
+  \node[monoTealBox, left=of reg, text width=3.0cm] (inf) {\textbf{Inference Pipeline ($\mathcal{P}_I$)}\\REST / Batch / RAG\\INT8 Quantized};
+  \node[monoWarnBox, left=of inf, text width=3.2cm] (mon) {\textbf{Drift Monitor}\\PSI / KS / MMD\\$P(X), P(Y), P(Y|X)$};
+  \node[monoBox, left=of mon, text width=2.6cm] (lbl) {\textbf{Delayed Labels}\\Log-and-Wait\\Natural Feedback};
+
+  % Forward arrows
+  \draw[monoArrow] (raw) -- (feat);
+  \draw[monoArrow] (feat) -- (fstore);
+  \draw[monoArrow] (fstore) -- (train);
+  \draw[monoArrow] (train) -- (reg);
+  \draw[monoArrow] (reg) -- (inf);
+  \draw[monoArrow] (fstore) -- (inf);
+  \draw[monoArrow] (inf) -- (mon);
+  \draw[monoArrow] (lbl) -- (mon);
+
+  % Feedback loop from Drift Monitor to Training Pipeline
+  \draw[monoArrow, dashed, color=monographCrimson] (mon.south) -- ++(0,-0.55) -| node[pos=0.25, below, font=\scriptsize\color{monographCrimson}] {Trigger Retrain ($\mathrm{PSI} \ge 0.25$ or $\mathrm{MMD}$ $p < \alpha$)} (train.east |- 0,-3.1) -- ++(0.35,0) |- (train.east);
+\end{tikzpicture}
+\caption{Decoupled Feature--Training--Inference (FTI) architecture with Point-in-Time Feature Store and closed-loop drift monitoring. Covariate ($P(X)$), Label ($P(Y)$), and Concept ($P(Y|X)$) shifts detected on sliding windows trigger champion--challenger retraining.}
+\label{fig:mlsys:fti_and_drift_loop}
+\end{figure}
+
+Figure~\ref{fig:mlsys:fti_book} shows the canonical FTI separation from \bookcite{llm_engineer_s_handbook}{Ch.~1, p.~13 (PDF p.~42)}, while Figure~\ref{fig:mlsys:compression_book} and Figure~\ref{fig:mlsys:stateful_book} present empirical model compression speedups and stateful vs.\ stateless retraining windows from \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, p.~211; Ch.~9, p.~266}.
+
+\monographfig[0.72\textwidth]{llm_engineer_s_handbook_p42_fig1.png}{Decoupled Feature--Training--Inference (FTI) pipeline architecture communicating exclusively through a versioned Feature Store and Model Registry \bookcite{llm_engineer_s_handbook}{Ch.~1, p.~13 (PDF p.~42)}.}{fig:mlsys:fti_book}
+
+\monographfig[0.78\textwidth]{chip_huyen_designing_machine_learning_systems_p231_fig1.png}{Empirical latency (p50, ms) and throughput (inferences/s on 32 CPU cores) across DistilBERT distillation, dynamic shape inputs, and INT8 quantization \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, p.~211 (PDF p.~231)}.}{fig:mlsys:compression_book}
+
+\monographfig[0.76\textwidth]{chip_huyen_designing_machine_learning_systems_p286_fig1.png}{Comparison of stateless retraining over sliding data windows versus stateful incremental training from prior checkpoints \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~9, p.~266 (PDF p.~286)}.}{fig:mlsys:stateful_book}
+
+To visualize drift-detection dynamics over time, Figure~\ref{fig:mlsys:drift_psi_monitoring} plots a 30-day production trajectory of the Population Stability Index (PSI) and two-sample KS statistic across stability, warning ($\mathrm{PSI}=0.10$), and critical ($\mathrm{PSI}=0.25$) regimes, demonstrating post-retrain baseline recovery after Day~19.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\textwidth,
+  height=6.5cm,
+  xlabel={Production Day ($t$)},
+  ylabel={Drift Statistic ($\mathrm{PSI}$ / $D_{n,m}$)},
+  xmin=1, xmax=30,
+  ymin=0, ymax=0.38,
+  grid=both,
+  grid style={monographRule!50, dotted},
+  legend pos=north west,
+  legend style={font=\small, draw=monographRule, fill=white, fill opacity=0.9},
+  every axis label/.style={font=\small\color{monographNavy}},
+  tick label style={font=\footnotesize\color{monographSlate}}
+]
+  % Threshold horizontal lines
+  \addplot[monographTeal, dashed, thick, domain=1:30] {0.10};
+  \addlegendentry{Warning Threshold ($\mathrm{PSI} = 0.10$)}
+
+  \addplot[monographCrimson, dashed, thick, domain=1:30] {0.25};
+  \addlegendentry{Retrain Trigger ($\mathrm{PSI} = 0.25$)}
+
+  % PSI trajectory
+  \addplot[monographNavy, very thick, mark=*, mark size=1.6pt] coordinates {
+    (1,0.03) (2,0.04) (3,0.035) (4,0.05) (5,0.045) (6,0.06) (7,0.055)
+    (8,0.07) (9,0.085) (10,0.095) (11,0.115) (12,0.13) (13,0.15)
+    (14,0.175) (15,0.20) (16,0.23) (17,0.265) (18,0.295) (19,0.32)
+    (20,0.06) (21,0.05) (22,0.045) (23,0.055) (24,0.05) (25,0.06)
+    (26,0.065) (27,0.058) (28,0.062) (29,0.07) (30,0.068)
+  };
+  \addlegendentry{Feature $\mathrm{PSI}$ (Sliding 24h)}
+
+  % KS statistic trajectory
+  \addplot[monographIndigo, thick, mark=square*, mark size=1.4pt] coordinates {
+    (1,0.02) (2,0.025) (3,0.022) (4,0.03) (5,0.028) (6,0.035) (7,0.033)
+    (8,0.04) (9,0.048) (10,0.055) (11,0.068) (12,0.078) (13,0.09)
+    (14,0.105) (15,0.12) (16,0.138) (17,0.16) (18,0.18) (19,0.195)
+    (20,0.038) (21,0.032) (22,0.03) (23,0.034) (24,0.032) (25,0.036)
+    (26,0.04) (27,0.035) (28,0.038) (29,0.042) (30,0.041)
+  };
+  \addlegendentry{Score KS $D_{n,m}$}
+
+  % Annotation for retrain event
+  \node[font=\scriptsize\bfseries\color{monographCrimson}, align=center, fill=monographCrimsonBg, draw=monographCrimson, rounded corners=2pt, inner sep=3pt]
+    at (axis cs:19,0.345) {Stateful Retrain\\\& Baseline Reset};
+\end{axis}
+\end{tikzpicture}
+\caption{Sliding-window Population Stability Index (PSI) and Kolmogorov--Smirnov ($D_{n,m}$) trajectory over 30 production days. Crossing $\mathrm{PSI} = 0.25$ on Day~17 triggers challenger evaluation and stateful retraining on Day~19, resetting the reference distribution.}
+\label{fig:mlsys:drift_psi_monitoring}
+\end{figure}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:mlsys:pitfalls}
+
+\begin{pitfall}[Temporal, Group, and Preprocessing Data Leakage]
+Randomly splitting time-series or user-session datasets leaks future market or trend regimes into training, inflating offline validation metrics while collapsing in production \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~5, pp.~137--140 (PDF pp.~157--160)}. Similarly, deduplication must precede splitting (barring near-duplicate leakage such as the 3.3\%--10\% train--test overlap discovered in CIFAR-10/100), and grouped entities (e.g., multiple medical scans from one patient) must be assigned atomically to a single split.
+\end{pitfall}
+
+\begin{pitfall}[Training--Serving Skew and Missing-Value Sentinel Collisions]
+Maintaining separate batch (SQL/Spark) and streaming (Python/C++) feature pipelines induces silent divergence in aggregation windows or edge-case handling \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~5, p.~126; Ch.~7, p.~204}. Furthermore, imputing missing numerical features with valid domain values (e.g., setting missing \texttt{age} or \texttt{num\_children} to $0$) creates an unidentifiable collision between true zeros and missingness; always pair imputation with an explicit binary missingness indicator $m_j = \mathbb{I}[x_j\text{ is NaN}]$.
+\end{pitfall}
+
+\begin{pitfall}[Cumulative Monitoring Blindness and Catastrophic Forgetting]
+Evaluating accuracy cumulatively since deployment masks sudden transient outages (e.g., a 2-hour accuracy collapse diluted by weeks of healthy logs); always monitor \emph{sliding} windows alongside multi-scale seasonality decomposition \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~8, pp.~246--247 (PDF pp.~266--267)}. Conversely, updating neural networks sample-by-sample in production induces catastrophic forgetting and underutilizes parallel hardware; update in micro-batches ($512$--$1024$ samples) gated by champion--challenger evaluation \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~9, p.~264 (PDF p.~284)}.
+\end{pitfall}
+
+\begin{pitfall}[Quantization Rounding Underflow and High-Dimensional SMOTE]
+Post-training INT8 quantization narrows representable dynamic range; outliers outside clipping bounds saturate or underflow to zero, causing severe accuracy degradation unless mitigated via quantization-aware training (QAT) or activation-range calibration \bookcite{chip_huyen_designing_machine_learning_systems}{Ch.~7, p.~210 (PDF p.~230)}. Likewise, applying $k$-NN-based SMOTE or Tomek links directly in high-dimensional embedding spaces fails due to distance concentration; prefer algorithm-level focal or class-balanced losses.
+\end{pitfall}
+
+\endgroup
+\end{document}

@@ -1,0 +1,137 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{3}{Computer Vision \& Visual Geometry}{Multiscale Pyramids, Optical Flow, Epipolar Geometry, Stereo \& Radiance Fields}
+  {Track motion via coarse-to-fine brightness constancy, triangulate 3D via epipolar geometry, and render continuous radiance}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{3D Vision, Flow\\ \& Pyramids\\ \footnotesize\mdseries Epipolar $\cdot$ Stereo $\cdot$ NeRF}{%
+  \begin{tikzpicture}[scale=0.50, every node/.style={font=\tiny}]
+    \coordinate (O1) at (-1.5,-0.7); \coordinate (O2) at (1.5,-0.7); \coordinate (X) at (0.2,1.0);
+    \draw[csDom, thick] (O1)--(O2) node[midway, below] {$\vecb t$};
+    \draw[csB, thick] (O1)--(X); \draw[csB, thick] (O2)--(X);
+    \fill[csA] (O1) circle (2.2pt); \fill[csA] (O2) circle (2.2pt);
+    \fill[csD] (X) circle (2.5pt) node[above] {$\vecb X$};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; MULTISCALE PYRAMIDS $-$ $\frac{4}{3}$ memory}{%
+  \csfm{G_{\ell+1}=\downarrow_2(g_\sigma*G_\ell),\quad L_\ell=G_\ell-\uparrow_2(G_{\ell+1})}
+  \begin{csbul}
+    \item \textbf{Laplacian reconstruction:} $I=\sum_\ell\uparrow_2^\ell L_\ell$ (lossless bandpass decomposition)
+    \item \textbf{Applications:} coarse-to-fine optical flow, multi-band image blending, FPN backbones
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; OPTICAL FLOW $-$ Lucas--Kanade vs Horn--Schunck}{%
+  \csfm{I_x u + I_y v + I_t = 0 \quad (\nabla I\T\vecb u + I_t = 0)}
+  \begin{csbul}
+    \item \textbf{Aperture problem:} 1 equation, 2 unknowns $\Rightarrow$ only normal flow $\vecb u_\perp$ is local
+    \item \textbf{Lucas--Kanade:} local constant $\vecb u$ solves $(\sum_W \nabla I\nabla I\T)\vecb u = -\sum_W \nabla I\, I_t$
+    \item \textbf{Horn--Schunck:} dense variational $(\nabla I\T\vecb u+I_t)^2 + \alpha(\|\nabla u\|_2^2+\|\nabla v\|_2^2)$
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; CAMERA CALIBRATION \& HOMOGRAPHY}{%
+  \csfm{\tilde{\vecb x}\sim \mat K[\mat R\mid \vecb t]\tilde{\vecb X},\qquad \tilde{\vecb x}'\sim \mat H\tilde{\vecb x}\;\text{ (8 DoF)}}
+  \begin{csbul}
+    \item \textbf{Intrinsics $\mat K$:} focal lengths $(f_x,f_y)$, skew, principal point $(c_x,c_y)$
+    \item \textbf{Homography $\mat H$:} exact for planar scenes or pure camera rotation (DLT + RANSAC)
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; EPIPOLAR GEOMETRY \& STEREO DEPTH}{%
+  \csfm{(\tilde{\vecb x}')\T\mat F\tilde{\vecb x}=0,\quad \mat E=[\vecb t]_\times\mat R,\quad Z=\frac{fB}{x_L-x_R}}
+  \begin{csbul}
+    \item \textbf{1D search:} epipolar line $\vecb l'=\mat F\tilde{\vecb x}$ reduces stereo matching to 1D scanlines
+    \item \textbf{8-point / 5-point:} $\mat F$ (rank 2, 7 DoF) vs calibrated $\mat E$ (5 DoF)
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; STRUCTURE FROM MOTION (SfM) \& SLAM}{%
+  \begin{csbul}
+    \item \textbf{Pipeline:} Keypoints (SIFT/SuperPoint) $\to$ RANSAC $\mat E/\mat F$ $\to$ PnP $\to$ Triangulation
+    \item \textbf{Bundle Adjustment:} joint nonlinear least squares over poses $\{\mat R_i,\vecb t_i\}$ \& 3D $\{\vecb X_j\}$
+  \end{csbul}}
+
+\csbranch{6}{F}{6\;\; RADIANCE FIELDS (NeRF) \& VOLUMETRIC RENDERING}{%
+  \csfm{\hat{\vecb C}(\vecb r)=\int_{t_n}^{t_f} T(t)\sigma(\vecb r(t))\vecb c(\vecb r(t),\vecb d)\,\mathrm{d}t,\quad T(t)=e^{-\int_{t_n}^t \sigma\,\mathrm{d}s}}
+  \begin{csbul}
+    \item \textbf{Positional encoding:} $\gamma(\vecb x)$ lifts coordinates to overcome MLP low-freq bias
+    \item \textbf{3D Gaussian Splatting:} explicit anisotropic Gaussians replace slow ray-marching
+  \end{csbul}}
+
+\end{tikzpicture}
+
+% =============================================================================
+%                                 PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item \textbf{Laplacian Pyramid:} $L_\ell = G_\ell - \uparrow_2(G_{\ell+1})$, total size $\frac{4}{3}HW$
+    \item \textbf{Optical Flow:} $I_x u + I_y v + I_t = 0$; Lucas--Kanade needs $\det(\sum \nabla I\nabla I\T)>0$
+    \item \textbf{Essential \& Fundamental:} $\mat E=[\vecb t]_\times\mat R$, $\mat F=(\mat K')^{-\top}\mat E\mat K^{-1}$
+    \item \textbf{Stereo Depth \& Error:} $Z=\frac{fB}{d}$, $\Delta Z \approx \frac{Z^2}{fB}\Delta d$
+    \item \textbf{Volume Rendering:} $\alpha_i = 1-\exp(-\sigma_i\delta_i)$, $w_i = T_i\alpha_i$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{TWO-VIEW SfM \& STEREO RECIPE}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{Detect \& Match:} extract local descriptors and match with Lowe's ratio test.
+    \item \textbf{RANSAC Geometry:} estimate $\mat F$ (uncalibrated) or $\mat E$ (calibrated) rejecting outliers.
+    \item \textbf{Recover Pose:} factor $\mat E=\mat U\mat W\mat V\T$ (4 solutions) and pick positive depth (cheirality).
+    \item \textbf{Refine:} minimize reprojection error $\sum_{ij}\norm{\vecb x_{ij}-\pi(\mat P_i\vecb X_j)}_2^2$ via Bundle Adjustment.
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.18}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    planar scene / panorama & Homography $\mat H$ + DLT + RANSAC\\
+    2 calibrated views, static 3D & Essential $\mat E$ + Cheirality + Triangulation\\
+    large video motion ($>2$ px) & Coarse-to-fine Pyramid Lucas--Kanade / RAFT\\
+    photorealistic novel views & NeRF / 3D Gaussian Splatting + SfM poses\\
+    dense multi-view SLAM & Bundle Adjustment (Levenberg--Marquardt)\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csF}{STEREO DEPTH PRECISION $\Delta Z \propto Z^2/(fB)$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=1, xmax=20, ymin=0, ymax=4.5,
+      xlabel={True Depth $Z$ (m)}, ylabel={Depth Error $\Delta Z$ (m) for $\Delta d=1$ px},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend style={at={(0.03,0.92)}, anchor=north west, font=\tiny, fill=white, fill opacity=0.92, draw=gray!40}]
+      \addplot[csA, very thick, domain=1:20, samples=40] {0.01 * x^2};
+      \addlegendentry{Narrow baseline ($fB=100$)}
+      \addplot[csD, very thick, domain=1:20, samples=40] {0.0025 * x^2};
+      \addlegendentry{Wide baseline ($fB=400$)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Aperture ambiguity:} flat or 1D-edge patches make $\sum\nabla I\nabla I\T$ singular; track Shi--Tomasi corners ($\lambda_{\min}>\tau$).
+    \item \textbf{Quadratic depth error:} stereo uncertainty grows as $Z^2$; small baselines fail at long range.
+    \item \textbf{DLT without normalization:} raw pixel coordinates $(10^3)$ make $\mat A\T\mat A$ ill-conditioned; always Hartley-normalize first.
+    \item \textbf{NeRF without Fourier features:} raw $(x,y,z)$ MLPs blur fine textures due to NTK low-frequency bias.
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csE}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  Pyramids conquer multi-scale motion, optical flow linearizes brightness constancy $I_x u+I_y v+I_t=0$, epipolar geometry ($(\tilde{\vecb x}')\T\mat F\tilde{\vecb x}=0$) collapses 2D stereo matching to 1D lines, and NeRFs optimize continuous 3D radiance via differentiable volume rendering.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+\end{document}

@@ -1,0 +1,325 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Classical, Kernel \& Probabilistic Machine Learning}{Latent Variables, Graphical Models, VI \& MCMC Sampling}{Graphical Models, Gaussian Processes, Variational Inference \& MCMC}{Variational Inference, Evidence Lower Bound (ELBO) \& Expectation Propagation}{\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~10}, \bookcite{deep_learning_foundations_concepts}{Sec.~15.4, 16.3}, \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~19}, \bookcite{understandingdl_simonprince}{Sec.~17.4--17.6}}
+
+% =============================================================================
+\section{Problem Formulation \& Unified Notation}
+% =============================================================================
+
+Consider a generative probabilistic model with observed data $\vecb{x} \in \mathcal{X}$, latent variables $\vecb{z} \in \mathcal{Z}$, and model parameters $\vecb{\theta} \in \Theta$. The joint density $p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) = p_{\vecb{\theta}}(\vecb{x} \mid \vecb{z}) p_{\vecb{\theta}}(\vecb{z})$ induces the exact posterior $p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x}) = p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) / p_{\vecb{\theta}}(\vecb{x})$, where the marginal likelihood (or model evidence)
+\begin{equation}
+  p_{\vecb{\theta}}(\vecb{x}) = \int_{\mathcal{Z}} p_{\vecb{\theta}}(\vecb{x}, \vecb{z})\,\mathrm{d}\vecb{z}
+  \label{eq:vi:evidence}
+\end{equation}
+is typically intractable due to high-dimensional integration or non-conjugate couplings across $\vecb{z}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~10, PDF p.~473}. Variational inference (VI) recasts posterior approximation as a deterministic optimization problem over a tractable variational family $\mathcal{Q} = \{ q_{\vecb{\psi}}(\vecb{z}) : \vecb{\psi} \in \Psi \}$ by minimizing the reverse Kullback--Leibler (KL) divergence:
+\begin{equation}
+  \vecb{\psi}^* = \argmin_{\vecb{\psi} \in \Psi} \KL{q_{\vecb{\psi}}(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})}.
+  \label{eq:vi:reverse-kl-obj}
+\end{equation}
+By contrast, Expectation Propagation (EP) approximates a factorized target posterior $p(\vecb{z} \mid \vecb{x}) \propto f_0(\vecb{z}) \prod_{i=1}^K f_i(\vecb{z})$ within an exponential family $\mathcal{Q}$ through iterative local forward-KL projections $\KL{q_i^{\mathrm{tilted}}}{\tilde{q}}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.7, PDF pp.~513--514}.
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\footnotesize
+The four source texts adopt distinct symbol conventions for the variational distribution, parameters, and ELBO objective. Table~\ref{tab:vi:notation} establishes the unified notation used throughout this monograph.
+\par\vspace{4pt}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries\color{monographNavy}}l X l l l@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Murphy} & \textbf{Bishop} & \textbf{Prince / Goodfellow} \\
+\midrule
+$\vecb{x}, \vecb{z}$ & Observed \& latent vars & $\vecb{x}, \vecb{z}$ & $\vecb{X}, \vecb{Z}$ & $\vecb{x}, \vecb{z}$ / $\vecb{v}, \vecb{h}$ \\
+$\vecb{\theta}$ & Generative parameters & $\vecb{\theta}$ & $\vecb{\theta}$ ($\vecb{w}$) & $\vecb{\phi}$ / $\vecb{\theta}$ \\
+$q_{\vecb{\psi}},\, q_{\vecb{\phi}}$ & Local / amortized family & $q_{\vecb{\psi}}(\vecb{z}), q_{\vecb{\phi}}$ & $q(\vecb{Z})$ & $q(\vecb{z}\mid\vecb{x},\vecb{\theta})$ / $q(\vecb{h}\mid\vecb{v})$ \\
+$\mathrm{ELBO}$ & Evidence Lower Bound & $\text{\L}(\vecb{\theta},\vecb{\psi}\mid\vecb{x})$ & $\mathcal{L}(q, \vecb{\theta})$ & $\mathrm{ELBO}$ / $\mathcal{L}(\vecb{v},\vecb{\theta},q)$ \\
+$\mathcal{F}$ & Variational Free Energy & $\mathcal{L}(\vecb{\theta},\vecb{\psi}\mid\vecb{x})$ & --- & --- \\
+$\KL{q}{p}$ & Reverse KL divergence & $D_{\mathrm{KL}}(q \parallel p)$ & $\mathrm{KL}(q \parallel p)$ & $D_{\mathrm{KL}}[q \parallel \Pr]$ \\
+\bottomrule
+\end{tabularx}
+\captionof{table}{Reconciliation of variational inference notation across \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1--10.2, PDF pp.~473--482}, \bookcite{deep_learning_foundations_concepts}{Sec.~15.4, 16.3, PDF pp.~500, 530}, \bookcite{understandingdl_simonprince}{Sec.~17.4--17.6, PDF pp.~347--351}, and \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Ch.~19, PDF p.~653}. Note the swapped roles of $\vecb{\theta}$ and $\vecb{\phi}$ in Prince vs.\ Murphy.}
+\label{tab:vi:notation}
+\end{crossbook}
+
+% =============================================================================
+\section{Core Mathematical Derivations \& Theorems}
+% =============================================================================
+
+\subsection{The Fundamental ELBO Decomposition \& Equivalent Forms}
+
+\begin{coremath}[Theorem: ELBO Identity, Free Energy, and Reconstruction--KL Forms]
+For any distribution $q(\vecb{z})$ whose support satisfies $\mathrm{supp}(q) \subseteq \mathrm{supp}(p_{\vecb{\theta}}(\cdot \mid \vecb{x}))$, the log marginal likelihood decomposes exactly as \bookcite{deep_learning_foundations_concepts}{Eq.~15.52, PDF p.~500} \bookcite{understandingdl_simonprince}{Eq.~17.17, PDF p.~347}:
+\begin{equation}
+  \log p_{\vecb{\theta}}(\vecb{x}) = \mathrm{ELBO}(q; \vecb{\theta}) + \KL{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})},
+  \label{eq:vi:elbo-decomp}
+\end{equation}
+where the Evidence Lower Bound admits three algebraically equivalent representations:
+\begin{align}
+  \mathrm{ELBO}(q; \vecb{\theta}) &= \E_{q(\vecb{z})}\!\left[\log \frac{p_{\vecb{\theta}}(\vecb{x}, \vecb{z})}{q(\vecb{z})}\right] \label{eq:vi:elbo-ratio} \\
+  &= \E_{q(\vecb{z})}\!\left[\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})\right] + \Entropy(q) = -\mathcal{F}(q; \vecb{\theta}) \quad\text{(Neg.\ Free Energy)} \label{eq:vi:elbo-energy} \\
+  &= \E_{q(\vecb{z})}\!\left[\log p_{\vecb{\theta}}(\vecb{x} \mid \vecb{z})\right] - \KL{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z})} \quad\text{(Recon.\ $-$ Prior KL)}. \label{eq:vi:elbo-recon}
+\end{align}
+Since $\KL{q}{p} \ge 0$ with equality if and only if $q(\vecb{z}) = p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})$ a.e., we have $\mathrm{ELBO}(q; \vecb{\theta}) \le \log p_{\vecb{\theta}}(\vecb{x})$, and maximizing $\mathrm{ELBO}(q; \vecb{\theta})$ with respect to $q$ is strictly equivalent to minimizing $\KL{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})}$.
+\end{coremath}
+
+\begin{proof}
+Using the product rule $\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) = \log p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x}) + \log p_{\vecb{\theta}}(\vecb{x})$ inside \eqref{eq:vi:elbo-ratio} yields:
+\begin{align*}
+  \mathrm{ELBO}(q; \vecb{\theta}) &= \int q(\vecb{z}) \log \frac{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x}) p_{\vecb{\theta}}(\vecb{x})}{q(\vecb{z})}\,\mathrm{d}\vecb{z} \\
+  &= \left(\int q(\vecb{z})\,\mathrm{d}\vecb{z}\right) \log p_{\vecb{\theta}}(\vecb{x}) \\
+  &\quad - \int q(\vecb{z}) \log \frac{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})}\,\mathrm{d}\vecb{z} \\
+  &= \log p_{\vecb{\theta}}(\vecb{x}) - \KL{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z} \mid \vecb{x})}.
+\end{align*}
+Splitting $\log \frac{p_{\vecb{\theta}}(\vecb{x}, \vecb{z})}{q(\vecb{z})} = \log p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) - \log q(\vecb{z})$ gives \eqref{eq:vi:elbo-energy} via $\Entropy(q) = -\E_q[\log q(\vecb{z})]$. Factoring $p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) = p_{\vecb{\theta}}(\vecb{x} \mid \vecb{z}) p_{\vecb{\theta}}(\vecb{z})$ gives \eqref{eq:vi:elbo-recon} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.1, PDF pp.~473--475}.
+\end{proof}
+
+\monographfig[0.64\textwidth]{deep_learning_foundations_concepts_p501_fig1.png}{Geometric decomposition of the log marginal likelihood $\ln p(\mathbf{X}|\boldsymbol{\theta}) = \mathcal{L}(q,\boldsymbol{\theta}) + \mathrm{KL}(q\|p)$ from \bookcite{deep_learning_foundations_concepts}{Fig.~15.13, PDF p.~501}. Because $\mathrm{KL}(q\|p) \ge 0$, maximizing the ELBO $\mathcal{L}(q,\boldsymbol{\theta})$ closes the gap to the evidence $\ln p(\mathbf{X}|\boldsymbol{\theta})$.}{fig:vi:elbo-bar}
+
+\begin{intuition}[Statistical Physics \& Rate--Distortion Interpretation]
+In statistical physics \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.1.1, PDF p.~474}, $E_{\vecb{\theta}}(\vecb{z}) = -\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})$ is the energy and $\mathcal{F}(q; \vecb{\theta}) = \E_q[E_{\vecb{\theta}}(\vecb{z})] - \Entropy(q)$ is the Variational Free Energy (VFE), which upper-bounds the Helmholtz free energy $-\log p_{\vecb{\theta}}(\vecb{x})$. In \eqref{eq:vi:elbo-recon}, the first term measures expected log-likelihood (reconstruction fidelity), while $-\KL{q(\vecb{z})}{p_{\vecb{\theta}}(\vecb{z})}$ acts as an information-theoretic regularizer penalizing posterior divergence from the prior \bookcite{understandingdl_simonprince}{Sec.~17.4.2, PDF p.~348}. For a diagonal Gaussian $q(\vecb{z}) = \Normal(\vecb{\mu}, \diag(\vecb{\sigma}^2))$ and standard normal prior $p(\vecb{z}) = \Normal(\zeros, \eye_D)$, the prior KL evaluates in closed form to $\frac{1}{2}\sum_{d=1}^D (\sigma_d^2 + \mu_d^2 - 1 - \log \sigma_d^2)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~10.50, PDF p.~482} \bookcite{understandingdl_simonprince}{Eq.~17.24, PDF p.~350}.
+\end{intuition}
+
+Drawing $S > 1$ importance samples $\vecb{z}^{(1)}, \dots, \vecb{z}^{(S)} \simiid q_{\vecb{\phi}}(\vecb{z} \mid \vecb{x})$ and applying Jensen's inequality~\bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.5.1, Eq.~10.167, PDF p.~507} yields the Importance Weighted Autoencoder (IWAE) multi-sample bound:
+\begin{equation}
+  \mathrm{ELBO}(q_{\vecb{\phi}}) = \mathcal{L}_1 \le \mathcal{L}_S \triangleq \E_{\vecb{z}^{(1:S)} \sim q_{\vecb{\phi}}}\!\left[\log \frac{1}{S}\sum_{s=1}^S \frac{p_{\vecb{\theta}}(\vecb{x}, \vecb{z}^{(s)})}{q_{\vecb{\phi}}(\vecb{z}^{(s)} \mid \vecb{x})}\right] \le \log p_{\vecb{\theta}}(\vecb{x}),
+  \label{eq:vi:iwae}
+\end{equation}
+which converges monotonically to $\log p_{\vecb{\theta}}(\vecb{x})$ as $S \to \infty$, though at the cost of a vanishing signal-to-noise ratio in the encoder gradient $\grad_{\vecb{\phi}} \mathcal{L}_S$ unless doubly reparameterized estimators are used \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.5.1.1, PDF p.~508}.
+
+\subsection{Mean-Field Coordinate Ascent VI (CAVI) \& Natural Gradients}
+
+To make the expectation in \eqref{eq:vi:elbo-energy} tractable without fixing a parametric family a priori (free-form VI), the mean-field approximation restricts $q$ to factorize completely across $J$ latent blocks:
+\begin{equation}
+  q(\vecb{z}) = \prod_{j=1}^J q_j(\vecb{z}_j).
+  \label{eq:vi:mean-field}
+\end{equation}
+
+\begin{coremath}[Derivation: Optimal Mean-Field Complete-Conditional Update]
+Under \eqref{eq:vi:mean-field}, holding $\{q_k\}_{k \neq j}$ fixed, the ELBO as a functional of $q_j$ reduces to \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.3.1, PDF pp.~490--491} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~19.4.3, PDF p.~663}:
+\begin{equation}
+  \mathrm{ELBO}_j(q_j) = \int q_j(\vecb{z}_j) \E_{-j}\!\left[\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})\right]\mathrm{d}\vecb{z}_j - \int q_j(\vecb{z}_j) \log q_j(\vecb{z}_j)\,\mathrm{d}\vecb{z}_j + \mathrm{const},
+  \label{eq:vi:cavi-functional}
+\end{equation}
+where $\E_{-j}[\cdot]$ integrates over $\prod_{k \neq j} q_k(\vecb{z}_k)$. Form the Lagrangian with normalization multiplier $\lambda$ and set the functional derivative $\frac{\delta}{\delta q_j(\vecb{z}_j)}$ to zero \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~19.4.2, PDF pp.~661--662}:
+\begin{align}
+  \frac{\delta}{\delta q_j(\vecb{z}_j)} &\left\{ \mathrm{ELBO}_j(q_j) + \lambda \left(\int q_j(\vecb{z}_j)\,\mathrm{d}\vecb{z}_j - 1\right) \right\} \nonumber \\
+  &\qquad = \E_{-j}\!\left[\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})\right] - \log q_j(\vecb{z}_j) - 1 + \lambda = 0.
+\end{align}
+Solving for $q_j(\vecb{z}_j)$ and absorbing $1 - \lambda$ into the normalizing constant yields the closed-form CAVI fixed-point update:
+\begin{equation}
+  \log q_j^*(\vecb{z}_j) = \E_{-j}\!\left[\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})\right] + \mathrm{const} = \E_{\vecb{z}_{\mathrm{mb}(j)}}\!\left[\log p_{\vecb{\theta}}(\vecb{z}_j, \vecb{z}_{\mathrm{mb}(j)}, \vecb{x})\right] + \mathrm{const},
+  \label{eq:vi:cavi-update}
+\end{equation}
+where $\vecb{z}_{\mathrm{mb}(j)}$ denotes the Markov blanket of $\vecb{z}_j$. Equivalently, $\mathrm{ELBO}_j(q_j) = -\KL{q_j}{f_j} + \mathrm{const}$ with $f_j(\vecb{z}_j) \propto \exp(\E_{-j}[\log p_{\vecb{\theta}}(\vecb{x}, \vecb{z})])$, proving concavity in each $q_j$ individually \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~10.83, PDF p.~491}.
+\end{coremath}
+
+In conditionally conjugate exponential-family models with global parameters $\vecb{\beta}$ (natural variational parameter $\vecb{\lambda}$) and local latents $\vecb{z}_{1:N}$, the complete conditional takes the form
+$p(\vecb{\beta} \mid \vecb{x}, \vecb{z}) = h(\vecb{\beta})\exp(\vecb{\eta}(\vecb{x}, \vecb{z})\T \vecb{t}(\vecb{\beta}) - A(\vecb{\eta}))$.
+Multiplying the Euclidean gradient $\grad_{\vecb{\lambda}}\mathrm{ELBO}$ by the inverse Fisher information $\mat{F}(\vecb{\lambda})\inv = (\hess_{\vecb{\lambda}} A(\vecb{\lambda}))\inv$ cancels the log-partition Hessian and yields the natural gradient \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.4, PDF p.~478}:
+\begin{equation}
+  \tilde{\grad}_{\vecb{\lambda}} \mathrm{ELBO}(\vecb{\lambda}) = \E_q[\vecb{\eta}(\vecb{x}, \vecb{z})] - \vecb{\lambda},
+  \label{eq:vi:natgrad}
+\end{equation}
+so Stochastic Variational Inference (SVI) updates $\vecb{\lambda}_{t+1} = (1 - \rho_t)\vecb{\lambda}_t + \rho_t \hat{\vecb{\eta}}_t$ using a minibatch estimate $\hat{\vecb{\eta}}_t$ with Robbins--Monro step sizes $\sum_t \rho_t = \infty$, $\sum_t \rho_t^2 < \infty$.
+
+\subsection{Black-Box VI (Score-Function) vs.\ Pathwise Reparameterization}
+
+For non-conjugate models, we optimize fixed-form variational parameters $\vecb{\phi}$ via stochastic gradients of $\mathcal{L}(\vecb{\phi}) = \E_{q_{\vecb{\phi}}(\vecb{z})}[\tilde{\mathcal{L}}(\vecb{\phi}, \vecb{z})]$, where $\tilde{\mathcal{L}}(\vecb{\phi}, \vecb{z}) = \log p_{\vecb{\theta}}(\vecb{x}, \vecb{z}) - \log q_{\vecb{\phi}}(\vecb{z})$. Because the expectation depends on $\vecb{\phi}$, $\grad_{\vecb{\phi}}$ cannot pass directly inside $\E_{q_{\vecb{\phi}}}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~10.34, PDF p.~480}.
+
+\begin{coremath}[Score-Function (REINFORCE) vs.\ Pathwise Reparameterized Gradient]
+\textbf{1. Score-Function (BBVI) Estimator:} Using $\grad_{\vecb{\phi}} q_{\vecb{\phi}}(\vecb{z}) = q_{\vecb{\phi}}(\vecb{z}) \grad_{\vecb{\phi}} \log q_{\vecb{\phi}}(\vecb{z})$ and $\E_{q_{\vecb{\phi}}}[\grad_{\vecb{\phi}} \log q_{\vecb{\phi}}(\vecb{z})] = \zeros$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.2.3, Eq.~10.66--10.74, PDF pp.~488--489}:
+\begin{equation}
+  \grad_{\vecb{\phi}} \mathcal{L}(\vecb{\phi}) = \E_{q_{\vecb{\phi}}(\vecb{z})}\!\left[\left(\tilde{\mathcal{L}}(\vecb{\phi}, \vecb{z}) - c\right) \grad_{\vecb{\phi}} \log q_{\vecb{\phi}}(\vecb{z})\right],
+  \label{eq:vi:reinforce}
+\end{equation}
+where $c$ is a control-variate baseline with optimal variance-minimizing value $c_i^* = \frac{\Cov(g_i \tilde{\mathcal{L}},\, g_i)}{\Var[g_i]}$ for $g_i = \partial_{\phi_i} \log q_{\vecb{\phi}}(\vecb{z})$. Rao--Blackwellization further reduces variance by replacing $\tilde{\mathcal{L}}$ with only the Markov-blanket terms $\tilde{\mathcal{L}}_j(\vecb{z}_j, \vecb{z}_{\mathrm{mb}(j)})$ depending on $\vecb{z}_j$.
+
+\textbf{2. Pathwise Reparameterization Estimator:} For continuous $\vecb{z}$, express $\vecb{z} = g_{\vecb{\phi}}(\vecb{\epsilon}, \vecb{x})$ as a differentiable, invertible map of parameter-free noise $\vecb{\epsilon} \sim p(\vecb{\epsilon})$ (e.g., $\vecb{z} = \vecb{\mu} + \mat{L}\vecb{\epsilon}$ with $\vecb{\epsilon} \sim \Normal(\zeros, \eye)$) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.2.1, Eq.~10.36--10.42, PDF pp.~481--482}:
+\begin{equation}
+  \grad_{\vecb{\phi}} \E_{q_{\vecb{\phi}}(\vecb{z})}[f(\vecb{z})] = \E_{p(\vecb{\epsilon})}\!\left[\grad_{\vecb{z}} f(\vecb{z})\T \grad_{\vecb{\phi}} g_{\vecb{\phi}}(\vecb{\epsilon}, \vecb{x})\right], \qquad \log q_{\vecb{\phi}}(\vecb{z}) = \log p(\vecb{\epsilon}) - \log \abs*{\det \frac{\partial \vecb{z}}{\partial \vecb{\epsilon}}}.
+  \label{eq:vi:reparam}
+\end{equation}
+\end{coremath}
+
+\subsection{Amortized VI \& Expectation Propagation (EP) vs.\ Laplace}
+
+Amortized VI replaces per-datapoint variational parameters $\vecb{\psi}_n$ with a shared inference network $q_{\vecb{\phi}}(\vecb{z}_n \mid \vecb{x}_n)$ parameterized by $\vecb{\phi}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.5, PDF p.~478} \bookcite{understandingdl_simonprince}{Sec.~17.5--17.6, PDF pp.~349--351}. This amortizes inference cost to $O(1)$ forward passes at test time, at the expense of the \emph{amortization gap} $\mathcal{G}_{\mathrm{amort}}(\vecb{x}_n) = \mathrm{ELBO}(\vecb{\psi}_n^*; \vecb{x}_n) - \mathrm{ELBO}(q_{\vecb{\phi}^*}(\cdot \mid \vecb{x}_n); \vecb{x}_n) \ge 0$, which semi-amortized VI closes via a few local gradient steps initialized from $\vecb{\phi}(\vecb{x}_n)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.6, PDF p.~479} \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~19.5.2, PDF p.~667}.
+
+Expectation Propagation (EP) takes a fundamentally different route by approximating a factorized posterior $p(\vecb{\theta} \mid \mathcal{D}) \propto f_0(\vecb{\theta}) \prod_{i=1}^K f_i(\vecb{\theta})$ with $q(\vecb{\theta}) \propto f_0(\vecb{\theta}) \prod_{i=1}^K \tilde{f}_i(\vecb{\theta})$ in an exponential family $\mathcal{Q}$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.7.1, Eq.~10.192--10.198, PDF pp.~513--514}:
+\begin{align}
+  q_{\setminus i}(\vecb{\theta}) &\propto \frac{q(\vecb{\theta})}{\tilde{f}_i(\vecb{\theta})} \quad\text{(Cavity)}, \qquad
+  q_i^{\mathrm{tilted}}(\vecb{\theta}) = \frac{1}{Z_i} f_i(\vecb{\theta}) q_{\setminus i}(\vecb{\theta}) \quad\text{(Tilted)}, \label{eq:vi:ep-cavity} \\
+  q_i^{\mathrm{proj}} &= \argmin_{\tilde{q} \in \mathcal{Q}} \KL{q_i^{\mathrm{tilted}}}{\tilde{q}} \quad\text{(Moment Match)}, \label{eq:vi:ep-proj} \\
+  \tilde{f}_i^{\mathrm{new}}(\vecb{\theta}) &\propto \left(\frac{q_i^{\mathrm{proj}}(\vecb{\theta})}{q_{\setminus i}(\vecb{\theta})}\right)^{\delta} \tilde{f}_i(\vecb{\theta})^{1-\delta}, \label{eq:vi:ep-update}
+\end{align}
+where $\delta \in (0, 1]$ is a damping factor. Whereas the Laplace approximation fits a single local Gaussian $\Normal(\hat{\vecb{\theta}}, \mat{H}\inv)$ using the Hessian $\mat{H} = -\hess_{\vecb{\theta}} \log p(\vecb{\theta}, \mathcal{D})|_{\hat{\vecb{\theta}}}$ at the MAP mode $\hat{\vecb{\theta}}$, EP matches global moments of each tilted distribution in the context of the cavity prior $q_{\setminus i}$.
+
+% =============================================================================
+\section{Algorithmic Implementation \& Comparative Synthesis}
+% =============================================================================
+
+\begin{figure}[htbp]
+\begin{minipage}[t]{0.48\textwidth}
+\begin{algorithm}[H]
+  \caption{Coordinate Ascent VI (CAVI)}
+  \label{alg:vi:cavi}
+  \DontPrintSemicolon
+  \KwIn{Joint $p_{\vecb{\theta}}(\vecb{x}, \vecb{z})$, partition $\vecb{z}_{1:J}$, tolerance $\varepsilon$}
+  \KwOut{Optimal mean-field factors $\{q_j^*(\vecb{z}_j)\}_{j=1}^J$}
+  Initialize $q_j(\vecb{z}_j)$ for $j = 1, \dots, J$\;
+  \While{$\Delta \mathrm{ELBO} > \varepsilon$}{
+    \For{$j = 1, \dots, J$}{
+      $g_j(\vecb{z}_j) \leftarrow \E_{\vecb{z}_{\mathrm{mb}(j)}}[\log p_{\vecb{\theta}}(\vecb{z}_j, \vecb{z}_{\mathrm{mb}(j)}, \vecb{x})]$\;
+      $q_j(\vecb{z}_j) \leftarrow \frac{\exp(g_j(\vecb{z}_j))}{\int \exp(g_j(\vecb{z}_j'))\,\mathrm{d}\vecb{z}_j'}$\;
+    }
+    Evaluate $\mathrm{ELBO}(q)$ via \eqref{eq:vi:elbo-energy}\;
+  }
+\end{algorithm}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\begin{algorithm}[H]
+  \caption{Reparameterized Amortized SVI}
+  \label{alg:vi:rsvi}
+  \DontPrintSemicolon
+  \KwIn{Dataset $\mathcal{D}$, encoder $g_{\vecb{\phi}}$, decoder $p_{\vecb{\theta}}$, step $\eta$}
+  \KwOut{Trained $(\vecb{\theta}, \vecb{\phi})$}
+  Initialize $(\vecb{\theta}, \vecb{\phi})$\;
+  \While{not converged}{
+    Sample minibatch $\mathcal{B} \subset \mathcal{D}$ and $\vecb{\epsilon}_n \sim p(\vecb{\epsilon})$\;
+    Compute $(\vecb{\mu}_n, \vecb{\sigma}_n) \leftarrow \mathrm{enc}_{\vecb{\phi}}(\vecb{x}_n)$\;
+    Reparameterize $\vecb{z}_n \leftarrow \vecb{\mu}_n + \vecb{\sigma}_n \odot \vecb{\epsilon}_n$\;
+    $\hat{\mathcal{L}} \leftarrow \frac{1}{|\mathcal{B}|}\sum_{n\in\mathcal{B}} [\log p_{\vecb{\theta}}(\vecb{x}_n \mid \vecb{z}_n) - \mathrm{KL}(q_{\vecb{\phi}} \| p)]$\;
+    Update $(\vecb{\theta}, \vecb{\phi}) \leftarrow (\vecb{\theta}, \vecb{\phi}) + \eta \grad_{(\vecb{\theta},\vecb{\phi})} \hat{\mathcal{L}}$\;
+  }
+\end{algorithm}
+\end{minipage}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \caption{Complexity, variance, and applicability comparison across approximate inference paradigms \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~10, PDF pp.~473--515}.}
+  \label{tab:vi:complexity}
+  \begin{tabularx}{\textwidth}{@{}>{\bfseries\color{monographNavy}}l l l l X@{}}
+    \toprule
+    \textbf{Method} & \textbf{Divergence} & \textbf{Latents} & \textbf{Memory} & \textbf{Variance \& Convergence Profile} \\
+    \midrule
+    CAVI (Alg.~\ref{alg:vi:cavi}) & $\KL{q}{p}$ & Conjugate & $O(N J)$ & Zero gradient variance; monotonic local convergence \\
+    BBVI (REINFORCE) & $\KL{q}{p}$ & Discrete/Cont. & $O(B D)$ & High variance; needs CV baselines \& Rao--Blackwell \\
+    Pathwise SVI (VAE) & $\KL{q}{p}$ & Continuous & $O(B D)$ & Low variance via $\grad_{\vecb{z}} f$; $O(1)$ test-time inference \\
+    Expectation Prop. & Local $\KL{p}{q}$ & Exp.\ family & $O(K D^2)$ & Mode-covering; damped updates; no convergence guarantee \\
+    Laplace Approx. & Local $2^{\text{nd}}$-order & Continuous $C^2$ & $O(D^2)$ & Zero-cost post-MAP; fails on skewed/multimodal targets \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Divergent Perspectives on Variational Inference]
+\small
+\bookcite{deep_learning_foundations_concepts}{Sec.~15.4, 16.3} introduces the ELBO primarily as a vehicle for deriving exact and generalized EM in latent-variable models (GMMs, PPCA, Factor Analysis). \bookcite{deep_learning_goodfellow_bengio_courville_2017}{Sec.~19.4--19.5} emphasizes the calculus-of-variations derivation of free-form mean-field fixed points and the biological/algorithmic wake-sleep motivation for learned inference networks. \bookcite{understandingdl_simonprince}{Sec.~17.4--17.6} prioritizes geometric intuition for amortized VAEs, highlighting the closed-form Gaussian prior KL and single-sample Monte Carlo ELBO. Finally, \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Ch.~10} unifies all four threads---CAVI, SVI natural gradients, REINFORCE vs.\ pathwise reparameterization, IWAE tighter bounds, and Expectation Propagation---within a single optimization taxonomy.
+\end{crossbook}
+
+% =============================================================================
+\section{Visual Diagnostics \& Geometric Structure}
+% =============================================================================
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth]
+    % Top Objective Node
+    \node[monoBox, text width=7.2cm] (obj) at (0,0) {\textbf{Posterior Approximation Objective}\\\footnotesize Target: $p_{\vecb{\theta}}(\vecb{z}\mid\vecb{x}) \propto p_{\vecb{\theta}}(\vecb{x},\vecb{z})$};
+
+    % Left Branch: Reverse KL (VI)
+    \node[monoTealBox, text width=6.8cm] (rkl) at (-3.7,-1.85) {\textbf{Reverse KL: $\KL{q}{p}$ (VI / ELBO)}\\\footnotesize Mode-seeking, zero-avoiding ($q \to 0$ where $p \to 0$)};
+
+    % Right Branch: Forward KL (EP)
+    \node[monoIndigoBox, text width=5.6cm] (fkl) at (3.6,-1.85) {\textbf{Local Forward KL: $\KL{q_i^{\mathrm{tilted}}}{\tilde{q}}$ (EP)}\\\footnotesize Mode-covering, zero-forcing ($q > 0$ wherever $p > 0$)};
+
+    % Sub-nodes under Reverse KL
+    \node[monoBox, text width=2.1cm] (cavi) at (-6.2,-4.05) {\textbf{CAVI / SVI}\\\scriptsize Free-form $\E_{-j}$\\or natural grad.};
+    \node[monoBox, text width=2.2cm] (bbvi) at (-3.7,-4.05) {\textbf{BBVI}\\\scriptsize $\tilde{\mathcal{L}}\grad_{\vecb{\phi}}\log q_{\vecb{\phi}}$\\+ CV baselines};
+    \node[monoTealBox, text width=2.2cm] (rvi) at (-1.2,-4.05) {\textbf{Pathwise RVI}\\\scriptsize $\vecb{z}=g_{\vecb{\phi}}(\vecb{\epsilon},\vecb{x})$\\Low-var.\ $\grad_{\vecb{z}} f$};
+
+    % Sub-nodes under Forward KL
+    \node[monoIndigoBox, text width=5.6cm] (epstep) at (3.6,-4.05) {\textbf{Cavity--Tilted--Project Cycle}\\\scriptsize $q_{\setminus i} \propto q/\tilde{f}_i \;\to\; q_i^{\mathrm{tilted}} \propto f_i q_{\setminus i} \;\to\; \text{moment match}$};
+
+    % Arrows
+    \draw[->, thick, monographTeal] (obj.south west) -- (rkl.north);
+    \draw[->, thick, monographIndigo] (obj.south east) -- (fkl.north);
+    \draw[->, thick, monographNavy] (rkl.south) -- (cavi.north);
+    \draw[->, thick, monographNavy] (rkl.south) -- (bbvi.north);
+    \draw[->, thick, monographTeal] (rkl.south) -- (rvi.north);
+    \draw[->, thick, monographIndigo] (fkl.south) -- (epstep.north);
+  \end{tikzpicture}
+  \caption{Architectural taxonomy of approximate inference pathways: Reverse-KL variational inference (left, splitting into conjugate CAVI/SVI, score-function BBVI, and pathwise reparameterization) versus local Forward-KL Expectation Propagation (right, matching moments of tilted distributions).}
+  \label{fig:vi:pathways}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.92\textwidth,
+      height=6.6cm,
+      xlabel={$z$ (Latent Coordinate)},
+      ylabel={Probability Density $p(z)$, $q(z)$},
+      xmin=-4.5, xmax=4.5,
+      ymin=0, ymax=0.92,
+      grid=major,
+      grid style={dashed, monographRule},
+      legend pos=north east,
+      legend style={font=\scriptsize, fill=white, fill opacity=0.9, draw=monographRule},
+      tick label style={font=\footnotesize},
+      label style={font=\small\color{monographNavy}},
+      samples=220,
+      domain=-4.5:4.5
+    ]
+      % Bimodal target: 0.5*N(-1.8, 0.55^2) + 0.5*N(1.8, 0.55^2)
+      \addplot[thick, monographNavy, line width=1.4pt]
+        {0.5*(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x+1.8)/0.55)^2) + 0.5*(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x-1.8)/0.55)^2)};
+      \addlegendentry{True Bimodal $p(z)$}
+
+      % Reverse KL (mode-seeking): locks onto right mode N(1.8, 0.55^2)
+      \addplot[thick, monographTeal, dashed, line width=1.3pt]
+        {(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x-1.8)/0.55)^2)};
+      \addlegendentry{Reverse-KL VI $\KL{q}{p}$ (Mode-Seeking)}
+
+      % Forward KL / EP (moment-matching): mean 0, var = 1.8^2 + 0.55^2 = 3.5425 -> std = 1.882
+      \addplot[thick, monographIndigo, dotted, line width=1.4pt]
+        {(1/(1.882*sqrt(2*pi)))*exp(-0.5*(x/1.882)^2)};
+      \addlegendentry{Forward-KL / EP $\KL{p}{q}$ (Moment-Matching)}
+
+      % Laplace approximation at left mode: N(-1.8, 0.55^2)
+      \addplot[thick, monographCrimson, dash dot, line width=1.2pt]
+        {(1/(0.55*sqrt(2*pi)))*exp(-0.5*((x+1.8)/0.55)^2)};
+      \addlegendentry{Laplace at Left Mode $\hat{z}=-1.8$}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Unimodal Gaussian approximations to a bimodal target $p(z) = \frac{1}{2}\Normal(-1.8, 0.55^2) + \frac{1}{2}\Normal(1.8, 0.55^2)$. Reverse-KL VI is zero-avoiding and collapses onto a single mode; Forward-KL / EP is zero-forcing and spans both modes via moment matching ($\mu=0, \sigma=\sqrt{1.8^2+0.55^2}\approx 1.88$); Laplace captures only local curvature at one MAP mode.}
+  \label{fig:vi:bimodal-kl}
+\end{figure}
+
+\monographfig[0.64\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p476_fig1.png}{Mean-field (diagonal covariance, green dotted) versus low-rank-plus-diagonal (red dashed) and full-rank (blue dash-dot) Gaussian VI approximations to a correlated 2D Gaussian posterior (black solid) \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~10.2, PDF p.~476}. Mean-field VI underestimates marginal variances along correlated directions.}{fig:vi:meanfield-2d}
+
+\monographfig[0.68\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p514_fig1.png}{Expectation Propagation step combining a non-Gaussian logistic likelihood factor $f_i = p(y_i \mid \vecb{\theta})$ (blue) with the Gaussian cavity prior $g_{-i}(\vecb{\theta})$ (red) to form the tilted distribution $q_i^{\mathrm{tilted}}(\vecb{\theta}) \propto f_i(\vecb{\theta}) g_{-i}(\vecb{\theta})$ (green), which is then projected back to $\mathcal{Q}$ by moment matching \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~10.15, PDF p.~514}.}{fig:vi:ep-tilted}
+
+% =============================================================================
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}
+% =============================================================================
+
+\begin{pitfall}[Mean-Field Covariance Underestimation \& Zero-Avoidance]
+Minimizing $\KL{q}{p}$ penalizes $q(\vecb{z}) > 0$ wherever $p(\vecb{z}\mid\vecb{x}) \approx 0$. Consequently, a factorized Gaussian $q(\vecb{z}) = \prod_j \Normal(z_j \mid \mu_j, \sigma_j^2)$ matched to a correlated posterior $\Normal(\vecb{\mu}, \mat{\Sigma})$ sets $\sigma_j^2 = (\mat{\Sigma}\inv)_{jj}\inv \le \Sigma_{jj}$ (matching conditional rather than marginal precisions), severely underestimating uncertainty (Figure~\ref{fig:vi:meanfield-2d}). \emph{Remedy:} Use structured factorizations, low-rank-plus-diagonal covariances $\mat{\Sigma} = \diag(\vecb{d}) + \mat{U}\mat{U}\T$, or normalizing flows \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.2, 10.4, PDF pp.~476, 505--506}.
+\end{pitfall}
+
+\begin{pitfall}[High Variance of Unbaselined Score-Function Gradients]
+The naive REINFORCE estimator $\tilde{\mathcal{L}}(\vecb{\phi}, \vecb{z})\grad_{\vecb{\phi}} \log q_{\vecb{\phi}}(\vecb{z})$ exhibits variance scaling quadratically with $\abs{\tilde{\mathcal{L}}}$ and linearly with latent dimension $D$, causing training divergence. \emph{Remedy:} Always subtract optimal control variates $c_i^*$ \eqref{eq:vi:reinforce}, apply Rao--Blackwellization over Markov blankets, or use continuous relaxations (Gumbel-Softmax / Concrete) to enable pathwise gradients \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.2.3.2, PDF p.~489}.
+\end{pitfall}
+
+\begin{pitfall}[Amortized Inference Gap \& Posterior Collapse]
+When the encoder $q_{\vecb{\phi}}(\vecb{z}\mid\vecb{x})$ has limited capacity, the amortization gap degrades the ELBO; conversely, in VAEs with powerful autoregressive decoders $p_{\vecb{\theta}}(\vecb{x}\mid\vecb{z})$, optimizing the ELBO can drive $q_{\vecb{\phi}}(\vecb{z}\mid\vecb{x}) \to p(\vecb{z})$ so that $\KL{q_{\vecb{\phi}}}{p} \to 0$ and latent codes are ignored (posterior collapse). \emph{Remedy:} Apply semi-amortized local refinement, KL annealing / $\beta$-VAE scheduling, or free-bits thresholding \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.1.6, PDF p.~479}.
+\end{pitfall}
+
+\begin{pitfall}[EP Negative Precision Matrices \& Non-Guaranteed Convergence]
+Subtracting natural parameters in the cavity step $q_{\setminus i} \propto q / \tilde{f}_i$ or site update $\tilde{f}_i^{\mathrm{new}} \propto q_i^{\mathrm{proj}} / q_{\setminus i}$ can produce non-positive-definite precision matrices for non-log-concave likelihoods, and vanilla EP has no global Lyapunov function guaranteeing convergence. \emph{Remedy:} Damp site updates with $\delta \in (0, 1]$ as in \eqref{eq:vi:ep-update} (e.g., $\delta = 0.5$ decaying to $1/K$) and reject updates that violate positive-definiteness \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~10.7.4, Eq.~10.199, PDF p.~515}.
+\end{pitfall}
+
+\end{document}

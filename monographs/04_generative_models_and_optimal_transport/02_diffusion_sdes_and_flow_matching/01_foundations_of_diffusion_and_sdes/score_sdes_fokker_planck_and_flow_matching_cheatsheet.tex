@@ -1,0 +1,221 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{4}{Diffusion, Score SDEs \& Flow Matching}{Score SDEs, It\^o/Girsanov/Fokker-Planck Equations \& Flow Matching}
+  {Continuous-time stochastic diffusion, deterministic probability flows, and straight-line transport}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Score SDE \& FM\\ \footnotesize\mdseries It\^o $\cdot$ PF-ODE $\cdot$ CFM}{%
+  \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny}]
+    % Left: data mode, Right: prior mode
+    \fill[csA!25] (-2.0,-0.55) ellipse (0.38 and 0.95);
+    \node[csA, font=\tiny\bfseries] at (-2.0,-0.55) {$p_0$};
+    \fill[csE!25] (2.0,-0.55) ellipse (0.38 and 0.95);
+    \node[csE, font=\tiny\bfseries] at (2.0,-0.55) {$p_T$};
+    % Jittery Reverse SDE path (top)
+    \draw[csA, thick, <-] (-1.6,0.05) -- (-1.1,0.35) -- (-0.5,0.18) -- (0.1,0.52) -- (0.7,0.22) -- (1.3,0.50) -- (1.6,0.05);
+    \node[csA] at (0,0.88) {Rev.\ SDE ($-g^2\vecb s$)};
+    % Smooth curved PF-ODE path (middle)
+    \draw[csB, very thick, <-] (-1.6,-0.35) to[out=12,in=168] (1.6,-0.35);
+    \node[csB] at (0,-0.78) {PF-ODE ($-\frac{1}{2}g^2\vecb s$)};
+    % Straight Rectified Flow path (bottom)
+    \draw[csD, very thick, ->] (-1.6,-1.25) -- (1.6,-1.25);
+    \node[csD] at (0,-1.56) {CFM / RF ($\vecb x_1\!-\!\vecb x_0$)};
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ Continuum Limit: VP-SDE \& VE-SDE}{%
+  \csfm{\mathrm{d}\vecb x_t=\vecb f(\vecb x_t,t)\,\mathrm{d}t+g(t)\,\mathrm{d}\vecb w_t,\quad \mathrm{d}\vecb w_t\sim\Normal(\zeros,\mathrm{d}t\,\eye)}
+  \begin{csbul}
+    \item \textbf{DDPM $\to$ VP-SDE:} $\mathrm{d}\vecb x_t=-\frac{1}{2}\beta(t)\vecb x_t\,\mathrm{d}t+\sqrt{\beta(t)}\,\mathrm{d}\vecb w_t$
+      \\ Kernel: $\Normal\bigl(e^{-\frac{1}{2}B(t)}\vecb x_0,\,(1-e^{-B(t)})\eye\bigr)$, $B(t)=\int_0^t\beta(s)\,\mathrm{d}s$
+    \item \textbf{NCSN $\to$ VE-SDE:} $\mathrm{d}\vecb x_t=\sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}}\,\mathrm{d}\vecb w_t$
+      \\ Kernel: $\Normal\bigl(\vecb x_0,\,(\sigma^2(t)-\sigma^2(0))\eye\bigr)$
+    \item Linear drift $\vecb f(\vecb x,t)=f(t)\vecb x \Rightarrow$ exact Gaussian transition $p_t(\vecb x_t\mid\vecb x_0)$
+  \end{csbul}}
+
+\csbranch{2}{B}{2\;\; HOW $-$ It\^o's Lemma \& Fokker-Planck PDE}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{(\mathrm{d}w_{t,i})(\mathrm{d}w_{t,j})=\delta_{ij}\,\mathrm{d}t}
+    \begin{csbul}
+      \item \textbf{It\^o's Formula:} $\mathrm{d}\varphi = \bigl(\partial_t\varphi + (\grad\varphi)\T\vecb f + \frac{1}{2}g^2\Delta\varphi\bigr)\mathrm{d}t + g(\grad\varphi)\T\mathrm{d}\vecb w_t$
+      \item \textbf{Fokker-Planck (IBP on $\E[\mathrm{d}\varphi]$):}
+      \csfm{\partial_t p_t = -\nabla\!\cdot\!(\vecb f p_t)+\tfrac{1}{2}g^2\Delta p_t}
+      \item Using $\Delta p_t=\nabla\!\cdot\!(p_t\grad\log p_t)$ converts diffusion into a transport continuity PDE!
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.58, every node/.style={font=\tiny}]
+      \node[draw=csB, fill=csB!12, rounded corners=2pt, inner sep=2.5pt, align=center] (sde) at (0,3.0) {Sample path SDE\\$\mathrm{d}\vecb x_t=\vecb f\mathrm{d}t+g\mathrm{d}\vecb w_t$};
+      \node[draw=csB, fill=white, rounded corners=2pt, inner sep=2.5pt, align=center] (ito) at (0,1.5) {It\^o + $\E[\cdot]$ + IBP\\$\frac{1}{2}g^2\Delta\varphi\to\frac{1}{2}g^2\Delta p_t$};
+      \node[draw=csB, fill=csB!12, rounded corners=2pt, inner sep=2.5pt, align=center] (fp) at (0,0) {Continuity PDE\\$\partial_t p_t+\nabla\!\cdot\!(p_t\tilde{\vecb v}_t)=0$};
+      \draw[-{Stealth[length=3pt]}, thick, csB] (sde) -- (ito);
+      \draw[-{Stealth[length=3pt]}, thick, csB] (ito) -- (fp);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ Anderson Reverse SDE \& PF-ODE}{%
+  \begin{csbul}
+    \item \textbf{Reverse-Time SDE} ($\bar{\vecb w}_t$ reverse Wiener, $t:T\to 0$):
+      \csfm{\mathrm{d}\bar{\vecb x}_t=\bigl[\vecb f(\bar{\vecb x}_t,t)-g^2(t)\grad_{\vecb x}\log p_t(\bar{\vecb x}_t)\bigr]\mathrm{d}t+g(t)\,\mathrm{d}\bar{\vecb w}_t}
+    \item \textbf{Probability Flow ODE} (deterministic, shares \textbf{exact} $p_t(\vecb x)$):
+      \csfm{\mathrm{d}\tilde{\vecb x}_t=\underbrace{\bigl[\vecb f(\tilde{\vecb x}_t,t)-\tfrac{1}{2}g^2(t)\grad_{\vecb x}\log p_t(\tilde{\vecb x}_t)\bigr]}_{\tilde{\vecb v}_t(\tilde{\vecb x}_t)}\mathrm{d}t}
+    \item \textbf{Why $\frac{1}{2}g^2$ vs.\ $g^2$?} Rev.\ SDE = PF-ODE $+$ time-varying Langevin corrector $\bigl(-\frac{1}{2}g^2\grad\log p_t\,\mathrm{d}t+g\,\mathrm{d}\bar{\vecb w}_t\bigr)$ that damps score error
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ Girsanov Path KL \& Exact NLL}{%
+  \begin{csbul}
+    \item \textbf{Girsanov Theorem:} for same $g(t)$ and drift gap $g^2(\vecb s_\phi-\grad\log p_t)$, path KL is weighted DSM:
+      \csfm{\KL{\mathbb P}{\mathbb P_\phi}=\frac{1}{2}\E_{\mathbb P}\!\left[\int_0^T g^2(t)\norm{\vecb s_\phi(\vecb x_t,t)-\grad\log p_t(\vecb x_t)}_2^2\mathrm{d}t\right]}
+    \item Data processing: $\KL{p_{\mathrm{data}}}{p_\phi(\vecb x_0)}\le\KL{\mathbb P}{\mathbb P_\phi}$ ($\lambda(t)=g^2(t)$ = NLL weight)
+    \item \textbf{PF-ODE exact NLL:} $\log p_0(\vecb x_0)=\log p_T(\vecb x_T)+\int_0^T \nabla_{\vecb x}\cdot\tilde{\vecb v}_t(\vecb x_t)\,\mathrm{d}t$
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; FLOW MATCHING $-$ CFM, Rectified Flow \& Reflow}{%
+  \begin{minipage}[t]{0.59\linewidth}
+    \begin{csbul}
+      \item Learn $\dot{\vecb x}_t=\vecb v_\phi(\vecb x_t,t)$ pushing $p_{\mathrm{src}}\to p_{\mathrm{tgt}}$ directly
+      \item \textbf{CFM:} $\grad_\phi\mathcal L_{\mathrm{FM}}=\grad_\phi\mathcal L_{\mathrm{CFM}}$ for $\vecb v_t(\vecb x)=\E[\vecb v_t(\vecb x\mid\vecb z)\mid\vecb x_t=\vecb x]$
+      \item \textbf{Rectified Flow} ($\vecb x_t=(1-t)\vecb x_0+t\vecb x_1$):
+        \csfm{\mathcal L_{\mathrm{RF}}=\E_{t,(\vecb x_0,\vecb x_1)}\!\bigl[\norm{\vecb v_\phi(\vecb x_t,t)-(\vecb x_1-\vecb x_0)}_2^2\bigr]}
+      \item \textbf{Reflow} $(\vecb x_0,\Phi_{0\to 1}^{(k)}(\vecb x_0))$ straightens paths: $\mathcal S\le \mathcal O(1/K)$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.38\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\tiny}]
+      \node at (1.6,2.7) {\textbf{1-RF} (crossed $\to$ curved)};
+      \draw[csA, dashed] (0,2.3) -- (3.2,1.3);
+      \draw[csA, dashed] (0,1.3) -- (3.2,2.3);
+      \draw[csB, very thick, ->] (0,2.3) .. controls (1.6,1.9) .. (3.2,2.3);
+      \draw[csB, very thick, ->] (0,1.3) .. controls (1.6,1.7) .. (3.2,1.3);
+      \node at (1.6,0.75) {\textbf{Reflow} (uncrossed $\to$ 1-step)};
+      \draw[csD, very thick, ->] (0,0.35) -- (3.2,0.35);
+      \draw[csD, very thick, ->] (0,-0.25) -- (3.2,-0.25);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{6}{F}{6\;\; PARADIGM COMPARISON $-$ Which Dynamics?}{%
+  \renewcommand{\arraystretch}{1.15}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{2.9cm}@{}}
+    \textbf{\textcolor{csF}{Model}} & \textbf{\textcolor{csF}{Vector Field / Drift}} & \textbf{\textcolor{csF}{Key Property}}\\ \hline
+    Reverse SDE & $\vecb f - g^2\vecb s_\phi + g\dot{\bar{\vecb w}}_t$ & Stochastic; damps score error\\
+    PF-ODE & $\vecb f - \frac{1}{2}g^2\vecb s_\phi$ & Deterministic; exact $\log p_0$\\
+    Gaussian CFM & $\frac{\sigma_t'}{\sigma_t}(\vecb x-\vecb\mu_t)+\vecb\mu_t'$ & Bridges any conditioned path\\
+    Rectified Flow & $\E[\vecb x_1-\vecb x_0\mid\vecb x_t]$ & Straight trajectories; arbitrary $p_{\mathrm{src}}$\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Eulerian} (Score SDE fixes $p_t$) vs.\ \textbf{Lagrangian} (FM prescribes straight paths $\Psi_{0\to t}$).}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Laplacian $\Delta p_t = \nabla\!\cdot\!(p_t\grad\log p_t)$ turns diffusion into transport} \\[1pt]
+  \footnotesize\mdseries \textbf{Use $g^2\vecb s$ for the Reverse SDE, $\frac{1}{2}g^2\vecb s$ for the PF-ODE, or $\vecb x_1-\vecb x_0$ for straight Rectified Flow.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item dropping $g\mathrm{d}\bar{\vecb w}_t$ without halving $g^2\to\frac{1}{2}g^2$ breaks marginal $p_t(\vecb x)$
+    \item omitting It\^o's $\frac{1}{2}g^2\Delta\varphi\,\mathrm{d}t$ violates $(\mathrm{d}\vecb w_t)^2=\mathrm{d}t\,\eye$
+    \item straight paths $\ne$ OT unless coupling $\pi(\vecb x_0,\vecb x_1)$ is $c$-cyclically monotone
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Score SDEs, It\^o/Girsanov/Fokker-Planck Equations \& Flow Matching}\;---\;Domain 04 $\cdot$ Generative Models \& Optimal Transport}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item Linear SDE moment ODEs ($\vecb f=f(t)\vecb x$, $p_t(\vecb x_t\mid\vecb x_0)=\Normal(\vecb m_t,P_t\eye)$):
+      \csfm{\dot{\vecb m}_t=f(t)\vecb m_t,\qquad \dot P_t=2f(t)P_t+g^2(t)}
+    \item Multidimensional It\^o's Lemma:
+      \csfm{\mathrm{d}\varphi(\vecb x_t,t)=\Bigl(\partial_t\varphi+(\grad\varphi)\T\vecb f+\tfrac{1}{2}g^2(t)\Tr(\grad^2\varphi)\Bigr)\mathrm{d}t+g(t)(\grad\varphi)\T\mathrm{d}\vecb w_t}
+    \item Fokker-Planck $\Longleftrightarrow$ Continuity Equation:
+      \csfm{\partial_t p_t=-\nabla\!\cdot\!(p_t\vecb f)+\tfrac{1}{2}g^2\Delta p_t=-\nabla\!\cdot\!\Bigl(p_t\bigl[\vecb f-\tfrac{1}{2}g^2\grad\log p_t\bigr]\Bigr)}
+    \item Gaussian Bridge Conditional Velocity ($p_t(\vecb x\mid\vecb z)=\Normal(\vecb\mu_t,\sigma_t^2\eye)$):
+      \csfm{\vecb v_t(\vecb x\mid\vecb z)=\frac{\sigma_t'(\vecb z)}{\sigma_t(\vecb z)}\bigl(\vecb x-\vecb\mu_t(\vecb z)\bigr)+\vecb\mu_t'(\vecb z)}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{RECIPE $-$ SIMULATION-FREE CFM \& REVERSE SAMPLING}
+  \textbf{CFM / Rectified Flow Training:}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Sample $t\sim\Uniform[0,1]$ and pair $(\vecb x_0,\vecb x_1)\sim\pi$ (e.g.\ $p_{\mathrm{src}}\otimes p_{\mathrm{tgt}}$)
+    \item Interpolate $\vecb x_t=(1-t)\vecb x_0+t\vecb x_1$ and step on $\norm{\vecb v_\phi(\vecb x_t,t)-(\vecb x_1-\vecb x_0)}_2^2$
+  \end{enumerate}
+  \vspace{2pt}
+  \textbf{Reverse Euler-Maruyama vs.\ PF-ODE} ($\Delta t=T/N$, $t_k=k\Delta t$):
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item \textbf{PF-ODE:} $\vecb x\gets\vecb x-\bigl[\vecb f(\vecb x,t)-\frac{1}{2}g^2(t)\vecb s_\phi(\vecb x,t)\bigr]\Delta t$
+    \item \textbf{Rev-SDE:} $\vecb x\gets\vecb x-\bigl[\vecb f(\vecb x,t)-g^2(t)\vecb s_\phi(\vecb x,t)\bigr]\Delta t+g(t)\sqrt{\Delta t}\,\vecb z$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you need\ldots} & \textbf{use\ldots}\\ \hline
+    best sample quality with imperfect $\vecb s_\phi$ & Reverse SDE / Predictor-Corrector\\
+    deterministic latent inversion / NLL & PF-ODE + Hutchinson trace $\nabla\!\cdot\!\tilde{\vecb v}_t$\\
+    min $\KL{p_{\mathrm{data}}}{p_\phi}$ bound & Girsanov weight $\lambda(t)=g^2(t)$\\
+    non-Gaussian source $p_{\mathrm{src}}\to p_{\mathrm{tgt}}$ & Conditional Flow Matching (CFM)\\
+    $1$--$4$ step Euler generation & Rectified Flow + iterative Reflow\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{GIRSANOV \& REFLOW BOUNDS CHEAT-LINE}
+  \begin{csbul}
+    \item Girsanov Radon-Nikodym ratio ($\vecb\delta_t=\vecb f-\tilde{\vecb f}$):
+      $\log\frac{\mathrm{d}\mathbb P_{\vecb f}}{\mathrm{d}\mathbb P_{\tilde{\vecb f}}}=\int_0^T\frac{\vecb\delta_t\T}{g}\mathrm{d}\vecb w_t-\frac{1}{2}\int_0^T\frac{\norm{\vecb\delta_t}_2^2}{g^2}\mathrm{d}t$
+    \item Reflow convex transport cost never increases: $\E[c(\vecb x_1^{(k+1)}-\vecb x_0^{(k+1)})]\le\E[c(\vecb x_1^{(k)}-\vecb x_0^{(k)})]$
+    \item Straightness decay after $K$ reflows: $\min_{k\le K}\mathcal S(\vecb Z^{(k)})\le\frac{1}{K}\E[\norm{\vecb x_1-\vecb x_0}_2^2]$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{CURVED VP PF-ODE vs.\ STRAIGHTENED RECTIFIED FLOW}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=4.8cm, xmin=0, xmax=1, ymin=-2.0, ymax=2.55,
+      xlabel={Transport time $t\in[0,1]$ ($p_{\mathrm{prior}}\to p_{\mathrm{data}}$)}, ylabel={State $x_t$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      xtick={0,0.25,0.5,0.75,1.0}, ytick={-2,-1,0,1,2}, grid=both,
+      grid style={line width=.1pt, draw=gray!25},
+      legend style={font=\tiny, at={(0.03,0.97)}, anchor=north west, fill=white, fill opacity=0.85}]
+      \addplot[csA, very thick, domain=0:1, samples=40] {1.4*sin(deg(1.5708*x)) + 0.5*sin(deg(3.14159*x))};
+      \addlegendentry{VP PF-ODE (curved $\Rightarrow$ Euler drift)}
+      \addplot[csA, very thick, dashed, domain=0:1, samples=40, forget plot] {-1.4*sin(deg(1.5708*x)) - 0.5*sin(deg(3.14159*x))};
+      \addplot[csD, very thick, domain=0:1, samples=2] {1.4*x};
+      \addlegendentry{Rectified Flow $x_t=(1-t)x_0+tx_1$ ($S=0$)}
+      \addplot[csD, very thick, domain=0:1, samples=2, forget plot] {-1.4*x};
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Missing the $\frac{1}{2}$ in PF-ODE:} using $-\vecb f+g^2\vecb s_\phi$ without Brownian noise $g\mathrm{d}\bar{\vecb w}_t$ changes the Fokker-Planck PDE and corrupts the generated marginals $p_t(\vecb x)$
+    \item \textbf{Classical chain rule on SDEs:} $\mathrm{d}\vecb w_t=\mathcal O(\sqrt{\mathrm{d}t})$ means second-order Taylor terms $\frac{1}{2}g^2\Delta\varphi\,\mathrm{d}t$ are first-order in $\mathrm{d}t$ and can never be dropped
+    \item \textbf{Score singularity at $t\to 0$:} $\sigma_t\to 0$ causes $-\boldsymbol\epsilon/\sigma_t$ to explode on manifold data $\to$ truncate integration at $t=\varepsilon\in[10^{-5},10^{-3}]$
+    \item \textbf{VE-SDE prior bias:} $\sigma(T)\gg\sigma(0)$ is required so $p_T(\vecb x_T)\approx\Normal(\zeros,\sigma^2(T)\eye)$ forgets $\vecb x_0$
+    \item \textbf{Straight $\ne$ OT:} a rotated coupling $\vecb x_1=\mat A\vecb x_0$ produces straight lines $\vecb x_t=((1-t)\eye+t\mat A)\vecb x_0$ but has suboptimal transport cost
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{One marginal path $\{p_t\}$, three generative engines:}
+  \textbf{It\^o + Fokker-Planck} proves that stochastic Reverse SDEs ($-g^2\vecb s_\phi\,\mathrm{d}t+g\mathrm{d}\bar{\vecb w}_t$) and deterministic PF-ODEs ($-\frac{1}{2}g^2\vecb s_\phi\,\mathrm{d}t$) traverse the exact same density bridge, while \textbf{Conditional Flow Matching} and \textbf{Rectified Flow} straighten trajectories into $\vecb x_t=(1-t)\vecb x_0+t\vecb x_1$ for simulation-free, few-step transport.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

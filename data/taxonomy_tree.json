@@ -1,0 +1,2753 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-11-14T23:21:36.672750+00:00",
+  "book_index_path": "data/book_index.json",
+  "summary": {
+    "domains_count": 7,
+    "parent_topics_count": 15,
+    "sub_topics_count": 29,
+    "leaf_monographs_count": 47,
+    "source_books_total": 34,
+    "source_books_mapped": 34,
+    "unmapped_books": [],
+    "total_source_mappings": 228
+  },
+  "domains": [
+    {
+      "id": "01_mathematical_foundations",
+      "title": "Mathematical Foundations for Machine Intelligence",
+      "dir_path": "monographs/01_mathematical_foundations",
+      "parent_topics": [
+        {
+          "id": "01_linear_algebra_and_calculus",
+          "title": "Linear Algebra, Matrix Decompositions & Vector Calculus",
+          "dir_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus",
+          "sub_topics": [
+            {
+              "id": "01_vector_spaces_and_decompositions",
+              "title": "Vector Spaces, Spectral Theory & Matrix Factorizations",
+              "dir_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus/01_vector_spaces_and_decompositions",
+              "leaves": [
+                {
+                  "id": "vector_spaces_norms_and_projections",
+                  "title": "Vector Spaces, Norms, Orthogonality & Least-Squares Projections",
+                  "tex_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus/01_vector_spaces_and_decompositions/vector_spaces_norms_and_projections.tex",
+                  "description": "Synthesizes vector subspaces, inner products, Lp/Frobenius norms, orthogonal projections, Gram-Schmidt, and Moore-Penrose pseudoinverses for overdetermined systems.",
+                  "key_visuals": [
+                    "Extracted figure: four fundamental subspaces / orthogonal projection geometry",
+                    "TikZ diagram: orthogonal projection onto column space Col(A) with residual e = b - Ax",
+                    "PGFPlots curve: Lp unit balls (p = 1, 2, infinity) and condition-number geometry"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "linear_algebra",
+                      "chapter_or_section": "Ch. 4 Vector Spaces & Ch. 6 Orthogonality and Least Squares",
+                      "page_start": 208,
+                      "page_end": 257,
+                      "synthesis_role": "Rigorous four-subspace geometry and basis theory"
+                    },
+                    {
+                      "book_slug": "linear_algebra",
+                      "chapter_or_section": "Ch. 6 Orthogonality, Gram-Schmidt & Least-Squares",
+                      "page_start": 348,
+                      "page_end": 394,
+                      "synthesis_role": "Projection matrices, QR factorization, and normal equations"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 2 Linear Algebra & Ch. 3 Analytic Geometry",
+                      "page_start": 23,
+                      "page_end": 101,
+                      "synthesis_role": "Compact ML-oriented treatment of inner products and orthogonal projections"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 7.1-7.3 & 7.7 Matrix Ops and Linear Systems",
+                      "page_start": 259,
+                      "page_end": 282,
+                      "synthesis_role": "Conditioning, numerical stability, and Cholesky/QR solvers"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 2 Linear Algebra (Norms & Pseudoinverse)",
+                      "page_start": 46,
+                      "page_end": 67,
+                      "synthesis_role": "Tensor notation, operator norms, and pseudoinverse"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 1 Linear Algebra Review",
+                      "page_start": 24,
+                      "page_end": 41,
+                      "synthesis_role": "Concise matrix norms and subspace intuition"
+                    }
+                  ]
+                },
+                {
+                  "id": "eigendecomposition_svd_and_low_rank",
+                  "title": "Spectral Theory, Singular Value Decomposition & Low-Rank Approximations",
+                  "tex_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus/01_vector_spaces_and_decompositions/eigendecomposition_svd_and_low_rank.tex",
+                  "description": "Unifies eigendecomposition of symmetric matrices, spectral theorem, full/thin SVD, Eckart-Young-Mirsky best rank-k approximation, and data-compression interpretations.",
+                  "key_visuals": [
+                    "Extracted figure: SVD action mapping unit circle to hyper-ellipse / principal axes",
+                    "TikZ diagram: thin vs. full SVD matrix block dimensions (U, Sigma, V^T)",
+                    "PGFPlots chart: singular-value decay spectrum and relative Frobenius reconstruction error"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "linear_algebra",
+                      "chapter_or_section": "Ch. 5 Eigenvalues/Eigenvectors & Ch. 7 Symmetric Matrices and SVD",
+                      "page_start": 284,
+                      "page_end": 313,
+                      "synthesis_role": "Spectral diagonalization and geometric eigen-action"
+                    },
+                    {
+                      "book_slug": "linear_algebra",
+                      "chapter_or_section": "Ch. 7 Symmetric Matrices, Quadratic Forms & SVD",
+                      "page_start": 412,
+                      "page_end": 450,
+                      "synthesis_role": "Positive definiteness, Rayleigh quotients, and SVD"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 4 Matrix Decompositions",
+                      "page_start": 104,
+                      "page_end": 140,
+                      "synthesis_role": "Unifying phylogeny of Cholesky, EVD, and SVD + Eckart-Young approximation"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 7.4-7.6 EVD & SVD",
+                      "page_start": 283,
+                      "page_end": 295,
+                      "synthesis_role": "Spectral properties of covariance matrices and truncated SVD"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 2.7-2.8 EVD & SVD",
+                      "page_start": 57,
+                      "page_end": 61,
+                      "synthesis_role": "Principal directions and pseudoinverse via SVD"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 17 Singular Value Decomposition",
+                      "page_start": 258,
+                      "page_end": 265,
+                      "synthesis_role": "Worked low-rank approximation examples"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_matrix_calculus_and_autodiff",
+              "title": "Matrix Calculus, Jacobians & Automatic Differentiation",
+              "dir_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus/02_matrix_calculus_and_autodiff",
+              "leaves": [
+                {
+                  "id": "matrix_calculus_and_automatic_differentiation",
+                  "title": "Matrix Calculus, Computational Graphs & Automatic Differentiation",
+                  "tex_path": "monographs/01_mathematical_foundations/01_linear_algebra_and_calculus/02_matrix_calculus_and_autodiff/matrix_calculus_and_automatic_differentiation.tex",
+                  "description": "Reconciles numerator vs. denominator layout conventions across books, derives Jacobian/Hessian chain rules, and contrasts forward-mode (JVP) vs. reverse-mode (VJP / backpropagation) AD.",
+                  "key_visuals": [
+                    "Extracted figure: computational graph forward/backward pass diagram",
+                    "TikZ flowchart: forward-mode JVP vs. reverse-mode VJP computational complexity graph",
+                    "TikZ matrix table: numerator vs. denominator layout convention Rosetta Stone"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 5 Vector Calculus & Automatic Differentiation",
+                      "page_start": 145,
+                      "page_end": 175,
+                      "synthesis_role": "Rigorous Jacobian/matrix derivatives and backpropagation graph"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 7.8 Matrix Calculus & Sec. 13.3 Backpropagation",
+                      "page_start": 299,
+                      "page_end": 303,
+                      "synthesis_role": "Trace-trick matrix identities and gradient derivations"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 6.2 Automatic Differentiation",
+                      "page_start": 295,
+                      "page_end": 304,
+                      "synthesis_role": "Forward-mode vs. reverse-mode AD, VJPs/JVPs, and checkpointing"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 8 Backpropagation & Automatic Differentiation",
+                      "page_start": 250,
+                      "page_end": 266,
+                      "synthesis_role": "Jacobian chaining and reverse-mode complexity analysis"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 6.5 Back-Propagation and Other Differentiation Algorithms",
+                      "page_start": 219,
+                      "page_end": 229,
+                      "synthesis_role": "Symbol-to-symbol vs. symbol-to-number computational graphs"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 2 Matrix Calculus",
+                      "page_start": 42,
+                      "page_end": 51,
+                      "synthesis_role": "Denominator-layout matrix derivative lookup derivations"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_probability_information_and_transport",
+          "title": "Probability Theory, Information Theory & Optimal Transport",
+          "dir_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport",
+          "sub_topics": [
+            {
+              "id": "01_probability_and_distributions",
+              "title": "Probability Spaces, Gaussians & Statistical Estimation",
+              "dir_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/01_probability_and_distributions",
+              "leaves": [
+                {
+                  "id": "probability_spaces_gaussians_and_exponential_families",
+                  "title": "Probability Spaces, Multivariate Gaussians & Exponential Families",
+                  "tex_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/01_probability_and_distributions/probability_spaces_gaussians_and_exponential_families.tex",
+                  "description": "Bridges Kolmogorov axioms, change-of-variables Jacobian densities, conditioning/marginalization of multivariate Gaussians (Schur complement), and canonical exponential-family sufficient statistics.",
+                  "key_visuals": [
+                    "Extracted figure: multivariate Gaussian covariance contours & conditional slicing",
+                    "TikZ diagram: exponential family natural parameter <-> mean parameter duality",
+                    "PGFPlots chart: 1D/2D Gaussian densities and Student-t heavy-tail robustness"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "introduction_probability_data_science",
+                      "chapter_or_section": "Ch. 2-5 Probability Spaces, RVs & Multivariate Gaussians",
+                      "page_start": 59,
+                      "page_end": 318,
+                      "synthesis_role": "Measure-theoretic intuition, CDF/PDF transforms, and Gaussian algebra"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 2-3 Probabilities & Exponential Family",
+                      "page_start": 43,
+                      "page_end": 123,
+                      "synthesis_role": "Sum/product rules, Gaussian conditioning, and exponential family"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 6 Probability, Conjugacy & Change of Variables",
+                      "page_start": 178,
+                      "page_end": 226,
+                      "synthesis_role": "Density transformation theorem and conjugate priors"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 2-3 Univariate & Multivariate Probability",
+                      "page_start": 63,
+                      "page_end": 136,
+                      "synthesis_role": "Schur complement Gaussian conditioning and precision matrices"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 2 Probability",
+                      "page_start": 39,
+                      "page_end": 96,
+                      "synthesis_role": "Measure-theoretic foundations, copulas, and exponential families"
+                    }
+                  ]
+                },
+                {
+                  "id": "asymptotics_concentration_and_estimation",
+                  "title": "Concentration Inequalities, Limit Theorems & Statistical Estimation (MLE/MAP)",
+                  "tex_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/01_probability_and_distributions/asymptotics_concentration_and_estimation.tex",
+                  "description": "Synthesizes Markov/Chebyshev/Hoeffding/Chernoff concentration bounds, LLN and CLT asymptotics, Fisher information, Cramér-Rao lower bound, and MLE vs. MAP vs. Bayesian decision theory.",
+                  "key_visuals": [
+                    "Extracted figure: concentration bound tail decay / MLE vs. MAP posterior shrinkage",
+                    "PGFPlots chart: tail decay comparison (Markov vs. Chebyshev vs. Hoeffding)",
+                    "TikZ table: frequentist MLE vs. Bayesian MAP vs. full posterior predictive"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "introduction_probability_data_science",
+                      "chapter_or_section": "Ch. 6 Sample Statistics & Ch. 8 Estimation",
+                      "page_start": 335,
+                      "page_end": 396,
+                      "synthesis_role": "MGFs, probability inequalities, LLN, and CLT"
+                    },
+                    {
+                      "book_slug": "introduction_probability_data_science",
+                      "chapter_or_section": "Ch. 8 MLE, MAP & MMSE Estimation",
+                      "page_start": 481,
+                      "page_end": 549,
+                      "synthesis_role": "Consistency, Fisher information, and Bayesian MMSE"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 4 Statistics & Ch. 5 Decision Theory",
+                      "page_start": 137,
+                      "page_end": 236,
+                      "synthesis_role": "MLE, MAP, empirical Bayes, and risk minimization"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 3 Statistics",
+                      "page_start": 97,
+                      "page_end": 176,
+                      "synthesis_role": "Asymptotic normality, Cramér-Rao, and hypothesis testing"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 3-4 Probability & MLE/MAP",
+                      "page_start": 52,
+                      "page_end": 74,
+                      "synthesis_role": "Direct MLE/MAP derivations for regression and classification"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_information_theory_and_optimal_transport",
+              "title": "Information Theory, Divergences & Optimal Transport",
+              "dir_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/02_information_theory_and_optimal_transport",
+              "leaves": [
+                {
+                  "id": "entropy_kl_divergence_and_information_theory",
+                  "title": "Shannon Entropy, KL Divergence, f-Divergences & Information Bottleneck",
+                  "tex_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/02_information_theory_and_optimal_transport/entropy_kl_divergence_and_information_theory.tex",
+                  "description": "Derives entropy, cross-entropy, forward vs. reverse KL asymmetry (mode-covering vs. mode-seeking), mutual information, data-processing inequality, Jensen-Shannon divergence, and the Information Bottleneck.",
+                  "key_visuals": [
+                    "Extracted figure: forward KL (zero-avoiding) vs. reverse KL (zero-forcing) Gaussian fits",
+                    "TikZ Venn diagram: H(X), H(Y), H(X,Y), H(X|Y), and mutual information I(X;Y)",
+                    "PGFPlots plot: binary entropy curve and f-divergence generator functions"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 6 Information Theory",
+                      "page_start": 237,
+                      "page_end": 258,
+                      "synthesis_role": "Entropy, cross-entropy, and forward vs. reverse KL intuition"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 5 Information Theory",
+                      "page_start": 253,
+                      "page_end": 294,
+                      "synthesis_role": "f-divergences, Bregman divergences, and Information Bottleneck"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Sec. 2.5 Information Theory",
+                      "page_start": 66,
+                      "page_end": 73,
+                      "synthesis_role": "Differential entropy and KL convexity"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 3.13 Information Theory",
+                      "page_start": 74,
+                      "page_end": 75,
+                      "synthesis_role": "Cross-entropy loss equivalence to KL minimization"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Appendix C.5 Distances Between Distributions",
+                      "page_start": 473,
+                      "page_end": 475,
+                      "synthesis_role": "Concise KL and JS divergence reference"
+                    }
+                  ]
+                },
+                {
+                  "id": "optimal_transport_wasserstein_and_sinkhorn",
+                  "title": "Monge-Kantorovich Optimal Transport, Wasserstein Metrics & Sinkhorn Scaling",
+                  "tex_path": "monographs/01_mathematical_foundations/02_probability_information_and_transport/02_information_theory_and_optimal_transport/optimal_transport_wasserstein_and_sinkhorn.tex",
+                  "description": "Unifies Monge maps, Kantorovich LP relaxation, dual Kantorovich-Rubinstein potential form, entropic regularization, Sinkhorn-Knopp matrix scaling complexity, and minibatch/sliced OT.",
+                  "key_visuals": [
+                    "Extracted figure: Monge non-existence vs. Kantorovich coupling matrix / Sinkhorn plan",
+                    "TikZ diagram: Monge map vs. Kantorovich transport plan vs. Entropic Sinkhorn coupling",
+                    "PGFPlots curve: Wasserstein vs. JS divergence continuity on disjoint 1D Diracs"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "optimal_transport",
+                      "chapter_or_section": "Foundations, Monge, Kantorovich, Entropic OT & Sinkhorn",
+                      "page_start": 1,
+                      "page_end": 40,
+                      "synthesis_role": "Core OT formulations, Sinkhorn algorithm, and complexity bounds"
+                    },
+                    {
+                      "book_slug": "optimal_transport",
+                      "chapter_or_section": "Minibatch OT, Partial OT & Sliced OT",
+                      "page_start": 59,
+                      "page_end": 97,
+                      "synthesis_role": "Scalable OT approximations and curse-of-dimensionality mitigations"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 6.8 Optimal Transport",
+                      "page_start": 348,
+                      "page_end": 355,
+                      "synthesis_role": "Wasserstein distance, Kantorovich duality, and Sinkhorn iterations"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.6 Diffusion Models and Optimal Transport",
+                      "page_start": 196,
+                      "page_end": 228,
+                      "synthesis_role": "Benamou-Brenier dynamic OT and Schrödinger bridges"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "03_numerical_and_convex_optimization",
+          "title": "Convex, Smooth & Stochastic Optimization",
+          "dir_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization",
+          "sub_topics": [
+            {
+              "id": "01_convexity_and_gradient_descent",
+              "title": "Convex Duality & Deterministic Gradient Descent Theory",
+              "dir_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/01_convexity_and_gradient_descent",
+              "leaves": [
+                {
+                  "id": "convexity_duality_and_lagrangians",
+                  "title": "Convex Sets, Fenchel/Lagrange Duality & KKT Conditions",
+                  "tex_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/01_convexity_and_gradient_descent/convexity_duality_and_lagrangians.tex",
+                  "description": "Presents convex sets/functions, first/second-order convexity characterizations, Lagrangian duality, weak vs. strong duality (Slater's condition), and KKT complementary slackness.",
+                  "key_visuals": [
+                    "Extracted figure: supporting hyperplane / duality gap / KKT active-constraint geometry",
+                    "TikZ geometric diagram: feasible region, objective gradient, and constraint normal cone",
+                    "TikZ comparison table: Primal vs. Dual formulation and Slater qualification"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Part VII Convex Optimization & Appendix Lagrange Multipliers",
+                      "page_start": 293,
+                      "page_end": 338,
+                      "synthesis_role": "Convex sets, Jensen's inequality, strong duality, and KKT"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Lagrange Multipliers",
+                      "page_start": 391,
+                      "page_end": 394,
+                      "synthesis_role": "Step-by-step KKT worked examples"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Sec. 7.2-7.3 Constrained & Convex Optimization",
+                      "page_start": 239,
+                      "page_end": 251,
+                      "synthesis_role": "Lagrangian dual derivations for ML"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 8.5 Constrained Optimization",
+                      "page_start": 332,
+                      "page_end": 337,
+                      "synthesis_role": "Projected gradient, Lagrange multipliers, and KKT summary"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Appendix C Lagrange Multipliers",
+                      "page_start": 628,
+                      "page_end": 631,
+                      "synthesis_role": "Geometric normal-vector interpretation"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 4.4 Constrained Optimization",
+                      "page_start": 108,
+                      "page_end": 110,
+                      "synthesis_role": "KKT generalized Lagrangian formulation"
+                    }
+                  ]
+                },
+                {
+                  "id": "gradient_descent_convergence_and_pl_landscape",
+                  "title": "Gradient Descent Dynamics: Strong Convexity, Smoothness, PL Condition & Saddle Escape",
+                  "tex_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/01_convexity_and_gradient_descent/gradient_descent_convergence_and_pl_landscape.tex",
+                  "description": "Derives tight convergence rates O(1/T) for L-smooth convex functions, linear rate (1 - mu/L)^T under strong convexity or the Polyak-Lojasiewicz (PL) condition, local strong convexity, and perturbed saddle-point escape.",
+                  "key_visuals": [
+                    "Extracted figure: ill-conditioned quadratic ravine zig-zagging vs. condition number",
+                    "PGFPlots convergence comparison: O(1/T) vs. linear O(rho^T) vs. divergence when eta > 2/L",
+                    "TikZ hierarchy diagram: Strong Convexity => PL Condition => Quadratic Growth"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "gradient_descent_unconstrained",
+                      "chapter_or_section": "Full Lecture Deck: Smoothness, Strong Convexity, PL & Saddle Escape",
+                      "page_start": 1,
+                      "page_end": 92,
+                      "synthesis_role": "Rigorous non-asymptotic proofs for GLM, PL condition, and perturbed GD"
+                    },
+                    {
+                      "book_slug": "stochastic_gradient_decent_algorithm_explain",
+                      "chapter_or_section": "Ch. 2 Smoothness/Convexity/PL & Ch. 3 Gradient Descent",
+                      "page_start": 5,
+                      "page_end": 18,
+                      "synthesis_role": "Unified lemma proofs for convex, strongly convex, and PL rates"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 8.1-8.3 First/Second-Order Optimization",
+                      "page_start": 305,
+                      "page_end": 321,
+                      "synthesis_role": "Line search, conditioning, and Newton step comparison"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Sec. 7.1 Gradient Descent",
+                      "page_start": 233,
+                      "page_end": 238,
+                      "synthesis_role": "Steepest descent geometry and step-size selection"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 7 Gradient Descent",
+                      "page_start": 226,
+                      "page_end": 246,
+                      "synthesis_role": "Error surfaces, saddle points, and normalization effects"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_stochastic_adaptive_and_proximal_methods",
+              "title": "Stochastic, Adaptive, Proximal & Second-Order Optimizers",
+              "dir_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/02_stochastic_adaptive_and_proximal_methods",
+              "leaves": [
+                {
+                  "id": "stochastic_gradient_descent_and_variance_bounds",
+                  "title": "Stochastic & Minibatch SGD, Expected Smoothness, Subgradients & Proximal Methods",
+                  "tex_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/02_stochastic_adaptive_and_proximal_methods/stochastic_gradient_descent_and_variance_bounds.tex",
+                  "description": "Derives finite-sum SGD convergence to an O(eta * sigma^2) noise ball, diminishing step-size schedules, expected smoothness for minibatching, subgradient methods, and proximal operator splitting (ISTA/LASSO).",
+                  "key_visuals": [
+                    "Extracted figure: SGD noisy trajectory around minimum vs. deterministic GD",
+                    "PGFPlots plot: constant step-size noise floor vs. 1/sqrt(T) decaying step-size convergence",
+                    "TikZ diagram: proximal gradient splitting (smooth step + nonsmooth shrinkage)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "stochastic_gradient_decent_algorithm_explain",
+                      "chapter_or_section": "Ch. 4-6 Sum of Functions, SGD & Minibatch SGD",
+                      "page_start": 18,
+                      "page_end": 36,
+                      "synthesis_role": "Expected smoothness and tight variance-controlled SGD theorems"
+                    },
+                    {
+                      "book_slug": "stochastic_gradient_decent_algorithm_explain",
+                      "chapter_or_section": "Ch. 8-11 Nonsmooth Subgradients & Proximal GD",
+                      "page_start": 39,
+                      "page_end": 65,
+                      "synthesis_role": "Subdifferential calculus, proximal operators, and stochastic proximal bounds"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 8.4 SGD & Sec. 8.6 Proximal Gradient",
+                      "page_start": 322,
+                      "page_end": 341,
+                      "synthesis_role": "Practical SGD schedules, Polyak averaging, and L1 soft-thresholding"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 5.9 SGD & Sec. 8.1-8.3 Basic Algorithms",
+                      "page_start": 166,
+                      "page_end": 169,
+                      "synthesis_role": "Empirical risk vs. expected risk gradient variance"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 6.2 Stochastic Gradient Descent",
+                      "page_start": 97,
+                      "page_end": 99,
+                      "synthesis_role": "Minibatch stochastic trajectory intuition"
+                    }
+                  ]
+                },
+                {
+                  "id": "momentum_adaptive_optimizers_and_second_order",
+                  "title": "Momentum, Nesterov, Adam/AdamW, LR Schedules & Second-Order / Natural Gradient",
+                  "tex_path": "monographs/01_mathematical_foundations/03_numerical_and_convex_optimization/02_stochastic_adaptive_and_proximal_methods/momentum_adaptive_optimizers_and_second_order.tex",
+                  "description": "Reconciles Polyak heavy-ball vs. Nesterov accelerated gradient, derives AdaGrad/RMSProp/Adam/AdamW bias correction and decoupled weight decay, cosine warmup schedules, and Fisher/natural-gradient & L-BFGS curvature methods.",
+                  "key_visuals": [
+                    "Extracted figure: Adam vs. SGD with momentum path on saddle/ravine landscapes",
+                    "PGFPlots curves: warmup + cosine decay schedule and Nesterov vs. Heavy-Ball oscillation",
+                    "TikZ comparison table: SGD, Momentum, NAG, RMSProp, Adam, AdamW, L-BFGS, Natural Gradient"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 8.3-8.7 Momentum, Adaptive LR & Second-Order Methods",
+                      "page_start": 290,
+                      "page_end": 344,
+                      "synthesis_role": "Momentum, NAG, AdaGrad, RMSProp, Adam, Newton, Conjugate Gradient, BFGS"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 6.3-6.5 Momentum, Adam & Hyperparameters",
+                      "page_start": 100,
+                      "page_end": 109,
+                      "synthesis_role": "Bias-corrected moments and clear trajectory diagrams"
+                    },
+                    {
+                      "book_slug": "stochastic_gradient_decent_algorithm_explain",
+                      "chapter_or_section": "Ch. 7 Stochastic Momentum",
+                      "page_start": 36,
+                      "page_end": 39,
+                      "synthesis_role": "Unified algebraic parameterization of stochastic momentum"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 6.3-6.4 Stochastic Optimization & Natural Gradient",
+                      "page_start": 305,
+                      "page_end": 320,
+                      "synthesis_role": "AdamW decoupled weight decay, Fisher information matrix, and K-FAC"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Appendix D Warmup, Cosine Decay & Gradient Clipping",
+                      "page_start": 754,
+                      "page_end": 775,
+                      "synthesis_role": "LLM training stabilization recipes"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 7 Gradient Descent Variants",
+                      "page_start": 152,
+                      "page_end": 167,
+                      "synthesis_role": "Momentum and NAG intuition on contour plots"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "02_classical_and_probabilistic_ml",
+      "title": "Classical, Kernel & Probabilistic Machine Learning",
+      "dir_path": "monographs/02_classical_and_probabilistic_ml",
+      "parent_topics": [
+        {
+          "id": "01_supervised_learning_and_generalization",
+          "title": "Linear Models, Generalization, Kernels & Ensembles",
+          "dir_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization",
+          "sub_topics": [
+            {
+              "id": "01_linear_and_generalized_linear_models",
+              "title": "Linear, Regularized & Generalized Linear Models",
+              "dir_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/01_linear_and_generalized_linear_models",
+              "leaves": [
+                {
+                  "id": "linear_logistic_regression_and_glms",
+                  "title": "Linear Regression, Ridge/Lasso Regularization, Logistic Regression & GLMs",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/01_linear_and_generalized_linear_models/linear_logistic_regression_and_glms.tex",
+                  "description": "Unifies OLS orthogonal projection, Ridge L2 Tikhonov duality, Lasso L1 sparsity geometry, binary/multinomial logistic cross-entropy gradients, and Exponential-Family canonical link Generalized Linear Models.",
+                  "key_visuals": [
+                    "Extracted figure: L1 diamond vs. L2 circle constraint geometry with MSE ellipses",
+                    "TikZ diagram: GLM canonical link mapping (Linear predictor -> Link -> Exponential family)",
+                    "PGFPlots plot: regularization coefficient shrinkage paths (Ridge vs. Lasso)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 9-12 LDA, Logistic, Linear Regression & GLMs",
+                      "page_start": 353,
+                      "page_end": 452,
+                      "synthesis_role": "Complete probabilistic unification of linear and generalized linear models"
+                    },
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 9 Linear Regression",
+                      "page_start": 295,
+                      "page_end": 320,
+                      "synthesis_role": "Geometric orthogonal-projection vs. Bayesian linear regression"
+                    },
+                    {
+                      "book_slug": "introduction_probability_data_science",
+                      "chapter_or_section": "Ch. 7 Regression & Regularization",
+                      "page_start": 405,
+                      "page_end": 472,
+                      "synthesis_role": "Statistical OLS, Ridge, Lasso, and orthogonal projections"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 4 Logistic Regression",
+                      "page_start": 100,
+                      "page_end": 131,
+                      "synthesis_role": "Multinomial softmax regression and cross-entropy gradient derivation"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 5 Linear Regression & Ch. 9-10 Logistic/Softmax",
+                      "page_start": 95,
+                      "page_end": 102,
+                      "synthesis_role": "Worked linear least-squares derivations"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 9-10 Logistic & Softmax Regression",
+                      "page_start": 177,
+                      "page_end": 204,
+                      "synthesis_role": "Decision boundary and softmax cross-entropy formulations"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 4-5 Single-Layer Regression & Classification",
+                      "page_start": 130,
+                      "page_end": 184,
+                      "synthesis_role": "Generative vs. discriminative linear classifiers"
+                    }
+                  ]
+                },
+                {
+                  "id": "bias_variance_capacity_and_double_descent",
+                  "title": "Bias-Variance Decomposition, Overfitting, Generalization & Double Descent",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/01_linear_and_generalized_linear_models/bias_variance_capacity_and_double_descent.tex",
+                  "description": "Derives the exact squared-error bias-variance-noise decomposition, links effective model capacity and VC/Rademacher intuition to classical U-shaped curves, and explains modern overparameterized double descent and benign overfitting.",
+                  "key_visuals": [
+                    "Extracted figure: classic U-shaped curve vs. modern double-descent interpolation threshold",
+                    "PGFPlots plot: bias^2, variance, and test risk across capacity including interpolation peak",
+                    "TikZ conceptual diagram: underfitting, classical sweet spot, interpolation regime, overparameterized regime"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 5.2-5.4 Capacity, Overfitting, Bias & Variance",
+                      "page_start": 125,
+                      "page_end": 154,
+                      "synthesis_role": "Formal bias-variance derivation and capacity-generalization fundamentals"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 8 Measuring Performance & Ch. 20 Why Does DL Work?",
+                      "page_start": 132,
+                      "page_end": 151,
+                      "synthesis_role": "Explicit double descent curves and lottery-ticket/flat-minima intuitions"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 20 Why Does Deep Learning Work?",
+                      "page_start": 415,
+                      "page_end": 433,
+                      "synthesis_role": "Overparameterization, implicit bias, and generalization geometry"
+                    },
+                    {
+                      "book_slug": "introduction_probability_data_science",
+                      "chapter_or_section": "Sec. 7.3-7.4 Overfitting & Bias-Variance Trade-Off",
+                      "page_start": 434,
+                      "page_end": 455,
+                      "synthesis_role": "Rigorous statistical expectation proof of bias-variance"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Sec. 4.3 The Bias-Variance Trade-Off",
+                      "page_start": 142,
+                      "page_end": 146,
+                      "synthesis_role": "Clean polynomial regression bias-variance breakdown"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 6 Overfitting",
+                      "page_start": 103,
+                      "page_end": 110,
+                      "synthesis_role": "Cross-validation and regularization remedies"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_kernels_svms_and_ensembles",
+              "title": "Kernel Methods, Support Vector Machines & Tree Ensembles",
+              "dir_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/02_kernels_svms_and_ensembles",
+              "leaves": [
+                {
+                  "id": "support_vector_machines_and_mercer_kernels",
+                  "title": "Support Vector Machines, Margin Duality & Mercer Kernel Methods",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/02_kernels_svms_and_ensembles/support_vector_machines_and_mercer_kernels.tex",
+                  "description": "Derives maximum-margin hard/soft SVMs via hinge loss and Lagrangian duality, characterizes support vectors via KKT complementary slackness, proves the Representer Theorem, and connects RKHS Mercer kernels.",
+                  "key_visuals": [
+                    "Extracted figure: maximum-margin hyperplane with slack variables xi_i and support vectors",
+                    "TikZ geometric plot: primal margin width 2/||w|| vs. kernel lift phi(x) to linearly separable RKHS",
+                    "PGFPlots plot: hinge loss vs. logistic log-loss vs. 0-1 loss"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 12 Classification with Support Vector Machines",
+                      "page_start": 376,
+                      "page_end": 400,
+                      "synthesis_role": "Geometric margin derivation, primal/dual equivalence, and kernels"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 17.1 & 17.3 Mercer Kernels & SVMs",
+                      "page_start": 597,
+                      "page_end": 626,
+                      "synthesis_role": "Mercer's theorem, RKHS, RBF kernels, and hinge-loss connection"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Part VIII Hard/Soft-Margin & Kernel SVM",
+                      "page_start": 339,
+                      "page_end": 390,
+                      "synthesis_role": "Complete algebraic dual derivations and multi-class SVM extensions"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 5.7.2 Support Vector Machines",
+                      "page_start": 155,
+                      "page_end": 165,
+                      "synthesis_role": "Kernel trick computational scaling vs. neural feature learning"
+                    }
+                  ]
+                },
+                {
+                  "id": "trees_bagging_random_forests_and_boosting",
+                  "title": "Decision Trees, Bagging, Random Forests & Gradient Boosting",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/01_supervised_learning_and_generalization/02_kernels_svms_and_ensembles/trees_bagging_random_forests_and_boosting.tex",
+                  "description": "Covers greedy CART splitting (Gini/entropy/MSE), variance reduction via bootstrap aggregating and feature-subsampled Random Forests, AdaBoost exponential loss, and functional gradient boosting (XGBoost/LightGBM).",
+                  "key_visuals": [
+                    "Extracted figure: axis-aligned decision tree partition vs. ensemble decision boundary",
+                    "TikZ flowchart: bagging parallel variance reduction vs. boosting sequential residual fitting",
+                    "PGFPlots comparison: error decomposition across tree depth and boosting iterations"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 18 Trees, Forests, Bagging, and Boosting",
+                      "page_start": 633,
+                      "page_end": 654,
+                      "synthesis_role": "CART, Random Forests, AdaBoost, Gradient Boosting, and SHAP"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Sec. 7.11 Bagging and Other Ensemble Methods",
+                      "page_start": 271,
+                      "page_end": 272,
+                      "synthesis_role": "Theoretical ensemble variance reduction proof"
+                    },
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapter_or_section": "Sec. 6.1 Model Development and Offline Evaluation",
+                      "page_start": 170,
+                      "page_end": 197,
+                      "synthesis_role": "Tabular ensemble dominance, calibration, and production trade-offs"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_unsupervised_and_bayesian_inference",
+          "title": "Latent Variables, Graphical Models, VI & MCMC Sampling",
+          "dir_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference",
+          "sub_topics": [
+            {
+              "id": "01_dimensionality_reduction_and_clustering",
+              "title": "PCA, Factor Analysis, Mixture Models & EM",
+              "dir_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/01_dimensionality_reduction_and_clustering",
+              "leaves": [
+                {
+                  "id": "pca_gmm_and_expectation_maximization",
+                  "title": "PCA, Gaussian Mixture Models & the Expectation-Maximization Algorithm",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/01_dimensionality_reduction_and_clustering/pca_gmm_and_expectation_maximization.tex",
+                  "description": "Unifies maximum-variance and minimum-reconstruction PCA, probabilistic PCA/Factor Analysis, K-means as hard-EM, Gaussian Mixture Models, and the general E-step/M-step monotonic ELBO proof.",
+                  "key_visuals": [
+                    "Extracted figure: PCA projection vs. GMM soft responsibilities / EM log-likelihood ascent",
+                    "TikZ diagram: E-step (tighten ELBO at theta_t) and M-step (maximize lower bound)",
+                    "PGFPlots curve: monotonic EM lower-bound climb toward log p(X|theta)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "mathematics_machine_learning_orienly",
+                      "chapter_or_section": "Ch. 10 PCA & Ch. 11 GMM/EM",
+                      "page_start": 323,
+                      "page_end": 373,
+                      "synthesis_role": "Parallel variance/projection PCA proofs and full GMM EM equations"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 15-16 Discrete & Continuous Latent Variables, EM & PCA",
+                      "page_start": 474,
+                      "page_end": 540,
+                      "synthesis_role": "K-means, GMMs, probabilistic PCA, and ELBO derivation of EM"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 20.1-20.2 PCA/FA & Ch. 21 Clustering",
+                      "page_start": 687,
+                      "page_end": 708,
+                      "synthesis_role": "SVD-based PCA and factor analysis identifiability"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 21 Clustering & Mixture Models",
+                      "page_start": 745,
+                      "page_end": 766,
+                      "synthesis_role": "K-means, GMMs, and spectral clustering"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 28 Latent Factor Models",
+                      "page_start": 963,
+                      "page_end": 1012,
+                      "synthesis_role": "Mixture models, factor analysis, LDA, and ICA"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapter_or_section": "Ch. 13 K-means & Ch. 18-19 PCA/LDA",
+                      "page_start": 266,
+                      "page_end": 292,
+                      "synthesis_role": "PCA vs. Fisher LDA projection geometry"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_bayesian_inference_and_sampling",
+              "title": "Graphical Models, Gaussian Processes, Variational Inference & MCMC",
+              "dir_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/02_bayesian_inference_and_sampling",
+              "leaves": [
+                {
+                  "id": "graphical_models_and_gaussian_processes",
+                  "title": "Probabilistic Graphical Models, Message Passing & Gaussian Processes",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/02_bayesian_inference_and_sampling/graphical_models_and_gaussian_processes.tex",
+                  "description": "Covers directed DAGs (d-separation) vs. undirected MRFs (Hammersley-Clifford), belief propagation/sum-product message passing, and non-parametric Gaussian Process regression, marginal likelihood, and sparse inducing-point scaling.",
+                  "key_visuals": [
+                    "Extracted figure: d-separation Bayes-ball patterns & GP posterior predictive uncertainty bands",
+                    "TikZ graph: Bayesian network vs. factor graph message-passing update equations",
+                    "PGFPlots curve: GP prior draws and posterior mean +/- 2 sigma credible intervals"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 4 Graphical Models & Ch. 9 Message Passing",
+                      "page_start": 177,
+                      "page_end": 252,
+                      "synthesis_role": "DAGs, MRFs, conditional independence, and factor graphs"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 9 Message Passing & Ch. 18 Gaussian Processes",
+                      "page_start": 715,
+                      "page_end": 768,
+                      "synthesis_role": "GP kernels, closed-form inference, and Nyström/inducing-point sparse GPs"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 11 Structured Distributions",
+                      "page_start": 341,
+                      "page_end": 368,
+                      "synthesis_role": "D-separation, Markov blankets, and factor graphs"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 17.2 Gaussian Processes",
+                      "page_start": 604,
+                      "page_end": 614,
+                      "synthesis_role": "Introductory GP posterior prediction"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 16 Structured Probabilistic Models",
+                      "page_start": 573,
+                      "page_end": 604,
+                      "synthesis_role": "Partition functions, energy factorizations, and deep graphical models"
+                    }
+                  ]
+                },
+                {
+                  "id": "variational_inference_and_elbo",
+                  "title": "Variational Inference, Evidence Lower Bound (ELBO) & Expectation Propagation",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/02_bayesian_inference_and_sampling/variational_inference_and_elbo.tex",
+                  "description": "Derives log p(x) = ELBO(q) + KL(q || p), mean-field coordinate ascent (CAVI), black-box score-function (REINFORCE) vs. pathwise reparameterized gradients, tighter IWAE bounds, and Expectation Propagation.",
+                  "key_visuals": [
+                    "Extracted figure: mean-field factorized posterior vs. correlated true Gaussian posterior",
+                    "TikZ equation decomposition: log p(x) = ELBO + KL(q||p) bar/balance visualization",
+                    "TikZ comparison table: CAVI vs. BBVI (Score Function) vs. Pathwise Reparameterization vs. EP"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 10 Variational Inference",
+                      "page_start": 473,
+                      "page_end": 516,
+                      "synthesis_role": "CAVI, black-box VI, pathwise gradients, IWAE, and Expectation Propagation"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Sec. 15.4 & 16.3 Evidence Lower Bound",
+                      "page_start": 500,
+                      "page_end": 535,
+                      "synthesis_role": "Clean ELBO decomposition for discrete and continuous latents"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 19 Approximate Inference",
+                      "page_start": 646,
+                      "page_end": 668,
+                      "synthesis_role": "Calculus of variations mean-field derivation and learned inference"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 17.4-17.6 ELBO & Variational Approximation",
+                      "page_start": 347,
+                      "page_end": 351,
+                      "synthesis_role": "Concise geometric ELBO optimization view"
+                    }
+                  ]
+                },
+                {
+                  "id": "monte_carlo_mcmc_and_hmc_sampling",
+                  "title": "Monte Carlo Integration, Metropolis-Hastings, Gibbs, HMC & Langevin Sampling",
+                  "tex_path": "monographs/02_classical_and_probabilistic_ml/02_unsupervised_and_bayesian_inference/02_bayesian_inference_and_sampling/monte_carlo_mcmc_and_hmc_sampling.tex",
+                  "description": "Synthesizes importance sampling and variance reduction (control variates), ergodic Markov chains and detailed balance, Metropolis-Hastings, Gibbs sampling, Hamiltonian Monte Carlo (leapfrog symplectic dynamics), and ULA/SGLD Langevin sampling.",
+                  "key_visuals": [
+                    "Extracted figure: random-walk MH vs. HMC Hamiltonian phase-space trajectory",
+                    "TikZ flowchart: proposal-accept/reject loop in Metropolis-Hastings vs. HMC leapfrog integrator",
+                    "PGFPlots trace: random-walk autocorrelation vs. HMC mixing efficiency in high dimensions"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 11-13 Monte Carlo, MCMC, HMC & SMC",
+                      "page_start": 517,
+                      "page_end": 606,
+                      "synthesis_role": "Comprehensive MCMC, HMC, NUTS, SGMCMC, and sequential Monte Carlo"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 14 Sampling, MCMC & Langevin Sampling",
+                      "page_start": 444,
+                      "page_end": 470,
+                      "synthesis_role": "Rejection/importance sampling, detailed balance, and Langevin SDEs"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 17 Monte Carlo Methods",
+                      "page_start": 605,
+                      "page_end": 619,
+                      "synthesis_role": "Mode-mixing bottlenecks and tempered transitions"
+                    },
+                    {
+                      "book_slug": "diffusionmodels_stanleychan",
+                      "chapter_or_section": "Sec. 3.1 Langevin Dynamics",
+                      "page_start": 30,
+                      "page_end": 32,
+                      "synthesis_role": "Score-driven Langevin sampling intuition"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "03_deep_learning_architectures",
+      "title": "Neural Architectures, Representations & Regularization",
+      "dir_path": "monographs/03_deep_learning_architectures",
+      "parent_topics": [
+        {
+          "id": "01_feedforward_normalization_and_kan",
+          "title": "MLPs, Kolmogorov-Arnold Networks, Residuals & Regularization",
+          "dir_path": "monographs/03_deep_learning_architectures/01_feedforward_normalization_and_kan",
+          "sub_topics": [
+            {
+              "id": "01_feedforward_and_training_dynamics",
+              "title": "Feedforward Networks, Normalization, Residuals & KANs",
+              "dir_path": "monographs/03_deep_learning_architectures/01_feedforward_normalization_and_kan/01_feedforward_and_training_dynamics",
+              "leaves": [
+                {
+                  "id": "mlp_universal_approximation_and_kan",
+                  "title": "Feedforward Networks, Universal Approximation & Kolmogorov-Arnold Networks (KAN)",
+                  "tex_path": "monographs/03_deep_learning_architectures/01_feedforward_normalization_and_kan/01_feedforward_and_training_dynamics/mlp_universal_approximation_and_kan.tex",
+                  "description": "Connects piecewise-linear ReLU polyhedral regions and the Cybenko/Hornik Universal Approximation Theorem with Kolmogorov-Arnold superposition and learnable B-spline edge activations in KANs.",
+                  "key_visuals": [
+                    "Extracted figure: piecewise linear regions of shallow/deep ReLU networks & KAN spline edges",
+                    "TikZ comparison architecture: MLP (fixed node activations, linear edges) vs. KAN (learnable spline edges, node summation)",
+                    "PGFPlots curves: cubic B-spline basis functions and ReLU/GELU/SwiGLU activations"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 3-4 Shallow & Deep Neural Networks",
+                      "page_start": 39,
+                      "page_end": 69,
+                      "synthesis_role": "Piecewise-linear region counting and exponential depth efficiency"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 6 Deep Neural Networks",
+                      "page_start": 189,
+                      "page_end": 221,
+                      "synthesis_role": "Basis-function limits, universal approximation, and error functions"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 6 Deep Feedforward Networks",
+                      "page_start": 183,
+                      "page_end": 224,
+                      "synthesis_role": "XOR, hidden units, depth-width trade-offs, and architecture design"
+                    },
+                    {
+                      "book_slug": "math_behind_kan",
+                      "chapter_or_section": "Full Monograph: Universal Approximation vs. KA Theorem & B-Splines",
+                      "page_start": 1,
+                      "page_end": 9,
+                      "synthesis_role": "Kolmogorov-Arnold theorem, Cox-de Boor B-spline recursion, and KAN layers"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 13.2 & 13.6 MLPs & Feedforward Variants",
+                      "page_start": 456,
+                      "page_end": 467,
+                      "synthesis_role": "Matrix parameterization and activation families"
+                    }
+                  ]
+                },
+                {
+                  "id": "normalization_residuals_initialization_and_regularization",
+                  "title": "Initialization, Batch/LayerNorm, Residual Connections, Weight Decay & Dropout",
+                  "tex_path": "monographs/03_deep_learning_architectures/01_feedforward_normalization_and_kan/01_feedforward_and_training_dynamics/normalization_residuals_initialization_and_regularization.tex",
+                  "description": "Synthesizes Xavier/He variance-preserving initialization, BatchNorm vs. LayerNorm vs. RMSNorm gradient conditioning, ResNet highway gradient flow and ensemble-of-paths view, L2 weight decay, and inverted dropout.",
+                  "key_visuals": [
+                    "Extracted figure: shattered gradients vs. ResNet skip-connection gradient covariance",
+                    "TikZ diagram: Pre-LN vs. Post-LN residual block & BatchNorm vs. LayerNorm tensor axes",
+                    "PGFPlots chart: activation variance propagation across 50 layers (poor init vs. He init + Norm)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 7.4 Init, Ch. 9 Regularization & Ch. 11 Residual Networks",
+                      "page_start": 152,
+                      "page_end": 220,
+                      "synthesis_role": "He/Xavier initialization, implicit/explicit regularization, BatchNorm, and ResNets"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 7 Regularization for Deep Learning",
+                      "page_start": 243,
+                      "page_end": 288,
+                      "synthesis_role": "Norm penalties, noise robustness, early stopping, and dropout"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Sec. 7.4 Normalization & Ch. 9 Regularization/Residuals",
+                      "page_start": 241,
+                      "page_end": 297,
+                      "synthesis_role": "Covariate shift, LayerNorm/BatchNorm, and residual inductive bias"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Sec. 4.2 & 4.4 LayerNorm & Shortcut Connections",
+                      "page_start": 257,
+                      "page_end": 288,
+                      "synthesis_role": "Exact Pre-LN Transformer LayerNorm and skip-connection gradient behavior"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_spatial_graph_and_sequence_models",
+          "title": "Convolutional, Graph, Recurrent & State-Space Architectures",
+          "dir_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models",
+          "sub_topics": [
+            {
+              "id": "01_convolutional_and_graph_networks",
+              "title": "Convolutional Networks & Graph Neural Networks",
+              "dir_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/01_convolutional_and_graph_networks",
+              "leaves": [
+                {
+                  "id": "convolutional_networks_equivariance_and_vision",
+                  "title": "Convolutional Neural Networks, Translation Equivariance & Vision Backbones",
+                  "tex_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/01_convolutional_and_graph_networks/convolutional_networks_equivariance_and_vision.tex",
+                  "description": "Formalizes discrete/1D/2D convolution vs. cross-correlation, sparse Toeplitz weight sharing, translation equivariance vs. pooling invariance, receptive field growth, dilated/depthwise-separable convolutions, and U-Net/ResNet vision designs.",
+                  "key_visuals": [
+                    "Extracted figure: sparse connectivity / receptive field / U-Net encoder-decoder skip topology",
+                    "TikZ diagram: Toeplitz matrix equivalence and equivariance commutative square",
+                    "TikZ comparison table: Standard Conv vs. Depthwise-Separable vs. Dilated vs. Transposed Conv"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 9 Convolutional Networks",
+                      "page_start": 345,
+                      "page_end": 387,
+                      "synthesis_role": "Sparse interactions, parameter sharing, equivariance, and infinitely strong priors"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 10 Convolutional Networks",
+                      "page_start": 303,
+                      "page_end": 337,
+                      "synthesis_role": "2D filters, pooling, object detection, and U-Net segmentation"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 10 Convolutional Networks",
+                      "page_start": 175,
+                      "page_end": 199,
+                      "synthesis_role": "1D/2D convolutions, downsampling/upsampling, and invariance"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 14 Neural Networks for Images",
+                      "page_start": 497,
+                      "page_end": 532,
+                      "synthesis_role": "ResNet, DenseNet, depthwise separable convs, and vision tasks"
+                    }
+                  ]
+                },
+                {
+                  "id": "graph_neural_networks_and_message_passing",
+                  "title": "Graph Neural Networks, Message Passing & Graph Convolutional Architectures",
+                  "tex_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/01_convolutional_and_graph_networks/graph_neural_networks_and_message_passing.tex",
+                  "description": "Derives permutation equivariance/invariance on irregular graphs, spectral graph Laplacians vs. spatial message passing (GCN, GraphSAGE, GAT), neighborhood aggregation, and the over-smoothing bottleneck.",
+                  "key_visuals": [
+                    "Extracted figure: graph message aggregation and 2-hop receptive field neighborhood",
+                    "TikZ diagram: permutation-equivariant MPNN update & readout pipeline",
+                    "TikZ comparison matrix: GCN vs. GraphSAGE vs. GAT aggregation & normalization"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 13 Graph Neural Networks",
+                      "page_start": 423,
+                      "page_end": 440,
+                      "synthesis_role": "Permutation equivariance, adjacency operators, and general MPNNs"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 13 Graph Neural Networks",
+                      "page_start": 254,
+                      "page_end": 281,
+                      "synthesis_role": "Graph representations, inductive vs. transductive GCNs, and edge graphs"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Ch. 23 Graph Embeddings",
+                      "page_start": 783,
+                      "page_end": 802,
+                      "synthesis_role": "Random-walk graph embeddings and GNN connections"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 30 Graph Learning",
+                      "page_start": 1077,
+                      "page_end": 1080,
+                      "synthesis_role": "Latent variable graph inference"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_sequence_models_and_state_spaces",
+              "title": "Recurrent Networks & Selective State-Space Models (Mamba)",
+              "dir_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/02_sequence_models_and_state_spaces",
+              "leaves": [
+                {
+                  "id": "rnns_lstms_and_vanishing_gradients",
+                  "title": "Recurrent Neural Networks, BPTT, LSTMs/GRUs & Long-Range Gradient Flow",
+                  "tex_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/02_sequence_models_and_state_spaces/rnns_lstms_and_vanishing_gradients.tex",
+                  "description": "Derives unfolded recurrent computation graphs, Backpropagation Through Time (BPTT), spectral-radius causes of vanishing/exploding gradients, gradient clipping, and constant-error-carousel gating in LSTMs and GRUs.",
+                  "key_visuals": [
+                    "Extracted figure: unfolded RNN computational graph & LSTM cell gating structure",
+                    "TikZ diagram: LSTM forget/input/output gate equations and additive cell-state highway",
+                    "PGFPlots chart: eigenvalue-power decay lambda^T across sequence length T"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 10 Sequence Modeling: Recurrent and Recursive Nets",
+                      "page_start": 388,
+                      "page_end": 435,
+                      "synthesis_role": "Unfolding, BPTT, vanishing/exploding gradient analysis, and LSTM/GRU"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 13 RNNs and LSTMs",
+                      "page_start": 310,
+                      "page_end": 335,
+                      "synthesis_role": "Autoregressive RNN language modeling, stacked/bidirectional RNNs, and seq2seq"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 15.2 Recurrent Neural Networks",
+                      "page_start": 533,
+                      "page_end": 545,
+                      "synthesis_role": "Elman networks, BPTT, and sequence classification/generation"
+                    }
+                  ]
+                },
+                {
+                  "id": "state_space_models_kalman_and_mamba",
+                  "title": "Classical State-Space Models, Structured SSMs & Selective Scan (Mamba)",
+                  "tex_path": "monographs/03_deep_learning_architectures/02_spatial_graph_and_sequence_models/02_sequence_models_and_state_spaces/state_space_models_kalman_and_mamba.tex",
+                  "description": "Bridges classical linear-Gaussian Kalman filtering/smoothing, continuous-to-discrete ZOH discretization of LTI state-space models (S4), convolutional-vs-recurrent duality, input-dependent selective SSMs (Mamba/S6), and hardware-aware parallel scan.",
+                  "key_visuals": [
+                    "Extracted figure: Mamba selective SSM block / recurrent vs. convolutional dual view",
+                    "TikZ diagram: continuous (A,B,C) -> ZOH discrete -> Parallel Scan / Recurrent Step",
+                    "TikZ comparison matrix: Transformer (O(N^2) train, O(N) KV) vs. LTI S4 vs. Selective Mamba (O(N) train, O(1) state)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "mamba",
+                      "chapter_or_section": "Full Monograph: SSMs, Convolutional Dual, Selection & Hardware Scan",
+                      "page_start": 1,
+                      "page_end": 15,
+                      "synthesis_role": "Discretization, S4 vs. Mamba selective scan, and complexity comparison"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 8 Gaussian Filtering & Ch. 29 State-Space Models",
+                      "page_start": 393,
+                      "page_end": 434,
+                      "synthesis_role": "Kalman filter/RTS smoother recursions and LDS foundation"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 29 State-Space Models & Deep SSMs",
+                      "page_start": 1013,
+                      "page_end": 1076,
+                      "synthesis_role": "HMMs, linear dynamical systems, switching SSMs, and deep SSMs"
+                    },
+                    {
+                      "book_slug": "foundations_large_language_models",
+                      "chapter_or_section": "Sec. 2.3 Long Sequence Modeling (SSMs & Linear Attention)",
+                      "page_start": 73,
+                      "page_end": 100,
+                      "synthesis_role": "S4, HiPPO initialization, Mamba, and sub-quadratic sequence architectures"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "03_computer_vision_and_visual_geometry",
+          "title": "Computer Vision, Image Formation & 3D Scene Understanding",
+          "dir_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry",
+          "sub_topics": [
+            {
+              "id": "01_image_formation_filtering_and_3d_geometry",
+              "title": "Image Formation, Fourier Filtering, Pyramids & 3D Geometry",
+              "dir_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry/01_image_formation_filtering_and_3d_geometry",
+              "leaves": [
+                {
+                  "id": "image_formation_filtering_and_fourier_vision",
+                  "title": "Image Formation, Lenses, Color Spaces & Fourier Image Filtering",
+                  "tex_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry/01_image_formation_filtering_and_3d_geometry/image_formation_filtering_and_fourier_vision.tex",
+                  "description": "Pinhole and thin-lens optics, radiometry/BRDF, linear camera pipelines, trichromatic color spaces, 2D convolution, Gaussian/Laplacian derivatives, and 2D Fourier spectrum & Nyquist sampling.",
+                  "key_visuals": [
+                    "Pinhole & thin-lens ray geometry",
+                    "2D DFT magnitude & aliasing spectrum"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "foundations_computer_vision_mit",
+                      "chapters": "Ch. 5-8, 15-18, 20",
+                      "pages": "pp. 99-178, 267-396, 409-428"
+                    },
+                    {
+                      "book_slug": "dive_into_deep_learning_d2l",
+                      "chapters": "Ch. 7",
+                      "pages": "pp. 273-307"
+                    }
+                  ]
+                },
+                {
+                  "id": "multiscale_pyramids_optical_flow_and_3d_vision",
+                  "title": "Multiscale Pyramids, Optical Flow, Epipolar Geometry, Stereo & Radiance Fields",
+                  "tex_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry/01_image_formation_filtering_and_3d_geometry/multiscale_pyramids_optical_flow_and_3d_vision.tex",
+                  "description": "Gaussian/Laplacian pyramids, steerable filter banks, Lucas-Kanade & Horn-Schunck optical flow, homogeneous camera matrices, homographies, epipolar constraints (F/E matrices), stereo disparity, SfM, and Neural Radiance Fields (NeRF).",
+                  "key_visuals": [
+                    "Epipolar geometry & stereo disparity",
+                    "NeRF volumetric ray-marching"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "foundations_computer_vision_mit",
+                      "chapters": "Ch. 21-23, 38-45, 48",
+                      "pages": "pp. 429-491, 760-935, 961-973"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapters": "Ch. 10, 12",
+                      "pages": "pp. 170-220"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_visual_recognition_detection_and_segmentation",
+              "title": "Object Detection, Segmentation & Vision-Language Understanding",
+              "dir_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry/02_visual_recognition_detection_and_segmentation",
+              "leaves": [
+                {
+                  "id": "object_detection_segmentation_and_scene_understanding",
+                  "title": "Object Detection (R-CNN, SSD, DETR), Semantic Segmentation (FCN, U-Net, SAM) & Vision-Language Models",
+                  "tex_path": "monographs/03_deep_learning_architectures/03_computer_vision_and_visual_geometry/02_visual_recognition_detection_and_segmentation/object_detection_segmentation_and_scene_understanding.tex",
+                  "description": "Bounding-box IoU & NMS, anchor-box multiscale detection (SSD, Faster R-CNN) vs. bipartite Hungarian matching (DETR), transposed convolution, FCN/U-Net/SAM segmentation, neural style transfer, and contrastive CLIP vision-language alignment.",
+                  "key_visuals": [
+                    "IoU / NMS & FPN multiscale detection",
+                    "Two-stage R-CNN vs DETR bipartite matching"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "dive_into_deep_learning_d2l",
+                      "chapters": "Ch. 14",
+                      "pages": "pp. 632-713"
+                    },
+                    {
+                      "book_slug": "foundations_computer_vision_mit",
+                      "chapters": "Ch. 50-51",
+                      "pages": "pp. 982-1032"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapters": "Ch. 10, 12",
+                      "pages": "pp. 180-235"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapters": "Ch. 20",
+                      "pages": "pp. 580-610"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "04_generative_models_and_optimal_transport",
+      "title": "Deep Generative Modeling: VAEs, Flows, EBMs, GANs & Diffusion",
+      "dir_path": "monographs/04_generative_models_and_optimal_transport",
+      "parent_topics": [
+        {
+          "id": "01_latent_implicit_and_invertible_models",
+          "title": "Autoencoders, VAEs, Normalizing Flows, EBMs & GANs",
+          "dir_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models",
+          "sub_topics": [
+            {
+              "id": "01_autoencoders_vaes_and_flows",
+              "title": "Autoencoders, Variational Autoencoders & Normalizing Flows",
+              "dir_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/01_autoencoders_vaes_and_flows",
+              "leaves": [
+                {
+                  "id": "autoencoders_and_variational_autoencoders",
+                  "title": "Autoencoders, Variational Autoencoders (VAEs), Reparameterization & VQ-VAE",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/01_autoencoders_vaes_and_flows/autoencoders_and_variational_autoencoders.tex",
+                  "description": "Synthesizes undercomplete/denoising/contractive autoencoders, amortized variational inference via the VAE ELBO, pathwise reparameterization trick, posterior collapse mitigations (beta-VAE/free bits), and discrete VQ-VAE codebooks.",
+                  "key_visuals": [
+                    "Extracted figure: VAE encoder-decoder computational graph with reparameterization z = mu + sigma * eps",
+                    "TikZ diagram: deterministic AE vs. VAE reparameterized bottleneck vs. VQ-VAE codebook",
+                    "PGFPlots chart: rate-distortion (KL vs. reconstruction) trade-off frontier"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 21 Variational Autoencoders",
+                      "page_start": 825,
+                      "page_end": 854,
+                      "synthesis_role": "Reparameterization, beta-VAE, posterior collapse, hierarchical VAEs, and VQ-VAE"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 19 Autoencoders",
+                      "page_start": 574,
+                      "page_end": 590,
+                      "synthesis_role": "PCA equivalence of linear AEs and amortized VAE ELBO"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 17 Variational Autoencoders",
+                      "page_start": 340,
+                      "page_end": 361,
+                      "synthesis_role": "Latent manifold interpolation and ELBO geometry"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 14 Autoencoders",
+                      "page_start": 517,
+                      "page_end": 540,
+                      "synthesis_role": "Denoising and contractive score interpretations"
+                    },
+                    {
+                      "book_slug": "diffusionmodels_stanleychan",
+                      "chapter_or_section": "Sec. 1 The Basics: Variational Auto-Encoder (VAE)",
+                      "page_start": 2,
+                      "page_end": 9,
+                      "synthesis_role": "Clean bridge from 1-step VAE ELBO to hierarchical diffusion ELBO"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.1.1 Variational Autoencoder",
+                      "page_start": 38,
+                      "page_end": 47,
+                      "synthesis_role": "Variational bridge into DDPMs"
+                    }
+                  ]
+                },
+                {
+                  "id": "normalizing_flows_and_continuous_flows",
+                  "title": "Change-of-Variables, Coupling/Autoregressive Normalizing Flows & Neural ODEs",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/01_autoencoders_vaes_and_flows/normalizing_flows_and_continuous_flows.tex",
+                  "description": "Derives exact log-likelihood training via change-of-variables Jacobian determinants, RealNVP/Glow affine coupling, MAF/IAF triangular Jacobians, continuous normalizing flows (Neural ODEs), and Hutchinson trace estimators.",
+                  "key_visuals": [
+                    "Extracted figure: invertible diffeomorphism warping base Gaussian to multimodal target",
+                    "TikZ diagram: affine coupling layer split (x_1, x_2) showing triangular Jacobian matrix",
+                    "TikZ taxonomy tree: exact-likelihood flows (Coupling, Autoregressive, Continuous/ODE)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 23 Normalizing Flows",
+                      "page_start": 863,
+                      "page_end": 882,
+                      "synthesis_role": "Coupling, autoregressive (MAF/IAF), residual, and continuous flows"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 18 Normalizing Flows",
+                      "page_start": 559,
+                      "page_end": 573,
+                      "synthesis_role": "Change-of-variables derivation, Glow, and instantaneous change of variables"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 16 Normalizing Flows",
+                      "page_start": 317,
+                      "page_end": 339,
+                      "synthesis_role": "1D-to-ND intuition and multi-scale flow architectures"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.4.1 & Appendix Density Evolution",
+                      "page_start": 134,
+                      "page_end": 140,
+                      "synthesis_role": "Neural ODEs and continuity-equation bridge to flow matching"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Appendix Density Evolution: Change of Variable to Fokker-Planck",
+                      "page_start": 403,
+                      "page_end": 416,
+                      "synthesis_role": "Rigorous derivation of instantaneous change of variables"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_ebms_and_adversarial_models",
+              "title": "Energy-Based Models, Score Matching & Adversarial Networks",
+              "dir_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/02_ebms_and_adversarial_models",
+              "leaves": [
+                {
+                  "id": "energy_based_models_and_score_matching",
+                  "title": "Energy-Based Models, Partition Functions, Contrastive Divergence & Score Matching",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/02_ebms_and_adversarial_models/energy_based_models_and_score_matching.tex",
+                  "description": "Addresses intractable normalizing constants Z(theta) via MLE positive/negative phases, Contrastive Divergence (CD-k), Noise Contrastive Estimation (NCE), Hyvärinen score matching, sliced score matching, and Vincent's denoising score matching equivalence.",
+                  "key_visuals": [
+                    "Extracted figure: energy landscape pushing down data modes and raising contrastive samples",
+                    "TikZ vector-field diagram: Stein score grad_x log p(x) pointing toward high-density modes",
+                    "TikZ equation block: Hyvärinen integration-by-parts -> Vincent DSM equivalence"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 24 Energy-Based Models",
+                      "page_start": 883,
+                      "page_end": 900,
+                      "synthesis_role": "EBM MLE gradient, Langevin MCMC, score matching, and NCE"
+                    },
+                    {
+                      "book_slug": "deep_learning_goodfellow_bengio_courville_2017",
+                      "chapter_or_section": "Ch. 18 Partition Function & Ch. 20.1-20.4 RBMs/DBMs",
+                      "page_start": 620,
+                      "page_end": 645,
+                      "synthesis_role": "SML/CD, denoising score matching, and AIS partition estimation"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.2 Score-Based Perspective: From EBMs to NCSN",
+                      "page_start": 61,
+                      "page_end": 90,
+                      "synthesis_role": "Rigorous derivations of implicit, sliced, and denoising score matching"
+                    },
+                    {
+                      "book_slug": "diffusionmodels_stanleychan",
+                      "chapter_or_section": "Sec. 3.2-3.3 Stein Score & Score Matching",
+                      "page_start": 33,
+                      "page_end": 38,
+                      "synthesis_role": "Tweedie's formula and DSM algebraic identity"
+                    }
+                  ]
+                },
+                {
+                  "id": "generative_adversarial_networks_and_wasserstein_gans",
+                  "title": "GAN Game Dynamics, Mode Collapse, f-GANs & Wasserstein/OT-GANs",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/01_latent_implicit_and_invertible_models/02_ebms_and_adversarial_models/generative_adversarial_networks_and_wasserstein_gans.tex",
+                  "description": "Derives the minimax JS-divergence theorem, explains vanishing gradients on disjoint low-dimensional manifolds, introduces f-GAN variational divergence minimization, Wasserstein-1 Kantorovich-Rubinstein duality (WGAN/WGAN-GP), and minibatch/sliced OT-GANs.",
+                  "key_visuals": [
+                    "Extracted figure: JS saturation vs. smooth WGAN critic gradient on disjoint manifolds",
+                    "TikZ architecture: Generator/Discriminator adversarial game vs. WGAN 1-Lipschitz critic",
+                    "PGFPlots chart: JS vs. W1 loss landscape across support separation parameter theta"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Ch. 26 Generative Adversarial Networks",
+                      "page_start": 927,
+                      "page_end": 958,
+                      "synthesis_role": "f-GANs, WGAN, spectral norm, StyleGAN, and mode-collapse diagnostics"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 15 Generative Adversarial Networks",
+                      "page_start": 289,
+                      "page_end": 316,
+                      "synthesis_role": "Minimax optimal discriminator derivation and WGAN stability"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 17 Generative Adversarial Networks",
+                      "page_start": 546,
+                      "page_end": 558,
+                      "synthesis_role": "Adversarial training objective and discriminator equilibrium"
+                    },
+                    {
+                      "book_slug": "optimal_transport",
+                      "chapter_or_section": "Deep Generative Models via OT: WGAN, mOT-GAN & Sliced OT-GAN",
+                      "page_start": 40,
+                      "page_end": 96,
+                      "synthesis_role": "Continuity theorem, Kantorovich duality, misspecified minibatch matching, and sliced OT"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_diffusion_sdes_and_flow_matching",
+          "title": "Diffusion Models, Score SDEs, Flow Matching & Fast Samplers",
+          "dir_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching",
+          "sub_topics": [
+            {
+              "id": "01_foundations_of_diffusion_and_sdes",
+              "title": "DDPM, NCSN, Score SDEs & Flow Matching",
+              "dir_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching/01_foundations_of_diffusion_and_sdes",
+              "leaves": [
+                {
+                  "id": "ddpm_and_score_based_generative_models",
+                  "title": "Denoising Diffusion Probabilistic Models (DDPM) & Noise-Conditional Score Networks",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching/01_foundations_of_diffusion_and_sdes/ddpm_and_score_based_generative_models.tex",
+                  "description": "Derives the forward Gaussian Markov chain, closed-form marginal q(x_t|x_0), reverse posterior q(x_{t-1}|x_t,x_0), variational ELBO decomposition, epsilon-prediction vs. x_0-prediction vs. v-prediction parameterization, and Tweedie equivalence with multi-scale NCSN.",
+                  "key_visuals": [
+                    "Extracted figure: forward noising and reverse denoising Markov chain / DDPM ELBO terms",
+                    "TikZ diagram: equivalence triangle linking x_0-pred, eps-pred, and score s_theta(x_t, t)",
+                    "PGFPlots curve: linear vs. cosine noise schedule alpha_bar_t and SNR(t)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "diffusionmodels_stanleychan",
+                      "chapter_or_section": "Sec. 2 DDPM & Sec. 3 SMLD",
+                      "page_start": 10,
+                      "page_end": 38,
+                      "synthesis_role": "Step-by-step DDPM ELBO derivation, Tweedie's formula, and NCSN bridge"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.1.2 DDPM, B.2 NCSN & B.5 Unified Lens",
+                      "page_start": 48,
+                      "page_end": 90,
+                      "synthesis_role": "Rigorous variational + score derivations and noise-level conditioning"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.5 A Unified and Systematic Lens on Diffusion Models",
+                      "page_start": 171,
+                      "page_end": 195,
+                      "synthesis_role": "Parameterization equivalence (x_0, eps, v, score) and EDM roadmap"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 18 Diffusion Models",
+                      "page_start": 362,
+                      "page_end": 386,
+                      "synthesis_role": "Clear discrete-time encoder/decoder derivation and reparameterized loss"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 20.1-20.3 Diffusion Models",
+                      "page_start": 591,
+                      "page_end": 608,
+                      "synthesis_role": "Forward kernel, reverse Gaussian posterior, and score matching"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 25.1-25.3 Diffusion Models",
+                      "page_start": 901,
+                      "page_end": 910,
+                      "synthesis_role": "DDPM and SGM unified formulation"
+                    }
+                  ]
+                },
+                {
+                  "id": "score_sdes_fokker_planck_and_flow_matching",
+                  "title": "Score SDEs, Itô/Girsanov/Fokker-Planck Equations & Flow Matching",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching/01_foundations_of_diffusion_and_sdes/score_sdes_fokker_planck_and_flow_matching.tex",
+                  "description": "Unifies continuous-time VE/VP/sub-VP SDEs, Anderson's reverse-time SDE, deterministic Probability Flow ODE via Fokker-Planck, Girsanov likelihood weighting, conditional Flow Matching / Rectified Flow velocity fields, and dynamic Benamou-Brenier OT connections.",
+                  "key_visuals": [
+                    "Extracted figure: forward SDE trajectories vs. reverse SDE and deterministic PF-ODE paths",
+                    "TikZ commutative diagram: Discrete DDPM/NCSN <-> Continuous Score SDE <-> PF-ODE / Flow Matching",
+                    "PGFPlots schematic: curved DDPM ODE trajectory vs. straightened Rectified Flow path"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. B.3 Score SDE & Sec. B.4 Flow Matching",
+                      "page_start": 91,
+                      "page_end": 170,
+                      "synthesis_role": "Score SDE framework, VP/VE instantiations, and affine Flow Matching"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Appendices: ODE/SDE, Fokker-Planck & Itô-Girsanov Calculus",
+                      "page_start": 387,
+                      "page_end": 430,
+                      "synthesis_role": "Complete proofs of continuity equation, Fokker-Planck, Itô's lemma, and Girsanov"
+                    },
+                    {
+                      "book_slug": "diffusionmodels_stanleychan",
+                      "chapter_or_section": "Sec. 4 Stochastic Differential Equation (SDE)",
+                      "page_start": 39,
+                      "page_end": 48,
+                      "synthesis_role": "Explicit continuous limits of DDPM and SMLD"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 25.4 Continuous-Time Diffusion Models",
+                      "page_start": 911,
+                      "page_end": 915,
+                      "synthesis_role": "Probability flow ODE and continuous likelihood computation"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_controllable_sampling_and_distillation",
+              "title": "Guidance, Fast ODE Solvers & Consistency Distillation",
+              "dir_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching/02_controllable_sampling_and_distillation",
+              "leaves": [
+                {
+                  "id": "diffusion_guidance_solvers_and_consistency_distillation",
+                  "title": "Classifier/Classifier-Free Guidance, DDIM/DPM-Solver ODEs & Consistency Models",
+                  "tex_path": "monographs/04_generative_models_and_optimal_transport/02_diffusion_sdes_and_flow_matching/02_controllable_sampling_and_distillation/diffusion_guidance_solvers_and_consistency_distillation.tex",
+                  "description": "Covers Bayes-rule classifier guidance vs. Classifier-Free Guidance (CFG), non-Markovian DDIM, exponential integrators (DEIS, DPM-Solver/DPM-Solver++/v3), progressive distillation, Consistency Models (CD/CTM), Mean Flow, and RL/DPO diffusion alignment.",
+                  "key_visuals": [
+                    "Extracted figure: CFG guidance scale quality-diversity trade-off & 1-step consistency mapping",
+                    "TikZ taxonomy tree: Fast sampling (Training-free ODE solvers vs. Distillation vs. Consistency/Flow maps)",
+                    "PGFPlots curve: FID vs. NFE (Number of Function Evaluations) comparing DDPM, DDIM, DPM-Solver, and CM"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Part C Sampling: Guidance & Fast Solvers (DDIM/DPM-Solver)",
+                      "page_start": 229,
+                      "page_end": 326,
+                      "synthesis_role": "CFG, training-free guidance, RL/DPO alignment, DDIM, DEIS, DPM-Solver++"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Part D Learning Fast Diffusion-Based Generators",
+                      "page_start": 327,
+                      "page_end": 385,
+                      "synthesis_role": "Progressive distillation, discrete/continuous consistency models, CTM, and Mean Flow"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 25.5-25.7 Speeding Up, Conditional & Discrete Diffusion",
+                      "page_start": 916,
+                      "page_end": 926,
+                      "synthesis_role": "DDIM acceleration, classifier-free guidance, and discrete diffusion"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Sec. 20.4 Guided Diffusion",
+                      "page_start": 609,
+                      "page_end": 612,
+                      "synthesis_role": "Bayes decomposition for conditional score guidance"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "05_transformers_and_llms",
+      "title": "Transformers, Language Modeling & LLM Engineering",
+      "dir_path": "monographs/05_transformers_and_llms",
+      "parent_topics": [
+        {
+          "id": "01_tokenization_attention_and_transformers",
+          "title": "Tokenization, Embeddings, Attention & Transformer Architectures",
+          "dir_path": "monographs/05_transformers_and_llms/01_tokenization_attention_and_transformers",
+          "sub_topics": [
+            {
+              "id": "01_tokenization_and_embeddings",
+              "title": "Subword Tokenization & Vector Semantics",
+              "dir_path": "monographs/05_transformers_and_llms/01_tokenization_attention_and_transformers/01_tokenization_and_embeddings",
+              "leaves": [
+                {
+                  "id": "subword_tokenization_bpe_and_embeddings",
+                  "title": "Words, Byte-Pair Encoding (BPE), Distributional Embeddings & Positional Encodings",
+                  "tex_path": "monographs/05_transformers_and_llms/01_tokenization_attention_and_transformers/01_tokenization_and_embeddings/subword_tokenization_bpe_and_embeddings.tex",
+                  "description": "Synthesizes Unicode/subword tokenization, the BPE merge algorithm, sparse PPMI vs. dense skip-gram/CBOW Word2Vec embeddings, sliding-window causal dataset construction, and sinusoidal vs. learned vs. Rotary Position Embeddings (RoPE).",
+                  "key_visuals": [
+                    "Extracted figure: BPE subword merge steps & Word2Vec skip-gram / RoPE rotation",
+                    "TikZ diagram: text -> UTF-8 bytes -> BPE merges -> token IDs -> embedding + RoPE",
+                    "TikZ comparison table: Absolute Sinusoidal vs. Learned vs. Relative vs. RoPE"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 2 Words/Tokens (BPE) & Ch. 5 Embeddings (Word2Vec)",
+                      "page_start": 41,
+                      "page_end": 75,
+                      "synthesis_role": "Formal BPE algorithm, Unicode handling, and minimum edit distance"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 5 Embeddings & Ch. 7.4 Position Embeddings",
+                      "page_start": 135,
+                      "page_end": 158,
+                      "synthesis_role": "Distributional hypothesis, cosine similarity, and skip-gram negative sampling"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Ch. 2 Working with Text Data",
+                      "page_start": 64,
+                      "page_end": 139,
+                      "synthesis_role": "End-to-end BPE tokenization, sliding-window sampling, and positional embeddings"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 20.5 Word Embeddings",
+                      "page_start": 735,
+                      "page_end": 741,
+                      "synthesis_role": "Matrix factorization perspective on Word2Vec and GloVe"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_attention_and_transformer_blocks",
+              "title": "Attention Mechanisms & Transformer Architectures",
+              "dir_path": "monographs/05_transformers_and_llms/01_tokenization_attention_and_transformers/02_attention_and_transformer_blocks",
+              "leaves": [
+                {
+                  "id": "self_attention_multihead_and_transformer_architecture",
+                  "title": "Scaled Dot-Product Attention, Causal Masking, Multi-Head Attention & GPT/BERT Blocks",
+                  "tex_path": "monographs/05_transformers_and_llms/01_tokenization_attention_and_transformers/02_attention_and_transformer_blocks/self_attention_multihead_and_transformer_architecture.tex",
+                  "description": "Derives scaled dot-product attention (1/sqrt(d_k) variance proof), causal lower-triangular masking, Multi-Head / Grouped-Query Attention (MHA/GQA), Pre-LN residual blocks with SwiGLU/GELU MLPs, and encoder (BERT) vs. decoder (GPT) vs. encoder-decoder designs.",
+                  "key_visuals": [
+                    "Extracted figure: QKV attention matrix workflow & full Transformer block wiring",
+                    "TikZ architecture diagram: Pre-LN GPT Transformer block with causal MHA + RMSNorm + SwiGLU",
+                    "TikZ tensor-shape trace: [B, T, d_model] -> [B, h, T, d_k] -> Attention -> [B, T, d_model]"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Ch. 3 Coding Attention & Ch. 4 GPT Architecture",
+                      "page_start": 140,
+                      "page_end": 321,
+                      "synthesis_role": "Step-by-step QKV self-attention, causal masking, MHA, and GPT block"
+                    },
+                    {
+                      "book_slug": "deep_learning_foundations_concepts",
+                      "chapter_or_section": "Ch. 12 Transformers",
+                      "page_start": 373,
+                      "page_end": 418,
+                      "synthesis_role": "Mathematical attention formulation, BERT/GPT variants, and multimodal ViT"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Ch. 12 Transformers",
+                      "page_start": 221,
+                      "page_end": 253,
+                      "synthesis_role": "Clean QKV matrix equations, BERT/GPT-3/ViT comparisons, and long-sequence attention"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 7 Transformers & Ch. 9 Masked LMs",
+                      "page_start": 185,
+                      "page_end": 216,
+                      "synthesis_role": "Matrix-parallel attention, LM head tying, and transformer mechanics"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapter_or_section": "Sec. 15.4-15.6 Attention & Transformers",
+                      "page_start": 548,
+                      "page_end": 566,
+                      "synthesis_role": "Cross-attention, sparse/linear attention variants, and FlashAttention notes"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_pretraining_adaptation_and_inference",
+          "title": "LLM Pretraining, Adaptation, Prompting & Efficient Inference",
+          "dir_path": "monographs/05_transformers_and_llms/02_pretraining_adaptation_and_inference",
+          "sub_topics": [
+            {
+              "id": "01_pretraining_and_parameter_efficient_finetuning",
+              "title": "Pretraining, Scaling Laws & Parameter-Efficient Fine-Tuning",
+              "dir_path": "monographs/05_transformers_and_llms/02_pretraining_adaptation_and_inference/01_pretraining_and_parameter_efficient_finetuning",
+              "leaves": [
+                {
+                  "id": "llm_pretraining_scaling_and_peft_lora",
+                  "title": "Self-Supervised Pretraining, Scaling Laws, Instruction Fine-Tuning & LoRA/QLoRA",
+                  "tex_path": "monographs/05_transformers_and_llms/02_pretraining_adaptation_and_inference/01_pretraining_and_parameter_efficient_finetuning/llm_pretraining_scaling_and_peft_lora.tex",
+                  "description": "Covers causal LM cross-entropy and perplexity, MLM/denoising objectives, Kaplan vs. Chinchilla compute-optimal scaling laws, distributed parallelism (DP/TP/PP/ZeRO), SFT chat templates, and low-rank adaptation (LoRA/QLoRA).",
+                  "key_visuals": [
+                    "Extracted figure: Chinchilla compute-optimal frontier & LoRA low-rank A*B adapter bypass",
+                    "TikZ diagram: W_0 + (alpha/r) * B A LoRA weight injection and QLoRA NF4 quantization flow",
+                    "PGFPlots curve: Chinchilla power-law loss scaling L(N, D) under fixed FLOPs budget"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "foundations_large_language_models",
+                      "chapter_or_section": "Ch. 1 Pre-training & Ch. 2 Generative LLMs / Training at Scale",
+                      "page_start": 8,
+                      "page_end": 72,
+                      "synthesis_role": "Pretraining objectives, scaling laws, distributed training, and data curation"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Ch. 5 Pretraining, Ch. 6-7 Fine-Tuning & Appendix E LoRA",
+                      "page_start": 322,
+                      "page_end": 417,
+                      "synthesis_role": "Cross-entropy, perplexity, and end-to-end pretraining loop"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Ch. 7 Instruction Fine-Tuning & Appendix E LoRA",
+                      "page_start": 497,
+                      "page_end": 602,
+                      "synthesis_role": "Alpaca-style masking, batch collation, and evaluation"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Appendix E Parameter-Efficient Fine-Tuning with LoRA",
+                      "page_start": 776,
+                      "page_end": 835,
+                      "synthesis_role": "Exact LoRA layer parameterization and rank trade-offs"
+                    },
+                    {
+                      "book_slug": "llm_engineer_s_handbook",
+                      "chapter_or_section": "Ch. 5 Supervised Fine-Tuning (SFT, LoRA, QLoRA)",
+                      "page_start": 206,
+                      "page_end": 250,
+                      "synthesis_role": "Data curation/decontamination, packing, LoRA/QLoRA, and gradient checkpointing"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 3 Perplexity & Ch. 8.1-8.2 Instruction Tuning/PEFT",
+                      "page_start": 76,
+                      "page_end": 95,
+                      "synthesis_role": "Cross-entropy to perplexity information-theoretic bridge"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 4 Instruction Fine-Tuning",
+                      "page_start": 33,
+                      "page_end": 38,
+                      "synthesis_role": "Chat templates and loss masking for post-training SFT"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_prompting_decoding_and_inference_scaling",
+              "title": "Prompting, Decoding, KV Caching & Test-Time Compute",
+              "dir_path": "monographs/05_transformers_and_llms/02_pretraining_adaptation_and_inference/02_prompting_decoding_and_inference_scaling",
+              "leaves": [
+                {
+                  "id": "prompting_decoding_kv_cache_and_inference_scaling",
+                  "title": "Prompt Engineering, Decoding Strategies, KV Caching & Test-Time Scaling",
+                  "tex_path": "monographs/05_transformers_and_llms/02_pretraining_adaptation_and_inference/02_prompting_decoding_and_inference_scaling/prompting_decoding_kv_cache_and_inference_scaling.tex",
+                  "description": "Synthesizes in-context learning, Chain-of-Thought/Tree-of-Thought prompting, greedy/beam/temperature/top-k/top-p sampling, prefill vs. decode arithmetic intensity, KV-cache memory math & PagedAttention, speculative decoding, quantization, and inference-time search/scaling.",
+                  "key_visuals": [
+                    "Extracted figure: prefill compute-bound vs. decode memory-bandwidth-bound & KV cache layout",
+                    "TikZ diagram: KV-cache prefill/decode loop and speculative draft-verify pipeline",
+                    "PGFPlots curve: temperature/top-p entropy modulation and test-time compute scaling"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "foundations_large_language_models",
+                      "chapter_or_section": "Ch. 3 Prompting & Ch. 5 Inference",
+                      "page_start": 103,
+                      "page_end": 161,
+                      "synthesis_role": "ICL, CoT, ToT, soft prompting, and prompt optimization"
+                    },
+                    {
+                      "book_slug": "foundations_large_language_models",
+                      "chapter_or_section": "Ch. 5 Inference: Prefilling, KV Cache & Test-Time Scaling",
+                      "page_start": 210,
+                      "page_end": 252,
+                      "synthesis_role": "KV caching, FlashAttention, speculative decoding, quantization, and CoT scaling"
+                    },
+                    {
+                      "book_slug": "build_large_language_model_from_scratch",
+                      "chapter_or_section": "Sec. 5.3 Decoding Strategies to Control Randomness",
+                      "page_start": 378,
+                      "page_end": 396,
+                      "synthesis_role": "Temperature scaling and top-k/top-p logits filtering"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Sec. 7.6 Decoding, Sec. 12.4 Beam Search & Ch. 10 Interpretability",
+                      "page_start": 204,
+                      "page_end": 208,
+                      "synthesis_role": "Autoregressive sampling algorithms"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 10 Interpretability (Logit Lens, SAEs & Induction Heads)",
+                      "page_start": 251,
+                      "page_end": 259,
+                      "synthesis_role": "Mechanistic view of in-context learning"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 7 Reasoning and Inference-Time Scaling",
+                      "page_start": 101,
+                      "page_end": 112,
+                      "synthesis_role": "RLVR-driven reasoning and test-time compute allocation"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "06_reinforcement_learning_and_alignment",
+      "title": "Reinforcement Learning, Control & LLM Alignment",
+      "dir_path": "monographs/06_reinforcement_learning_and_alignment",
+      "parent_topics": [
+        {
+          "id": "01_tabular_and_value_based_rl",
+          "title": "Bandits, Markov Decision Processes & Value-Based RL",
+          "dir_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl",
+          "sub_topics": [
+            {
+              "id": "01_bandits_mdps_and_dynamic_programming",
+              "title": "Multi-Armed Bandits, MDPs & Dynamic Programming",
+              "dir_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl/01_bandits_mdps_and_dynamic_programming",
+              "leaves": [
+                {
+                  "id": "multi_armed_bandits_and_exploration",
+                  "title": "Multi-Armed & Contextual Bandits, UCB, Thompson Sampling & Regret Bounds",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl/01_bandits_mdps_and_dynamic_programming/multi_armed_bandits_and_exploration.tex",
+                  "description": "Covers exploration-exploitation trade-offs, cumulative regret, epsilon-greedy and optimistic initialization, Hoeffding-derived UCB1, Bayesian Thompson Sampling, LinUCB contextual bandits, and gradient bandit REINFORCE updates.",
+                  "key_visuals": [
+                    "Extracted figure: 10-armed bandit testbed / UCB vs. epsilon-greedy regret curves",
+                    "TikZ diagram: Thompson Sampling Beta-Bernoulli posterior sampling & update loop",
+                    "PGFPlots plot: logarithmic O(log T) UCB regret vs. linear greedy regret"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 2 Multi-Armed Bandits",
+                      "page_start": 47,
+                      "page_end": 68,
+                      "synthesis_role": "Incremental estimation, UCB, gradient bandits, and associative search"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Sec. 1.2.5 Contextual Bandits & Sec. 7.1-7.2 Regret/Exploration",
+                      "page_start": 173,
+                      "page_end": 179,
+                      "synthesis_role": "Bayesian optimal Gittins/POMDP view, Thompson sampling, and UCB regret"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 34.4 Contextual Bandits",
+                      "page_start": 1154,
+                      "page_end": 1161,
+                      "synthesis_role": "LinUCB, Thompson sampling, and inverse propensity weighting"
+                    }
+                  ]
+                },
+                {
+                  "id": "markov_decision_processes_and_dynamic_programming",
+                  "title": "MDPs, Bellman Optimality Equations, Policy/Value Iteration & GPI",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl/01_bandits_mdps_and_dynamic_programming/markov_decision_processes_and_dynamic_programming.tex",
+                  "description": "Formalizes finite MDPs and POMDPs, discounted returns, Bellman expectation and optimality backup operators as gamma-contractions (Banach fixed point), iterative policy evaluation, policy iteration, value iteration, and Generalized Policy Iteration.",
+                  "key_visuals": [
+                    "Extracted figure: agent-environment loop & backup diagrams for V^pi, Q^pi, V*, Q*",
+                    "TikZ diagram: Generalized Policy Iteration (GPI) converging evaluation/improvement loop",
+                    "TikZ backup trees: Bellman expectation vs. Bellman optimality (max) lookahead"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 3 Finite MDPs & Ch. 4 Dynamic Programming",
+                      "page_start": 69,
+                      "page_end": 112,
+                      "synthesis_role": "Foundational MDP notation, Bellman equations, and Policy/Value Iteration"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Sec. 1.1-1.2 MDPs/POMDPs & Sec. 2.1-2.2 Value Functions/DP",
+                      "page_start": 13,
+                      "page_end": 34,
+                      "synthesis_role": "Unified POMDP/MDP taxonomy and matrix Bellman operators"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 34.5-34.6 MDPs & Planning",
+                      "page_start": 1162,
+                      "page_end": 1170,
+                      "synthesis_role": "Contraction proofs and linear-programming / DP formulations"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 19.1-19.3 MDPs & Tabular RL",
+                      "page_start": 387,
+                      "page_end": 398,
+                      "synthesis_role": "Clean visual MDP transition graphs and DP backups"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_monte_carlo_td_and_value_approximation",
+              "title": "Monte Carlo, Temporal-Difference, DQN & Function Approximation",
+              "dir_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl/02_monte_carlo_td_and_value_approximation",
+              "leaves": [
+                {
+                  "id": "mc_td_q_learning_and_deadly_triad",
+                  "title": "Monte Carlo, SARSA, Q-Learning, DQN, Eligibility Traces & the Deadly Triad",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/01_tabular_and_value_based_rl/02_monte_carlo_td_and_value_approximation/mc_td_q_learning_and_deadly_triad.tex",
+                  "description": "Contrasts MC high-variance unbiased returns against biased low-variance TD(0) bootstrapping, n-step and TD(lambda) eligibility traces, on-policy SARSA vs. off-policy Q-learning & Double Q-learning maximization bias, DQN stabilization (replay + target nets), and Baird's Deadly Triad.",
+                  "key_visuals": [
+                    "Extracted figure: TD vs. MC vs. DP backup spectrum & Baird's counterexample divergence",
+                    "TikZ 2D grid: backup depth (TD(0) -> n-step -> MC) vs. sample/full expectation (DP)",
+                    "TikZ flowchart: DQN experience replay + frozen target network training loop"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 5-7 MC, TD & n-step Bootstrapping",
+                      "page_start": 113,
+                      "page_end": 180,
+                      "synthesis_role": "Importance sampling MC, SARSA, Q-learning, Expected Sarsa, and Double Learning"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 9-12 Approximation, Deadly Triad & Eligibility Traces",
+                      "page_start": 219,
+                      "page_end": 342,
+                      "synthesis_role": "Semi-gradient TD, Deadly Triad proof, Emphatic/Gradient-TD, and TD(lambda)"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Sec. 2.3-2.5 MC, TD, SARSA, Q-Learning & DQN",
+                      "page_start": 35,
+                      "page_end": 50,
+                      "synthesis_role": "DQN extensions (Double, Dueling, PER, Rainbow) and hindsight relabeling"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 35.2 Value-Based RL",
+                      "page_start": 1184,
+                      "page_end": 1189,
+                      "synthesis_role": "Fitted Q-iteration and deep Q-learning"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 19.4 Fitted Q-Learning",
+                      "page_start": 399,
+                      "page_end": 401,
+                      "synthesis_role": "Deep Q-network stabilization summary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_policy_gradients_mbrl_and_alignment",
+          "title": "Policy Gradients, Model-Based RL, MARL & LLM Alignment",
+          "dir_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment",
+          "sub_topics": [
+            {
+              "id": "01_policy_gradients_and_model_based_rl",
+              "title": "Policy Gradients, Actor-Critic, Model-Based RL & MARL",
+              "dir_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment/01_policy_gradients_and_model_based_rl",
+              "leaves": [
+                {
+                  "id": "policy_gradient_actor_critic_trpo_and_ppo",
+                  "title": "Policy Gradient Theorem, REINFORCE, GAE, Actor-Critic, TRPO/PPO & RL-as-Inference",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment/01_policy_gradients_and_model_based_rl/policy_gradient_actor_critic_trpo_and_ppo.tex",
+                  "description": "Proves the Policy Gradient Theorem, derives baseline variance reduction, Generalized Advantage Estimation (GAE(gamma, lambda)), Natural Policy Gradient / TRPO monotonic improvement lower bound, PPO clipped surrogate, SAC maximum-entropy RL, and Control-as-Inference.",
+                  "key_visuals": [
+                    "Extracted figure: PPO clipped surrogate ratio curves (A > 0 vs. A < 0) & Actor-Critic architecture",
+                    "PGFPlots chart: PPO clipped objective L^CLIP vs. likelihood ratio r_t(theta)",
+                    "TikZ diagram: Actor-Critic + GAE advantage loop and TRPO -> PPO -> GRPO evolution"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 13 Policy Gradient Methods",
+                      "page_start": 343,
+                      "page_end": 358,
+                      "synthesis_role": "Full proof of the Policy Gradient Theorem, REINFORCE, and Actor-Critic"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Ch. 3 Policy-Based RL & RL as Inference",
+                      "page_start": 51,
+                      "page_end": 82,
+                      "synthesis_role": "REINFORCE, GAE, DDPG/TD3, TRPO, PPO, VMPO, SAC, and variational RL-as-inference"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 35.3 & 35.6 Policy-Based RL & Control as Inference",
+                      "page_start": 1190,
+                      "page_end": 1218,
+                      "synthesis_role": "Monotonic improvement bounds, natural gradient, and KL control"
+                    },
+                    {
+                      "book_slug": "understandingdl_simonprince",
+                      "chapter_or_section": "Sec. 19.5-19.6 Policy Gradients & Actor-Critic",
+                      "page_start": 402,
+                      "page_end": 407,
+                      "synthesis_role": "Intuitive score-function gradient and variance reduction"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Sec. 6.2 Policy Gradient Algorithms for LLMs",
+                      "page_start": 58,
+                      "page_end": 78,
+                      "synthesis_role": "REINFORCE, RLOO, PPO, and GRPO adapted for autoregressive token generation"
+                    }
+                  ]
+                },
+                {
+                  "id": "model_based_rl_mcts_world_models_and_marl",
+                  "title": "Dyna, MCTS, World Models, Offline RL & Multi-Agent Reinforcement Learning",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment/01_policy_gradients_and_model_based_rl/model_based_rl_mcts_world_models_and_marl.tex",
+                  "description": "Synthesizes Dyna planning/acting integration, Monte Carlo Tree Search (PUCT/AlphaZero), latent world models (Dreamer/MuZero) and compounding model error, successor representations, Offline RL conservatism (CQL/Decision Transformer), and Multi-Agent RL equilibria (Nash, CTDE, CFR).",
+                  "key_visuals": [
+                    "Extracted figure: Dyna architecture / MCTS 4-phase loop (Select, Expand, Evaluate, Backup)",
+                    "TikZ diagram: MCTS PUCT tree-search cycle & CTDE multi-agent centralized-critic graph",
+                    "TikZ comparison table: Model-Free vs. Dyna vs. Online MCTS vs. Latent World Model"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_introduction_richard_s_su",
+                      "chapter_or_section": "Ch. 8 Planning and Learning with Tabular Methods",
+                      "page_start": 181,
+                      "page_end": 213,
+                      "synthesis_role": "Dyna-Q, prioritized sweeping, trajectory sampling, and MCTS"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Ch. 4 Model-Based RL & Ch. 5 Multi-Agent RL",
+                      "page_start": 83,
+                      "page_end": 146,
+                      "synthesis_role": "MCTS, MPC, Dreamer/MuZero world models, successor features, Nash/CTDE/CFR"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Sec. 7.5-7.7 HRL, Imitation Learning & Offline RL",
+                      "page_start": 183,
+                      "page_end": 196,
+                      "synthesis_role": "Options, inverse RL, and offline pessimism"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_advancedtopics",
+                      "chapter_or_section": "Sec. 35.4-35.5 Model-Based & Off-Policy RL",
+                      "page_start": 1198,
+                      "page_end": 1210,
+                      "synthesis_role": "Probabilistic dynamics models and off-policy importance corrections"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_llm_alignment_rlhf_and_dpo",
+              "title": "Post-Training Alignment: RLHF, Reward Modeling, DPO & RLVR",
+              "dir_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment/02_llm_alignment_rlhf_and_dpo",
+              "leaves": [
+                {
+                  "id": "rlhf_reward_modeling_dpo_and_rlvr",
+                  "title": "Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) & RLVR",
+                  "tex_path": "monographs/06_reinforcement_learning_and_alignment/02_policy_gradients_mbrl_and_alignment/02_llm_alignment_rlhf_and_dpo/rlhf_reward_modeling_dpo_and_rlvr.tex",
+                  "description": "Derives the Bradley-Terry preference likelihood, outcome vs. process reward models (ORM/PRM), KL-constrained RL objective and closed-form optimal Gibbs policy pi*(y|x), the exact DPO change-of-variables derivation, GRPO/RLVR reasoning training, Constitutional AI, and Goodhart's Law reward over-optimization.",
+                  "key_visuals": [
+                    "Extracted figure: SFT -> Reward Model -> PPO/GRPO loop vs. DPO closed-form shortcut",
+                    "TikZ pipeline: 3-stage RLHF vs. Direct Alignment (DPO/IPO/KTO) vs. Verifiable RLVR",
+                    "PGFPlots curve: Goodhart's Law divergence (proxy RM score climbs while gold score drops)"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 5-8 Reward Modeling, RL, RLVR & Direct Alignment (DPO)",
+                      "page_start": 39,
+                      "page_end": 124,
+                      "synthesis_role": "Bradley-Terry RM, ORM/PRM, PPO/GRPO, RLVR, and exact DPO derivation"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 11-14 Synthetic/AI Feedback & KL Regularization",
+                      "page_start": 151,
+                      "page_end": 192,
+                      "synthesis_role": "Constitutional AI, Goodhart over-optimization scaling, and KL penalties"
+                    },
+                    {
+                      "book_slug": "foundations_large_language_models",
+                      "chapter_or_section": "Ch. 4 Alignment",
+                      "page_start": 162,
+                      "page_end": 209,
+                      "synthesis_role": "Instruction alignment, RLHF PPO math, and DPO/SimPO/KTO derivations"
+                    },
+                    {
+                      "book_slug": "reinforement_learning_kevin_murphy",
+                      "chapter_or_section": "Ch. 6 LLMs and RL",
+                      "page_start": 147,
+                      "page_end": 172,
+                      "synthesis_role": "Single-turn vs. multi-turn RLFT, assistance games, and token-level loss"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Sec. 8.3-8.4 Preference Alignment",
+                      "page_start": 223,
+                      "page_end": 230,
+                      "synthesis_role": "Clear Bradley-Terry and DPO gradient analysis"
+                    },
+                    {
+                      "book_slug": "theprinciple_diffusion_models",
+                      "chapter_or_section": "Sec. C.1.5 RL to DPO for Diffusion Alignment",
+                      "page_start": 248,
+                      "page_end": 257,
+                      "synthesis_role": "Transfer of RLHF/DPO to diffusion reward alignment"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "07_agentic_ai_and_ml_systems",
+      "title": "Agentic AI Architectures, Protocols & Production ML Systems",
+      "dir_path": "monographs/07_agentic_ai_and_ml_systems",
+      "parent_topics": [
+        {
+          "id": "01_agent_architectures_memory_and_protocols",
+          "title": "Agentic Reasoning, Memory, RAG, MCP/A2A & Workflows",
+          "dir_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols",
+          "sub_topics": [
+            {
+              "id": "01_agent_reasoning_and_design_patterns",
+              "title": "Agent Taxonomies, ReAct, Planning & Multi-Agent Patterns",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols/01_agent_reasoning_and_design_patterns",
+              "leaves": [
+                {
+                  "id": "agentic_architectures_react_and_planning",
+                  "title": "Agent Taxonomy, ReAct Synergy, Reflection, Planning & Multi-Agent Orchestration",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols/01_agent_reasoning_and_design_patterns/agentic_architectures_react_and_planning.tex",
+                  "description": "Synthesizes agent autonomy taxonomies (Levels 0-4 / workflows vs. autonomous agents), the ReAct interleaved Thought-Action-Observation trajectory loop, Reflection/Tool-Use/Planning/Multi-Agent design patterns, manager vs. decentralized handoff topologies, and failure-mode taxonomies.",
+                  "key_visuals": [
+                    "Extracted figure: ReAct Thought-Action-Observation trajectory vs. CoT / Act-only",
+                    "TikZ state-machine diagram: Orchestration loop (Think -> Act -> Observe -> Reflect/Halt)",
+                    "TikZ taxonomy matrix: 5 Levels of Agentic Systems & Multi-Agent Orchestration topologies"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "react_agent",
+                      "chapter_or_section": "Full Paper: ReAct Synergizing Reasoning and Acting",
+                      "page_start": 1,
+                      "page_end": 33,
+                      "synthesis_role": "Original ReAct formulation, HotpotQA/FEVER/ALFWorld results, and error taxonomy"
+                    },
+                    {
+                      "book_slug": "introduction_agents",
+                      "chapter_or_section": "Core Agent Architecture & Taxonomy (Levels 0-4)",
+                      "page_start": 6,
+                      "page_end": 46,
+                      "synthesis_role": "Model/Tools/Orchestration triad, enterprise scaling, and self-evolving agents"
+                    },
+                    {
+                      "book_slug": "practical_guide_building_agents",
+                      "chapter_or_section": "Agent Design Foundations & Guardrails",
+                      "page_start": 4,
+                      "page_end": 31,
+                      "synthesis_role": "Workflow-vs-agent criteria, single vs. multi-agent handoffs, and exit criteria"
+                    },
+                    {
+                      "book_slug": "ai_agents_2025_illustrated_guidebook",
+                      "chapter_or_section": "Building Blocks, 5 Design Patterns & 5 Levels",
+                      "page_start": 6,
+                      "page_end": 34,
+                      "synthesis_role": "Role-playing, reflection, tool-use, planning, and multi-agent patterns"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Sec. 1.7 & Sec. 11 Agents",
+                      "page_start": 32,
+                      "page_end": 32,
+                      "synthesis_role": "NLP integration perspective on tool-augmented LLM agents"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_rag_context_memory_and_mcp",
+              "title": "RAG, Context Engineering, Memory & Tool/Agent Protocols",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols/02_rag_context_memory_and_mcp",
+              "leaves": [
+                {
+                  "id": "rag_vector_databases_and_context_memory",
+                  "title": "Retrieval-Augmented Generation, Vector Indexing, Context Engineering & Agent Memory",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols/02_rag_context_memory_and_mcp/rag_vector_databases_and_context_memory.tex",
+                  "description": "Unifies sparse BM25 vs. dense bi-encoder retrieval, HNSW/IVF vector DB indexing, pre/post-retrieval reranking (query expansion, RRF, cross-encoders), dynamic Context Engineering assembly, short-term Session compaction, and long-term declarative vs. procedural Memory consolidation.",
+                  "key_visuals": [
+                    "Extracted figure: RAG ingestion/retrieval pipeline & Context/Memory lifecycle",
+                    "TikZ architecture diagram: Two-stage Retrieval (BM25 + Dense HNSW -> RRF -> Cross-Encoder Rerank)",
+                    "TikZ taxonomy table: Session State vs. Episodic/Semantic/Procedural Memory consolidation"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "llm_engineer_s_handbook",
+                      "chapter_or_section": "Ch. 4 RAG Feature Pipeline & Vector Databases",
+                      "page_start": 128,
+                      "page_end": 205,
+                      "synthesis_role": "Chunking, bi-encoders, HNSW indexing, pre/post-retrieval, and feature stores"
+                    },
+                    {
+                      "book_slug": "context_engineering_sessions_memory",
+                      "chapter_or_section": "Full Monograph: Context Engineering, Sessions & Memory",
+                      "page_start": 6,
+                      "page_end": 70,
+                      "synthesis_role": "Dynamic context assembly, session compaction, memory extraction, and retrieval"
+                    },
+                    {
+                      "book_slug": "speech_language_processing_aug26",
+                      "chapter_or_section": "Ch. 11 Retrieval-Based Models (BM25, Dense IR & RAG)",
+                      "page_start": 260,
+                      "page_end": 282,
+                      "synthesis_role": "Formal BM25 TF-IDF scoring, bi-encoder inner product, and IR evaluation metrics"
+                    },
+                    {
+                      "book_slug": "ai_agents_2025_illustrated_guidebook",
+                      "chapter_or_section": "Sec. #6 Memory & #1 Agentic RAG",
+                      "page_start": 36,
+                      "page_end": 41,
+                      "synthesis_role": "Agentic retrieval routing and human-like memory patterns"
+                    }
+                  ]
+                },
+                {
+                  "id": "tool_use_mcp_a2a_and_workflow_automation",
+                  "title": "Function Calling, Model Context Protocol (MCP), A2A Interoperability & Workflow Automation",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/01_agent_architectures_memory_and_protocols/02_rag_context_memory_and_mcp/tool_use_mcp_a2a_and_workflow_automation.tex",
+                  "description": "Resolves the N x M tool-integration bottleneck via MCP Host-Client-Server JSON-RPC architecture and Tools/Resources/Prompts primitives, integrates Agent2Agent (A2A) AgentCard discovery, catalogs MCP security threats (tool poisoning, confused deputy), and bridges deterministic node-graph workflows (n8n).",
+                  "key_visuals": [
+                    "Extracted figure: N x M integration problem vs. MCP Hub / A2A interoperability diagram",
+                    "TikZ protocol sequence: Host <-> MCP Client <-> MCP Server (JSON-RPC initialize, list_tools, call_tool) & A2A",
+                    "TikZ security matrix: Prompt Injection, Tool Poisoning, Rug Pulls, and Mitigation Controls"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "agent_tools_interoperability_mcp",
+                      "chapter_or_section": "Full Whitepaper: Tool Calling, MCP Architecture & Security",
+                      "page_start": 7,
+                      "page_end": 51,
+                      "synthesis_role": "Tool-design best practices, JSON-RPC transports, primitives, and security mitigations"
+                    },
+                    {
+                      "book_slug": "mcp_2025_editionthe_illustrated_guidebook",
+                      "chapter_or_section": "MCP Overview, Architecture & Primitives",
+                      "page_start": 5,
+                      "page_end": 19,
+                      "synthesis_role": "Illustrated Host/Client/Server mechanics and Tools/Resources/Prompts"
+                    },
+                    {
+                      "book_slug": "prototype_production",
+                      "chapter_or_section": "Sec. A2A - Reusability and Standardization",
+                      "page_start": 27,
+                      "page_end": 35,
+                      "synthesis_role": "A2A vs. MCP complementarity and enterprise tool/agent registries"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 12 Tool Use, Function Calling & MCP",
+                      "page_start": 167,
+                      "page_end": 175,
+                      "synthesis_role": "Training-time tool-call interleaving and multi-step reasoning"
+                    },
+                    {
+                      "book_slug": "ultimate_n8n_starter_kit_2025",
+                      "chapter_or_section": "Modules 1-5 Workflow Nodes, Error Handling & AI Agents",
+                      "page_start": 1,
+                      "page_end": 36,
+                      "synthesis_role": "Deterministic trigger/transform DAGs coupled with AI agent nodes"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "02_production_ml_systems_and_agent_ops",
+          "title": "Production ML Systems, Evaluation, Observability & AgentOps",
+          "dir_path": "monographs/07_agentic_ai_and_ml_systems/02_production_ml_systems_and_agent_ops",
+          "sub_topics": [
+            {
+              "id": "01_ml_systems_data_and_drift",
+              "title": "ML Systems Design, Data Pipelines & Distribution Shifts",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/02_production_ml_systems_and_agent_ops/01_ml_systems_data_and_drift",
+              "leaves": [
+                {
+                  "id": "ml_systems_design_data_pipelines_and_drift",
+                  "title": "Iterative ML Systems Design, Feature Engineering, Leakage, Distribution Shift & Continual Learning",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/02_production_ml_systems_and_agent_ops/01_ml_systems_data_and_drift/ml_systems_design_data_pipelines_and_drift.tex",
+                  "description": "Synthesizes iterative ML systems architecture, the FTI (Feature-Training-Inference) pipeline separation, sampling/labeling/class imbalance, data leakage diagnostics, model compression & batch-vs-online serving, covariate/label/concept shift mathematics, and continual retraining.",
+                  "key_visuals": [
+                    "Extracted figure: FTI pipeline separation & Covariate vs. Label vs. Concept shift P(X,Y)",
+                    "TikZ diagram: Feature / Training / Inference decoupled pipelines with CDC feature-store sync",
+                    "TikZ taxonomy table: Covariate Shift P(X), Label Shift P(Y), Concept Drift P(Y|X) & Detection"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapter_or_section": "Ch. 1-5 Systems Design, Data & Feature Engineering",
+                      "page_start": 21,
+                      "page_end": 168,
+                      "synthesis_role": "ML framing, data models, sampling/imbalance, feature engineering, and data leakage"
+                    },
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapter_or_section": "Ch. 7-10 Deployment, Distribution Shifts & Continual Learning",
+                      "page_start": 211,
+                      "page_end": 350,
+                      "synthesis_role": "Online/batch prediction, compression, shift taxonomy, and MLOps infrastructure"
+                    },
+                    {
+                      "book_slug": "llm_engineer_s_handbook",
+                      "chapter_or_section": "Ch. 1-3 FTI Architecture, Tooling & Data Engineering",
+                      "page_start": 30,
+                      "page_end": 127,
+                      "synthesis_role": "Decoupled FTI pipelines, ZenML artifact tracking, and NoSQL data warehouses"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_agent_quality_evaluation_and_agentops",
+              "title": "Evaluation, Observability, Guardrails & AgentOps",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/02_production_ml_systems_and_agent_ops/02_agent_quality_evaluation_and_agentops",
+              "leaves": [
+                {
+                  "id": "agent_quality_observability_and_production_ops",
+                  "title": "Outside-In Agent Evaluation, LLM-as-a-Judge, Observability, Guardrails & AgentOps CI/CD",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/02_production_ml_systems_and_agent_ops/02_agent_quality_evaluation_and_agentops/agent_quality_observability_and_production_ops.tex",
+                  "description": "Covers non-deterministic agent evaluation hierarchies (end-to-end outcome vs. trajectory/process), deterministic metrics vs. LLM-as-a-Judge & human-in-the-loop calibration, OpenTelemetry logging/tracing/metrics pillars, defense-in-depth guardrails, canary/shadow rollouts, and the Agent Quality Flywheel.",
+                  "key_visuals": [
+                    "Extracted figure: Outside-In evaluation hierarchy & Agent Quality Flywheel",
+                    "TikZ architecture: CI/CD Evaluation Gate -> Canary/Shadow Rollout -> Tracing/Metrics -> Regression Dataset",
+                    "TikZ comparison table: Offline Perturbation/Slicing vs. LLM-as-a-Judge vs. Online A/B & Canary"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "agent_quality",
+                      "chapter_or_section": "Full Whitepaper: Quality Pillars, Outside-In Eval & Observability",
+                      "page_start": 6,
+                      "page_end": 48,
+                      "synthesis_role": "Process vs. outcome judging, evaluators, logging/tracing/metrics, and quality flywheel"
+                    },
+                    {
+                      "book_slug": "prototype_production",
+                      "chapter_or_section": "Journey to Production, Operations & AgentOps Lifecycle",
+                      "page_start": 6,
+                      "page_end": 26,
+                      "synthesis_role": "CI/CD quality gates, canary/blue-green rollouts, and production feedback loops"
+                    },
+                    {
+                      "book_slug": "prototype_production",
+                      "chapter_or_section": "Putting It All Together: The AgentOps Lifecycle",
+                      "page_start": 36,
+                      "page_end": 39,
+                      "synthesis_role": "End-to-end operational lifecycle synthesis"
+                    },
+                    {
+                      "book_slug": "practical_guide_building_agents",
+                      "chapter_or_section": "Guardrails & Human Intervention",
+                      "page_start": 24,
+                      "page_end": 31,
+                      "synthesis_role": "Layered classifier, relevance, safety, PII, and tool-risk guardrails"
+                    },
+                    {
+                      "book_slug": "reinforcement_learning_from_human_feedback",
+                      "chapter_or_section": "Ch. 15 Evaluation & Appendix Practical Issues",
+                      "page_start": 193,
+                      "page_end": 202,
+                      "synthesis_role": "Evaluation variance, prompt sensitivity, and benchmark contamination"
+                    },
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapter_or_section": "Sec. 6.2 Offline Evaluation & Ch. 11 Responsible AI",
+                      "page_start": 198,
+                      "page_end": 207,
+                      "synthesis_role": "Slicing, perturbation tests, and baseline benchmarking"
+                    },
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapter_or_section": "Ch. 11 Responsible AI",
+                      "page_start": 359,
+                      "page_end": 372,
+                      "synthesis_role": "Fairness, model cards, and production accountability"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "03_recommender_systems_and_ranking",
+          "title": "Recommender Systems, Collaborative Filtering & Neural Ranking",
+          "dir_path": "monographs/07_agentic_ai_and_ml_systems/03_recommender_systems_and_ranking",
+          "sub_topics": [
+            {
+              "id": "01_collaborative_filtering_and_matrix_factorization",
+              "title": "Collaborative Filtering, Matrix Factorization & Implicit Feedback Ranking",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/03_recommender_systems_and_ranking/01_collaborative_filtering_and_matrix_factorization",
+              "leaves": [
+                {
+                  "id": "collaborative_filtering_matrix_factorization_and_bpr",
+                  "title": "Collaborative Filtering, Matrix Factorization (ALS/SGD), AutoRec & Bayesian Personalized Ranking (BPR)",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/03_recommender_systems_and_ranking/01_collaborative_filtering_and_matrix_factorization/collaborative_filtering_matrix_factorization_and_bpr.tex",
+                  "description": "Explicit vs. implicit feedback, neighborhood user-user/item-item CF, biased SVD matrix completion via ALS and SGD, weighted implicit ALS, AutoRec, and pairwise Bayesian Personalized Ranking (BPR) with negative sampling.",
+                  "key_visuals": [
+                    "Sparse user-item bipartite graph & low-rank completion",
+                    "Pointwise vs Pairwise BPR vs Listwise ranking"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapters": "Ch. 22",
+                      "pages": "pp. 771-786"
+                    },
+                    {
+                      "book_slug": "machine_learning_co_ban_tiep_vu",
+                      "chapters": "Ch. 17-19",
+                      "pages": "pp. 225-268"
+                    },
+                    {
+                      "book_slug": "dive_into_deep_learning_d2l",
+                      "chapters": "Ch. 21",
+                      "pages": "pp. 933-936"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "02_deep_ctr_retrieval_and_ranking_systems",
+              "title": "Deep CTR Models, Two-Tower Retrieval & Production Ranking Pipelines",
+              "dir_path": "monographs/07_agentic_ai_and_ml_systems/03_recommender_systems_and_ranking/02_deep_ctr_retrieval_and_ranking_systems",
+              "leaves": [
+                {
+                  "id": "deep_recommender_systems_fm_deepfm_and_two_tower",
+                  "title": "Factorization Machines, DeepFM, NeuMF, Two-Tower Retrieval & Multi-Stage Ranking",
+                  "tex_path": "monographs/07_agentic_ai_and_ml_systems/03_recommender_systems_and_ranking/02_deep_ctr_retrieval_and_ranking_systems/deep_recommender_systems_fm_deepfm_and_two_tower.tex",
+                  "description": "Linear-time O(kd) Factorization Machines, Wide & Deep / DeepFM feature interactions, Neural Collaborative Filtering (NeuMF), sequential recommendation, Two-Tower ANN candidate generation, multi-stage funnel (Retrieval -> Scoring -> Reranking), cold-start, position bias, and offline/online metrics (NDCG@K, MAP, Recall@K).",
+                  "key_visuals": [
+                    "Multi-stage Recommender Funnel (10^7 -> 10^3 -> 10^1)",
+                    "DeepFM & Two-Tower architecture"
+                  ],
+                  "sources": [
+                    {
+                      "book_slug": "dive_into_deep_learning_d2l",
+                      "chapters": "Ch. 21",
+                      "pages": "pp. 933-936"
+                    },
+                    {
+                      "book_slug": "probabilisticml_kevinmurphy_introduction",
+                      "chapters": "Ch. 22",
+                      "pages": "pp. 775-786"
+                    },
+                    {
+                      "book_slug": "chip_huyen_designing_machine_learning_systems",
+                      "chapters": "Ch. 4, 6, 8",
+                      "pages": "pp. 111-113, 152-174, 293"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

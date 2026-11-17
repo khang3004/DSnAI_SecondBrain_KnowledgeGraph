@@ -1,0 +1,211 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\csbegin{2}{Supervised Learning \& Generalization}{CART Decision Trees, Bagging, Random Forests, AdaBoost \& GBDT}
+  {CART cuts axis-aligned boxes; Bagging \& RF average parallel trees to cut $\Var$; Boosting adds sequential trees on $(-g_i, h_i)$ to cut $\mathrm{Bias}$}
+
+% =============================================================================
+%                                  PAGE 1 : MINDMAP
+% =============================================================================
+\begin{tikzpicture}
+
+\csroot{Tree Ensembles\\ \footnotesize\mdseries CART $\cdot$ RF $\cdot$ GBDT}{%
+  \begin{tikzpicture}[scale=0.58]
+    % Left: 2D CART partition box
+    \begin{scope}[xshift=-1.65cm, yshift=-0.75cm]
+      \fill[csE!18] (0,0) rectangle (1.0,1.5);
+      \fill[csD!18] (1.0,0) rectangle (1.9,0.85);
+      \fill[csA!18] (1.0,0.85) rectangle (1.9,1.5);
+      \draw[csDom, thick] (0,0) rectangle (1.9,1.5);
+      \draw[csA, very thick] (1.0,0)--(1.0,1.5);
+      \draw[csD, very thick] (1.0,0.85)--(1.9,0.85);
+      \node[font=\tiny, csDom] at (0.95,-0.32) {CART $R_{jm}$};
+    \end{scope}
+    % Right: Parallel RF vs Sequential GBDT
+    \begin{scope}[xshift=1.40cm]
+      \node[draw=csD, fill=csD!12, rounded corners=2pt, font=\tiny, inner sep=2pt] (rf) at (0,0.45) {RF: $\frac{1}{B}\sum F_b$ ($\Var\downarrow$)};
+      \node[draw=csB, fill=csB!12, rounded corners=2pt, font=\tiny, inner sep=2pt] (gb) at (0,-0.45) {GBDT: $+\nu F_m$ ($\mathrm{Bias}\downarrow$)};
+    \end{scope}
+  \end{tikzpicture}}
+
+\csbranch{1}{A}{1\;\; WHAT $-$ CART Axis-Aligned Partitioning}{%
+  \begin{minipage}[t]{0.60\linewidth}
+    \csfm{F_m(\vecb x)=\sum_{j=1}^{J_m}w_{jm}\,\mathbb I(\vecb x\in R_{jm})}
+    \begin{csbul}
+      \item Greedy: $\argmin_{d,t}\big[\frac{|\mathcal D_L|}{|\mathcal D_i|}c(\mathcal D_L)+\frac{|\mathcal D_R|}{|\mathcal D_i|}c(\mathcal D_R)\big]$
+      \item \textbf{Reg.:} $c(\mathcal D_i)=\frac{1}{|\mathcal D_i|}\sum(y_n-\bar y_i)^2$, leaf $\bar y_i$
+      \item \textbf{Classif.:} Gini $1-\sum\hat\pi_{ic}^2$; Entr.\ $-\sum\hat\pi_{ic}\log\hat\pi_{ic}$
+      \item \textbf{Pruning:} $R_\alpha(T)=R(T)+\alpha|T|$
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\linewidth}\centering\vspace{4pt}
+    \begin{tikzpicture}[scale=0.48, every node/.style={font=\tiny}]
+      \node[circle, draw=csA, fill=csA!15, inner sep=1.5pt] (r) at (0,1.6) {$x_1\!\le\!t_1$};
+      \node[rectangle, draw=csDom, fill=csDom!10, inner sep=2pt] (l1) at (-1.1,0.5) {$w_1$};
+      \node[circle, draw=csB, fill=csB!15, inner sep=1.5pt] (n2) at (1.1,0.5) {$x_2\!\le\!t_2$};
+      \node[rectangle, draw=csDom, fill=csDom!10, inner sep=2pt] (l2) at (0.4,-0.6) {$w_2$};
+      \node[rectangle, draw=csDom, fill=csDom!10, inner sep=2pt] (l3) at (1.8,-0.6) {$w_3$};
+      \draw[->] (r)--(l1); \draw[->] (r)--(n2);
+      \draw[->] (n2)--(l2); \draw[->] (n2)--(l3);
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csbranch{2}{B}{2\;\; BAGGING vs RANDOM FORESTS $-$ Variance Floor}{%
+  \csfm{\Var\!\left(\frac{1}{B}\sum_{b=1}^B F_b(\vecb x)\right)=\rho\sigma^2+\frac{1-\rho}{B}\sigma^2\xrightarrow{B\to\infty}\rho\sigma^2}
+  \begin{csbul}
+    \item \textbf{Bootstrap OOB:} $\Prob(i\notin\mathcal D^{(b)})=(1-\frac{1}{N})^N\to e^{-1}\approx 36.8\%$ free validation
+    \item \textbf{Why Bagging plateaus:} dominant features split near root in every tree $\Rightarrow$ high correlation $\rho$
+    \item \textbf{Random Forest decorrelation:} sample $m$ features per node ($m=\lfloor\sqrt D\rfloor$ classif., $\lfloor D/3\rfloor$ reg.) $\Rightarrow$ slashes $\rho\sigma^2$ floor!
+  \end{csbul}}
+
+\csbranch{3}{C}{3\;\; KEY THEOREM $-$ 2nd-Order GBDT (XGBoost/LightGBM)}{%
+  \csfm{\tilde{\mathcal L}^{(m)}=\sum_{j=1}^J\!\left[G_{jm}w_j+\frac{1}{2}(H_{jm}+\lambda)w_j^2\right]+\gamma J}
+  \begin{csbul}
+    \item $G_{jm}=\sum_{i\in I_j}\partial_f\ell(y_i,f_{m-1})$,\; $H_{jm}=\sum_{i\in I_j}\partial_f^2\ell(y_i,f_{m-1})\ge 0$
+    \item \textbf{Newton Leaf Weight:} $w_j^*=-\frac{G_{jm}}{H_{jm}+\lambda}$ (curvature preconditioned)
+    \item \textbf{Exact Split Gain:}
+      \csfm{\mathrm{Gain}=\tfrac{1}{2}\!\left[\frac{G_L^2}{H_L+\lambda}+\frac{G_R^2}{H_R+\lambda}-\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right]-\gamma}
+  \end{csbul}}
+
+\csbranch{4}{D}{4\;\; CONNECTIONS $-$ AdaBoost \& Functional Gradient}{%
+  \begin{csbul}
+    \item \textbf{AdaBoost.M1} = forward stagewise additive modeling on exp.\ loss $e^{-\tilde yf}$:
+      \csfm{\beta_m=\tfrac{1}{2}\log\frac{1-\mathrm{err}_m}{\mathrm{err}_m},\quad \omega_{i,m+1}\propto\omega_{i,m}e^{2\beta_m\mathbb I(\tilde y_i\ne F_m(\vecb x_i))}}
+    \item \textbf{1st-Order GBM:} fits tree $F_m$ to pseudo-residuals $r_{im}=-\partial_f\ell(y_i,f_{m-1}(\vecb x_i))$, updates $f_m=f_{m-1}+\nu F_m$
+    \item \textbf{Scale Invariance:} monotone feature transforms $x_d\mapsto\psi(x_d)$ never change split thresholds
+  \end{csbul}}
+
+\csbranch{5}{E}{5\;\; COST $-$ Exact Sorting vs Histogram Binning}{%
+  \renewcommand{\arraystretch}{1.16}\scriptsize
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{2.95cm}>{\raggedright\arraybackslash}p{1.05cm}>{\raggedright\arraybackslash}p{1.4cm}@{}}
+    \textbf{\textcolor{csE}{Method}} & \textbf{\textcolor{csE}{Train Time}} & \textbf{\textcolor{csE}{Parallel}} & \textbf{\textcolor{csE}{Target}}\\ \hline
+    Single CART & $\mathcal O(DN\log N)$ & Feature & High $\Var$\\
+    Random Forest & $\mathcal O(BmN\log N)$ & Trees $B$ & $\Var\downarrow,\;\rho\downarrow$\\
+    AdaBoost.M1 & $\mathcal O(MDN\log N)$ & Seq.\ $M$ & $\mathrm{Bias}\downarrow$ (exp)\\
+    Hist-GBDT & $\mathcal O(M(ND_{\mathrm{sub}}+2^dK_{\mathrm{bin}}D_{\mathrm{sub}}))$ & Bins & $\mathrm{Bias}\downarrow$ + reg.\\
+  \end{tabular}\par\vspace{2pt}
+  \small\textbf{Histogram GBDT:} $K_{\mathrm{bin}}\approx 256$ bins turn $\mathcal O(N\log N)$ sort into $\mathcal O(K_{\mathrm{bin}})$ scan.}
+
+\csbranch{6}{F}{6\;\; USE-CASES $-$ When Trees Rule Tabular ML}{%
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{csbul}
+      \item \textbf{Heterogeneous tabular data:} Hist-GBDT (XGBoost / LightGBM)
+      \item \textbf{Noisy labels / zero-tuning baseline:} Random Forest ($B\uparrow$ safe)
+      \item \textbf{Low-latency CPU serving:} shallow boosted trees ($d_{\max}\in[4,8]$)
+    \end{csbul}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.39\linewidth}\centering\vspace{2pt}
+    \begin{tikzpicture}[scale=0.45, every node/.style={font=\tiny}]
+      \draw[gray!50, ->] (0,0)--(3.4,0) node[right] {$x$};
+      \draw[gray!50, ->] (0,0)--(0,2.2) node[above] {$y$};
+      \draw[gray, dashed] (0.2,0.2)--(3.2,2.0);
+      \draw[csA, very thick] (0.0,0.4)--(0.8,0.4)--(0.8,0.9)--(1.6,0.9)--(1.6,1.4)--(2.4,1.4)--(2.4,1.4)--(3.3,1.4);
+      \draw[csA, thick, dotted] (2.4,0)--(2.4,2.0);
+      \node[csA] at (2.85,0.8) {flat clamp!};
+    \end{tikzpicture}
+  \end{minipage}}
+
+\csnote{7}{G}{HOOK $-$ say it in one breath}{%
+  \centering\normalsize\sffamily\bfseries\textcolor{csG}{Random Forests Average Deep Independent Trees ($\Var\downarrow$); GBDTs Add Shallow Residual Trees ($\mathrm{Bias}\downarrow$)}\\[2pt]
+  \footnotesize\mdseries \textbf{Feature subsampling breaks the $\rho\sigma^2$ correlation ceiling; 2nd-order $(g_i,h_i)$ histograms make boosting Newton-fast.}}
+
+\csnote{8}{A}{TRAPS $-$ before you trust the output}{%
+  \begin{csbul}
+    \item \textbf{Zero extrapolation:} leaf constants $w_{jm}$ clamp flat outside training $[x_{\min},x_{\max}]$
+    \item \textbf{Unshrunk boosting ($\nu=1$):} $M\to\infty$ overfits noise (esp.\ AdaBoost on outliers)
+    \item \textbf{High-card.\ / OOB:} high-$K$ splits overfit; OOB leaks groups
+  \end{csbul}}
+
+\end{tikzpicture}
+
+\csfoot{Companion of the monograph chapter \emph{Decision Trees, Bagging, Random Forests \& Gradient Boosting}\;---\;Domain 02 $\cdot$ Supervised Learning \& Generalization}
+
+% =============================================================================
+%                               PAGE 2 : CHEATSHEET
+% =============================================================================
+\csnextpage
+
+\begin{cscolumns}
+\begin{cscard}{csA}{FORMULAS TO REMEMBER}
+  \begin{csbul}
+    \item CART Impurity Criteria ($\hat\pi_{ic}$ class proportions):\csfm{G_i=1-\sum_{c=1}^C\hat\pi_{ic}^2,\qquad H_i=-\sum_{c=1}^C\hat\pi_{ic}\log\hat\pi_{ic}}
+    \item Bagging / RF Variance Decomposition:\csfm{\Var(\bar F_B)=\rho\sigma^2+\frac{1-\rho}{B}\sigma^2,\quad \Prob(i\notin\mathcal D^{(b)})\to e^{-1}\approx 0.368}
+    \item AdaBoost.M1 Weight \& Step ($\tilde y_i\in\{\pm 1\}$):\csfm{\beta_m=\frac{1}{2}\log\frac{1-\mathrm{err}_m}{\mathrm{err}_m},\quad \omega_{i,m+1}=\omega_{i,m}e^{2\beta_m\mathbb I(\tilde y_i\ne F_m(\vecb x_i))}e^{-\beta_m}}
+    \item XGBoost Optimal Leaf \& Split Gain:\csfm{w_j^*=-\frac{G_{jm}}{H_{jm}+\lambda},\;\; \mathrm{Gain}=\frac{1}{2}\!\left[\frac{G_L^2}{H_L+\lambda}+\frac{G_R^2}{H_R+\lambda}-\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right]-\gamma}
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csB}{HISTOGRAM GBDT RECIPE (XGBOOST / LIGHTGBM)}
+  \begin{enumerate}[leftmargin=1.2em, itemsep=1pt, topsep=1pt, parsep=0pt]
+    \item Bin features into $K_{\mathrm{bin}}\approx 256$ quantiles; init $f_0=\argmin_c\sum_i\ell(y_i,c)$
+    \item For $m=1\dots M$: compute $g_{im}=\partial_f\ell(y_i,f_{m-1})$, $h_{im}=\partial_f^2\ell(y_i,f_{m-1})$
+    \item Accumulate bin histograms $(G_{d,k},H_{d,k})$ and scan prefix sums for max $\mathrm{Gain}>0$
+    \item Set leaf weights $w_j^*=-G_{jm}/(H_{jm}+\lambda)$ and update $f_m=f_{m-1}+\nu F_m$
+  \end{enumerate}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csC}{DECISION GUIDE}
+  \renewcommand{\arraystretch}{1.22}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+    \textbf{If you have\ldots} & \textbf{use\ldots}\\ \hline
+    structured tabular data, max accuracy & Hist-GBDT ($\nu\le 0.05$, early stopping)\\
+    heavy label noise / outliers & Random Forest or Huber/Log-loss GBDT (avoid AdaBoost)\\
+    trending time-series target & Detrend with linear model before fitting trees\\
+    high-cardinality categoricals & Fisher-sorted histograms or out-of-fold target encoding\\
+    need well-calibrated $p(y\mid\vecb x)$ & GBDT log-loss + isotonic / Platt calibration\\
+  \end{tabular}
+\end{cscard}
+
+\begin{cscard}{csE}{ENSEMBLE SCALING CHEAT-LINE}
+  \begin{csbul}
+    \item \textbf{RF feature subsampling:} $m=\lfloor\sqrt D\rfloor$ (classif.) or $\lfloor D/3\rfloor$ (reg.)
+    \item \textbf{RF tree depth:} grow deep unpruned trees ($\mathrm{Bias}\approx 0$, averaging kills $\Var$)
+    \item \textbf{GBDT tree depth:} shallow $d_{\max}\in[3,8]$ ($2^d$-way feature interactions)
+    \item \textbf{Curvature damping:} $\lambda$ in $H_{jm}+\lambda$ prevents step blow-up when $p_i(1-p_i)\to 0$
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csF}{VARIANCE FLOOR $\rho\sigma^2$ vs.\ ENSEMBLE SIZE $B$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[width=0.96\linewidth, height=5.0cm, xmin=1, xmax=80, ymin=0, ymax=1.05,
+      xlabel={Number of Trees $B$}, ylabel={Normalized Variance $\Var(\bar F_B)/\sigma^2$},
+      label style={font=\scriptsize}, tick label style={font=\scriptsize},
+      grid=both, grid style={line width=.1pt, draw=gray!25},
+      legend pos=north east, legend style={font=\tiny, draw=none, fill=white, fill opacity=0.85}]
+      \addplot[csA, dotted, very thick, domain=1:80, samples=60] {0.65+(1-0.65)/x};
+      \addlegendentry{Bagging ($\rho=0.65$)}
+      \addplot[csB, dashed, very thick, domain=1:80, samples=60] {0.35+(1-0.35)/x};
+      \addlegendentry{Bagging ($\rho=0.35$)}
+      \addplot[csD, very thick, domain=1:80, samples=60] {0.12+(1-0.12)/x};
+      \addlegendentry{Random Forest ($\rho=0.12$)}
+      \addplot[csE, thick, domain=1:80, samples=60] {1/x};
+      \addlegendentry{Independent ($\rho=0$)}
+    \end{axis}
+  \end{tikzpicture}
+\end{cscard}
+\columnbreak
+
+\begin{cscard}{csG}{PITFALL CHECKLIST}
+  \begin{csbul}
+    \item \textbf{Staircase extrapolation failure:} trees predict piecewise constants $w_{jm}$ and cannot extrapolate trends outside the training bounding box
+    \item \textbf{In-sample target-encoding leakage:} computing category mean targets on full training data leaks $y_i$ into splits; use strictly out-of-fold or ordered statistics
+    \item \textbf{Unshrunk boosting ($\nu=1, M\to\infty$):} unlike RF, adding more boosted trees eventually memorizes noise; always pair $\nu\in[0.01,0.1]$ with validation early stopping
+    \item \textbf{Trusting OOB error under group/temporal correlation:} bootstrap samples leak correlated rows across in-bag and OOB sets; use group/time-blocked CV
+    \item \textbf{Impurity feature-importance bias:} raw Gini/gain importance inflates continuous and high-cardinality features; verify with permutation importance or SHAP
+  \end{csbul}
+\end{cscard}
+
+\begin{cscard}{csD}{10-SECOND VISUAL RECAP}
+  \sffamily\footnotesize
+  \textbf{Single CART} partitions $\R^D$ into axis-aligned boxes (zero scaling needed, but high variance).
+  \textbf{Bagging} averages $B$ bootstrap trees down to the correlation floor $\rho\sigma^2$, and \textbf{Random Forests} lower $\rho$ by subsampling $m$ features per split.
+  \textbf{GBDT} starts with shallow high-bias trees and sequentially takes Newton steps $-G_{jm}/(H_{jm}+\lambda)$ in function space.
+\end{cscard}
+\end{cscolumns}
+
+\csend
+
+\end{document}

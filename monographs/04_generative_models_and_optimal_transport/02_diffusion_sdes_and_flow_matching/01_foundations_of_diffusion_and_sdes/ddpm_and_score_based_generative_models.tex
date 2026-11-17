@@ -1,0 +1,333 @@
+\documentclass[../../../../master.tex]{subfiles}
+
+\begin{document}
+
+\monographleaf{Domain 04: Generative Models \& Optimal Transport}{Diffusion Models, Score SDEs, Flow Matching \& Fast Samplers}{DDPM, NCSN, Score SDEs \& Flow Matching}{Denoising Diffusion Probabilistic Models (DDPM) \& Noise-Conditional Score Networks}{Chan Sec.~2--3, Diffusion Principles Sec.~B.1.2/B.2/B.5, Prince Ch.~18, Bishop Ch.~20, Murphy Adv. Sec.~25.1--25.3}
+
+\section{Problem Formulation \& Unified Notation}\label{sec:ddpm:formulation}
+
+Generative modeling seeks to sample from an unknown, potentially high-dimensional data distribution $p_{\mathrm{data}}(\vecb{x}_0)$ on $\R^D$ given an i.i.d.\ training set $\{\vecb{x}_0^{(n)}\}_{n=1}^N$. Unlike Variational Autoencoders (VAEs) that compress data into a low-dimensional latent bottleneck or Energy-Based Models (EBMs) that suffer from an intractable normalizing constant $Z_\theta = \int \exp(-E_\theta(\vecb{x}))\,\mathrm{d}\vecb{x}$, diffusion and score-based generative models construct a gradual, reversible bridge between $p_{\mathrm{data}}(\vecb{x}_0)$ and a tractable isotropic Gaussian prior $\Normal(\zeros, \eye)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.1, p.~867}.
+
+Two foundational discrete-time paradigms independently converged on this principle:
+{\sloppy
+\begin{enumerate}
+  \item \textbf{Denoising Diffusion Probabilistic Models (DDPMs)} \bookcite{diffusionmodels_stanleychan}{Sec.~2, p.~10}: Formulated as a hierarchical VAE of fixed latent dimension $D$ with a non-learned Markovian Gaussian encoder
+  \begin{equation}\label{eq:ddpm:forward_chain}
+    q(\vecb{x}_{1:T} \mid \vecb{x}_0) = \prod_{t=1}^T q(\vecb{x}_t \mid \vecb{x}_{t-1}), \qquad q(\vecb{x}_t \mid \vecb{x}_{t-1}) = \Normal\!\left(\vecb{x}_t;\, \sqrt{1 - \beta_t}\,\vecb{x}_{t-1},\, \beta_t \eye\right),
+  \end{equation}
+  where $\{\beta_t \in (0, 1)\}_{t=1}^T$ is a variance schedule chosen so that $q(\vecb{x}_T \mid \vecb{x}_0) \approx \Normal(\zeros, \eye)$. Generation inverts this chain via a learned Gaussian Markov decoder:
+  \begin{equation}\label{eq:ddpm:reverse_chain}
+    p_\theta(\vecb{x}_{0:T}) = p(\vecb{x}_T)\prod_{t=1}^T p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t), \qquad p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t) = \Normal\!\left(\vecb{x}_{t-1};\, \vecb{\mu}_\theta(\vecb{x}_t, t),\, \Sigma_\theta(\vecb{x}_t, t)\right),
+  \end{equation}
+  with $p(\vecb{x}_T) = \Normal(\zeros, \eye)$. Detailed discrete-time derivations appear in \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.2, p.~867}, \bookcite{understandingdl_simonprince}{Sec.~18.3, p.~355}, and \bookcite{deep_learning_foundations_concepts}{Sec.~20.2, p.~585}.
+  \item \textbf{Noise-Conditional Score Networks (NCSNs):} Rather than specifying a normalized density, NCSNs estimate the Stein score $\grad_{\vecb{x}} \log q_{\sigma_i}(\vecb{x})$ of data perturbed by a geometric sequence of noise scales $\sigma_1 > \sigma_2 > \dots > \sigma_L > 0$,
+  \begin{equation}\label{eq:ddpm:ncsn_kernel}
+    q_{\sigma_i}(\tilde{\vecb{x}} \mid \vecb{x}_0) = \Normal(\tilde{\vecb{x}};\, \vecb{x}_0, \sigma_i^2 \eye), \qquad q_{\sigma_i}(\tilde{\vecb{x}}) = \int p_{\mathrm{data}}(\vecb{x}_0)\, q_{\sigma_i}(\tilde{\vecb{x}} \mid \vecb{x}_0)\,\mathrm{d}\vecb{x}_0,
+  \end{equation}
+  using a single noise-conditioned network $\vecb{s}_\theta(\tilde{\vecb{x}}, \sigma_i) \approx \grad_{\tilde{\vecb{x}}} \log q_{\sigma_i}(\tilde{\vecb{x}})$ trained via multi-scale denoising score matching and sampled via Annealed Langevin Dynamics (ALD) \bookcite{theprinciple_diffusion_models}{Sec.~3.4, p.~80} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.3.2, p.~876} \bookcite{deep_learning_foundations_concepts}{Sec.~20.3.3, p.~598}.
+\end{enumerate}
+\par}
+
+\begin{crossbook}[Cross-Book Notation \& Pedagogical Reconciliation]
+\label{tab:ddpm:notation}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Concept} & \textbf{Chan / Murphy Adv.} & \textbf{Prince / Bishop} & \textbf{Diffusion Principles} \\
+\midrule
+Clean \& latent states &
+  $\vecb{x}_0 \in \R^D$ (data), $\vecb{x}_1,\dots,\vecb{x}_T$ (latents) &
+  $\vecb{x}$ (data), $\vecb{z}_1,\dots,\vecb{z}_T$ (latents) &
+  $\vecb{x}_0$ (data), $\vecb{x}_1,\dots,\vecb{x}_L$ (Sec.~2.2); $\vecb{x}_t$ (Sec.~6.2) \\
+\addlinespace[3pt]
+Step-wise \& cumulative signal &
+  $\alpha_t = 1-\beta_t$, $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$ &
+  $\beta_t$, cumulative $\alpha_t = \prod_{s=1}^t (1-\beta_s)$ &
+  Sec.~2.2: $\sqrt{\alpha_i}=\sqrt{1-\beta_i^2}$, $\bar{\alpha}_i=\prod_{s=1}^i \sqrt{\alpha_s}$; Sec.~6.2: $\vecb{x}_t=\alpha_t\vecb{x}_0+\sigma_t\boldsymbol{\epsilon}$ \\
+\addlinespace[3pt]
+Decoder parameters &
+  $\theta$ in $p_\theta(\vecb{x}_{t-1}\mid\vecb{x}_t)$ &
+  $\phi_t$ (Prince), $\vecb{w}$ (Bishop) &
+  $\phi$ in $p_\phi(\vecb{x}_{i-1}\mid\vecb{x}_i)$ \\
+\addlinespace[3pt]
+Noise / score predictor &
+  $\boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)$, $\vecb{s}_\theta(\tilde{\vecb{x}}, \sigma_t)$ &
+  $\vecb{g}_t[\vecb{z}_t, \phi_t]$ (Prince), $\vecb{s}(\vecb{z}, \vecb{w}, \sigma_i^2)$ (Bishop) &
+  $\boldsymbol{\epsilon}_\phi(\vecb{x}_t, t)$, $\vecb{x}_\phi(\vecb{x}_t, t)$, $\vecb{s}_\phi(\vecb{x}_t, t)$, $\vecb{v}_\phi(\vecb{x}_t, t)$ \\
+\bottomrule
+\end{tabularx}
+\vspace{4pt}
+\footnotesize\emph{Unified Convention Adopted Here:} We adopt the standard DDPM notation $\vecb{x}_0, \vecb{x}_1, \dots, \vecb{x}_T$, $\alpha_t \coloneqq 1 - \beta_t$, and $\bar{\alpha}_t \coloneqq \prod_{s=1}^t \alpha_s$ \bookcite{diffusionmodels_stanleychan}{Sec.~2.2, p.~14} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.2.1, p.~869}. For unified continuous-time parameterizations, we write the general affine perturbation $\vecb{x}_t = \alpha_t^{\mathrm{aff}} \vecb{x}_0 + \sigma_t \boldsymbol{\epsilon}$ (where VP-DDPM corresponds to $\alpha_t^{\mathrm{aff}} = \sqrt{\bar{\alpha}_t}$ and $\sigma_t = \sqrt{1 - \bar{\alpha}_t}$) \bookcite{theprinciple_diffusion_models}{Sec.~6.2.1, p.~170}.
+\end{crossbook}
+
+\section{Core Mathematical Derivations \& Theorems}\label{sec:ddpm:derivations}
+
+\begin{coremath}[Closed-Form Forward Marginal \& Tractable Reverse Posterior]
+\label{thm:ddpm:forward_reverse}
+Let $\alpha_t = 1 - \beta_t$ and $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. Under the forward Markov chain \eqref{eq:ddpm:forward_chain}:
+\begin{enumerate}
+  \item \textbf{Closed-Form Forward Marginal:} For any $t \in \{1,\dots,T\}$,
+  \begin{equation}\label{eq:ddpm:marginal_q}
+    q(\vecb{x}_t \mid \vecb{x}_0) = \Normal\!\left(\vecb{x}_t;\, \sqrt{\bar{\alpha}_t}\,\vecb{x}_0,\, (1 - \bar{\alpha}_t)\eye\right), \qquad \vecb{x}_t = \sqrt{\bar{\alpha}_t}\,\vecb{x}_0 + \sqrt{1 - \bar{\alpha}_t}\,\boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \Normal(\zeros, \eye).
+  \end{equation}
+  \emph{Proof:} By induction. For $t=1$, $q(\vecb{x}_1 \mid \vecb{x}_0) = \Normal(\sqrt{\alpha_1}\vecb{x}_0, (1-\alpha_1)\eye)$ holds by definition. Assuming \eqref{eq:ddpm:marginal_q} holds at $t-1$, we write $\vecb{x}_{t-1} = \sqrt{\bar{\alpha}_{t-1}}\vecb{x}_0 + \sqrt{1-\bar{\alpha}_{t-1}}\boldsymbol{\epsilon}_{t-1}$ and $\vecb{x}_t = \sqrt{\alpha_t}\vecb{x}_{t-1} + \sqrt{1-\alpha_t}\boldsymbol{\epsilon}_t$ with independent $\boldsymbol{\epsilon}_{t-1}, \boldsymbol{\epsilon}_t \sim \Normal(\zeros, \eye)$. Substituting yields
+  \[
+    \vecb{x}_t = \sqrt{\alpha_t \bar{\alpha}_{t-1}}\,\vecb{x}_0 + \sqrt{\alpha_t(1 - \bar{\alpha}_{t-1})}\,\boldsymbol{\epsilon}_{t-1} + \sqrt{1-\alpha_t}\,\boldsymbol{\epsilon}_t.
+  \]
+  Since the sum of independent zero-mean Gaussians is Gaussian with variance $\alpha_t(1-\bar{\alpha}_{t-1}) + (1-\alpha_t) = 1 - \alpha_t\bar{\alpha}_{t-1} = 1 - \bar{\alpha}_t$, \eqref{eq:ddpm:marginal_q} follows \bookcite{diffusionmodels_stanleychan}{Sec.~2.3, p.~14} \bookcite{understandingdl_simonprince}{Sec.~18.2, p.~353}.
+
+  \item \textbf{Tractable Reverse Conditional Posterior:} Conditioning on $\vecb{x}_0$, the single-step reverse posterior is Gaussian:
+  \begin{equation}\label{eq:ddpm:reverse_posterior}
+    q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0) = \Normal\!\left(\vecb{x}_{t-1};\, \tilde{\boldsymbol{\mu}}_t(\vecb{x}_t, \vecb{x}_0),\, \tilde{\beta}_t \eye\right),
+  \end{equation}
+  where
+  \begin{equation}\label{eq:ddpm:posterior_params}
+    \tilde{\boldsymbol{\mu}}_t(\vecb{x}_t, \vecb{x}_0) = \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1 - \bar{\alpha}_t}\vecb{x}_0 + \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}\vecb{x}_t, \qquad \tilde{\beta}_t = \frac{1 - \bar{\alpha}_{t-1}}{1 - \bar{\alpha}_t}\beta_t.
+  \end{equation}
+  \emph{Proof:} By Bayes' rule and the Markov property $q(\vecb{x}_t \mid \vecb{x}_{t-1}, \vecb{x}_0) = q(\vecb{x}_t \mid \vecb{x}_{t-1})$,
+  \begin{align*}
+    q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0) &= \frac{q(\vecb{x}_t \mid \vecb{x}_{t-1})\,q(\vecb{x}_{t-1} \mid \vecb{x}_0)}{q(\vecb{x}_t \mid \vecb{x}_0)} \\
+    &\propto \exp\!\left(-\frac{1}{2}\left[\frac{\norm{\vecb{x}_t - \sqrt{\alpha_t}\vecb{x}_{t-1}}_2^2}{\beta_t} + \frac{\norm{\vecb{x}_{t-1} - \sqrt{\bar{\alpha}_{t-1}}\vecb{x}_0}_2^2}{1 - \bar{\alpha}_{t-1}}\right]\right).
+  \end{align*}
+  Expanding the quadratic form in $\vecb{x}_{t-1}$ gives precision $\tilde{\beta}_t^{-1} = \frac{\alpha_t}{\beta_t} + \frac{1}{1-\bar{\alpha}_{t-1}} = \frac{\alpha_t(1-\bar{\alpha}_{t-1}) + \beta_t}{\beta_t(1-\bar{\alpha}_{t-1})} = \frac{1 - \bar{\alpha}_t}{\beta_t(1-\bar{\alpha}_{t-1})}$, and linear term $\frac{\sqrt{\alpha_t}}{\beta_t}\vecb{x}_t + \frac{\sqrt{\bar{\alpha}_{t-1}}}{1-\bar{\alpha}_{t-1}}\vecb{x}_0$. Multiplying the linear term by $\tilde{\beta}_t$ recovers $\tilde{\boldsymbol{\mu}}_t(\vecb{x}_t, \vecb{x}_0)$ in \eqref{eq:ddpm:posterior_params} \bookcite{diffusionmodels_stanleychan}{Sec.~2.6, p.~22} \bookcite{understandingdl_simonprince}{Eq.~(18.15), p.~355}.
+\end{enumerate}
+\end{coremath}
+
+\begin{intuition}[Why Conditioning on $\vecb{x}_0$ Unlocks Tractability]
+While the marginal reverse transition $q(\vecb{x}_{t-1} \mid \vecb{x}_t) = \int q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0)\,q(\vecb{x}_0 \mid \vecb{x}_t)\,\mathrm{d}\vecb{x}_0$ is a complex multimodal mixture that depends on the unknown data distribution $p_{\mathrm{data}}(\vecb{x}_0)$, conditioning on $\vecb{x}_0$ pins down both endpoints of the Brownian bridge, making $q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0)$ a closed-form unimodal Gaussian \bookcite{understandingdl_simonprince}{Sec.~18.2, p.~355}. Crucially, as formalized in Theorem~2.2.1 of \bookcite{theprinciple_diffusion_models}{p.~47}, minimizing the expected conditional KL divergence $\E_{p_{\mathrm{data}}(\vecb{x}_0)q(\vecb{x}_t \mid \vecb{x}_0)}[\KL{q(\vecb{x}_{t-1}\mid\vecb{x}_t,\vecb{x}_0)}{p_\theta(\vecb{x}_{t-1}\mid\vecb{x}_t)}]$ shares the exact same gradient with respect to $\theta$ and the exact same unique minimizer $p_\theta^*(\vecb{x}_{t-1} \mid \vecb{x}_t) = q(\vecb{x}_{t-1} \mid \vecb{x}_t)$ as the intractable marginal KL divergence.
+\end{intuition}
+
+\begin{coremath}[Variational ELBO Decomposition \& Simplified $\boldsymbol{\epsilon}$-Objective]
+\label{thm:ddpm:elbo}
+Maximizing the marginal log-likelihood $\log p_\theta(\vecb{x}_0)$ is lower-bounded via Jensen's inequality by the Evidence Lower Bound (ELBO) $\mathcal{L}_{\mathrm{ELBO}}(\vecb{x}_0; \theta)$ \bookcite{deep_learning_foundations_concepts}{Sec.~20.2.2, p.~588} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.2.3, p.~870}:
+\begin{align}
+  -\log p_\theta(\vecb{x}_0) &\le \E_{q(\vecb{x}_{1:T} \mid \vecb{x}_0)}\!\left[-\log \frac{p_\theta(\vecb{x}_{0:T})}{q(\vecb{x}_{1:T} \mid \vecb{x}_0)}\right] \nonumber \\
+  &= \underbrace{\KL{q(\vecb{x}_T \mid \vecb{x}_0)}{p(\vecb{x}_T)}}_{\mathcal{L}_T \text{ (prior matching)}} - \underbrace{\E_{q(\vecb{x}_1 \mid \vecb{x}_0)}\!\left[\log p_\theta(\vecb{x}_0 \mid \vecb{x}_1)\right]}_{\mathcal{L}_0 \text{ (reconstruction)}} \nonumber \\
+  &\quad + \sum_{t=2}^T \underbrace{\E_{q(\vecb{x}_t \mid \vecb{x}_0)}\!\left[\KL{q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0)}{p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t)}\right]}_{\mathcal{L}_{t-1} \text{ (step-wise consistency)}}. \label{eq:ddpm:elbo_decomp}
+\end{align}
+\emph{Proof:} Factoring $q(\vecb{x}_{1:T} \mid \vecb{x}_0) = q(\vecb{x}_1 \mid \vecb{x}_0)\prod_{t=2}^T q(\vecb{x}_t \mid \vecb{x}_{t-1}, \vecb{x}_0)$ and substituting Bayes' rule $q(\vecb{x}_t \mid \vecb{x}_{t-1}, \vecb{x}_0) = \frac{q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0) q(\vecb{x}_t \mid \vecb{x}_0)}{q(\vecb{x}_{t-1} \mid \vecb{x}_0)}$ yields a telescoping product $\prod_{t=2}^T \frac{q(\vecb{x}_{t-1} \mid \vecb{x}_0)}{q(\vecb{x}_t \mid \vecb{x}_0)} = \frac{q(\vecb{x}_1 \mid \vecb{x}_0)}{q(\vecb{x}_T \mid \vecb{x}_0)}$. Canceling $q(\vecb{x}_1 \mid \vecb{x}_0)$ leaves $\log \frac{q(\vecb{x}_T \mid \vecb{x}_0)}{p(\vecb{x}_T)}$, which integrates to $\mathcal{L}_T$, while the remaining terms yield $\sum_{t=2}^T \mathcal{L}_{t-1} + \mathcal{L}_0$ \bookcite{diffusionmodels_stanleychan}{Sec.~2.5, pp.~19--20}.
+
+\textbf{Noise Reparameterization:} Fixing $\Sigma_\theta(\vecb{x}_t, t) = \sigma_t^2 \eye$ (typically $\sigma_t^2 = \beta_t$ or $\tilde{\beta}_t$), each Gaussian KL term $\mathcal{L}_{t-1}$ reduces to
+\begin{equation}\label{eq:ddpm:kl_mse}
+  \mathcal{L}_{t-1} = \E_{q(\vecb{x}_t \mid \vecb{x}_0)}\!\left[\frac{1}{2\sigma_t^2}\norm{\tilde{\boldsymbol{\mu}}_t(\vecb{x}_t, \vecb{x}_0) - \vecb{\mu}_\theta(\vecb{x}_t, t)}_2^2\right] + C_t.
+\end{equation}
+Inverting \eqref{eq:ddpm:marginal_q} as $\vecb{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}}(\vecb{x}_t - \sqrt{1 - \bar{\alpha}_t}\,\boldsymbol{\epsilon})$ and substituting into \eqref{eq:ddpm:posterior_params} gives
+\begin{equation}\label{eq:ddpm:mu_eps}
+  \tilde{\boldsymbol{\mu}}_t(\vecb{x}_t, \vecb{x}_0) = \frac{1}{\sqrt{\alpha_t}}\!\left(\vecb{x}_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}}\,\boldsymbol{\epsilon}\right).
+\end{equation}
+Parameterizing $\vecb{\mu}_\theta(\vecb{x}_t, t) = \frac{1}{\sqrt{\alpha_t}}\left(\vecb{x}_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}}\,\boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)\right)$ transforms $\mathcal{L}_{t-1}$ into a weighted noise-prediction loss, and dropping the time-dependent prefactor yields the unweighted Ho et al.\ objective \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Eq.~(25.24), p.~871} \bookcite{understandingdl_simonprince}{Eq.~(18.39), p.~362}:
+\begin{equation}\label{eq:ddpm:loss_simple}
+  \mathcal{L}_{\mathrm{simple}}(\theta) = \E_{t \sim \Uniform\{1,\dots,T\},\, \vecb{x}_0 \sim p_{\mathrm{data}},\, \boldsymbol{\epsilon} \sim \Normal(\zeros,\eye)}\!\left[\norm{\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta\!\left(\sqrt{\bar{\alpha}_t}\vecb{x}_0 + \sqrt{1 - \bar{\alpha}_t}\boldsymbol{\epsilon},\, t\right)}_2^2\right].
+\end{equation}
+\end{coremath}
+
+\begin{coremath}[Denoising Score Matching (Vincent's Theorem) \& Tweedie's Formula]
+\label{thm:ddpm:dsm_tweedie}
+To estimate the score $\grad_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}})$ without knowing $p_{\mathrm{data}}$, Explicit Score Matching minimizes $J_{\mathrm{ESM}}(\theta) = \frac{1}{2}\E_{q_\sigma(\tilde{\vecb{x}})}[\norm{\vecb{s}_\theta(\tilde{\vecb{x}}, \sigma) - \grad_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}})}_2^2]$, which is intractable. Denoising Score Matching (DSM) replaces the marginal score with the tractable conditional score $\grad_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}_0) = -\frac{\tilde{\vecb{x}} - \vecb{x}_0}{\sigma^2} = -\frac{\boldsymbol{\epsilon}}{\sigma}$:
+\begin{equation}\label{eq:ddpm:dsm}
+  J_{\mathrm{DSM}}(\theta; \sigma) = \frac{1}{2}\E_{p_{\mathrm{data}}(\vecb{x}_0)\, q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}_0)}\!\left[\norm{\vecb{s}_\theta(\tilde{\vecb{x}}, \sigma) - \grad_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}} \mid \vecb{x}_0)}_2^2\right] = J_{\mathrm{ESM}}(\theta; \sigma) + C,
+\end{equation}
+where $C$ is independent of $\theta$ \bookcite{diffusionmodels_stanleychan}{Eq.~(87), p.~37}.
+
+\emph{Proof:} Expanding $J_{\mathrm{ESM}}(\theta)$ leaves a cross-term $-\E_{q_\sigma(\tilde{\vecb{x}})}[\vecb{s}_\theta(\tilde{\vecb{x}})^\top \grad_{\tilde{\vecb{x}}} \log q_\sigma(\tilde{\vecb{x}})]$. Using $q_\sigma(\tilde{\vecb{x}})\grad_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}}) = \grad_{\tilde{\vecb{x}}} q_\sigma(\tilde{\vecb{x}}) = \int p_{\mathrm{data}}(\vecb{x}_0) \grad_{\tilde{\vecb{x}}} q_\sigma(\tilde{\vecb{x}}\mid\vecb{x}_0)\,\mathrm{d}\vecb{x}_0 = \int p_{\mathrm{data}}(\vecb{x}_0) q_\sigma(\tilde{\vecb{x}}\mid\vecb{x}_0) \grad_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}}\mid\vecb{x}_0)\,\mathrm{d}\vecb{x}_0$, this cross-term equals $-\E_{p_{\mathrm{data}}(\vecb{x}_0)q_\sigma(\tilde{\vecb{x}}\mid\vecb{x}_0)}[\vecb{s}_\theta(\tilde{\vecb{x}})^\top \grad_{\tilde{\vecb{x}}}\log q_\sigma(\tilde{\vecb{x}}\mid\vecb{x}_0)]$, matching $J_{\mathrm{DSM}}(\theta)$ up to $\theta$-independent variance constants \bookcite{diffusionmodels_stanleychan}{Sec.~3.3, pp.~37--38}.
+
+\textbf{Tweedie's Formula \& the DDPM--NCSN Bridge:} Under the forward kernel $\vecb{x}_t = \sqrt{\bar{\alpha}_t}\vecb{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}$ with $\sigma_t = \sqrt{1-\bar{\alpha}_t}$, the Bayes-optimal MMSE estimators $\boldsymbol{\epsilon}^*(\vecb{x}_t, t) = \E[\boldsymbol{\epsilon} \mid \vecb{x}_t]$ and $\vecb{x}_0^*(\vecb{x}_t, t) = \E[\vecb{x}_0 \mid \vecb{x}_t]$ satisfy Tweedie's identity \bookcite{theprinciple_diffusion_models}{Sec.~6.3, p.~179} \bookcite{deep_learning_foundations_concepts}{Eq.~(20.53), p.~597}:
+\begin{equation}\label{eq:ddpm:tweedie}
+  \grad_{\vecb{x}_t} \log q_t(\vecb{x}_t) = -\frac{1}{\sqrt{1 - \bar{\alpha}_t}}\,\E[\boldsymbol{\epsilon} \mid \vecb{x}_t] = \frac{\sqrt{\bar{\alpha}_t}\,\E[\vecb{x}_0 \mid \vecb{x}_t] - \vecb{x}_t}{1 - \bar{\alpha}_t}.
+\end{equation}
+Thus, training an $\boldsymbol{\epsilon}$-prediction DDPM is mathematically equivalent to multi-scale DSM with $\vecb{s}_\theta(\vecb{x}_t, t) \equiv -\frac{1}{\sqrt{1-\bar{\alpha}_t}}\boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)$ \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.3.3, p.~876}.
+\end{coremath}
+
+\begin{coremath}[Four-Way Parameterization Equivalence ($\vecb{x}_0, \boldsymbol{\epsilon}, \vecb{s}, \vecb{v}$)]
+\label{thm:ddpm:four_way}
+Consider any differentiable affine perturbation $\vecb{x}_t = \alpha_t^{\mathrm{aff}} \vecb{x}_0 + \sigma_t \boldsymbol{\epsilon}$ with $\sigma_t > 0$ and non-degenerate Jacobian $(\alpha_t^{\mathrm{aff}})'\sigma_t - \alpha_t^{\mathrm{aff}}\sigma_t' \neq 0$ \bookcite{theprinciple_diffusion_models}{Sec.~6.3.3, pp.~179--180}. Define the four oracle targets $\vecb{x}_0^* = \E[\vecb{x}_0 \mid \vecb{x}_t]$, $\boldsymbol{\epsilon}^* = \E[\boldsymbol{\epsilon} \mid \vecb{x}_t]$, $\vecb{s}^* = \grad_{\vecb{x}_t}\log p_t(\vecb{x}_t)$, and velocity $\vecb{v}^* = \E[(\alpha_t^{\mathrm{aff}})'\vecb{x}_0 + \sigma_t'\boldsymbol{\epsilon} \mid \vecb{x}_t]$. Under the algebraic head conversions
+\begin{equation}\label{eq:ddpm:head_conversions}
+  \vecb{s}_\theta \equiv -\frac{1}{\sigma_t}\boldsymbol{\epsilon}_\theta \equiv \frac{\alpha_t^{\mathrm{aff}}\vecb{x}_\theta - \vecb{x}_t}{\sigma_t^2} \equiv -\frac{\alpha_t^{\mathrm{aff}} \vecb{v}_\theta - (\alpha_t^{\mathrm{aff}})' \vecb{x}_t}{\sigma_t\!\left((\alpha_t^{\mathrm{aff}})'\sigma_t - \alpha_t^{\mathrm{aff}}\sigma_t'\right)},
+\end{equation}
+all four per-sample squared regression losses are identical up to known time-dependent weights:
+\begin{equation}\label{eq:ddpm:loss_equiv}
+  \norm{\vecb{s}_\theta - \vecb{s}^*}_2^2 = \frac{1}{\sigma_t^2}\norm{\boldsymbol{\epsilon}_\theta - \boldsymbol{\epsilon}^*}_2^2 = \frac{(\alpha_t^{\mathrm{aff}})^2}{\sigma_t^4}\norm{\vecb{x}_\theta - \vecb{x}_0^*}_2^2 = \frac{(\alpha_t^{\mathrm{aff}})^2}{\sigma_t^2\left((\alpha_t^{\mathrm{aff}})'\sigma_t - \alpha_t^{\mathrm{aff}}\sigma_t'\right)^2}\norm{\vecb{v}_\theta - \vecb{v}^*}_2^2.
+\end{equation}
+\end{coremath}
+
+\section{Algorithmic Implementation \& Comparative Synthesis}\label{sec:ddpm:algorithms}
+
+Both DDPM and NCSN parameterize the denoiser with a single time- or noise-conditioned U-Net augmented by sinusoidal positional embeddings \bookcite{understandingdl_simonprince}{Sec.~18.6.1, p.~363} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.2.5, p.~873}. Algorithm~\ref{alg:ddpm:train_sample} details DDPM training and ancestral sampling \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Algs.~25.1--25.2, pp.~871--872}, whereas Algorithm~\ref{alg:ddpm:ald} details NCSN sampling via Annealed Langevin Dynamics \bookcite{theprinciple_diffusion_models}{Sec.~3.4, p.~82} \bookcite{deep_learning_foundations_concepts}{Sec.~20.3.3, p.~598}.
+
+\begin{algorithm}[htbp]
+\caption{DDPM Training ($\mathcal{L}_{\mathrm{simple}}$) and Ancestral Sampling}\label{alg:ddpm:train_sample}
+\DontPrintSemicolon
+\KwIn{Dataset $p_{\mathrm{data}}(\vecb{x}_0)$, schedule $\{\beta_t\}_{t=1}^T$ ($\alpha_t = 1-\beta_t$, $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$), reverse variance $\sigma_t^2$}
+\KwOut{Trained denoiser $\boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)$ and generated sample $\vecb{x}_0$}
+\tcp{Phase 1: Training via Unweighted Denoising Objective}
+\While{not converged}{
+  Sample $\vecb{x}_0 \sim p_{\mathrm{data}}(\vecb{x}_0)$, $t \sim \Uniform\{1,\dots,T\}$, $\boldsymbol{\epsilon} \sim \Normal(\zeros, \eye)$\;
+  Construct $\vecb{x}_t \leftarrow \sqrt{\bar{\alpha}_t}\,\vecb{x}_0 + \sqrt{1 - \bar{\alpha}_t}\,\boldsymbol{\epsilon}$\;
+  Take gradient descent step on $\grad_\theta \norm{\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)}_2^2$\;
+}
+\tcp{Phase 2: Ancestral Reverse Sampling}
+Sample $\vecb{x}_T \sim \Normal(\zeros, \eye)$\;
+\For{$t = T, T-1, \dots, 1$}{
+  Draw $\vecb{z} \sim \Normal(\zeros, \eye)$ if $t > 1$, else $\vecb{z} \leftarrow \zeros$\;
+  $\vecb{x}_{t-1} \leftarrow \frac{1}{\sqrt{\alpha_t}}\left(\vecb{x}_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}}\,\boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)\right) + \sigma_t \vecb{z}$\;
+}
+\Return $\vecb{x}_0$\;
+\end{algorithm}
+
+\begin{algorithm}[htbp]
+\caption{NCSN Sampling via Annealed Langevin Dynamics (ALD)}\label{alg:ddpm:ald}
+\DontPrintSemicolon
+\KwIn{Trained score network $\vecb{s}_\theta(\vecb{x}, \sigma_i)$, noise levels $\sigma_1 > \sigma_2 > \dots > \sigma_L$, step scale $\epsilon_0$, inner steps $K$}
+\KwOut{Generated sample $\tilde{\vecb{x}}_0$}
+Initialize $\tilde{\vecb{x}}_0 \sim \Uniform([-1,1]^D)$ or $\Normal(\zeros, \sigma_1^2 \eye)$\;
+\For{$i = 1, 2, \dots, L$}{
+  Set step size $\tau_i \leftarrow \epsilon_0 \cdot (\sigma_i / \sigma_L)^2$\;
+  \For{$k = 1, 2, \dots, K$}{
+    Draw $\vecb{z}_k \sim \Normal(\zeros, \eye)$\;
+    $\tilde{\vecb{x}}_k \leftarrow \tilde{\vecb{x}}_{k-1} + \frac{\tau_i}{2}\,\vecb{s}_\theta(\tilde{\vecb{x}}_{k-1}, \sigma_i) + \sqrt{\tau_i}\,\vecb{z}_k$\;
+  }
+  $\tilde{\vecb{x}}_0 \leftarrow \tilde{\vecb{x}}_K$\;
+}
+\Return $\tilde{\vecb{x}}_0$\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\centering
+\caption{Architectural, mathematical, and computational comparison of DDPM and NCSN \bookcite{theprinciple_diffusion_models}{Table~3.1, p.~84} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.3.3, p.~876}.}
+\label{tab:ddpm:comparison}
+\small
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Dimension} & \textbf{DDPM (Variational / VP)} & \textbf{NCSN (Score-Based / VE)} \\
+\midrule
+Forward transition &
+  $\vecb{x}_t = \sqrt{1-\beta_t}\,\vecb{x}_{t-1} + \sqrt{\beta_t}\,\boldsymbol{\epsilon}$ (variance-preserving) &
+  $\tilde{\vecb{x}}_i = \vecb{x}_0 + \sigma_i\boldsymbol{\epsilon}$ (variance-exploding across scales) \\
+Prior distribution &
+  $p(\vecb{x}_T) = \Normal(\zeros, \eye)$ &
+  $p_{\mathrm{prior}}(\vecb{x}_1) = \Normal(\zeros, \sigma_1^2 \eye)$ \\
+Training target &
+  $\E_{t,\vecb{x}_0,\boldsymbol{\epsilon}}[\norm{\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\vecb{x}_t, t)}_2^2]$ &
+  $\sum_{i=1}^L \lambda_i \E_{\vecb{x}_0,\boldsymbol{\epsilon}}[\norm{\vecb{s}_\theta(\tilde{\vecb{x}}, \sigma_i) + \boldsymbol{\epsilon}/\sigma_i}_2^2]$ \\
+Sampling dynamics &
+  Ancestral Markov chain $p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t)$ &
+  Annealed Langevin MCMC across $\sigma_1 \to \sigma_L$ \\
+Sequential NFE cost &
+  $\mathcal{O}(T)$ network passes ($T \approx 1000$) &
+  $\mathcal{O}(LK)$ network passes ($L \approx 10$--$1000$, $K \ge 1$) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{crossbook}[Cross-Book Synthesis: Variational Diffusion vs.\ Score-Based Langevin Dynamics]
+All five texts highlight a remarkable structural convergence: \bookcite{diffusionmodels_stanleychan}{Sec.~2--3} and \bookcite{understandingdl_simonprince}{Ch.~18} frame DDPM as a fixed-encoder hierarchical VAE whose ELBO collapses to denoising least squares, whereas \bookcite{theprinciple_diffusion_models}{Ch.~3} and \bookcite{deep_learning_foundations_concepts}{Sec.~20.3} derive NCSNs from Energy-Based Models to bypass intractable partition functions. \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.3.3} and \bookcite{theprinciple_diffusion_models}{Sec.~3.5} unify both as discrete approximations to continuous-time stochastic differential equations (VP-SDE vs.\ VE-SDE), sharing the same U-Net denoiser and the same sequential $\mathcal{O}(T)$ / $\mathcal{O}(LK)$ sampling bottleneck.
+\end{crossbook}
+
+\section{Visual Diagnostics \& Geometric Structure}\label{sec:ddpm:visuals}
+
+Figure~\ref{fig:ddpm:forward_reverse_chain} synthesizes the Markovian forward/reverse graphical structure alongside the four-way Tweedie--score equivalence, while Figure~\ref{fig:ddpm:noise_schedules} contrasts the linear $\beta_t$ and cosine noise schedules in terms of signal retention $\bar{\alpha}_t$ and log-SNR.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.4cm and 1.55cm]
+  % Top row: Forward & Reverse Markov Chain
+  \node[monoBox] (x0) {$\vecb{x}_0 \sim p_{\mathrm{data}}$};
+  \node[monoBox, right=of x0] (xtm1) {$\vecb{x}_{t-1}$};
+  \node[monoBox, right=1.8cm of xtm1] (xt) {$\vecb{x}_t$};
+  \node[monoBox, right=of xt] (xT) {$\vecb{x}_T \approx \Normal(\zeros,\eye)$};
+
+  \draw[monoArrow] (x0) -- node[above, font=\scriptsize, yshift=2pt] {$q(\vecb{x}_{t-1}\mid\vecb{x}_0)$} (xtm1);
+  \draw[monoArrow] (xtm1) -- node[above, font=\scriptsize, yshift=2pt] {$q(\vecb{x}_t\mid\vecb{x}_{t-1})$} (xt);
+  \draw[monoArrow] (xt) -- node[above, font=\scriptsize, yshift=2pt] {$q(\vecb{x}_T\mid\vecb{x}_t)$} (xT);
+
+  % Closed-form jump arc
+  \draw[monoArrow, dashed, monographTeal] (x0.north) to[bend left=24] node[above, font=\scriptsize, text=monographTeal, yshift=2pt] {$\vecb{x}_t = \sqrt{\bar{\alpha}_t}\vecb{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}$} (xt.north);
+
+  % Reverse learned transitions
+  \draw[monoArrow, monographIndigo] (xt.south west) to[bend left=26] node[below, font=\scriptsize, text=monographIndigo, yshift=-2pt] {$p_\theta(\vecb{x}_{t-1}\mid\vecb{x}_t)$} (xtm1.south east);
+
+  % Bottom 2x2 grid: Four-Way Equivalence Bridge
+  \node[monoBox, below=1.55cm of xtm1, xshift=-1.1cm, minimum width=3.7cm] (x0pred) {Clean Pred.\ $\vecb{x}_\theta(\vecb{x}_t,t)$\\$\approx \E[\vecb{x}_0\mid\vecb{x}_t]$};
+  \node[monoTealBox, right=2.8cm of x0pred, minimum width=3.7cm] (epspred) {Noise Pred.\ $\boldsymbol{\epsilon}_\theta(\vecb{x}_t,t)$\\$\approx \E[\boldsymbol{\epsilon}\mid\vecb{x}_t]$};
+  \node[monoWarnBox, below=1.25cm of x0pred, minimum width=3.7cm] (vpred) {Velocity Pred.\ $\vecb{v}_\theta(\vecb{x}_t,t)$\\$\approx \E[\alpha_t'\vecb{x}_0 + \sigma_t'\boldsymbol{\epsilon}\mid\vecb{x}_t]$};
+  \node[monoIndigoBox, below=1.25cm of epspred, minimum width=3.7cm] (scorepred) {Score Pred.\ $\vecb{s}_\theta(\vecb{x}_t,t)$\\$\approx \grad_{\vecb{x}_t}\log q_t(\vecb{x}_t)$};
+
+  \draw[monoArrow, <->] (x0pred) -- node[above, font=\scriptsize] {$\vecb{x}_t = \alpha_t^{\mathrm{aff}}\vecb{x}_\theta + \sigma_t\boldsymbol{\epsilon}_\theta$} (epspred);
+  \draw[monoArrow, <->] (epspred) -- node[right, font=\scriptsize, xshift=2pt] {$\vecb{s}_\theta = -\frac{\boldsymbol{\epsilon}_\theta}{\sigma_t}$} (scorepred);
+  \draw[monoArrow, <->] (x0pred) -- node[left, font=\scriptsize, xshift=-2pt] {$\vecb{v}_\theta = \alpha_t'\vecb{x}_\theta + \sigma_t'\boldsymbol{\epsilon}_\theta$} (vpred);
+  \draw[monoArrow, <->] (vpred) -- node[below, font=\scriptsize, yshift=-2pt] {Eq.~\eqref{eq:ddpm:head_conversions}} (scorepred);
+  \draw[monoArrow, dotted, monographSlate] (xt.south) -- (epspred.north);
+\end{tikzpicture}
+\caption{Unified DDPM/NCSN computational graph: the forward Markov chain admits a closed-form Gaussian jump $q(\vecb{x}_t \mid \vecb{x}_0)$, while the learned reverse denoiser $p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t)$ can be equivalently parameterized via $\vecb{x}_0$, $\boldsymbol{\epsilon}$, score $\vecb{s}_\theta$, or velocity $\vecb{v}_\theta$ through Tweedie's identity \eqref{eq:ddpm:tweedie} and \eqref{eq:ddpm:head_conversions}.}
+\label{fig:ddpm:forward_reverse_chain}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.6cm},
+  width=0.45\textwidth,
+  height=5.2cm,
+  xlabel={Normalized diffusion time $t \in [0, 1]$},
+  grid=major,
+  grid style={monographRule!50, dashed},
+  legend style={font=\scriptsize, draw=monographRule, fill=white, fill opacity=0.9},
+  tick label style={font=\scriptsize},
+  label style={font=\small}
+]
+\nextgroupplot[
+  title={Cumulative Signal $\bar{\alpha}(t)$},
+  title style={font=\small\bfseries, color=monographNavy},
+  ylabel={$\bar{\alpha}(t)$},
+  xmin=0, xmax=1, ymin=0, ymax=1.05,
+  legend pos=south west
+]
+\addplot[monographNavy, very thick, domain=0:1, samples=100] {exp(-0.1*x - 9.95*x^2)};
+\addlegendentry{Linear $\beta_t$}
+\addplot[monographTeal, very thick, dashed, domain=0:1, samples=100] {(cos(deg((x+0.008)/1.008*pi/2)))^2 / (cos(deg(0.008/1.008*pi/2)))^2};
+\addlegendentry{Cosine schedule}
+
+\nextgroupplot[
+  title={Log Signal-to-Noise Ratio $\log_{10}\mathrm{SNR}(t)$},
+  title style={font=\small\bfseries, color=monographNavy},
+  ylabel={$\log_{10}\!\left(\bar{\alpha}(t)/(1-\bar{\alpha}(t))\right)$},
+  xmin=0.02, xmax=0.98, ymin=-4.5, ymax=3.0,
+  legend pos=south west
+]
+\addplot[monographCrimson, very thick, domain=0.02:0.98, samples=100] {ln(exp(-0.1*x - 9.95*x^2)/(1 - exp(-0.1*x - 9.95*x^2)))/ln(10)};
+\addlegendentry{Linear $\beta_t$}
+\addplot[monographIndigo, very thick, dashed, domain=0.02:0.98, samples=100] {ln(((cos(deg((x+0.008)/1.008*pi/2)))^2 / (cos(deg(0.008/1.008*pi/2)))^2)/(1 - (cos(deg((x+0.008)/1.008*pi/2)))^2 / (cos(deg(0.008/1.008*pi/2)))^2))/ln(10)};
+\addlegendentry{Cosine schedule}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Comparison of the Ho et al.\ linear schedule ($\beta_1=10^{-4}, \beta_T=0.02, T=1000$, approximated continuously by $\bar{\alpha}(t)=\exp(-0.1t-9.95t^2)$) against the Nichol--Dhariwal cosine schedule ($s=0.008$). The linear schedule destroys signal prematurely ($t > 0.6$), whereas the cosine schedule maintains an approximately linear log-SNR decay.}
+\label{fig:ddpm:noise_schedules}
+\end{figure}
+
+Figure~\ref{fig:ddpm:1d_diffusion} illustrates how the forward Markov chain smooths a multimodal 1D density into $\Normal(0, 1)$, while Figure~\ref{fig:ddpm:posterior_tractable} visualizes the exact conditional reverse posterior $q(\vecb{x}_{t-1} \mid \vecb{x}_t, \vecb{x}_0)$ against the forward kernel. Figure~\ref{fig:ddpm:swiss_roll} demonstrates the learned score vector field and Langevin sampling trajectories on the 2D Swiss roll manifold.
+
+\monographfig[0.74\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p902_fig2.png}{Forward Gaussian convolution gradually transforms a multimodal 1D data distribution $q(\vecb{x}_0)$ into an isotropic Gaussian $q(\vecb{x}_T)$, erasing high-frequency details before coarse modes \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~25.2, p.~868}.}{fig:ddpm:1d_diffusion}
+
+\monographfig[0.80\textwidth]{understandingdl_simonprince_p368_fig2.png}{Diffusion kernel $q(\vecb{z}_t \mid \vecb{x}^*)$ (left) and tractable reverse conditional Gaussian $q(\vecb{z}_{t-1} \mid \vecb{z}_t^*, \vecb{x}^*)$ (right, teal) compared with $q(\vecb{z}_t^* \mid \vecb{z}_{t-1})$ (orange) and $q(\vecb{z}_{t-1} \mid \vecb{x}^*)$ (gray) \bookcite{understandingdl_simonprince}{Fig.~18.6, p.~354}.}{fig:ddpm:posterior_tractable}
+
+\monographfig[0.64\textwidth]{probabilisticml_kevinmurphy_advancedtopics_p909_fig1.png}{Score-based generative modeling on the 2D Swiss roll: (a) empirical data, (b) learned score vector field $\vecb{s}_\theta(\vecb{x})$, (c) superposition on data density, and (d) Langevin sampling trajectories \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Fig.~25.5, p.~875}.}{fig:ddpm:swiss_roll}
+
+\section{Numerical Pitfalls, Edge Cases \& Failure Modes}\label{sec:ddpm:pitfalls}
+
+\begin{pitfall}[Manifold Hypothesis, Low-Density Score Blindness \& Mode Mixing]
+\textbf{Failure Mode:} Training a single-scale score network $\vecb{s}_\theta(\vecb{x})$ on unperturbed data fails for three fundamental reasons \bookcite{deep_learning_foundations_concepts}{Sec.~20.3.3, pp.~597--598} \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.3.2, p.~874}: (i) under the manifold hypothesis, $p_{\mathrm{data}}$ is supported on a low-dimensional manifold so $\grad_{\vecb{x}}\log p_{\mathrm{data}}(\vecb{x})$ is undefined off-manifold; (ii) in low-density regions, DSM has vanishing sample weight and yields erratic score estimates; (iii) for disjoint modes $p_{\mathrm{data}} = \pi p_0 + (1-\pi)p_1$, $\grad_{\vecb{x}} \log p_{\mathrm{data}}(\vecb{x})$ is independent of $\pi$, preventing Langevin dynamics from recovering true mixture weights.
+\textbf{Remedy:} Perturb data across a geometric ladder of noise scales $\sigma_1 > \dots > \sigma_L$ where $\sigma_1$ is large enough to bridge disjoint modes across $\R^D$, and anneal Langevin step sizes $\tau_i \propto (\sigma_i / \sigma_L)^2$ down to $\sigma_L \approx 0.01$ \bookcite{theprinciple_diffusion_models}{Sec.~3.4, p.~80}.
+\end{pitfall}
+
+\begin{pitfall}[Linear Schedule SNR Collapse \& Endpoint Instability]
+\textbf{Failure Mode:} Under a linear $\beta_t$ schedule, $\bar{\alpha}_t$ decays super-exponentially for $t > 0.6T$ (Figure~\ref{fig:ddpm:noise_schedules}), wasting forward steps in near-pure noise. Moreover, predicting $\boldsymbol{\epsilon}_\theta$ or $\vecb{s}_\theta$ near $t \to 0$ ($\sigma_t \to 0$) amplifies score variance as $1/\sigma_t$, whereas predicting $\vecb{x}_0$ near $t \to T$ ($\alpha_t^{\mathrm{aff}} \to 0$) suffers from signal collapse \bookcite{theprinciple_diffusion_models}{Sec.~6.3.3, p.~182}.
+\textbf{Remedy:} Adopt a cosine or log-SNR-linear schedule \bookcite{probabilisticml_kevinmurphy_advancedtopics}{Sec.~25.2.4, p.~872}, use low-discrepancy stratified sampling $t_i = \bmod(u_0 + i/k, 1)$ for minibatch variance reduction, or adopt $\vecb{v}$-prediction ($\vecb{v}_\theta = \alpha_t'\vecb{x}_0 + \sigma_t'\boldsymbol{\epsilon}$) whose target norm remains bounded at both endpoints \bookcite{theprinciple_diffusion_models}{Eq.~(6.3.7), p.~181}.
+\end{pitfall}
+
+\begin{pitfall}[Reverse Gaussianity Breakdown \& Sequential NFE Bottleneck]
+\textbf{Failure Mode:} The reverse conditional $p_\theta(\vecb{x}_{t-1} \mid \vecb{x}_t)$ is only accurately approximated by an isotropic Gaussian when step sizes $\beta_t \to 0$ and $T \to \infty$ \bookcite{understandingdl_simonprince}{Sec.~18.3, p.~356}. Truncating DDPM to small $T$ without changing the sampler induces severe discretization error, while large $T \approx 1000$ or $\mathcal{O}(LK)$ ALD steps makes inference prohibitively slow \bookcite{theprinciple_diffusion_models}{Sec.~3.5, p.~84}.
+\textbf{Remedy:} Formulate the forward/reverse chains as continuous-time Score SDEs and Probability Flow ODEs, unlocking deterministic DDIM and high-order ODE solvers that achieve comparable sample quality in $10$--$50$ NFEs.
+\end{pitfall}
+
+\end{document}
