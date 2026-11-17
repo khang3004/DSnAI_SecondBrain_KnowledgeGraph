@@ -74,6 +74,7 @@ Recovering 3D structure and motion from 2D images requires analyzing visual sign
 >
 > $$
 > I_x u + I_y v + I_t = \nabla I^{\top} \boldsymbol{u} + I_t = 0.
+>
 > $$
 >
 > Because one scalar equation cannot determine two unknowns (the *aperture problem*, recovering only motion normal to edges), *Lucas–Kanade* assumes constant flow in a local window $W$ and solves the $2\times 2$ structure-tensor system $(\sum_W \nabla I \nabla I^{\top})\boldsymbol{u} = -\sum_W \nabla I  I_t$, while *Horn–Schunck* minimizes a global smoothness functional $\int [(\nabla I^{\top}\boldsymbol{u}+I_t)^2 + \alpha(\lVert \nabla u \rVert_2^2 + \lVert \nabla v \rVert_2^2)] \mathrm{d}\boldsymbol{x}$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 48, pp. 964–972).
@@ -87,12 +88,14 @@ Recovering 3D structure and motion from 2D images requires analyzing visual sign
 >
 > $$
 > (\hat{\boldsymbol{x}}')^{\top} \boldsymbol{E} \hat{\boldsymbol{x}} = 0 \quad (\boldsymbol{E} = [\boldsymbol{t}]_\times \boldsymbol{R}), \qquad (\tilde{\boldsymbol{x}}')^{\top} \boldsymbol{F} \tilde{\boldsymbol{x}} = 0 \quad (\boldsymbol{F} = (\boldsymbol{K}')^{-\top}\boldsymbol{E}\boldsymbol{K}^{-1}).
+>
 > $$
 >
 > In rectified parallel stereo with baseline $B$ and focal length $f$, horizontal disparity $d = x_L - x_R$ yields depth via triangulation: $Z = \frac{f B}{d}$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 40, pp. 804–820). Moving from discrete point clouds to continuous 3D representations, *Neural Radiance Fields (NeRF)* parameterize volume density $\sigma(\boldsymbol{x})$ and view-dependent color $\boldsymbol{c}(\boldsymbol{x}, \boldsymbol{d})$ with an MLP, rendering pixel color along ray $\boldsymbol{r}(t)=\boldsymbol{o}+t\boldsymbol{d}$ via differentiable quadrature [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 45, pp. 921–935):
 >
 > $$
 > \hat{\boldsymbol{C}}(\boldsymbol{r}) = \int_{t_n}^{t_f} T(t) \sigma(\boldsymbol{r}(t)) \boldsymbol{c}(\boldsymbol{r}(t),\boldsymbol{d}) \mathrm{d}t, \qquad T(t) = \exp\!\left(-\int_{t_n}^{t} \sigma(\boldsymbol{r}(s)) \mathrm{d}s\right).
+>
 > $$
 
 > [!tip] Why Epipolar Geometry Collapses 2D Search to 1D and Why Pyramids Solve Large Motion

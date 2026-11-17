@@ -32,7 +32,7 @@ flowchart LR
   ROOT["Score SDEs, Itô/Girsanov/Fokker-Planck Equations"]
   B1["1. WHAT Continuum Limit VP-SDE VE-SDE"]
   ROOT --> B1
-  B2["2. HOW Itos Lemma Fokker-Planck PDE"]
+  B2["2. HOW Itôs Lemma Fokker-Planck PDE"]
   ROOT --> B2
   B3["3. KEY THEOREM Anderson Reverse SDE PF-ODE"]
   ROOT --> B3
@@ -58,7 +58,7 @@ flowchart LR
   $$
   \mathrm{d}\boldsymbol{x}_t=\boldsymbol{f}(\boldsymbol{x}_t,t) \mathrm{d}t+g(t) \mathrm{d}\boldsymbol{w}_t,\quad \mathrm{d}\boldsymbol{w}_t\sim\mathcal{N}(\boldsymbol{0},\mathrm{d}t \boldsymbol{I})
   $$
-- **2. HOW — It\^o's Lemma & Fokker-Planck PDE**
+- **2. HOW — Itô's Lemma & Fokker-Planck PDE**
   $$
   (\mathrm{d}w_{t,i})(\mathrm{d}w_{t,j})=\delta_{ij} \mathrm{d}t
   $$

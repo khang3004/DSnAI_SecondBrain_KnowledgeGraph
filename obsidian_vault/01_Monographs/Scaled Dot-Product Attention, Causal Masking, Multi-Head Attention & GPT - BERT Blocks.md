@@ -95,6 +95,7 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 > $$
 > \mathbb{E}[s] = \sum_{r=1}^{d_k} \mathbb{E}[q_r]\mathbb{E}[k_r] = 0, \qquad
 >   \mathrm{Var}(s) = \sum_{r=1}^{d_k} \mathrm{Var}(q_r k_r) = \sum_{r=1}^{d_k} \Big(\mathbb{E}[q_r^2]\mathbb{E}[k_r^2] - (\mathbb{E}[q_r]\mathbb{E}[k_r])^2\Big) = d_k.
+>
 > $$
 >
 > Scaling the logits by $1/\sqrt{d_k}$ restores unit variance independent of head width: $\mathrm{Var}(\boldsymbol{q}^{\top} \boldsymbol{k} / \sqrt{d_k}) = d_k / d_k = 1$.
@@ -103,6 +104,7 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 >
 > $$
 > \frac{\partial p_i}{\partial s_j} = p_i (\delta_{ij} - p_j),
+>
 > $$
 >
 > where $\delta_{ij}$ is the Kronecker delta. As $\mathrm{Var}(s)$ grows with $d_k$, the maximum logit dominates ($p_{i^*} \to 1$, $p_{j \neq i^*} \to 0$), driving $\frac{\partial p_i}{\partial s_j} \to 0$ exponentially and stalling gradient flow [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 12, Eq. 12.14, p. 382) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 12, Sec. 12.3.2, p. 228).
@@ -111,6 +113,7 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 >
 > $$
 > \mathrm{Attention}(\boldsymbol{Q}, \boldsymbol{K}, \boldsymbol{V}) = \mathrm{softmax}\!\left(\frac{\boldsymbol{Q}\boldsymbol{K}^{\top}}{\sqrt{d_k}}\right)\boldsymbol{V} \in \mathbb{R}^{N \times d_v},
+>
 > $$
 >
 > where $\mathrm{softmax}$ is applied row-wise so each output row $\boldsymbol{y}_i^{\top} = \sum_{j=1}^N A_{ij} \boldsymbol{v}_j^{\top}$ is a convex combination of value vectors ($A_{ij} \ge 0$, $\sum_{j=1}^N A_{ij} = 1$).
@@ -127,12 +130,14 @@ Autoregressive language models factorize the joint sequence likelihood as $\math
 >
 > $$
 > \boldsymbol{A}_{\mathrm{causal}} = \mathrm{softmax}\!\left(\frac{\boldsymbol{Q}\boldsymbol{K}^{\top}}{\sqrt{d_k}} + \boldsymbol{M}\right).
+>
 > $$
 >
 > For any future position $j > i$, $\lim_{M_{ij} \to -\infty} \exp(S_{ij} + M_{ij}) = 0$, so $(\boldsymbol{A}_{\mathrm{causal}})_{ij} = 0$ and the softmax denominator sums exclusively over past and current tokens $m \in \{1, \dots, i\}$:
 >
 > $$
 > (\boldsymbol{A}_{\mathrm{causal}})_{ij} = \frac{\exp(S_{ij}) \mathbb{I}[j \le i]}{\sum_{m=1}^{i} \exp(S_{im})}.
+>
 > $$
 >
 > Raschka [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 3, Sec. 3.5.1, pp. 200–205) demonstrates that post-softmax zeroing ($\boldsymbol{A} \odot \boldsymbol{L}_{\mathrm{tril}}$) followed by row-wise renormalization is mathematically identical to Eq. `(eq:attn:causal_denom)` because masked terms cancel from the ratio, but pre-softmax $-\infty$ masking achieves this in a single fused pass with zero future-token influence on the normalization constant.
@@ -152,6 +157,7 @@ A single attention head averages over all token relationships with one similarit
 > \boldsymbol{H}_h &= \mathrm{Attention}\!\left(\boldsymbol{X}\boldsymbol{W}_{Q,h},  \boldsymbol{X}\boldsymbol{W}_{K,h},  \boldsymbol{X}\boldsymbol{W}_{V,h}\right) \in \mathbb{R}^{N \times d_v},  \\
 >   \mathrm{MHA}(\boldsymbol{X}) &= \mathrm{Concat}(\boldsymbol{H}_1, \dots, \boldsymbol{H}_H) \boldsymbol{W}_O \in \mathbb{R}^{N \times d_{\mathrm{model}}},
 > \end{aligned}
+>
 > $$
 >
 > where $\boldsymbol{W}_O \in \mathbb{R}^{(H d_v) \times d_{\mathrm{model}}}$ mixes subspaces across heads [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 12.15–12.19, p. 383) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 15.55–15.56, p. 557). In practice [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Listing 3.5, pp. 227–232), all $H$ projections are fused into single dense layers $\boldsymbol{W}_Q, \boldsymbol{W}_K, \boldsymbol{W}_V \in \mathbb{R}^{d_{\mathrm{model}} \times (H d_k)}$ and reshaped via $[B, T, d_{\mathrm{model}}] \to [B, T, H, d_k] \xrightarrow{\mathrm{transpose}} [B, H, T, d_k]$.

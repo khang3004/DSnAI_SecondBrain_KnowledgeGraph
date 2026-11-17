@@ -74,13 +74,17 @@ Prior to standardized agent protocols, [[Source - Agent Tools|agent_tools_intero
 > Let $\mathcal{H} = \{h_1, \dots, h_M\}$ be the set of AI host applications and $\mathcal{T} = \{t_1, \dots, t_N\}$ be the set of external tools or services.
 > - **Point-to-Point Regime:** Without a shared wire protocol, each pair $(h_i, t_j) \in \mathcal{H} \times \mathcal{T}$ requires a bespoke connector $c_{ij}$ mapping $h_i$'s internal function-calling format to $t_j$'s API schema, yielding total integration maintenance cost:
 >
+>
 > $$
 > C_{\text{bespoke}}(M, N) = \kappa_{\text{glue}} \cdot M \cdot N = \mathcal{O}(M N).
+>
 > $$
 > - **Standardized Hub Regime (MCP / A2A):** Each host $h_i$ implements a single protocol client adapter $c^{\text{cli}}_i$ (speaking JSON-RPC 2.0), and each tool provider $t_j$ implements a single protocol server $s^{\text{srv}}_j$ exposing JSON Schema manifests. The total connector count reduces to:
 >
+>
 > $$
 > C_{\text{proto}}(M, N) = \kappa_{\text{cli}} M + \kappa_{\text{srv}} N = \mathcal{O}(M + N),
+>
 > $$
 >
 >   achieving an asymptotic reduction factor $\rho(M, N) = \frac{MN}{M + N}$, which grows as $\frac{N}{2}$ when $M = N$.
@@ -103,6 +107,7 @@ At inference time, a language model $\pi_\theta$ generates tokens autoregressive
 >   \end{cases}
 >   \qquad
 >   \pi_\theta(v \mid w_{<s}) = \frac{\exp(\tilde{z}_s(v))}{\sum_{v' \in \mathcal{V}(w_{<s})} \exp(\tilde{z}_s(v'))}.
+>
 > $$
 >
 > During post-training, tool-use competence is shaped in three stages [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (PDF p. 175):
@@ -110,8 +115,10 @@ At inference time, a language model $\pi_\theta$ generates tokens autoregressive
 > - **Preference Optimization (DPO):** Optimizes pairwise preferences $(\tau^+ \succ \tau^-)$ to calibrate *when* to invoke a tool versus answering directly from weights.
 > - **RL with Environment Feedback:** Maximizes expected terminal task reward $R(\tau)$ (e.g., constraint satisfaction, exact execution success) over multi-step tool trajectories:
 >
+>
 > $$
 > \mathcal{J}(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\!\bigl[R(\tau)\bigr] - \beta   D_{\mathrm{KL}}\!\bigl(\pi_\theta  \|  \pi_{\text{ref}}\bigr).
+>
 > $$
 
 ### Hybrid Deterministic–Agentic DAG Reliability
@@ -123,6 +130,7 @@ In workflow automation platforms such as n8n, workflows form directed acyclic gr
 >
 > $$
 > P_{\text{success}} = (1 - \epsilon_{\text{det}})^{L_{\text{det}}} \cdot \prod_{j=1}^{L_{\text{agent}}} \Bigl(1 - p_{\text{fail}, j}^{ r_j + 1}\bigl(1 - q_{\text{fb}, j}\bigr)\Bigr).
+>
 > $$
 
 ## Algorithmic Implementation & Comparative Synthesis

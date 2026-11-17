@@ -82,12 +82,14 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > P(y_w \succ y_l \mid x) = \frac{\exp(r^*(x, y_w))}{\exp(r^*(x, y_w)) + \exp(r^*(x, y_l))} = \sigma\!\big(r^*(x, y_w) - r^*(x, y_l)\big),
+>
 > $$
 >
 > where $\sigma(z) = (1 + e^{-z})^{-1}$. Equivalently, the reward gap $\delta = r^*(x, y_w) - r^*(x, y_l)$ equals the log-odds $\log \frac{P(y_w \succ y_l \mid x)}{1 - P(y_w \succ y_l \mid x)}$. Parameterizing $r_\phi(x,y) = h_{\mathrm{last}}(x,y)^\top W_r$ via a linear head on the final Transformer hidden state at the $\langle\mathrm{EOS}\rangle$ token [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 4, p. 180), we train $r_\phi$ by minimizing the negative log-likelihood over preference dataset $\mathcal{D}_{\mathrm{pref}}$:
 >
 > $$
 > \mathcal{L}_{\mathrm{RM}}(\phi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\big(r_\phi(x, y_w) - r_\phi(x, y_l) - m(y_w, y_l)\big) \right],
+>
 > $$
 >
 > where $m(y_w, y_l) = 0$ recovers the standard objective and $m(y_w, y_l) > 0$ incorporates the Llama 2 annotator-rating margin [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 15, p. 180).
@@ -102,24 +104,28 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > \max_{\pi}   \mathbb{E}_{x \sim \mathcal{D}} \Big[ \mathbb{E}_{y \sim \pi(\cdot \mid x)}[r_\phi(x,y)] - \beta D_{\mathrm{KL}}\!\big(\pi(y \mid x)  \|  \pi_{\mathrm{ref}}(y \mid x)\big) \Big].
+>
 > $$
 >
 > Expanding $D_{\mathrm{KL}}(\pi  \|  \pi_{\mathrm{ref}}) = \mathbb{E}_{y \sim \pi}\big[\log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}\big]$, negating to form a minimization, dividing by $\beta > 0$, and introducing the prompt-dependent partition function
 >
 > $$
 > Z(x) = \sum_{y} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right),
+>
 > $$
 >
 > we rewrite Eq. `(eq:align:rlhf_obj)` as minimizing
 >
 > $$
 > \min_{\pi}   \mathbb{E}_{x \sim \mathcal{D}} \!\left[ D_{\mathrm{KL}}\!\left( \pi(y \mid x)  \Big\|  \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right) \right) - \log Z(x) \right].
+>
 > $$
 >
 > Since $\log Z(x)$ is independent of $\pi$ and $D_{\mathrm{KL}}(p  \|  q) \ge 0$ with equality if and only if $p = q$ almost everywhere, the unique global optimum is the exponential-tilted Gibbs policy:
 >
 > $$
 > \pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right).
+>
 > $$
 
 > [!tip] Control as Inference & Posterior Sampling
@@ -132,24 +138,28 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > r(x,y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)} + \beta \log Z(x).
+>
 > $$
 >
 > Substituting Eq. `(eq:align:dpo_reparam)` into the Bradley-Terry likelihood `(eq:align:bt_prob)` causes $\beta \log Z(x)$ to cancel identically between $y_w$ and $y_l$:
 >
 > $$
 > P^*(y_w \succ y_l \mid x) = \sigma\!\left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)} - \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)} \right).
+>
 > $$
 >
 > Replacing $\pi^*$ with a parametric policy $\pi_\theta$ yields the DPO maximum-likelihood objective:
 >
 > $$
 > \mathcal{L}_{\mathrm{DPO}}(\theta; \pi_{\mathrm{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\left( \hat{r}_\theta(x, y_w) - \hat{r}_\theta(x, y_l) \right) \right],
+>
 > $$
 >
 > where $\hat{r}_\theta(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}$ is the *implicit reward*. Differentiating Eq. `(eq:align:dpo_loss)` with respect to $\theta$ gives
 >
 > $$
 > \nabla_\theta \mathcal{L}_{\mathrm{DPO}}(\theta) = -\beta \mathbb{E}_{(x, y_w, y_l)} \Big[ \underbrace{\sigma\!\big(\hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w)\big)}_{\text{misranking weight}} \big( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x) \big) \Big].
+>
 > $$
 >
 > The scalar weight $\sigma(\hat{r}_\theta(x,y_l) - \hat{r}_\theta(x,y_w))$ vanishes when the policy already ranks $y_w$ well above $y_l$ and amplifies updates when the implicit reward model misranks the pair [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 8.4.2, p. 222).

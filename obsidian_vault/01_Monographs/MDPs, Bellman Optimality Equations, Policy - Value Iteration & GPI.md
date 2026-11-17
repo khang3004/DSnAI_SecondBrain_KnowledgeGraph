@@ -52,6 +52,7 @@ A finite **Markov Decision Process (MDP)** formalizes sequential decision-making
 >
 > $$
 > p(s', r \mid s, a) \triangleq \mathbb{P}(S_{t+1} = s', R_{t+1} = r \mid S_t = s, A_t = a), \quad \forall s, s' \in \mathcal{S},  a \in \mathcal{A}(s),  r \in \mathcal{R}.
+>
 > $$
 >
 > Marginalizing over rewards yields the state-transition kernel $p(s' \mid s, a) = \sum_{r \in \mathcal{R}} p(s', r \mid s, a)$, and taking expectations yields the expected immediate reward $R(s, a) \triangleq \mathbb{E}[R_{t+1} \mid S_t = s, A_t = a] = \sum_{s', r} r  p(s', r \mid s, a)$.
@@ -106,18 +107,21 @@ The **advantage function** $A^\pi(s, a) \triangleq Q^\pi(s, a) - V^\pi(s)$ measu
 >
 > $$
 > V^\pi(s) = \sum_{a \in \mathcal{A}(s)} \pi(a \mid s) \sum_{s' \in \mathcal{S},  r \in \mathcal{R}} p(s', r \mid s, a)\left[r + \gamma V^\pi(s')\right] = (\mathcal{T}^\pi V^\pi)(s),
+>
 > $$
 >
 > where $\mathcal{T}^\pi : \mathbb{R}^{|\mathcal{S}|} \to \mathbb{R}^{|\mathcal{S}|}$ is the **Bellman expectation operator**. Defining the policy-induced expected reward vector $\boldsymbol{r}_\pi \in \mathbb{R}^{|\mathcal{S}|}$ with $r_\pi(s) = \sum_a \pi(a \mid s) R(s, a)$ and transition matrix $\boldsymbol{P}_\pi \in \mathbb{R}^{|\mathcal{S}| \times |\mathcal{S}|}$ with $[\boldsymbol{P}_\pi]_{s, s'} = \sum_a \pi(a \mid s) p(s' \mid s, a)$, `(eq:mdp:bellman_exp_v)` becomes a linear system [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 2.2.3, p. 34):
 >
 > $$
 > \boldsymbol{v}_\pi = \boldsymbol{r}_\pi + \gamma \boldsymbol{P}_\pi \boldsymbol{v}_\pi \implies (\boldsymbol{I} - \gamma \boldsymbol{P}_\pi)\boldsymbol{v}_\pi = \boldsymbol{r}_\pi.
+>
 > $$
 >
 > Because $\boldsymbol{P}_\pi$ is row-stochastic, its spectral radius satisfies $\rho(\boldsymbol{P}_\pi) = 1$. For $\gamma \in [0, 1)$, all eigenvalues of $\gamma \boldsymbol{P}_\pi$ lie strictly inside the unit disk, so $\boldsymbol{I} - \gamma \boldsymbol{P}_\pi$ is strictly diagonally dominant and nonsingular, yielding the unique closed-form solution:
 >
 > $$
 > \boldsymbol{v}_\pi = (\boldsymbol{I} - \gamma \boldsymbol{P}_\pi)^{-1} \boldsymbol{r}_\pi = \sum_{t=0}^{\infty} \gamma^t \boldsymbol{P}_\pi^t \boldsymbol{r}_\pi.
+>
 > $$
 
 ### Bellman Optimality Equations and Contraction Mapping Theory
@@ -142,12 +146,14 @@ $$
 >   &\le \max_{a \in \mathcal{A}(s)} \lvert \gamma \sum_{s' \in \mathcal{S}} p(s' \mid s, a)\left(U(s') - V(s')\right) \rvert  \\
 >   &\le \gamma \max_{a \in \mathcal{A}(s)} \sum_{s' \in \mathcal{S}} p(s' \mid s, a) \lVert U - V \rVert_\infty = \gamma \lVert U - V \rVert_\infty,
 > \end{aligned}
+>
 > $$
 >
 > where the first inequality uses $\lvert \max_a f(a) - \max_a g(a) \rvert \le \max_a \lvert f(a) - g(a) \rvert$ and the final equality uses $\sum_{s'} p(s' \mid s, a) = 1$. Taking the maximum over $s \in \mathcal{S}$ gives $\lVert \mathcal{T}^* U - \mathcal{T}^* V \rVert_\infty \le \gamma \lVert U - V \rVert_\infty$ (and identically $\lVert \mathcal{T}^\pi U - \mathcal{T}^\pi V \rVert_\infty \le \gamma \lVert U - V \rVert_\infty$). By the **Banach Fixed-Point Theorem**, for $\gamma \in [0, 1)$, $\mathcal{T}^*$ has a unique fixed point $V^* = \mathcal{T}^* V^*$, and iterative updates $V_{k+1} = \mathcal{T}^* V_k$ converge geometrically from any $V_0 \in \mathbb{R}^{|\mathcal{S}|}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 34.6.1, p. 1134):
 >
 > $$
 > \lVert V_k - V^* \rVert_\infty \le \gamma^k \lVert V_0 - V^* \rVert_\infty.
+>
 > $$
 
 > [!tip] Why $V^*$ Turns Long-Term Planning into One-Step Lookahead
@@ -162,6 +168,7 @@ To guarantee monotonic progress when alternating between evaluation and greedy a
 >
 > $$
 > Q^\pi(s, \pi'(s)) \ge V^\pi(s).
+>
 > $$
 >
 > Then $\pi'$ is as good as or better than $\pi$: $V^{\pi'}(s) \ge V^\pi(s)$ for all $s \in \mathcal{S}$. Moreover, if strict inequality holds at any state $s$, then $V^{\pi'}(s) > V^\pi(s)$ at that state.
@@ -170,6 +177,7 @@ To guarantee monotonic progress when alternating between evaluation and greedy a
 >
 > $$
 > \boldsymbol{v}_\pi \le \boldsymbol{r}_{\pi'} + \gamma \boldsymbol{P}_{\pi'} \boldsymbol{v}_\pi \le \boldsymbol{r}_{\pi'} + \gamma \boldsymbol{P}_{\pi'} (\boldsymbol{r}_{\pi'} + \gamma \boldsymbol{P}_{\pi'} \boldsymbol{v}_\pi) \le \dots \le \sum_{t=0}^{\infty} \gamma^t \boldsymbol{P}_{\pi'}^t \boldsymbol{r}_{\pi'} + \lim_{t \to \infty} \gamma^t \boldsymbol{P}_{\pi'}^t \boldsymbol{v}_\pi = \boldsymbol{v}_{\pi'},
+>
 > $$
 >
 > where $\lim_{t \to \infty} \gamma^t \boldsymbol{P}_{\pi'}^t \boldsymbol{v}_\pi = \boldsymbol{0}$ since $\gamma < 1$. Setting $\pi'(s) \in \arg\max_{a \in \mathcal{A}(s)} Q^\pi(s, a)$ satisfies `(eq:mdp:pi_cond)` by construction. If $V^{\pi'} = V^\pi$, then $V^\pi = \mathcal{T}^* V^\pi$, so by uniqueness of the fixed point of $\mathcal{T}^*$, $V^\pi = V^*$ and $\pi$ is optimal.
@@ -268,6 +276,7 @@ Figure `fig:mdp:gpi_backup` illustrates the geometric interplay of GPI alongside
 >
 > $$
 > \lVert V_k - V^* \rVert_\infty \le \frac{\gamma}{1 - \gamma} \lVert V_k - V_{k-1} \rVert_\infty.
+>
 > $$
 >
 > When $\gamma = 0.999$, $\frac{\gamma}{1-\gamma} = 999$, so $\Delta_k = 10^{-3}$ still permits a value error of $\approx 1.0$. Furthermore, extracting the greedy policy from $V_k$ guarantees $\lVert V^{\pi_k} - V^* \rVert_\infty \le \frac{2\gamma}{1-\gamma}\lVert V_k - V_{k-1} \rVert_\infty$, motivating the scaled threshold $\theta = \frac{\epsilon(1-\gamma)}{2\gamma}$ in Algorithm `alg:mdp:value_iteration`.

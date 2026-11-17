@@ -88,34 +88,48 @@ $$
 > Let $\alpha_t = 1 - \beta_t$ and $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. Under the forward Markov chain `(eq:ddpm:forward_chain)`:
 > - **Closed-Form Forward Marginal:** For any $t \in \{1,\dots,T\}$,
 >
+>
 > $$
 > q(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_t;  \sqrt{\bar{\alpha}_t} \boldsymbol{x}_0,  (1 - \bar{\alpha}_t)\boldsymbol{I}\right), \qquad \boldsymbol{x}_t = \sqrt{\bar{\alpha}_t} \boldsymbol{x}_0 + \sqrt{1 - \bar{\alpha}_t} \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I}).
+>
 > $$
 >
 >   *Proof:* By induction. For $t=1$, $q(\boldsymbol{x}_1 \mid \boldsymbol{x}_0) = \mathcal{N}(\sqrt{\alpha_1}\boldsymbol{x}_0, (1-\alpha_1)\boldsymbol{I})$ holds by definition. Assuming `(eq:ddpm:marginal_q)` holds at $t-1$, we write $\boldsymbol{x}_{t-1} = \sqrt{\bar{\alpha}_{t-1}}\boldsymbol{x}_0 + \sqrt{1-\bar{\alpha}_{t-1}}\boldsymbol{\epsilon}_{t-1}$ and $\boldsymbol{x}_t = \sqrt{\alpha_t}\boldsymbol{x}_{t-1} + \sqrt{1-\alpha_t}\boldsymbol{\epsilon}_t$ with independent $\boldsymbol{\epsilon}_{t-1}, \boldsymbol{\epsilon}_t \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$. Substituting yields
->   \[
+>
+>
+> $$
+>
 >     \boldsymbol{x}_t = \sqrt{\alpha_t \bar{\alpha}_{t-1}} \boldsymbol{x}_0 + \sqrt{\alpha_t(1 - \bar{\alpha}_{t-1})} \boldsymbol{\epsilon}_{t-1} + \sqrt{1-\alpha_t} \boldsymbol{\epsilon}_t.
->   \]
+>
+>
+> $$
+>
 >   Since the sum of independent zero-mean Gaussians is Gaussian with variance $\alpha_t(1-\bar{\alpha}_{t-1}) + (1-\alpha_t) = 1 - \alpha_t\bar{\alpha}_{t-1} = 1 - \bar{\alpha}_t$, `(eq:ddpm:marginal_q)` follows [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 2.3, p. 14) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 18.2, p. 353).
 > - **Tractable Reverse Conditional Posterior:** Conditioning on $\boldsymbol{x}_0$, the single-step reverse posterior is Gaussian:
 >
+>
 > $$
 > q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_{t-1};  \tilde{\boldsymbol{\mu}}_t(\boldsymbol{x}_t, \boldsymbol{x}_0),  \tilde{\beta}_t \boldsymbol{I}\right),
+>
 > $$
 >
 >   where
 >
+>
 > $$
 > \tilde{\boldsymbol{\mu}}_t(\boldsymbol{x}_t, \boldsymbol{x}_0) = \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1 - \bar{\alpha}_t}\boldsymbol{x}_0 + \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}\boldsymbol{x}_t, \qquad \tilde{\beta}_t = \frac{1 - \bar{\alpha}_{t-1}}{1 - \bar{\alpha}_t}\beta_t.
+>
 > $$
 >
 >   *Proof:* By Bayes' rule and the Markov property $q(\boldsymbol{x}_t \mid \boldsymbol{x}_{t-1}, \boldsymbol{x}_0) = q(\boldsymbol{x}_t \mid \boldsymbol{x}_{t-1})$,
+>
 >
 > $$
 > \begin{aligned}
 > q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0) &= \frac{q(\boldsymbol{x}_t \mid \boldsymbol{x}_{t-1}) q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_0)}{q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)} \\
 >     &\propto \exp\!\left(-\frac{1}{2}\left[\frac{\lVert \boldsymbol{x}_t - \sqrt{\alpha_t}\boldsymbol{x}_{t-1} \rVert_2^2}{\beta_t} + \frac{\lVert \boldsymbol{x}_{t-1} - \sqrt{\bar{\alpha}_{t-1}}\boldsymbol{x}_0 \rVert_2^2}{1 - \bar{\alpha}_{t-1}}\right]\right).
 > \end{aligned}
+>
 > $$
 >
 >   Expanding the quadratic form in $\boldsymbol{x}_{t-1}$ gives precision $\tilde{\beta}_t^{-1} = \frac{\alpha_t}{\beta_t} + \frac{1}{1-\bar{\alpha}_{t-1}} = \frac{\alpha_t(1-\bar{\alpha}_{t-1}) + \beta_t}{\beta_t(1-\bar{\alpha}_{t-1})} = \frac{1 - \bar{\alpha}_t}{\beta_t(1-\bar{\alpha}_{t-1})}$, and linear term $\frac{\sqrt{\alpha_t}}{\beta_t}\boldsymbol{x}_t + \frac{\sqrt{\bar{\alpha}_{t-1}}}{1-\bar{\alpha}_{t-1}}\boldsymbol{x}_0$. Multiplying the linear term by $\tilde{\beta}_t$ recovers $\tilde{\boldsymbol{\mu}}_t(\boldsymbol{x}_t, \boldsymbol{x}_0)$ in `(eq:ddpm:posterior_params)` [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 2.6, p. 22) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Eq. (18.15), p. 355).
@@ -132,6 +146,7 @@ $$
 >   &= \underbrace{D_{\mathrm{KL}}(q(\boldsymbol{x}_T \mid \boldsymbol{x}_0) \parallel p(\boldsymbol{x}_T))}_{\mathcal{L}_T \text{ (prior matching)}} - \underbrace{\mathbb{E}_{q(\boldsymbol{x}_1 \mid \boldsymbol{x}_0)}\!\left[\log p_\theta(\boldsymbol{x}_0 \mid \boldsymbol{x}_1)\right]}_{\mathcal{L}_0 \text{ (reconstruction)}}  \\
 >   &\quad + \sum_{t=2}^T \underbrace{\mathbb{E}_{q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)}\!\left[D_{\mathrm{KL}}(q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0) \parallel p_\theta(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t))\right]}_{\mathcal{L}_{t-1} \text{ (step-wise consistency)}}.
 > \end{aligned}
+>
 > $$
 >
 > *Proof:* Factoring $q(\boldsymbol{x}_{1:T} \mid \boldsymbol{x}_0) = q(\boldsymbol{x}_1 \mid \boldsymbol{x}_0)\prod_{t=2}^T q(\boldsymbol{x}_t \mid \boldsymbol{x}_{t-1}, \boldsymbol{x}_0)$ and substituting Bayes' rule $q(\boldsymbol{x}_t \mid \boldsymbol{x}_{t-1}, \boldsymbol{x}_0) = \frac{q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_t, \boldsymbol{x}_0) q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)}{q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_0)}$ yields a telescoping product $\prod_{t=2}^T \frac{q(\boldsymbol{x}_{t-1} \mid \boldsymbol{x}_0)}{q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)} = \frac{q(\boldsymbol{x}_1 \mid \boldsymbol{x}_0)}{q(\boldsymbol{x}_T \mid \boldsymbol{x}_0)}$. Canceling $q(\boldsymbol{x}_1 \mid \boldsymbol{x}_0)$ leaves $\log \frac{q(\boldsymbol{x}_T \mid \boldsymbol{x}_0)}{p(\boldsymbol{x}_T)}$, which integrates to $\mathcal{L}_T$, while the remaining terms yield $\sum_{t=2}^T \mathcal{L}_{t-1} + \mathcal{L}_0$ [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 2.5, pp. 19–20).
@@ -140,18 +155,21 @@ $$
 >
 > $$
 > \mathcal{L}_{t-1} = \mathbb{E}_{q(\boldsymbol{x}_t \mid \boldsymbol{x}_0)}\!\left[\frac{1}{2\sigma_t^2}\lVert \tilde{\boldsymbol{\mu}}_t(\boldsymbol{x}_t, \boldsymbol{x}_0) - \boldsymbol{\mu}_\theta(\boldsymbol{x}_t, t) \rVert_2^2\right] + C_t.
+>
 > $$
 >
 > Inverting `(eq:ddpm:marginal_q)` as $\boldsymbol{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}}(\boldsymbol{x}_t - \sqrt{1 - \bar{\alpha}_t} \boldsymbol{\epsilon})$ and substituting into `(eq:ddpm:posterior_params)` gives
 >
 > $$
 > \tilde{\boldsymbol{\mu}}_t(\boldsymbol{x}_t, \boldsymbol{x}_0) = \frac{1}{\sqrt{\alpha_t}}\!\left(\boldsymbol{x}_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}} \boldsymbol{\epsilon}\right).
+>
 > $$
 >
 > Parameterizing $\boldsymbol{\mu}_\theta(\boldsymbol{x}_t, t) = \frac{1}{\sqrt{\alpha_t}}\left(\boldsymbol{x}_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}} \boldsymbol{\epsilon}_\theta(\boldsymbol{x}_t, t)\right)$ transforms $\mathcal{L}_{t-1}$ into a weighted noise-prediction loss, and dropping the time-dependent prefactor yields the unweighted Ho et al. objective [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. (25.24), p. 871) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Eq. (18.39), p. 362):
 >
 > $$
 > \mathcal{L}_{\mathrm{simple}}(\theta) = \mathbb{E}_{t \sim \mathcal{U}\{1,\dots,T\},  \boldsymbol{x}_0 \sim p_{\mathrm{data}},  \boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0},\boldsymbol{I})}\!\left[\lVert \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta\!\left(\sqrt{\bar{\alpha}_t}\boldsymbol{x}_0 + \sqrt{1 - \bar{\alpha}_t}\boldsymbol{\epsilon},  t\right) \rVert_2^2\right].
+>
 > $$
 
 > [!important] Denoising Score Matching (Vincent's Theorem) & Tweedie's Formula
@@ -159,6 +177,7 @@ $$
 >
 > $$
 > J_{\mathrm{DSM}}(\theta; \sigma) = \frac{1}{2}\mathbb{E}_{p_{\mathrm{data}}(\boldsymbol{x}_0)  q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}_0)}\!\left[\lVert \boldsymbol{s}_\theta(\tilde{\boldsymbol{x}}, \sigma) - \nabla_{\tilde{\boldsymbol{x}}} \log q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}_0) \rVert_2^2\right] = J_{\mathrm{ESM}}(\theta; \sigma) + C,
+>
 > $$
 >
 > where $C$ is independent of $\theta$ [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Eq. (87), p. 37).
@@ -169,6 +188,7 @@ $$
 >
 > $$
 > \nabla_{\boldsymbol{x}_t} \log q_t(\boldsymbol{x}_t) = -\frac{1}{\sqrt{1 - \bar{\alpha}_t}} \mathbb{E}[\boldsymbol{\epsilon} \mid \boldsymbol{x}_t] = \frac{\sqrt{\bar{\alpha}_t} \mathbb{E}[\boldsymbol{x}_0 \mid \boldsymbol{x}_t] - \boldsymbol{x}_t}{1 - \bar{\alpha}_t}.
+>
 > $$
 >
 > Thus, training an $\boldsymbol{\epsilon}$-prediction DDPM is mathematically equivalent to multi-scale DSM with $\boldsymbol{s}_\theta(\boldsymbol{x}_t, t) \equiv -\frac{1}{\sqrt{1-\bar{\alpha}_t}}\boldsymbol{\epsilon}_\theta(\boldsymbol{x}_t, t)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.3.3, p. 876).
@@ -178,12 +198,14 @@ $$
 >
 > $$
 > \boldsymbol{s}_\theta \equiv -\frac{1}{\sigma_t}\boldsymbol{\epsilon}_\theta \equiv \frac{\alpha_t^{\mathrm{aff}}\boldsymbol{x}_\theta - \boldsymbol{x}_t}{\sigma_t^2} \equiv -\frac{\alpha_t^{\mathrm{aff}} \boldsymbol{v}_\theta - (\alpha_t^{\mathrm{aff}})' \boldsymbol{x}_t}{\sigma_t\!\left((\alpha_t^{\mathrm{aff}})'\sigma_t - \alpha_t^{\mathrm{aff}}\sigma_t'\right)},
+>
 > $$
 >
 > all four per-sample squared regression losses are identical up to known time-dependent weights:
 >
 > $$
 > \lVert \boldsymbol{s}_\theta - \boldsymbol{s}^* \rVert_2^2 = \frac{1}{\sigma_t^2}\lVert \boldsymbol{\epsilon}_\theta - \boldsymbol{\epsilon}^* \rVert_2^2 = \frac{(\alpha_t^{\mathrm{aff}})^2}{\sigma_t^4}\lVert \boldsymbol{x}_\theta - \boldsymbol{x}_0^* \rVert_2^2 = \frac{(\alpha_t^{\mathrm{aff}})^2}{\sigma_t^2\left((\alpha_t^{\mathrm{aff}})'\sigma_t - \alpha_t^{\mathrm{aff}}\sigma_t'\right)^2}\lVert \boldsymbol{v}_\theta - \boldsymbol{v}^* \rVert_2^2.
+>
 > $$
 
 ## Algorithmic Implementation & Comparative Synthesis

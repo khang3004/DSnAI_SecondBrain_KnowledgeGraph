@@ -72,6 +72,7 @@ High-dimensional probabilistic modeling faces an exponential curse of dimensiona
 > = \frac{p(x_i \mid \boldsymbol{x}_{\mathrm{pa}(i)}) \prod_{k \in \mathrm{ch}(i)} p(x_k \mid \boldsymbol{x}_{\mathrm{pa}(k)})}{\int p(x_i \mid \boldsymbol{x}_{\mathrm{pa}(i)}) \prod_{k \in \mathrm{ch}(i)} p(x_k \mid \boldsymbol{x}_{\mathrm{pa}(k)}) \mathrm{d}x_i},
 > \quad
 > \mathrm{MB}(i) = \mathrm{pa}(i) \cup \mathrm{ch}(i) \cup \mathrm{coparents}(i).
+>
 > $$
 
 > [!tip] Bayes Ball & Explaining Away in V-Structures
@@ -87,6 +88,7 @@ High-dimensional probabilistic modeling faces an exponential curse of dimensiona
 > = \frac{1}{Z(\boldsymbol{\theta})} \exp\!\left(- \sum_{c \in \mathcal{C}} E_c(\boldsymbol{x}_c; \boldsymbol{\theta}_c)\right),
 > \quad
 > Z(\boldsymbol{\theta}) = \sum_{\boldsymbol{x}} \prod_{c \in \mathcal{C}} \psi_c(\boldsymbol{x}_c; \boldsymbol{\theta}_c),
+>
 > $$
 >
 > where $\psi_c(\boldsymbol{x}_c) = \exp(-E_c(\boldsymbol{x}_c)) > 0$ are positive clique potentials and $Z(\boldsymbol{\theta})$ is the partition function. Unlike DAGs, an undirected node's Markov blanket is simply its immediate graph neighborhood $\mathrm{nbr}(i)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 4, p. 165).
@@ -102,6 +104,7 @@ To unify directed and undirected models and resolve clique-factorization ambigui
 > \mathrm{bel}_s(z_s) \propto \psi_s(z_s) \prod_{u \in \mathrm{nbr}(s)} m_{u \to s}(z_s),
 > \qquad
 > m_{s \to t}(z_t) = \sum_{z_s} \psi_{st}(z_s, z_t)   \psi_s(z_s) \prod_{u \in \mathrm{nbr}(s) \setminus \{t\}} m_{u \to s}(z_s).
+>
 > $$
 >
 > Using the identity $\prod_{u \in \mathrm{nbr}(s) \setminus \{t\}} m_{u \to s}(z_s) = \mathrm{bel}_s(z_s) / m_{t \to s}(z_s)$ avoids redundant products. Replacing $\sum_{z_s}$ with $\max_{z_s}$ yields the **Max-Product** algorithm (operating in the max-product semiring, or max-sum in log-space), which computes exact max-marginals $\zeta_i(k) = \max_{\boldsymbol{z}_{-i}} p(z_i = k, \boldsymbol{z}_{-i} \mid \boldsymbol{y})$ for MAP decoding [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 9, Eq. (9.64), p. 416).
@@ -121,16 +124,18 @@ When $\mathcal{G}$ contains cycles, two routes exist:
 > \boldsymbol{\mu}_* &= \boldsymbol{m}(\boldsymbol{X}_*) + \boldsymbol{K}_{*,X} \boldsymbol{K}_y^{-1} \bigl(\boldsymbol{y} - \boldsymbol{m}(\boldsymbol{X})\bigr), \qquad
 > \boldsymbol{\Sigma}_* = \boldsymbol{K}_{*,*} - \boldsymbol{K}_{*,X} \boldsymbol{K}_y^{-1} \boldsymbol{K}_{X,*},
 > \end{aligned}
+>
 > $$
 >
-> where $\boldsymbol{K}_y = \boldsymbol{K}_{X,X} + \sigma_y^2 \boldsymbol{I}_N$. Function-space inference remains valid even when $\boldsymbol{\phi}(\boldsymbol{x})$ is infinite-dimensional, as for the stationary **Squared Exponential (SE/RBF)** and **Mat\'ern-$\nu$** kernels ($r = \lVert \boldsymbol{x} - \boldsymbol{x}' \rVert_2$) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eqs. (18.8)–(18.13), pp. 684–685):
+> where $\boldsymbol{K}_y = \boldsymbol{K}_{X,X} + \sigma_y^2 \boldsymbol{I}_N$. Function-space inference remains valid even when $\boldsymbol{\phi}(\boldsymbol{x})$ is infinite-dimensional, as for the stationary **Squared Exponential (SE/RBF)** and **Matérn-$\nu$** kernels ($r = \lVert \boldsymbol{x} - \boldsymbol{x}' \rVert_2$) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eqs. (18.8)–(18.13), pp. 684–685):
 >
 > $$
 > k_{\mathrm{SE}}(r; \ell) = \sigma_f^2 \exp\!\left(-\frac{r^2}{2\ell^2}\right), \qquad
 > k_{\mathrm{Mat\acute{e}rn}}(r; \nu, \ell) = \sigma_f^2 \frac{2^{1-\nu}}{\Gamma(\nu)} \left(\frac{\sqrt{2\nu} r}{\ell}\right)^{\nu} K_{\nu}\!\left(\frac{\sqrt{2\nu} r}{\ell}\right).
+>
 > $$
 >
-> Sample paths from a Mat\'ern-$\nu$ GP are $k$-times mean-square differentiable iff $\nu > k$: $\nu = 1/2$ yields rough Ornstein–Uhlenbeck paths ($C^0$), $\nu = 3/2$ yields $C^1$ paths, and $\nu \to \infty$ recovers the $C^\infty$ SE kernel. Replacing $r^2/\ell^2$ by $\sum_{d=1}^D (x_d - x'_d)^2/\ell_d^2$ gives the Automatic Relevance Determination (ARD) kernel [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eq. (18.11), p. 684).
+> Sample paths from a Matérn-$\nu$ GP are $k$-times mean-square differentiable iff $\nu > k$: $\nu = 1/2$ yields rough Ornstein–Uhlenbeck paths ($C^0$), $\nu = 3/2$ yields $C^1$ paths, and $\nu \to \infty$ recovers the $C^\infty$ SE kernel. Replacing $r^2/\ell^2$ by $\sum_{d=1}^D (x_d - x'_d)^2/\ell_d^2$ gives the Automatic Relevance Determination (ARD) kernel [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eq. (18.11), p. 684).
 
 ### Log Marginal Likelihood (Occam's Razor) & Inducing-Point Sparse GPs
 
@@ -146,9 +151,10 @@ When $\mathcal{G}$ contains cycles, two routes exist:
 > \frac{\partial }{\partial \theta_j}\log p(\boldsymbol{y} \mid \boldsymbol{X}, \boldsymbol{\theta})
 > &= \frac{1}{2}\mathrm{Tr}\!\left((\boldsymbol{\alpha}\boldsymbol{\alpha}^{\top} - \boldsymbol{K}_y^{-1})\frac{\partial \boldsymbol{K}_y}{\partial \theta_j}\right),
 > \end{aligned}
+>
 > $$
 >
-> with $\boldsymbol{\alpha} = \boldsymbol{K}_y^{-1} \boldsymbol{y}$. To overcome the $\mathcal{O}(N^3)$ bottleneck of $\boldsymbol{K}_y^{-1}$, **inducing-point sparse GPs** introduce $M \ll N$ pseudo-inputs $\boldsymbol{Z} \in \mathbb{R}^{M \times D}$ with latent values $\boldsymbol{u} = f(\boldsymbol{Z})$ and assume conditional independence $\boldsymbol{f}_* \perp\!\!\!\perp \boldsymbol{f}_X \mid \boldsymbol{u}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eqs. (18.116)–(18.129), pp. 707–709). Using the Nystr\"om low-rank matrix $\boldsymbol{Q}_{A,B} = \boldsymbol{K}_{A,Z}\boldsymbol{K}_{Z,Z}^{-1}\boldsymbol{K}_{Z,B}$ and $\boldsymbol{\Sigma} = (\sigma_y^{-2}\boldsymbol{K}_{Z,X}\boldsymbol{K}_{X,Z} + \boldsymbol{K}_{Z,Z})^{-1}$:
+> with $\boldsymbol{\alpha} = \boldsymbol{K}_y^{-1} \boldsymbol{y}$. To overcome the $\mathcal{O}(N^3)$ bottleneck of $\boldsymbol{K}_y^{-1}$, **inducing-point sparse GPs** introduce $M \ll N$ pseudo-inputs $\boldsymbol{Z} \in \mathbb{R}^{M \times D}$ with latent values $\boldsymbol{u} = f(\boldsymbol{Z})$ and assume conditional independence $\boldsymbol{f}_* \perp\!\!\!\perp \boldsymbol{f}_X \mid \boldsymbol{u}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Eqs. (18.116)–(18.129), pp. 707–709). Using the Nyström low-rank matrix $\boldsymbol{Q}_{A,B} = \boldsymbol{K}_{A,Z}\boldsymbol{K}_{Z,Z}^{-1}\boldsymbol{K}_{Z,B}$ and $\boldsymbol{\Sigma} = (\sigma_y^{-2}\boldsymbol{K}_{Z,X}\boldsymbol{K}_{X,Z} + \boldsymbol{K}_{Z,Z})^{-1}$:
 > - **SOR / DIC:** $q(\boldsymbol{f}_X, \boldsymbol{f}_*)$ replaces $\boldsymbol{K}$ with $\boldsymbol{Q}$ everywhere, yielding $\mu_* = \sigma_y^{-2}\boldsymbol{K}_{*,Z}\boldsymbol{\Sigma}\boldsymbol{K}_{Z,X}\boldsymbol{y}$ and variance $\boldsymbol{K}_{*,Z}\boldsymbol{\Sigma}\boldsymbol{K}_{Z,*}$ (rank-$M$, underestimates uncertainty far from $\boldsymbol{Z}$).
 > - **DTC:** Retains exact test prior $\boldsymbol{K}_{*,*}$, giving variance $\boldsymbol{K}_{*,*} - \boldsymbol{Q}_{*,*} + \boldsymbol{K}_{*,Z}\boldsymbol{\Sigma}\boldsymbol{K}_{Z,*}$.
 > - **FITC:** Uses diagonal correction $\boldsymbol{K}_{X,X} \approx \boldsymbol{Q}_{X,X} + \mathrm{diag}(\boldsymbol{K}_{X,X} - \boldsymbol{Q}_{X,X})$ so $q(\boldsymbol{f}_X \mid \boldsymbol{u})$ factorizes across data points.
@@ -212,7 +218,7 @@ When $\mathcal{G}$ contains cycles, two routes exist:
 > *Figure:* GP prior and posterior samples with SE kernel [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Fig. 18.7, p. 694). (a) Prior draws $f \sim \mathcal{GP}(0, k_{\mathrm{SE}})$. (b) Noise-free observations ($\sigma_y=0$) collapse predictive variance to zero at data points. (c) Noisy observations ($\sigma_y > 0$) retain non-zero uncertainty bands ($\mu_* \pm 2\sigma_*$). (`probabilisticml_kevinmurphy_advancedtopics_p728_fig1.png`)
 
 > [!example] Visual Diagram (LaTeX / PDF)
-> *Left: Mat\'ern-$1/2$ exhibits a sharp cusp at $r=0$ (rough $C^0$ paths), whereas Mat\'ern-$3/2$ ($C^1$) and SE ($C^\infty$) are smooth at the origin. Right: GP posterior mean $\mu_*(x)$ with $\pm 2\sigma_*(x)$ credible band contracting near observed data and reverting toward prior uncertainty in extrapolation gaps.* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
+> *Left: Matérn-$1/2$ exhibits a sharp cusp at $r=0$ (rough $C^0$ paths), whereas Matérn-$3/2$ ($C^1$) and SE ($C^\infty$) are smooth at the origin. Right: GP posterior mean $\mu_*(x)$ with $\pm 2\sigma_*(x)$ credible band contracting near observed data and reverting toward prior uncertainty in extrapolation gaps.* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
 
 > [!note] Source Figure
 > *Figure:* Effect of GP hyperparameters $(\ell, \sigma_f, \sigma_y)$ on 1D SE regression [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, Fig. 18.15, p. 718). (a) $(\ell,\sigma_f,\sigma_y)=(1.0,1.0,0.1)$ captures signal structure with tight uncertainty. (b) $(\ell,\sigma_f,\sigma_y)=(3.0,1.16,0.89)$ corresponds to an alternative local optimum of the marginal likelihood that over-smooths the signal as observation noise. (`probabilisticml_kevinmurphy_advancedtopics_p752_fig1.png`)
@@ -225,8 +231,8 @@ When $\mathcal{G}$ contains cycles, two routes exist:
 > [!warning] Naive $\boldsymbol{K}_y^{-1}$ Inversion Instability vs. Jittered Cholesky
 > For smooth kernels like SE ($C^\infty$) with closely spaced inputs or small noise $\sigma_y^2$, $\boldsymbol{K}_y$ is exponentially ill-conditioned ($\kappa(\boldsymbol{K}_y) > 10^{12}$). Explicit inversion $\boldsymbol{K}_y^{-1}$ causes catastrophic cancellation and negative predictive variances $\sigma_*^2 < 0$. **Remedy:** Always compute $\boldsymbol{L}\boldsymbol{L}^{\top} = \boldsymbol{K}_y + \epsilon \boldsymbol{I}_N$ via Cholesky with adaptive diagonal jitter ($\epsilon \approx 10^{-6}\sigma_f^2$) and evaluate $\log\det\boldsymbol{K}_y = 2\sum_{i=1}^N \log L_{ii}$ as in Algorithm `alg:pgmgp:cholesky_gp` [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 17.2.5, p. 578).
 
-> [!warning] Cubic $\mathcal{O}(N^3)$ Bottleneck & Inconsistent Nystr\"om Variances
-> Exact GP inference scales as $\mathcal{O}(N^3)$ time and $\mathcal{O}(N^2)$ memory, becoming intractable for $N > 10^4$. Furthermore, substituting the Nystr\"om approximation $\boldsymbol{Q}_{X,X}$ only in $\boldsymbol{K}_{X,X}$ while keeping exact $\boldsymbol{K}_{*,X}$ can produce negative predictive variances. **Remedy:** Use consistent inducing-point priors (DTC, FITC, or variational Titsias/SVGP) with $M \ll N$ inducing points, guaranteeing positive semidefinite covariances in $\mathcal{O}(NM^2 + M^3)$ time [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, pp. 707–709).
+> [!warning] Cubic $\mathcal{O}(N^3)$ Bottleneck & Inconsistent Nyström Variances
+> Exact GP inference scales as $\mathcal{O}(N^3)$ time and $\mathcal{O}(N^2)$ memory, becoming intractable for $N > 10^4$. Furthermore, substituting the Nyström approximation $\boldsymbol{Q}_{X,X}$ only in $\boldsymbol{K}_{X,X}$ while keeping exact $\boldsymbol{K}_{*,X}$ can produce negative predictive variances. **Remedy:** Use consistent inducing-point priors (DTC, FITC, or variational Titsias/SVGP) with $M \ll N$ inducing points, guaranteeing positive semidefinite covariances in $\mathcal{O}(NM^2 + M^3)$ time [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, pp. 707–709).
 
 > [!warning] Marginal Likelihood Hyperparameter Local Optima
 > The GP log marginal likelihood $\log p(\boldsymbol{y} \mid \boldsymbol{X}, \boldsymbol{\theta})$ is non-convex in $(\ell, \sigma_f, \sigma_y)$ and routinely exhibits multiple local optima: one explaining variation as short-lengthscale signal with low noise (Fig. `fig:pgmgp:gp_hparams`a), and another explaining it as long-lengthscale trend with high observation noise (Fig. `fig:pgmgp:gp_hparams`b). **Remedy:** Optimize $\log p(\boldsymbol{y} \mid \boldsymbol{X}, \boldsymbol{\theta})$ from multiple log-space restarts, place weakly informative hyperpriors on $(\ell, \sigma_y)$, or marginalize $\boldsymbol{\theta}$ via HMC/quadrature [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 18, pp. 718–720).

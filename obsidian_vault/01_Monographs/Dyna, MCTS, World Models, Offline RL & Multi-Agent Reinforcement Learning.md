@@ -76,6 +76,7 @@ When real-time interaction is prohibited, **offline RL** learns solely from a st
 >
 > $$
 > a^*_{t:t+H-1} = \arg\max_{a_{t:t+H-1}} \mathbb{E}\!\left[\sum_{h=0}^{H-1} R(s_{t+h}, a_{t+h}) + \hat{V}(s_{t+H})\right],
+>
 > $$
 >
 > and executes only $a^*_t$. To prevent policy exploitation of overconfident point-estimate dynamics, **PETS** (Probabilistic Ensembles with Trajectory Sampling) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 35.4.4, p. 1168) models $p_\theta(s' \mid s, a)$ via an ensemble of $B$ probabilistic neural networks $\{\mathcal{N}(\mu_{\theta_b}(s, a), \Sigma_{\theta_b}(s, a))\}_{b=1}^B$, separating *aleatoric* uncertainty (intra-member variance $\Sigma_{\theta_b}$) from *epistemic* uncertainty (inter-member disagreement in $\mu_{\theta_b}$).
@@ -85,6 +86,7 @@ When real-time interaction is prohibited, **offline RL** learns solely from a st
 > $$
 > \lvert J_{\hat{\mathcal{M}}}(\pi) - J_{\mathcal{M}}(\pi) \rvert \le \frac{2 R_{\max}}{(1-\gamma)^2}\left[\epsilon_\pi + \frac{\gamma}{1-\gamma}\epsilon_m\right], \qquad
 > \mathcal{E}_{\text{finite}}(H) = \mathcal{O}(H^2 \epsilon_m).
+>
 > $$
 
 > [!tip] Why Truncated Rollouts (MBPO) Beat Full-Horizon Imagination
@@ -101,6 +103,7 @@ Monte Carlo Tree Search (MCTS) builds an asymmetric search tree rooted at $s_t$ 
 >
 > $$
 > a_t = \arg\max_{a \in \mathcal{A}(s)} \left[ Q(s, a) + c \sqrt{\frac{\ln N(s)}{N(s, a)}} \right], \qquad N(s) = \sum_{b} N(s, b).
+>
 > $$
 >
 > **AlphaZero** replaces the uniform UCB bonus with a learned neural policy prior $P(s, a) = \pi_\theta(a \mid s)$ via the **PUCT** rule and eliminates Monte Carlo rollouts by evaluating leaf nodes with a value head $V_\theta(s)$ [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eqs. 4.2–4.4, pp. 86–88):
@@ -108,18 +111,21 @@ Monte Carlo Tree Search (MCTS) builds an asymmetric search tree rooted at $s_t$ 
 > $$
 > a_t = \arg\max_{a \in \mathcal{A}(s)} \left[ Q(s, a) + c_{\text{puct}}  P(s, a) \frac{\sqrt{N(s)}}{1 + N(s, a)} \right], \qquad
 > Q(s, a) \leftarrow Q(s, a) + \frac{u - Q(s, a)}{N(s, a)}.
+>
 > $$
 >
 > After $K$ simulations, the root visit distribution $\pi^{\text{MCTS}}_s(a) \propto N(s, a)^{1/\tau}$ serves as the policy target, and the network $(V_\theta, \pi_\theta)$ minimizes:
 >
 > $$
 > \mathcal{L}_{\text{AZ}}(\theta) = \mathbb{E}_{(s, \pi^{\text{MCTS}}_s, V^{\text{MCTS}}_s) \sim \mathcal{D}} \left[ \left(V^{\text{MCTS}}(s) - V_\theta(s)\right)^2 - \sum_{a} \pi^{\text{MCTS}}_s(a) \log \pi_\theta(a \mid s) \right].
+>
 > $$
 >
 > **MuZero** removes the requirement of a known simulator by learning an encoder $z_t = e_\phi(o_t)$ and latent dynamics/reward model $(z_{t+1}, \hat{r}_t) = M_w(z_t, a_t)$, jointly optimizing $(\theta, w, \phi)$ to match observed rewards $r_t$ alongside MCTS value and policy targets without reconstructing pixels [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eqs. 4.5–4.6, p. 88):
 >
 > $$
 > \mathcal{L}_{\text{MZ}}(\theta, w, \phi) = \mathcal{L}_{\text{AZ}}(\theta, w, \phi) + \mathbb{E}_{\mathcal{D}}\!\left[\left(r_t - \hat{r}_t(e_\phi(o_t), a_t)\right)^2\right].
+>
 > $$
 
 ### Latent World Models (Dreamer RSSM) & Successor Features
@@ -131,6 +137,7 @@ Rather than predicting high-dimensional pixels directly or planning only at deci
 >
 > $$
 > \mathcal{L}_{\text{WM}} = \mathbb{E}_{q(z_{1:T} \mid h_0, o_{1:T}, a_{1:T})}\!\left[\sum_{t=1}^T \left( -\beta_o \ln D(o_t \mid z_t, h_t) + \beta_z D_{\mathrm{KL}}(E(z_t \mid h_t, o_t) \parallel P(\hat{z}_t \mid h_t)) \right)\right].
+>
 > $$
 >
 > Inside latent imagination (unrolling $h_{t+1} = U(h_t, a_t, \hat{z}_t)$ without decoding pixels), the critic and actor optimize GAE $\lambda$-returns $G_t^\lambda = r_t + \gamma\left((1-\lambda)V(h_{t+1}) + \lambda G_{t+1}^\lambda\right)$ [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eqs. 4.25–4.27, p. 100):
@@ -138,6 +145,7 @@ Rather than predicting high-dimensional pixels directly or planning only at deci
 > $$
 > \mathcal{L}_{\text{critic}} = \sum_{t=1}^T \left(V(h_t) - \mathrm{sg}(G_t^\lambda)\right)^2, \qquad
 > \mathcal{L}_{\text{actor}} = -\sum_{t=1}^T \mathrm{sg}\!\left(G_t^\lambda - V(h_t)\right)\log \pi(a_t \mid h_t).
+>
 > $$
 >
 > For fast transfer across tasks with linear rewards $R(s, \boldsymbol{w}) = \boldsymbol{\phi}(s)^{\top} \boldsymbol{w}$, **Successor Features (SFs)** decouple dynamics from reward via the discounted feature occupancy [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eqs. 4.60–4.71, pp. 115–116):
@@ -145,6 +153,7 @@ Rather than predicting high-dimensional pixels directly or planning only at deci
 > $$
 > \boldsymbol{\psi}^\pi(s, a) = \mathbb{E}_\pi\!\left[\sum_{t=0}^\infty \gamma^t \boldsymbol{\phi}(s_{t+1}) \mid s_0=s, a_0=a\right], \qquad
 > Q^{\pi, \boldsymbol{w}}(s, a) = \boldsymbol{\psi}^\pi(s, a)^{\top} \boldsymbol{w}.
+>
 > $$
 >
 > Given a library of policies $\{\pi_i\}_{i=1}^N$ and a new task $\boldsymbol{w}_{\text{new}}$, **Generalized Policy Improvement (GPI)** selects $a^*(s; \boldsymbol{w}_{\text{new}}) = \arg\max_a \max_i \boldsymbol{\psi}^{\pi_i}(s, a)^{\top} \boldsymbol{w}_{\text{new}}$, guaranteeing $Q^{\pi}(s, a) \ge \max_i Q^{\pi_i}(s, a)$ [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 4.5.3.1, p. 116).
@@ -158,6 +167,7 @@ In offline RL, standard Q-learning suffers from *extrapolation error*: $\max_{a'
 >
 > $$
 > \mathcal{L}_{\text{CQL}}(w) = \alpha \left(\mathbb{E}_{s \sim \mathcal{D},  a \sim \mu(\cdot \mid s)}[Q_w(s, a)] - \mathbb{E}_{(s,a) \sim \mathcal{D}}[Q_w(s, a)] + \mathcal{R}(\mu)\right) + \frac{1}{2}\mathcal{E}(B, w).
+>
 > $$
 >
 > Setting $\mathcal{R}(\mu) = -D_{\mathrm{KL}}(\mu \parallel \rho)$ with uniform prior $\rho$ yields the soft log-sum-exp penalty $\log \sum_a \exp(Q_w(s, a))$. Alternatively:
@@ -169,6 +179,7 @@ In offline RL, standard Q-learning suffers from *extrapolation error*: $\max_{a'
 >
 > $$
 > J(\pi) = \frac{1}{1-\gamma}\mathbb{E}_{(s,a)\sim p_{\mathcal{D}}}[\zeta^*(s, a) R(s, a)].
+>
 > $$
 
 ### Multi-Agent RL: Equilibria, CTDE (VDN/QMIX/MAPPO), and Regret
@@ -180,6 +191,7 @@ In a stochastic game, agent $i$'s expected return $U_i(\pi_i, \pi_{-i}) = \mathb
 >
 > $$
 > \arg\max_{\boldsymbol{a}} Q_{\text{tot}}(\boldsymbol{h}_t, c_t, \boldsymbol{a}; \theta) = \left(\arg\max_{a^1} Q_1(h_t^1, a^1; \theta_1), \dots, \arg\max_{a^n} Q_n(h_t^n, a^n; \theta_n)\right).
+>
 > $$
 >
 > **VDN** enforces IGM via linear additivity $Q_{\text{tot}} = \sum_{i=1}^n Q_i(h_t^i, a_t^i; \theta_i)$, whereas **QMIX** uses a hypernetwork-parameterized monotonic mixing network $Q_{\text{tot}} = f_{\text{mix}}(Q_1, \dots, Q_n; c_t)$ with non-negative weights $\frac{\partial f_{\text{mix}}}{\partial Q_i} \ge 0$ [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eqs. 5.46–5.49, p. 137).
@@ -188,12 +200,14 @@ In a stochastic game, agent $i$'s expected return $U_i(\pi_i, \pi_{-i}) = \mathb
 >
 > $$
 > \nabla_{\theta_i} J(\theta_{1:n}) \propto \mathbb{E}_{\hat{h} \sim p(\hat{h} \mid \pi),  \boldsymbol{a} \sim \pi}\!\left[\left(Q_i^\pi(\hat{h}, \boldsymbol{a}) - V_i^\pi(\hat{h})\right) \nabla_{\theta_i} \log \pi_i(a_i \mid h_i; \theta_i)\right].
+>
 > $$
 >
 > For imperfect-information games, **Magnetic Mirror Descent Search (MMDS)** and Counterfactual Regret Minimization stabilize self-play toward NE via regularized local policy updates toward a magnet $\rho$ [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Eq. 5.70, p. 143):
 >
 > $$
 > \pi_{\text{new}} = \arg\max_{\pi' \in \Delta(\mathcal{A})} \left[ \langle \pi', q \rangle - \alpha D_{\mathrm{KL}}(\pi' \parallel \rho) - \frac{1}{\eta}D_{\mathrm{KL}}(\pi' \parallel \pi) \right].
+>
 > $$
 
 Beyond flat single-step MDPs, **Hierarchical RL (Options)** models temporally extended macro-actions $\omega = (\mathcal{I}_\omega, \pi_\omega, \beta_\omega)$ over semi-MDPs [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 7.5.1, p. 184), while **MaxEnt Inverse RL** recovers reward functions $R_\theta$ from expert demonstrations $\mathcal{D}_{\text{exp}}$ via energy-based trajectory likelihood $p(\tau) \propto \exp(\sum_{t=0}^{T-1} R_\theta(s_t, a_t))$ 

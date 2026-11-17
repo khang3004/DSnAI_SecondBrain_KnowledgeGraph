@@ -73,6 +73,7 @@ where $f \colon \Theta \to \mathbb{R}$ is an integrable test function, $\tilde{\
 > \mathrm{Var}[\hat{\mu}_S] = \frac{\sigma^2}{S},
 >   \qquad
 >   \sqrt{S}(\hat{\mu}_S - \mu) \xrightarrow{d} \mathcal{N}(0, \sigma^2) \quad (S \to \infty).
+>
 > $$
 >
 > Crucially, the $\mathcal{O}(S^{-1/2})$ standard error is independent of ambient dimension $d$ [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 17.1.2, pp. 606–607). However, when samples form a stationary Markov chain with lag-$\ell$ autocorrelation $\rho(\ell) = \mathrm{Corr}[f(\boldsymbol{\theta}^{(0)}), f(\boldsymbol{\theta}^{(\ell)})]$, the estimator variance inflates by the integrated autocorrelation time $\tau_{\mathrm{int}}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 12.6.3, pp. 563–565):
@@ -84,6 +85,7 @@ where $f \colon \Theta \to \mathbb{R}$ is an integrable test function, $\tilde{\
 >    \xrightarrow{S \to \infty}  \frac{\sigma^2}{S} \underbrace{\left(1 + 2\sum_{\ell=1}^{\infty} \rho(\ell)\right)}_{\tau_{\mathrm{int}}}, \\
 >   \mathrm{ESS} &\triangleq \frac{S}{1 + 2\sum_{\ell=1}^{\infty} \rho(\ell)}.
 > \end{aligned}
+>
 > $$
 >
 > To diagnose non-stationarity across $M$ parallel chains of length $S$ (each split into halves to detect within-chain drift), let $\bar{f}_{\cdot m}$ be chain $m$'s mean, $\bar{f}_{\cdot\cdot}$ the grand mean, $W = \frac{1}{M}\sum_{m=1}^M s_m^2$ the mean within-chain variance, and $B = \frac{S}{M-1}\sum_{m=1}^M (\bar{f}_{\cdot m} - \bar{f}_{\cdot\cdot})^2$ the scaled between-chain variance. The Gelman–Rubin potential scale reduction factor is [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 12.6.2.2, pp. 562–563)
@@ -92,6 +94,7 @@ where $f \colon \Theta \to \mathbb{R}$ is an integrable test function, $\tilde{\
 > \hat{V}^+ = \frac{S - 1}{S} W + \frac{1}{S} B,
 >   \qquad
 >   \hat{R} = \sqrt{\frac{\hat{V}^+}{W}},
+>
 > $$
 >
 > with $\hat{R} < 1.01$ required before declaring convergence.
@@ -107,12 +110,14 @@ When direct sampling from $\pi$ is infeasible, importance sampling (IS) draws $\
 > \mathrm{Var}_q[w(\boldsymbol{\theta})] = \mathbb{E}_q\!\left[\left(\frac{\pi(\boldsymbol{\theta})}{q(\boldsymbol{\theta})}\right)^2\right] - 1 = \chi^2(\pi  \|  q),
 >   \qquad
 >   \mathrm{ESS}_{\mathrm{IS}} \approx \frac{S}{1 + \chi^2(\pi  \|  q)} = \frac{\bigl(\sum_{s=1}^S \tilde{w}_s\bigr)^2}{\sum_{s=1}^S \tilde{w}_s^2}.
+>
 > $$
 >
 > Consider two isotropic $d$-dimensional Gaussians $\pi = \mathcal{N}(\boldsymbol{0}, \sigma_\pi^2 \boldsymbol{I}_d)$ and $q = \mathcal{N}(\boldsymbol{0}, \sigma_q^2 \boldsymbol{I}_d)$ with $\sigma_q^2 > \sigma_\pi^2 / 2$. Direct integration gives
 >
 > $$
 > 1 + \chi^2(\pi  \|  q) = \left(\frac{\sigma_q^2}{\sigma_\pi \sqrt{2\sigma_q^2 - \sigma_\pi^2}}\right)^d.
+>
 > $$
 >
 > Because the base strictly exceeds $1$ whenever $\sigma_q \neq \sigma_\pi$, the required sample size $S$ to maintain fixed $\mathrm{ESS}_{\mathrm{IS}}$ grows exponentially in $d$, causing a single particle to capture $W_s \to 1$ while all others vanish.
@@ -132,6 +137,7 @@ since integrating over $\boldsymbol{\theta}$ immediately recovers $\int T(\bolds
 >
 > $$
 > \alpha(\boldsymbol{\theta}, \boldsymbol{\theta}') = \min\!\left(1,  \frac{\tilde{\pi}(\boldsymbol{\theta}') q(\boldsymbol{\theta} \mid \boldsymbol{\theta}')}{\tilde{\pi}(\boldsymbol{\theta}) q(\boldsymbol{\theta}' \mid \boldsymbol{\theta})}\right),
+>
 > $$
 >
 > where the unknown $Z$ cancels. For $\boldsymbol{\theta}' \neq \boldsymbol{\theta}$, the transition density is $T(\boldsymbol{\theta}' \mid \boldsymbol{\theta}) = q(\boldsymbol{\theta}' \mid \boldsymbol{\theta})\alpha(\boldsymbol{\theta}, \boldsymbol{\theta}')$. Multiplying by $\pi(\boldsymbol{\theta}) = \tilde{\pi}(\boldsymbol{\theta})/Z$ gives
@@ -140,6 +146,7 @@ since integrating over $\boldsymbol{\theta}$ immediately recovers $\int T(\bolds
 > T(\boldsymbol{\theta}' \mid \boldsymbol{\theta}) \pi(\boldsymbol{\theta})
 >   = \frac{1}{Z}\min\!\bigl(\tilde{\pi}(\boldsymbol{\theta})q(\boldsymbol{\theta}' \mid \boldsymbol{\theta}),  \tilde{\pi}(\boldsymbol{\theta}')q(\boldsymbol{\theta} \mid \boldsymbol{\theta}')\bigr)
 >   = T(\boldsymbol{\theta} \mid \boldsymbol{\theta}') \pi(\boldsymbol{\theta}'),
+>
 > $$
 >
 > which is symmetric in $(\boldsymbol{\theta}, \boldsymbol{\theta}')$, proving detailed balance. However, for isotropic random-walk proposals $q(\boldsymbol{\theta}' \mid \boldsymbol{\theta}) = \mathcal{N}(\boldsymbol{\theta}, \sigma^2 \boldsymbol{I}_d)$, maintaining $\mathcal{O}(1)$ acceptance in $d$ dimensions forces $\sigma = \mathcal{O}(d^{-1/2})$ (optimal asymptotic acceptance $\approx 0.234$); because diffusive random walks traverse distance $\propto \sqrt{t} \sigma$ in $t$ steps [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 14.2.1, p. 457), exploring an $\mathcal{O}(1)$ target width requires $t = \mathcal{O}(d)$ steps per proposal scale, or $\mathcal{O}(d^2)$ gradient-free density evaluations for an independent sample (and $\mathcal{O}((L/\ell)^2)$ in anisotropic valleys of aspect ratio $L/\ell$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 12.3.7, p. 545)).
@@ -167,6 +174,7 @@ To suppress random-walk diffusion, Hamiltonian Monte Carlo (HMC) augments $\bold
 > \boldsymbol{r}_{t+1/2} = \boldsymbol{r}_t - \frac{\epsilon}{2}\nabla E(\boldsymbol{\theta}_t), \qquad
 >   \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t + \epsilon \boldsymbol{M}^{-1} \boldsymbol{r}_{t+1/2}, \qquad
 >   \boldsymbol{r}_{t+1} = \boldsymbol{r}_{t+1/2} - \frac{\epsilon}{2}\nabla E(\boldsymbol{\theta}_{t+1}).
+>
 > $$
 >
 > Each sub-step is a shear transformation whose Jacobian is block-triangular with unit diagonal, so $|\det \boldsymbol{J}_{\mathrm{LF}}| = 1$ (exact volume preservation, eliminating Jacobian factors in MH). Composing $L$ steps with a momentum negation $\Phi_{\mathrm{flip}}(\boldsymbol{\theta}, \boldsymbol{r}) = (\boldsymbol{\theta}, -\boldsymbol{r})$ yields an involution $(\Phi_{\mathrm{flip}} \circ \Psi_{\mathrm{LF}}^L)^2 = \mathrm{Id}$, guaranteeing exact time-reversibility. Because the leapfrog integrator is second-order symplectic, the global Hamiltonian error remains bounded at $\Delta H = H(\boldsymbol{\theta}^*, \boldsymbol{r}^*) - H(\boldsymbol{\theta}_0, \boldsymbol{r}_0) = \mathcal{O}(\epsilon^2)$ over arbitrarily long trajectories, and MH acceptance $\alpha = \min(1, \exp(-\Delta H))$ requires $\epsilon = \mathcal{O}(d^{-1/4})$ to keep $\Delta H = \mathcal{O}(1)$, yielding $\mathcal{O}(d^{1/4})$ leapfrog steps per nearly independent sample [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 12.5.2–12.5.3, pp. 552–554).
@@ -178,6 +186,7 @@ To suppress random-walk diffusion, Hamiltonian Monte Carlo (HMC) augments $\bold
 > (\boldsymbol{\theta}^+ - \boldsymbol{\theta}^-)^{\top} \boldsymbol{M}^{-1} \boldsymbol{r}^+ < 0
 >   \quad\text{or}\quad
 >   (\boldsymbol{\theta}^+ - \boldsymbol{\theta}^-)^{\top} \boldsymbol{M}^{-1} \boldsymbol{r}^- < 0,
+>
 > $$
 >
 > thus adaptively selecting the trajectory length $L$ without manual tuning [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 12.5.4.1, p. 554).

@@ -125,6 +125,15 @@ def main() -> int:
         dd_count = len(re.findall(r"(?<!\\)\$\$", body_no_code))
         if dd_count % 2 != 0:
             render_errors.append(f"{p.name}: odd number of $$ delimiters ({dd_count})")
+        # Check no raw \[ \] \( \) LaTeX math delimiters remain
+        if re.search(r"(?<!\\)(?:\\\[|\\\]|\\\(|\\\))", body_no_code):
+            render_errors.append(f"{p.name}: raw \\[ or \\( math delimiter")
+        # Check every Markdown table header has a blank line (or bare '>') before it for Obsidian
+        all_lines = body_no_code.splitlines()
+        for lno in range(1, len(all_lines)):
+            if re.match(r"^(?:>\s*)?\|[\s\-:|]+\|\s*$", all_lines[lno]):
+                if lno >= 2 and all_lines[lno - 2].strip() not in ("", ">"):
+                    render_errors.append(f"{p.name}:L{lno}: table missing blank line before header -> {all_lines[lno-2][:40]}")
         # Check inline $ per line (after stripping $$...$$)
         no_disp = re.sub(r"\$\$.*?\$\$", "", body_no_code, flags=re.DOTALL)
         for lno, ln in enumerate(no_disp.splitlines(), 1):

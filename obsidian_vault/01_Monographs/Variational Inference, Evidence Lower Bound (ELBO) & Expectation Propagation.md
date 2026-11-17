@@ -85,6 +85,7 @@ By contrast, Expectation Propagation (EP) approximates a factorized target poste
 >
 > $$
 > \log p_{\boldsymbol{\theta}}(\boldsymbol{x}) = \mathrm{ELBO}(q; \boldsymbol{\theta}) + D_{\mathrm{KL}}(q(\boldsymbol{z}) \parallel p_{\boldsymbol{\theta}}(\boldsymbol{z} \mid \boldsymbol{x})),
+>
 > $$
 >
 > where the Evidence Lower Bound admits three algebraically equivalent representations:
@@ -95,6 +96,7 @@ By contrast, Expectation Propagation (EP) approximates a factorized target poste
 >   &= \mathbb{E}_{q(\boldsymbol{z})}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{x}, \boldsymbol{z})\right] + \mathrm{H}(q) = -\mathcal{F}(q; \boldsymbol{\theta}) \quad\text{(Neg. Free Energy)}  \\
 >   &= \mathbb{E}_{q(\boldsymbol{z})}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{x} \mid \boldsymbol{z})\right] - D_{\mathrm{KL}}(q(\boldsymbol{z}) \parallel p_{\boldsymbol{\theta}}(\boldsymbol{z})) \quad\text{(Recon. $-$ Prior KL)}.
 > \end{aligned}
+>
 > $$
 >
 > Since $D_{\mathrm{KL}}(q \parallel p) \ge 0$ with equality if and only if $q(\boldsymbol{z}) = p_{\boldsymbol{\theta}}(\boldsymbol{z} \mid \boldsymbol{x})$ a.e., we have $\mathrm{ELBO}(q; \boldsymbol{\theta}) \le \log p_{\boldsymbol{\theta}}(\boldsymbol{x})$, and maximizing $\mathrm{ELBO}(q; \boldsymbol{\theta})$ with respect to $q$ is strictly equivalent to minimizing $D_{\mathrm{KL}}(q(\boldsymbol{z}) \parallel p_{\boldsymbol{\theta}}(\boldsymbol{z} \mid \boldsymbol{x}))$.
@@ -141,6 +143,7 @@ $$
 >
 > $$
 > \mathrm{ELBO}_j(q_j) = \int q_j(\boldsymbol{z}_j) \mathbb{E}_{-j}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{x}, \boldsymbol{z})\right]\mathrm{d}\boldsymbol{z}_j - \int q_j(\boldsymbol{z}_j) \log q_j(\boldsymbol{z}_j) \mathrm{d}\boldsymbol{z}_j + \mathrm{const},
+>
 > $$
 >
 > where $\mathbb{E}_{-j}[\cdot]$ integrates over $\prod_{k \neq j} q_k(\boldsymbol{z}_k)$. Form the Lagrangian with normalization multiplier $\lambda$ and set the functional derivative $\frac{\delta}{\delta q_j(\boldsymbol{z}_j)}$ to zero [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 19.4.2, PDF pp. 661–662):
@@ -150,12 +153,14 @@ $$
 > \frac{\delta}{\delta q_j(\boldsymbol{z}_j)} &\left\{ \mathrm{ELBO}_j(q_j) + \lambda \left(\int q_j(\boldsymbol{z}_j) \mathrm{d}\boldsymbol{z}_j - 1\right) \right\}  \\
 >   &\qquad = \mathbb{E}_{-j}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{x}, \boldsymbol{z})\right] - \log q_j(\boldsymbol{z}_j) - 1 + \lambda = 0.
 > \end{aligned}
+>
 > $$
 >
 > Solving for $q_j(\boldsymbol{z}_j)$ and absorbing $1 - \lambda$ into the normalizing constant yields the closed-form CAVI fixed-point update:
 >
 > $$
 > \log q_j^*(\boldsymbol{z}_j) = \mathbb{E}_{-j}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{x}, \boldsymbol{z})\right] + \mathrm{const} = \mathbb{E}_{\boldsymbol{z}_{\mathrm{mb}(j)}}\!\left[\log p_{\boldsymbol{\theta}}(\boldsymbol{z}_j, \boldsymbol{z}_{\mathrm{mb}(j)}, \boldsymbol{x})\right] + \mathrm{const},
+>
 > $$
 >
 > where $\boldsymbol{z}_{\mathrm{mb}(j)}$ denotes the Markov blanket of $\boldsymbol{z}_j$. Equivalently, $\mathrm{ELBO}_j(q_j) = -D_{\mathrm{KL}}(q_j \parallel f_j) + \mathrm{const}$ with $f_j(\boldsymbol{z}_j) \propto \exp(\mathbb{E}_{-j}[\log p_{\boldsymbol{\theta}}(\boldsymbol{x}, \boldsymbol{z})])$, proving concavity in each $q_j$ individually [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 10.83, PDF p. 491).
@@ -179,6 +184,7 @@ For non-conjugate models, we optimize fixed-form variational parameters $\boldsy
 >
 > $$
 > \nabla_{\boldsymbol{\phi}} \mathcal{L}(\boldsymbol{\phi}) = \mathbb{E}_{q_{\boldsymbol{\phi}}(\boldsymbol{z})}\!\left[\left(\tilde{\mathcal{L}}(\boldsymbol{\phi}, \boldsymbol{z}) - c\right) \nabla_{\boldsymbol{\phi}} \log q_{\boldsymbol{\phi}}(\boldsymbol{z})\right],
+>
 > $$
 >
 > where $c$ is a control-variate baseline with optimal variance-minimizing value $c_i^* = \frac{\mathrm{Cov}(g_i \tilde{\mathcal{L}},  g_i)}{\mathrm{Var}[g_i]}$ for $g_i = \partial_{\phi_i} \log q_{\boldsymbol{\phi}}(\boldsymbol{z})$. Rao–Blackwellization further reduces variance by replacing $\tilde{\mathcal{L}}$ with only the Markov-blanket terms $\tilde{\mathcal{L}}_j(\boldsymbol{z}_j, \boldsymbol{z}_{\mathrm{mb}(j)})$ depending on $\boldsymbol{z}_j$.
@@ -187,6 +193,7 @@ For non-conjugate models, we optimize fixed-form variational parameters $\boldsy
 >
 > $$
 > \nabla_{\boldsymbol{\phi}} \mathbb{E}_{q_{\boldsymbol{\phi}}(\boldsymbol{z})}[f(\boldsymbol{z})] = \mathbb{E}_{p(\boldsymbol{\epsilon})}\!\left[\nabla_{\boldsymbol{z}} f(\boldsymbol{z})^{\top} \nabla_{\boldsymbol{\phi}} g_{\boldsymbol{\phi}}(\boldsymbol{\epsilon}, \boldsymbol{x})\right], \qquad \log q_{\boldsymbol{\phi}}(\boldsymbol{z}) = \log p(\boldsymbol{\epsilon}) - \log \lvert \det \frac{\partial \boldsymbol{z}}{\partial \boldsymbol{\epsilon}} \rvert.
+>
 > $$
 
 ### Amortized VI & Expectation Propagation (EP) vs. Laplace

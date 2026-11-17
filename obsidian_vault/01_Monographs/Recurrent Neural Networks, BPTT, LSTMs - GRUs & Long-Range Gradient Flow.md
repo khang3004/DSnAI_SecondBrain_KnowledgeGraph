@@ -85,6 +85,7 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >
 > $$
 > \nabla_{\boldsymbol{h}_T}\mathcal{L} = \boldsymbol{W}_{oh}^{\top} \nabla_{\boldsymbol{o}_T}\mathcal{L}.
+>
 > $$
 >
 > For $t = T-1, \dots, 1$, $\boldsymbol{h}_t$ has two descendants ($\boldsymbol{o}_t$ and $\boldsymbol{h}_{t+1}$). Applying the multivariable chain rule gives the backward recursion:
@@ -95,12 +96,14 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >   + \left(\frac{\partial \boldsymbol{o}_t}{\partial \boldsymbol{h}_t}\right)^{\top} \nabla_{\boldsymbol{o}_t}\mathcal{L}
 >   = \boldsymbol{W}_{hh}^{\top} \mathrm{diag}\big(\phi'(\boldsymbol{a}_{t+1})\big) \nabla_{\boldsymbol{h}_{t+1}}\mathcal{L}
 >   + \boldsymbol{W}_{oh}^{\top} \nabla_{\boldsymbol{o}_t}\mathcal{L}.
+>
 > $$
 >
 > Unrolling `(eq:rnn:bptt_rec)` expresses the sensitivity of the loss at step $t$ to an earlier hidden state $\boldsymbol{h}_k$ ($k < t$) through a product of $t-k$ step-to-step Jacobians $\boldsymbol{J}_j := \frac{\partial \boldsymbol{h}_j}{\partial \boldsymbol{h}_{j-1}} = \mathrm{diag}\big(\phi'(\boldsymbol{a}_j)\big)\boldsymbol{W}_{hh}$:
 >
 > $$
 > \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{h}_k} = \prod_{j=k+1}^{t} \boldsymbol{J}_j = \prod_{j=k+1}^{t} \mathrm{diag}\big(\phi'(\boldsymbol{a}_j)\big)\boldsymbol{W}_{hh}.
+>
 > $$
 >
 > Summing contributions across all time steps yields the exact parameter gradients [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Eqs. 10.22–10.28, PDF p. 401):
@@ -112,12 +115,14 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >   \nabla_{\boldsymbol{W}_{hx}}\mathcal{L} &= \sum_{t=1}^{T} \mathrm{diag}\big(\phi'(\boldsymbol{a}_t)\big)(\nabla_{\boldsymbol{h}_t}\mathcal{L})\boldsymbol{x}_t^{\top}, &
 >   \nabla_{\boldsymbol{b}_h}\mathcal{L} &= \sum_{t=1}^{T} \mathrm{diag}\big(\phi'(\boldsymbol{a}_t)\big)\nabla_{\boldsymbol{h}_t}\mathcal{L}.
 > \end{aligned}
+>
 > $$
 >
 > Equivalently, writing $\boldsymbol{h}_t = f(\boldsymbol{x}_t, \boldsymbol{h}_{t-1}, \boldsymbol{w}_h)$ yields the recursive sensitivity [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 15.22, PDF p. 541):
 >
 > $$
 > \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{w}_h} = \frac{\partial f(\boldsymbol{x}_t,\boldsymbol{h}_{t-1},\boldsymbol{w}_h)}{\partial \boldsymbol{w}_h} + \sum_{i=1}^{t-1} \left(\prod_{j=i+1}^t \frac{\partial f(\boldsymbol{x}_j,\boldsymbol{h}_{j-1},\boldsymbol{w}_h)}{\partial \boldsymbol{h}_{j-1}}\right)\frac{\partial f(\boldsymbol{x}_i,\boldsymbol{h}_{i-1},\boldsymbol{w}_h)}{\partial \boldsymbol{w}_h}.
+>
 > $$
 
 ### Spectral Radius Analysis of Vanishing and Exploding Gradients
@@ -129,6 +134,7 @@ The Jacobian product `(eq:rnn:jacobian_prod)` governs whether long-range credit 
 >
 > $$
 > \boldsymbol{J}^{\Delta} = \boldsymbol{Q}\boldsymbol{\Lambda}^{\Delta}\boldsymbol{Q}^{-1}.
+>
 > $$
 >
 > If a gradient perturbation $\delta \boldsymbol{v}$ lies along a unit eigenvector $\boldsymbol{v}$ with eigenvalue $\lambda$, backpropagating $\Delta$ steps scales the perturbation to $\delta \boldsymbol{J}^{\Delta}\boldsymbol{v} = \delta \lambda^{\Delta}\boldsymbol{v}$, whose norm is $\delta\lvert \lambda \rvert^{\Delta}$:
@@ -141,6 +147,7 @@ The Jacobian product `(eq:rnn:jacobian_prod)` governs whether long-range credit 
 > \lVert \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{h}_k} \rVert_2
 >   \le \prod_{j=k+1}^{t} \lVert \mathrm{diag}(\phi'(\boldsymbol{a}_j)) \rVert_2 \lVert \boldsymbol{W}_{hh} \rVert_2
 >   \le \big(\gamma \sigma_{\max}(\boldsymbol{W}_{hh})\big)^{t-k}.
+>
 > $$
 >
 > Thus $\sigma_{\max}(\boldsymbol{W}_{hh}) < 1/\gamma$ is a *sufficient condition* for gradients to vanish exponentially for all input sequences [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.6, PDF p. 541). Conversely, $\rho(\boldsymbol{J}) > 1$ along active non-saturated modes is necessary for gradient explosion.
@@ -166,6 +173,7 @@ Rather than tuning $\boldsymbol{W}_{hh}$ to sit precariously on the $\rho = 1$ b
 >   \boldsymbol{c}_t &= \boldsymbol{f}_t \odot \boldsymbol{c}_{t-1} + \boldsymbol{i}_t \odot \tilde{\boldsymbol{c}}_t && \text{(additive cell-state update)},  \\
 >   \boldsymbol{h}_t &= \boldsymbol{o}_t \odot \tanh(\boldsymbol{c}_t) && \text{(gated hidden output)}.
 > \end{aligned}
+>
 > $$
 >
 > Differentiating $\boldsymbol{c}_t$ with respect to $\boldsymbol{c}_{t-1}$ along the direct cell-state highway (holding the gate activations fixed as functions of $\boldsymbol{h}_{t-1}$) yields the diagonal Jacobian
@@ -174,6 +182,7 @@ Rather than tuning $\boldsymbol{W}_{hh}$ to sit precariously on the $\rho = 1$ b
 > \left.\frac{\partial \boldsymbol{c}_t}{\partial \boldsymbol{c}_{t-1}}\right|_{\text{direct}} = \mathrm{diag}(\boldsymbol{f}_t)
 >   \implies
 >   \left.\frac{\partial \boldsymbol{c}_t}{\partial \boldsymbol{c}_k}\right|_{\text{direct}} = \mathrm{diag}\!\left(\prod_{j=k+1}^{t} \boldsymbol{f}_j\right).
+>
 > $$
 >
 > This additive self-loop forms the *Constant Error Carousel (CEC)*: whenever the forget gate remains open ($f_{j,m} \approx 1$, $i_{j,m} \approx 0$), error gradients propagate backward across $t-k$ steps with near-unit gain and *zero* repeated multiplication by $\boldsymbol{W}_{hh}$ or $\tanh'(\cdot)$.

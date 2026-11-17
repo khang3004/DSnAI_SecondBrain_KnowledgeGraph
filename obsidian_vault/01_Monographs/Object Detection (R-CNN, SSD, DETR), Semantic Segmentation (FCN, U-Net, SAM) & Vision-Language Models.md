@@ -71,12 +71,14 @@ Dense visual scene understanding extends image-level classification $f(\boldsymb
 >
 > $$
 > \mathrm{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|} \in [0, 1], \qquad \mathcal{L}_{\mathrm{GIoU}} = 1 - \mathrm{IoU}(A,B) + \frac{|C \setminus (A \cup B)|}{|C|},
+>
 > $$
 >
 > where $C$ is the smallest enclosing box. Anchor-based detectors (SSD, Faster R-CNN, YOLO) tile each feature map cell $(i,j)$ with $K$ priors of scale $s$ and aspect ratio $r$ ($w_a = s\sqrt{r}, h_a = s/\sqrt{r}$) and regress scale-invariant offsets [[Source - Dive into Deep Learning|dive_into_deep_learning_d2l]] (Ch. 14, pp. 650–675):
 >
 > $$
 > t_x = \frac{c_x - c_{x,a}}{w_a}, \quad t_y = \frac{c_y - c_{y,a}}{h_a}, \quad t_w = \log\frac{w}{w_a}, \quad t_h = \log\frac{h}{h_a}.
+>
 > $$
 >
 > To suppress extreme easy-negative background dominance in dense one-stage detectors, *Focal Loss* down-weights well-classified anchors: $\mathcal{L}_{\mathrm{FL}}(p_t) = -\alpha_t (1-p_t)^\gamma \log p_t$ ($\gamma \approx 2$) [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 50, pp. 995–1002). Overlapping predictions are pruned via *Non-Maximum Suppression (NMS)* or eliminated entirely in *DETR*, which treats detection as direct set prediction via optimal bipartite *Hungarian matching* $\hat{\sigma} = \arg\min_{\sigma \in \mathfrak{S}_N} \sum_{i=1}^N \mathcal{L}_{\mathrm{match}}(y_i, \hat{y}_{\sigma(i)})$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 50, pp. 1004–1010).
@@ -90,6 +92,7 @@ Dense visual scene understanding extends image-level classification $f(\boldsymb
 >
 > $$
 > \mathcal{L}_{\mathrm{CLIP}} = -\frac{1}{2B}\sum_{i=1}^B \left[\log\frac{\exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_i \rangle/\tau)}{\sum_j \exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_j \rangle/\tau)} + \log\frac{\exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_i \rangle/\tau)}{\sum_j \exp(\langle \boldsymbol{u}_j, \boldsymbol{v}_i \rangle/\tau)}\right].
+>
 > $$
 
 ## Visual Diagnostics & Algorithmic Pipeline

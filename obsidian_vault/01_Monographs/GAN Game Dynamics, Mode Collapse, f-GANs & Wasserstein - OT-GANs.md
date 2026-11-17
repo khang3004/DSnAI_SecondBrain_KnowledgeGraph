@@ -83,12 +83,17 @@ where $L_D(\phi, \theta) = \mathbb{E}_{p_{\mathrm{data}}}[g(D_\phi(x))] + \mathb
 >
 > $$
 > D^*_\theta(x) = \frac{p_{\mathrm{data}}(x)}{p_{\mathrm{data}}(x) + q_\theta(x)}.
+>
 > $$
 >
 > **Proof.** Writing $V(G_\theta, D)$ as an integral over $\mathcal{X}$:
-> \[
+>
+> $$
+>
 >   V(G_\theta, D) = \int_{\mathcal{X}} \Big[ p_{\mathrm{data}}(x)\log D(x) + q_\theta(x)\log(1 - D(x)) \Big] \mathrm{d}x.
-> \]
+>
+> $$
+>
 > For any $(a, b) \in \mathbb{R}_+^2 \setminus \{(0,0)\}$, the scalar function $y \mapsto a\log y + b\log(1-y)$ on $(0,1)$ has derivative $\frac{a}{y} - \frac{b}{1-y} = 0$ at $y^* = \frac{a}{a+b}$, and second derivative $-\frac{a}{y^2} - \frac{b}{(1-y)^2} < 0$. Setting $a = p_{\mathrm{data}}(x)$ and $b = q_\theta(x)$ yields `(eq:gan:opt_disc)`. Equivalently, in density-ratio form, $D^*_\theta(x)/(1 - D^*_\theta(x)) = p_{\mathrm{data}}(x)/q_\theta(x)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 896).
 >
 > Substituting $D^*_\theta$ back into `(eq:gan:minimax)` and letting $m_\theta = \frac{1}{2}(p_{\mathrm{data}} + q_\theta)$ gives:
@@ -101,6 +106,7 @@ where $L_D(\phi, \theta) = \mathbb{E}_{p_{\mathrm{data}}}[g(D_\phi(x))] + \mathb
 >   &= D_{\mathrm{KL}}(p_{\mathrm{data}} \parallel m_\theta) + D_{\mathrm{KL}}(q_\theta \parallel m_\theta) - 2\log 2
 >    = 2 D_{\mathrm{JS}}(p_{\mathrm{data}} \parallel q_\theta) - \log 4.
 > \end{aligned}
+>
 > $$
 >
 > Since $D_{\mathrm{JS}}(p_{\mathrm{data}} \parallel q_\theta) \ge 0$ with equality if and only if $q_\theta = p_{\mathrm{data}}$, the global minimax equilibrium is attained at $q_\theta = p_{\mathrm{data}}$ and $D^*_\theta(x) \equiv \frac{1}{2}$, with game value $-\log 4$ (or $-\log 2$ under the $\frac{1}{2}$-weighted objective of [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 897)).  $\square$
@@ -118,6 +124,7 @@ Beyond the Bernoulli log-loss, any proper binary scoring rule corresponds to an 
 > $$
 > D_f(p_{\mathrm{data}} \| q_\theta)
 >   \ge \sup_{T \in \mathcal{T}} \Big\{ \mathbb{E}_{x \sim p_{\mathrm{data}}}[T(x)] - \mathbb{E}_{x \sim q_\theta}[f^\dagger(T(x))] \Big\}.
+>
 > $$
 >
 > The bound is tight whenever the optimal critic $T^*(x) = f'\!\left(\frac{p_{\mathrm{data}}(x)}{q_\theta(x)}\right)$ lies in $\mathcal{T}$. Parameterizing $T_\phi(x) = a_f(V_\phi(x))$ with an output activation $a_f : \mathbb{R} \to \mathrm{dom}(f^\dagger)$ gives the $f$-GAN minimax game $\min_\theta \max_\phi \big(\mathbb{E}_{p_{\mathrm{data}}}[T_\phi(x)] - \mathbb{E}_{p_Z}[f^\dagger(T_\phi(G_\theta(z)))]\big)$. Table `tab:gan:fgan` lists standard instantiations.
@@ -147,6 +154,7 @@ In high-dimensional spaces $\mathcal{X} = \mathbb{R}^d$, natural data $p_{\mathr
 >   D_{\mathrm{JS}}(P \parallel Q_\theta) = \begin{cases} \log 2 & \text{if } \theta \neq 0, \\ 0 & \text{if } \theta = 0, \end{cases}
 >   \qquad
 >   W_{1}(P, Q_\theta) = \lvert \theta \rvert.
+>
 > $$
 >
 > Thus $\mathrm{JSD}$ is discontinuous at $\theta = 0$ and has zero gradient everywhere $\theta \neq 0$, whereas $W_1$ is continuous everywhere and provides a constant unit gradient $\partial_\theta W_1 = \mathrm{sign}(\theta)$ for $\theta \neq 0$.
@@ -157,6 +165,7 @@ In high-dimensional spaces $\mathcal{X} = \mathbb{R}^d$, natural data $p_{\mathr
 > W_{1}(p_{\mathrm{data}}, q_\theta)
 >   = \inf_{\pi \in \Pi(p_{\mathrm{data}}, q_\theta)} \int_{\mathcal{X}\times\mathcal{X}} \lVert x - y \rVert_2 \mathrm{d}\pi(x, y)
 >   = \sup_{\lVert f \rVert_{\mathrm{Lip}} \le 1} \Big\{ \mathbb{E}_{x \sim p_{\mathrm{data}}}[f(x)] - \mathbb{E}_{y \sim q_\theta}[f(y)] \Big\},
+>
 > $$
 >
 > where $\Pi(p_{\mathrm{data}}, q_\theta)$ is the set of couplings with marginals $p_{\mathrm{data}}, q_\theta$, and $\lVert f \rVert_{\mathrm{Lip}} \le 1$ means $\lvert f(x) - f(y) \rvert \le \lVert x - y \rVert_2$ for all $x, y \in \mathcal{X}$. This places $W_1$ inside the family of Integral Probability Metrics (IPMs), which measure density *differences* rather than ratios [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 900).

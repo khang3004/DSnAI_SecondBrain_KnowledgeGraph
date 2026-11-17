@@ -121,6 +121,7 @@ Fundamental convex primitives preserved under arbitrary intersections $\bigcap_{
 > $$
 > \lVert \boldsymbol{p} - \boldsymbol{x}_0 \rVert_2^2 \le \lVert \boldsymbol{p} + t(\boldsymbol{z} - \boldsymbol{p}) - \boldsymbol{x}_0 \rVert_2^2
 >   = \lVert \boldsymbol{p} - \boldsymbol{x}_0 \rVert_2^2 + 2t \langle \boldsymbol{p} - \boldsymbol{x}_0, \boldsymbol{z} - \boldsymbol{p} \rangle + t^2 \lVert \boldsymbol{z} - \boldsymbol{p} \rVert_2^2.
+>
 > $$
 >
 > Subtracting $\lVert \boldsymbol{p} - \boldsymbol{x}_0 \rVert_2^2$, dividing by $2t > 0$, and letting $t \searrow 0$ yields $\langle \boldsymbol{a}, \boldsymbol{z} - \boldsymbol{p} \rangle \le 0$ for all $\boldsymbol{z} \in C$. Since $\langle \boldsymbol{a}, \boldsymbol{x}_0 - \boldsymbol{p} \rangle = \lVert \boldsymbol{a} \rVert_2^2 > 0$, choosing $b = \langle \boldsymbol{a}, \boldsymbol{p} \rangle + \frac{1}{2}\lVert \boldsymbol{a} \rVert_2^2$ strictly separates $\boldsymbol{x}_0$ from $C$: $\langle \boldsymbol{a}, \boldsymbol{z} \rangle < b < \langle \boldsymbol{a}, \boldsymbol{x}_0 \rangle$ for all $\boldsymbol{z} \in C$. Applying this separation to the Minkowski difference $C - D$ and $\boldsymbol{0}$ (with closure/boundary approximation when sets touch) establishes the **Separating Hyperplane Theorem**: two nonempty convex sets $C, D \subseteq \mathbb{R}^n$ with $C \cap D = \emptyset$ admit $(\boldsymbol{a} \neq \boldsymbol{0}, b)$ satisfying $\boldsymbol{a}^{\top}\boldsymbol{x} \le b  \forall \boldsymbol{x} \in C$ and $\boldsymbol{a}^{\top}\boldsymbol{x} \ge b  \forall \boldsymbol{x} \in D$ [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 23, Thm. 23.1, p. 288). Taking a sequence $\boldsymbol{x}_0^{(k)} \notin C$ converging to a boundary point $\boldsymbol{x}_0 \in \partial C$ and normalizing $\boldsymbol{a}^{(k)} / \lVert \boldsymbol{a}^{(k)} \rVert_2$ gives a convergent subsequence $\boldsymbol{a}^* \neq \boldsymbol{0}$ establishing the **Supporting Hyperplane Theorem**: at every boundary point $\boldsymbol{x}_0 \in \partial C$ of a convex set $C$, there exists a hyperplane supporting $C$, i.e., $\langle \boldsymbol{a}^*, \boldsymbol{x} \rangle \le \langle \boldsymbol{a}^*, \boldsymbol{x}_0 \rangle$ for all $\boldsymbol{x} \in C$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 7, p. 242), [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 24, p. 307).
@@ -130,6 +131,7 @@ Fundamental convex primitives preserved under arbitrary intersections $\bigcap_{
 > $$
 > \operatorname{epi} f := \{(\boldsymbol{x}, t) \in \operatorname{dom} f \times \mathbb{R} : f(\boldsymbol{x}) \le t\}, \qquad
 >   \mathcal{C}_\alpha(f) := \{\boldsymbol{x} \in \operatorname{dom} f : f(\boldsymbol{x}) \le \alpha\}.
+>
 > $$
 >
 > *Theorem.* A function $f$ is convex if and only if $\operatorname{epi} f \subseteq \mathbb{R}^{n+1}$ is a convex set.
@@ -151,6 +153,7 @@ It is *strictly convex* if strict inequality holds for $\boldsymbol{x} \neq \bol
 >
 > $$
 > f(\mathbb{E}[\boldsymbol{X}]) \le \mathbb{E}[f(\boldsymbol{X})],
+>
 > $$
 >
 > with strict inequality when $f$ is strictly convex and $\boldsymbol{X}$ is non-degenerate. Applying `(eq:convex:jensen)` to the strictly convex function $-\ln u$ ($u > 0$) yields Gibbs' non-negativity inequality for Kullback–Leibler divergence: $D_{\mathrm{KL}}(p \parallel q) = \mathbb{E}_p[-\ln(q(X)/p(X))] \ge -\ln \mathbb{E}_p[q(X)/p(X)] = -\ln 1 = 0$, with equality iff $p = q$ almost everywhere [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 2.105, pp. 52–53).
@@ -158,8 +161,10 @@ It is *strictly convex* if strict inequality holds for $\boldsymbol{x} \neq \bol
 > **2. First- and Second-Order Differential Conditions.** Suppose $\operatorname{dom} f$ is open and convex.
 > - *First-Order ($f \in C^1$):* $f$ is convex if and only if every first-order Taylor approximation is a global underestimator [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 7, Eq. 7.31, p. 237), [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 23, Eq. 23.3, p. 296):
 >
+>
 > $$
 > f(\boldsymbol{y}) \ge f(\boldsymbol{x}) + \nabla f(\boldsymbol{x})^{\top}(\boldsymbol{y} - \boldsymbol{x}) \qquad \forall \boldsymbol{x}, \boldsymbol{y} \in \operatorname{dom} f.
+>
 > $$
 >
 >   *Proof.* ($\Rightarrow$) Rearranging `(eq:convex:chord_def)` for $t \in (0, 1]$ gives $f(\boldsymbol{y}) - f(\boldsymbol{x}) \ge \frac{f(\boldsymbol{x} + t(\boldsymbol{y}-\boldsymbol{x})) - f(\boldsymbol{x})}{t} \xrightarrow{t \searrow 0} \nabla f(\boldsymbol{x})^{\top}(\boldsymbol{y}-\boldsymbol{x})$. ($\Leftarrow$) Let $\boldsymbol{z} = \theta\boldsymbol{x} + (1-\theta)\boldsymbol{y}$. Applying `(eq:convex:first_order)` at $\boldsymbol{z}$ toward $\boldsymbol{x}$ and $\boldsymbol{y}$, multiplying by $\theta$ and $1-\theta$, and summing cancels $\nabla f(\boldsymbol{z})^{\top}[\theta(\boldsymbol{x}-\boldsymbol{z}) + (1-\theta)(\boldsymbol{y}-\boldsymbol{z})] = 0$, leaving $\theta f(\boldsymbol{x}) + (1-\theta)f(\boldsymbol{y}) \ge f(\boldsymbol{z})$.
@@ -172,6 +177,7 @@ It is *strictly convex* if strict inequality holds for $\boldsymbol{x} \neq \bol
 > \nabla f_0(\boldsymbol{x}^*)^{\top}(\boldsymbol{x} - \boldsymbol{x}^*) \ge 0 \quad \forall \boldsymbol{x} \in \mathcal{X}
 >   \quad\Longleftrightarrow\quad
 >   -\nabla f_0(\boldsymbol{x}^*) \in \mathcal{N}_{\mathcal{X}}(\boldsymbol{x}^*),
+>
 > $$
 >
 > where $\mathcal{N}_{\mathcal{X}}(\boldsymbol{x}^*) := \{\boldsymbol{v} \in \mathbb{R}^n : \langle \boldsymbol{v}, \boldsymbol{x} - \boldsymbol{x}^* \rangle \le 0 \forall \boldsymbol{x} \in \mathcal{X}\}$ is the *normal cone* of $\mathcal{X}$ at $\boldsymbol{x}^*$. For nonsmooth convex $f$, the *subdifferential* $\partial f(\boldsymbol{x}) := \{\boldsymbol{g} \in \mathbb{R}^n : f(\boldsymbol{z}) \ge f(\boldsymbol{x}) + \boldsymbol{g}^{\top}(\boldsymbol{z}-\boldsymbol{x}) \forall \boldsymbol{z} \in \operatorname{dom} f\}$ generalizes gradients, and $\boldsymbol{x}^*$ minimizes $f$ over $\mathbb{R}^n$ iff $\boldsymbol{0} \in \partial f(\boldsymbol{x}^*)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 8, Eq. 8.13, p. 282).
@@ -188,6 +194,7 @@ Whereas Lagrangian duality dualizes explicit problem constraints, the *Fenchel�
 >
 > $$
 > f^*(\boldsymbol{y}) := \sup_{\boldsymbol{x} \in \operatorname{dom} f} \bigl(\langle \boldsymbol{y}, \boldsymbol{x} \rangle - f(\boldsymbol{x})\bigr).
+>
 > $$
 >
 > **1. Universal Convexity of $f^*$.** For each fixed $\boldsymbol{x} \in \operatorname{dom} f$, the map $\boldsymbol{y} \mapsto \langle \boldsymbol{y}, \boldsymbol{x} \rangle - f(\boldsymbol{x})$ is affine in $\boldsymbol{y}$. Because the pointwise supremum of affine functions is convex and lower semi-continuous (closed), $f^*$ is *always convex and closed*, even when $f$ is non-convex [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 23, p. 290), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 7, p. 242).
@@ -196,6 +203,7 @@ Whereas Lagrangian duality dualizes explicit problem constraints, the *Fenchel�
 >
 > $$
 > f(\boldsymbol{x}) + f^*(\boldsymbol{y}) \ge \langle \boldsymbol{y}, \boldsymbol{x} \rangle,
+>
 > $$
 >
 > with equality if and only if $\boldsymbol{x}$ attains the supremum, i.e., $\langle \boldsymbol{y}, \boldsymbol{z} \rangle - f(\boldsymbol{z}) \le \langle \boldsymbol{y}, \boldsymbol{x} \rangle - f(\boldsymbol{x})  \forall \boldsymbol{z} \iff f(\boldsymbol{z}) \ge f(\boldsymbol{x}) + \langle \boldsymbol{y}, \boldsymbol{z} - \boldsymbol{x} \rangle \iff \boldsymbol{y} \in \partial f(\boldsymbol{x})$ (reducing to $\boldsymbol{y} = \nabla f(\boldsymbol{x})$ when $f$ is differentiable and convex) [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 7, Eq. 7.58, p. 243).
@@ -208,9 +216,11 @@ Whereas Lagrangian duality dualizes explicit problem constraints, the *Fenchel�
 > - *Negative Entropy & Log-Sum-Exp:* On $\boldsymbol{x} \in \Delta^{n-1}$ (with $f(\boldsymbol{x}) = \sum_i x_i \ln x_i$ inside $\Delta^{n-1}$ and $+\infty$ outside), maximizing $\boldsymbol{y}^{\top}\boldsymbol{x} - \sum_i x_i \ln x_i$ gives the softmax-normalized Gibbs optimal $\hat{x}_i = e^{y_i}/\sum_k e^{y_k}$ and $f^*(\boldsymbol{y}) = \ln \sum_{i=1}^n e^{y_i}$.
 > - *Separable Empirical Losses & Fenchel Duality* [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 7, Ex. 7.8–7.9, pp. 244–245): If $L(\boldsymbol{t}) = \sum_{i=1}^n \ell_i(t_i)$, then $L^*(\boldsymbol{z}) = \sum_{i=1}^n \ell_i^*(z_i)$. Introducing $\boldsymbol{y} = \boldsymbol{A}\boldsymbol{x}$ with Lagrange multiplier $\boldsymbol{u}$ into $\min_{\boldsymbol{x}} f(\boldsymbol{A}\boldsymbol{x}) + g(\boldsymbol{x})$ for convex $f, g$ swaps $\min_{\boldsymbol{x},\boldsymbol{y}}\max_{\boldsymbol{u}}$ to $\max_{\boldsymbol{u}}\min_{\boldsymbol{x},\boldsymbol{y}}$ (under regularity), yielding the **Fenchel–Rockafellar dual**:
 >
+>
 > $$
 > \min_{\boldsymbol{x} \in \mathbb{R}^n} f(\boldsymbol{A}\boldsymbol{x}) + g(\boldsymbol{x})
 >     = \max_{\boldsymbol{u} \in \mathbb{R}^m} \Bigl[ -f^*(\boldsymbol{u}) - g^*(-\boldsymbol{A}^{\top}\boldsymbol{u}) \Bigr].
+>
 > $$
 
 > [!tip] Geometric Intercept Interpretation of $f^*(\boldsymbol{y})$
@@ -232,12 +242,14 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 >
 > $$
 > g(\boldsymbol{\lambda}, \boldsymbol{\nu}) := \inf_{\boldsymbol{x} \in \mathcal{D}} L(\boldsymbol{x}, \boldsymbol{\lambda}, \boldsymbol{\nu}).
+>
 > $$
 >
 > Because $L(\boldsymbol{x}, \cdot, \cdot)$ is affine in $(\boldsymbol{\lambda}, \boldsymbol{\nu})$ for every $\boldsymbol{x} \in \mathcal{D}$, $g(\boldsymbol{\lambda}, \boldsymbol{\nu})$ is a pointwise infimum of affine functions and is therefore *always concave* (possibly taking $-\infty$), regardless of whether $f_0, f_i, h_j$ are convex [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (p. 318), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (p. 235). The **Lagrange dual problem** is thus always a concave maximization (convex optimization) problem:
 >
 > $$
 > d^* := \sup_{\boldsymbol{\lambda} \succeq \boldsymbol{0},  \boldsymbol{\nu} \in \mathbb{R}^p} g(\boldsymbol{\lambda}, \boldsymbol{\nu}),
+>
 > $$
 >
 > with dual feasibility requiring $\boldsymbol{\lambda} \succeq \boldsymbol{0}$ and $g(\boldsymbol{\lambda}, \boldsymbol{\nu}) > -\infty$ [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 25, Eq. 25.11, p. 321).
@@ -247,6 +259,7 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 > $$
 > d^* = \sup_{\boldsymbol{\lambda} \succeq \boldsymbol{0},  \boldsymbol{\nu}} \inf_{\boldsymbol{x} \in \mathcal{D}} L(\boldsymbol{x}, \boldsymbol{\lambda}, \boldsymbol{\nu})
 >    \le  \inf_{\boldsymbol{x} \in \mathcal{D}} \sup_{\boldsymbol{\lambda} \succeq \boldsymbol{0},  \boldsymbol{\nu}} L(\boldsymbol{x}, \boldsymbol{\lambda}, \boldsymbol{\nu}) = p^*,
+>
 > $$
 >
 > holding unconditionally for *all* optimization problems (convex or non-convex). The nonnegative quantity $\Delta_{\mathrm{gap}} := p^* - d^* \ge 0$ is the *optimal duality gap* [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Sec. 25.3.1, p. 322). When $d^* = p^*$, **strong duality** holds.
@@ -255,18 +268,24 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 >
 > $$
 > f_i(\tilde{\boldsymbol{x}}) < 0 \quad \text{for all non-affine } f_i \qquad \bigl(f_i(\tilde{\boldsymbol{x}}) \le 0 \text{ suffices if } f_i \text{ is affine}\bigr), \qquad \boldsymbol{A}\tilde{\boldsymbol{x}} = \boldsymbol{b}.
+>
 > $$
 >
 > *Theorem (Slater).* Under convexity and `(eq:convex:slater)`, strong duality $d^* = p^*$ holds; moreover, if $p^* > -\infty$, the dual optimum $(\boldsymbol{\lambda}^*, \boldsymbol{\nu}^*)$ is attained.
 >
 > *Proof Sketch via Hyperplane Separation.* Consider the convex epigraph-value set
-> \[
+>
+> $$
+>
 >   \mathcal{A} := \{(\boldsymbol{u}, \boldsymbol{v}, t) \in \mathbb{R}^m \times \mathbb{R}^p \times \mathbb{R} : \exists \boldsymbol{x} \in \mathcal{D} \text{ with } \boldsymbol{f}(\boldsymbol{x}) \preceq \boldsymbol{u},  \boldsymbol{A}\boldsymbol{x}-\boldsymbol{b} = \boldsymbol{v},  f_0(\boldsymbol{x}) \le t\}.
-> \]
+>
+> $$
+>
 > Assume $\operatorname{rank}(\boldsymbol{A}) = p$ and $\operatorname{int}(\mathcal{D}) \neq \emptyset$ (otherwise reduce to $\operatorname{aff}(\mathcal{D})$). Because $p^* = \inf \{t : (\boldsymbol{0}, \boldsymbol{0}, t) \in \mathcal{A}\}$, the point $(\boldsymbol{0}, \boldsymbol{0}, p^*)$ does not belong to $\operatorname{int}(\mathcal{A})$ (if $p^* > -\infty$). By the Supporting/Separating Hyperplane Theorem (Core Formulation `cm:convex:separation_epi`), there exists $(\tilde{\boldsymbol{\lambda}}, \tilde{\boldsymbol{\nu}}, \mu) \neq \boldsymbol{0}$ supporting $\mathcal{A}$ at $(\boldsymbol{0}, \boldsymbol{0}, p^*)$:
 >
 > $$
 > \tilde{\boldsymbol{\lambda}}^{\top} \boldsymbol{u} + \tilde{\boldsymbol{\nu}}^{\top} \boldsymbol{v} + \mu t \ge \mu p^* \qquad \forall (\boldsymbol{u}, \boldsymbol{v}, t) \in \mathcal{A}.
+>
 > $$
 >
 > Since $\boldsymbol{u}$ and $t$ can be increased arbitrarily inside $\mathcal{A}$, necessarily $\tilde{\boldsymbol{\lambda}} \succeq \boldsymbol{0}$ and $\mu \ge 0$. Applying `(eq:convex:slater_sep)` to $(\boldsymbol{f}(\tilde{\boldsymbol{x}}), \boldsymbol{0}, f_0(\tilde{\boldsymbol{x}})) \in \mathcal{A}$ yields $\tilde{\boldsymbol{\lambda}}^{\top}\boldsymbol{f}(\tilde{\boldsymbol{x}}) + \mu(f_0(\tilde{\boldsymbol{x}}) - p^*) \ge 0$. If $\mu = 0$, then $\tilde{\boldsymbol{\lambda}}^{\top}\boldsymbol{f}(\tilde{\boldsymbol{x}}) \ge 0$, which forces $\tilde{\boldsymbol{\lambda}} = \boldsymbol{0}$ since $f_i(\tilde{\boldsymbol{x}}) < 0$; then `(eq:convex:slater_sep)` becomes $\tilde{\boldsymbol{\nu}}^{\top}(\boldsymbol{A}\boldsymbol{x} - \boldsymbol{b}) \ge 0$ for all $\boldsymbol{x} \in \mathcal{D}$ near $\tilde{\boldsymbol{x}} \in \operatorname{int}(\mathcal{D})$, forcing $\tilde{\boldsymbol{\nu}} = \boldsymbol{0}$ (contradicting $(\tilde{\boldsymbol{\lambda}}, \tilde{\boldsymbol{\nu}}, \mu) \neq \boldsymbol{0}$). Hence $\mu > 0$. Dividing `(eq:convex:slater_sep)` by $\mu$ and setting $\boldsymbol{\lambda}^* := \tilde{\boldsymbol{\lambda}}/\mu \succeq \boldsymbol{0}$, $\boldsymbol{\nu}^* := \tilde{\boldsymbol{\nu}}/\mu$ gives $L(\boldsymbol{x}, \boldsymbol{\lambda}^*, \boldsymbol{\nu}^*) \ge p^*$ for all $\boldsymbol{x} \in \mathcal{D}$, so $d^* \ge g(\boldsymbol{\lambda}^*, \boldsymbol{\nu}^*) \ge p^*$, combining with `(eq:convex:weak_duality)` to yield $d^* = p^*$.
@@ -276,6 +295,7 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 > $$
 > L(\boldsymbol{x}^*, \boldsymbol{\lambda}, \boldsymbol{\nu})  \le  L(\boldsymbol{x}^*, \boldsymbol{\lambda}^*, \boldsymbol{\nu}^*)  \le  L(\boldsymbol{x}, \boldsymbol{\lambda}^*, \boldsymbol{\nu}^*)
 >   \qquad \forall \boldsymbol{x} \in \mathcal{D}, \forall \boldsymbol{\lambda} \succeq \boldsymbol{0}, \forall \boldsymbol{\nu} \in \mathbb{R}^p.
+>
 > $$
 
 ### Complementary Slackness & KKT Optimality Conditions
@@ -290,6 +310,7 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 >   &\le f_0(\boldsymbol{x}^*) + \sum_{i=1}^m \underbrace{\lambda_i^* f_i(\boldsymbol{x}^*)}_{\le 0} + \sum_{j=1}^p \underbrace{\nu_j^* h_j(\boldsymbol{x}^*)}_{= 0}
 >   \le f_0(\boldsymbol{x}^*).
 > \end{aligned}
+>
 > $$
 >
 > Because the two ends are identical, both inequalities collapse to equalities. First, $\boldsymbol{x}^*$ minimizes $L(\cdot, \boldsymbol{\lambda}^*, \boldsymbol{\nu}^*)$ over $\mathcal{D}$ (so $\nabla_{\boldsymbol{x}} L(\boldsymbol{x}^*, \boldsymbol{\lambda}^*, \boldsymbol{\nu}^*) = \boldsymbol{0}$ when differentiable, or $\boldsymbol{0} \in \partial_{\boldsymbol{x}} L$ when subdifferentiable). Second, $\sum_{i=1}^m \lambda_i^* f_i(\boldsymbol{x}^*) = 0$ with each term non-positive forces termwise **complementary slackness** [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 8.106, p. 305), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (p. 95), [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. C.11, p. 624):
@@ -298,6 +319,7 @@ with Lagrange/KKT multiplier vectors $\boldsymbol{\lambda} \in \mathbb{R}^m_{\ge
 > \lambda_i^* f_i(\boldsymbol{x}^*) = 0 \quad \forall i=1,\dots,m
 >   \quad\Longleftrightarrow\quad
 >   \bigl(\lambda_i^* > 0 \implies f_i(\boldsymbol{x}^*) = 0\bigr)  \land  \bigl(f_i(\boldsymbol{x}^*) < 0 \implies \lambda_i^* = 0\bigr).
+>
 > $$
 >
 >
@@ -457,9 +479,13 @@ Figure `fig:convex:pgf_fenchel_gap` presents exact PGFPlots diagnostics contrast
 
 > [!warning] Barrier Conditioning Blowup Near Active Boundaries
 > In primal log-barrier optimization $\phi_t(\boldsymbol{x}) = t f_0(\boldsymbol{x}) - \sum_{i=1}^m \ln(-f_i(\boldsymbol{x}))$, the barrier Hessian
-> \[
+>
+> $$
+>
 >   \nabla^2 \phi_t(\boldsymbol{x}) = t\nabla^2 f_0(\boldsymbol{x}) + \sum_{i=1}^m \frac{1}{f_i(\boldsymbol{x})^2}\nabla f_i(\boldsymbol{x})\nabla f_i(\boldsymbol{x})^{\top} - \sum_{i=1}^m \frac{1}{f_i(\boldsymbol{x})}\nabla^2 f_i(\boldsymbol{x})
-> \]
+>
+> $$
+>
 > exhibits rank-$1$ spikes scaling as $f_i(\boldsymbol{x})^{-2} = \mathcal{O}(t^2)$ perpendicular to active constraints, driving the Hessian condition number $\kappa_2(\nabla^2 \phi_t) \to \infty$ as $t \to \infty$. Solving the unscaled primal Newton system directly suffers severe floating-point cancellation; primal–dual interior-point formulations (Algorithm `alg:convex:ipm`) equalize scaling via the regularized complementarity block $-\mathrm{diag}(\boldsymbol{\lambda})\boldsymbol{f}(\boldsymbol{x}) = \frac{1}{t}\boldsymbol{1}_m$ and fraction-to-boundary step control.
 
 ---

@@ -62,7 +62,7 @@ However, this architectural freedom comes at a steep computational price: in hig
 > | — | — | — | — |
 > | Energy / Potential | $E_\theta(\boldsymbol{x}) \in \mathbb{R}$ | $E_\theta(\boldsymbol{x})$ (Murphy); $\tilde{p}(\boldsymbol{x};\theta) = e^{-E(\boldsymbol{x};\theta)}$ (Goodfellow) | $E_\phi(\boldsymbol{x})$ (Diff. Princ.); $U(\boldsymbol{x})$ (Chan) |
 > | Model Parameters | $\theta$ | $\theta$ (both) | $\phi$ (Diff. Princ.); $\theta$ (Chan) |
-> | Stein Score ($\boldsymbol{x}$-grad) | $\boldsymbol{s}_\theta(\boldsymbol{x}) = \nabla_{\boldsymbol{x}} \log p_\theta(\boldsymbol{x})$ | $\boldsymbol{s}_\theta(\boldsymbol{x})$ (Hyv\"arinen score, Murphy Ch. 24) | $\boldsymbol{s}_\phi(\boldsymbol{x})$ (Diff. Princ.); $\boldsymbol{s}_\theta(\boldsymbol{x})$ vs. $\boldsymbol{s}_{\boldsymbol{x}}(\theta)$ (Chan) |
+> | Stein Score ($\boldsymbol{x}$-grad) | $\boldsymbol{s}_\theta(\boldsymbol{x}) = \nabla_{\boldsymbol{x}} \log p_\theta(\boldsymbol{x})$ | $\boldsymbol{s}_\theta(\boldsymbol{x})$ (Hyvärinen score, Murphy Ch. 24) | $\boldsymbol{s}_\phi(\boldsymbol{x})$ (Diff. Princ.); $\boldsymbol{s}_\theta(\boldsymbol{x})$ vs. $\boldsymbol{s}_{\boldsymbol{x}}(\theta)$ (Chan) |
 > | Data / Noisy Density | $p_{\mathcal{D}}(\boldsymbol{x})$, $q_\sigma(\tilde{\boldsymbol{x}})$ | $p_D(\boldsymbol{x})$, $q(\tilde{\boldsymbol{x}})$ (Murphy); $p_{\mathrm{data}}, p_{\mathrm{smoothed}}$ (Goodfellow) | $p_{\mathrm{data}}(\boldsymbol{x})$, $p_\sigma(\tilde{\boldsymbol{x}})$ (Diff. Princ.); $q(\boldsymbol{x})$ (Chan) |
 > | Score Matching Loss | $D_F(p_{\mathcal{D}} \parallel  p_\theta)$ | $D_F(p_D \parallel  p_\theta)$ (Fisher divergence) | $L_{\mathrm{SM}}(\phi)$ (Diff. Princ.); $J_{\mathrm{ESM}}(\theta)$ (Chan) |
 >
@@ -80,12 +80,14 @@ Fitting $p_\theta(\boldsymbol{x})$ to an empirical data distribution $p_{\mathca
 >
 > $$
 > \nabla_\theta \log Z_\theta = \mathbb{E}_{\boldsymbol{x} \sim p_\theta}[-\nabla_\theta E_\theta(\boldsymbol{x})],
+>
 > $$
 >
 > and consequently the expected log-likelihood gradient decomposes into a *positive phase* and a *negative phase*:
 >
 > $$
 > \nabla_\theta \ell(\theta) = \underbrace{\mathbb{E}_{\boldsymbol{x} \sim p_{\mathcal{D}}}[-\nabla_\theta E_\theta(\boldsymbol{x})]}_{\text{Positive phase (push energy down)}} - \underbrace{\mathbb{E}_{\tilde{\boldsymbol{x}} \sim p_\theta}[-\nabla_\theta E_\theta(\tilde{\boldsymbol{x}})]}_{\text{Negative phase (push energy up)}}.
+>
 > $$
 >
 > *Proof.* Expanding $\nabla_\theta \log Z_\theta$ directly via the chain rule and Leibniz's rule yields:
@@ -98,6 +100,7 @@ Fitting $p_\theta(\boldsymbol{x})$ to an empirical data distribution $p_{\mathca
 >   &= \int_{\mathbb{R}^D} \frac{\exp(-E_\theta(\boldsymbol{x}))}{Z_\theta} \bigl(-\nabla_\theta E_\theta(\boldsymbol{x})\bigr)   \mathrm{d}\boldsymbol{x}
 >    = \mathbb{E}_{\boldsymbol{x} \sim p_\theta}\bigl[-\nabla_\theta E_\theta(\boldsymbol{x})\bigr].
 > \end{aligned}
+>
 > $$
 >
 > Substituting this identity into $\nabla_\theta \log p_\theta(\boldsymbol{x}) = -\nabla_\theta E_\theta(\boldsymbol{x}) - \nabla_\theta \log Z_\theta$ and taking expectations under $p_{\mathcal{D}}$ gives `(eq:ebm:mle_grad)` [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. 24.7–24.15, p. 851 (PDF p. 885)).  $\square$
@@ -133,7 +136,7 @@ where $p_0 = p_{\mathcal{D}}$ and $p_\infty = p_\theta$. Alternatively, *Persist
 > [!example] Visual Diagram (LaTeX / PDF)
 > *Two paradigms for confronting the intractable partition function $Z_\theta$. Top: Maximum likelihood / Contrastive Divergence balances a positive phase on data against a negative phase on MCMC/CD samples. Bottom: Score-based training differentiates $\log p_\theta(\boldsymbol{x})$ w.r.t. $\boldsymbol{x}$ so $\nabla_{\boldsymbol{x}} \log Z_\theta = \boldsymbol{0}$, progressing from $O(D^2)$ Implicit Score Matching to $O(D)$ Sliced SM and Hessian-free Denoising Score Matching.* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
 
-### Hyv\"arinen's Implicit Score Matching (ISM)
+### Hyvärinen's Implicit Score Matching (ISM)
 
 To bypass $Z_\theta$ and MCMC sampling during training, *Score Matching* minimizes the *Fisher divergence* between the data score $\nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x})$ and the model score $\boldsymbol{s}_\theta(\boldsymbol{x}) = \nabla_{\boldsymbol{x}} \log p_\theta(\boldsymbol{x}) = -\nabla_{\boldsymbol{x}} E_\theta(\boldsymbol{x})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 24.3, p. 856 (PDF p. 890)):
 
@@ -141,21 +144,26 @@ $$
 D_F(p_{\mathcal{D}} \| p_\theta) = \frac{1}{2} \mathbb{E}_{\boldsymbol{x} \sim p_{\mathcal{D}}}\!\left[ \lVert \boldsymbol{s}_\theta(\boldsymbol{x}) - \nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x}) \rVert_2^2 \right].
 $$
 
-Although $\nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x})$ is unknown, Hyv\"arinen (2005) showed that integration by parts eliminates it completely.
+Although $\nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x})$ is unknown, Hyvärinen (2005) showed that integration by parts eliminates it completely.
 
-> [!important] Theorem: Hyv\"arinen's Implicit Score Matching Identity
+> [!important] Theorem: Hyvärinen's Implicit Score Matching Identity
 > Suppose $p_{\mathcal{D}}(\boldsymbol{x})$ and $\boldsymbol{s}_\theta(\boldsymbol{x})$ are continuously differentiable on $\mathbb{R}^D$, $\mathbb{E}_{p_{\mathcal{D}}}[\lVert \boldsymbol{s}_\theta(\boldsymbol{x}) \rVert_2^2] < \infty$, $\mathbb{E}_{p_{\mathcal{D}}}[\lVert \nabla_{\boldsymbol{x}}\log p_{\mathcal{D}}(\boldsymbol{x}) \rVert_2^2] < \infty$, and the boundary condition $\lim_{|x_i| \to \infty} p_{\mathcal{D}}(\boldsymbol{x}) s_{\theta,i}(\boldsymbol{x}) = 0$ holds for all $i \in \{1,\dots,D\}$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Prop. 3.2.1, p. 65 (PDF p. 70)). Then:
 >
 > $$
 > D_F(p_{\mathcal{D}} \| p_\theta) = \mathbb{E}_{\boldsymbol{x} \sim p_{\mathcal{D}}}\!\left[ \frac{1}{2}\lVert \boldsymbol{s}_\theta(\boldsymbol{x}) \rVert_2^2 + \mathrm{Tr}\bigl(\nabla_{\boldsymbol{x}} \boldsymbol{s}_\theta(\boldsymbol{x})\bigr) \right] + C,
+>
 > $$
 >
 > where $C = \frac{1}{2}\mathbb{E}_{p_{\mathcal{D}}}[\lVert \nabla_{\boldsymbol{x}}\log p_{\mathcal{D}}(\boldsymbol{x}) \rVert_2^2]$ is independent of $\theta$. For an EBM $\boldsymbol{s}_\theta = -\nabla_{\boldsymbol{x}} E_\theta$, $\mathrm{Tr}(\nabla_{\boldsymbol{x}}\boldsymbol{s}_\theta(\boldsymbol{x})) = -\mathrm{Tr}(\nabla_{\boldsymbol{x}}^2 E_\theta(\boldsymbol{x}))$.
 >
 > *Proof.* Expanding the squared norm in `(eq:ebm:fisher_div)` gives
-> \[
+>
+> $$
+>
 >   D_F(p_{\mathcal{D}} \| p_\theta) = \frac{1}{2}\mathbb{E}_{p_{\mathcal{D}}}\!\left[\lVert \boldsymbol{s}_\theta(\boldsymbol{x}) \rVert_2^2\right] - \mathbb{E}_{p_{\mathcal{D}}}\!\left[\boldsymbol{s}_\theta(\boldsymbol{x})^{\top} \nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x})\right] + C.
-> \]
+>
+> $$
+>
 > Using $\nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x}) = \frac{\nabla_{\boldsymbol{x}} p_{\mathcal{D}}(\boldsymbol{x})}{p_{\mathcal{D}}(\boldsymbol{x})}$, the cross-term integrates by parts coordinatewise:
 >
 > $$
@@ -165,6 +173,7 @@ Although $\nabla_{\boldsymbol{x}} \log p_{\mathcal{D}}(\boldsymbol{x})$ is unkno
 >   &= -\sum_{i=1}^D \underbrace{\Bigl[ s_{\theta,i}(\boldsymbol{x}) p_{\mathcal{D}}(\boldsymbol{x}) \Bigr]_{x_i=-\infty}^{x_i=+\infty}}_{=0} + \sum_{i=1}^D \int_{\mathbb{R}^D} p_{\mathcal{D}}(\boldsymbol{x}) \frac{\partial s_{\theta,i}(\boldsymbol{x})}{\partial x_i}   \mathrm{d}\boldsymbol{x} \\
 >   &= \mathbb{E}_{p_{\mathcal{D}}}\!\left[\mathrm{Tr}\bigl(\nabla_{\boldsymbol{x}} \boldsymbol{s}_\theta(\boldsymbol{x})\bigr)\right].
 > \end{aligned}
+>
 > $$
 >
 > Substituting this back yields `(eq:ebm:ism)`.  $\square$
@@ -196,6 +205,7 @@ Instead of matching scores on raw data (where $p_{\mathcal{D}}$ may lie on a low
 > $$
 > \underbrace{\frac{1}{2}\mathbb{E}_{q_\sigma(\tilde{\boldsymbol{x}})}\!\left[\lVert \boldsymbol{s}_\theta(\tilde{\boldsymbol{x}}) - \nabla_{\tilde{\boldsymbol{x}}}\log q_\sigma(\tilde{\boldsymbol{x}}) \rVert_2^2\right]}_{J_{\mathrm{ESM}}(\theta;\sigma)}
 >   = \underbrace{\frac{1}{2}\mathbb{E}_{p_{\mathcal{D}}(\boldsymbol{x}) q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x})}\!\left[\lVert \boldsymbol{s}_\theta(\tilde{\boldsymbol{x}}) - \nabla_{\tilde{\boldsymbol{x}}}\log q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}) \rVert_2^2\right]}_{J_{\mathrm{DSM}}(\theta;\sigma)} + C.
+>
 > $$
 >
 > *Proof.* Expanding $J_{\mathrm{ESM}}(\theta;\sigma)$ leaves $\frac{1}{2}\mathbb{E}_{q_\sigma}[\lVert \boldsymbol{s}_\theta(\tilde{\boldsymbol{x}}) \rVert_2^2] - \mathbb{E}_{q_\sigma}[\boldsymbol{s}_\theta(\tilde{\boldsymbol{x}})^{\top} \nabla_{\tilde{\boldsymbol{x}}}\log q_\sigma(\tilde{\boldsymbol{x}})] + C_1$. Rewriting the cross-term via $q_\sigma(\tilde{\boldsymbol{x}}) = \int p_{\mathcal{D}}(\boldsymbol{x}) q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}) \mathrm{d}\boldsymbol{x}$:
@@ -207,6 +217,7 @@ Instead of matching scores on raw data (where $p_{\mathcal{D}}$ may lie on a low
 >   &= \iint \boldsymbol{s}_\theta(\tilde{\boldsymbol{x}})^{\top} p_{\mathcal{D}}(\boldsymbol{x}) q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}) \nabla_{\tilde{\boldsymbol{x}}}\log q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x}) \mathrm{d}\boldsymbol{x} \mathrm{d}\tilde{\boldsymbol{x}} \\
 >   &= \mathbb{E}_{p_{\mathcal{D}}(\boldsymbol{x}) q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x})}\!\left[\boldsymbol{s}_\theta(\tilde{\boldsymbol{x}})^{\top} \nabla_{\tilde{\boldsymbol{x}}}\log q_\sigma(\tilde{\boldsymbol{x}} \mid \boldsymbol{x})\right],
 > \end{aligned}
+>
 > $$
 >
 > which matches the cross-term of $J_{\mathrm{DSM}}(\theta;\sigma)$, leaving only $\theta$-independent constants $C = C_1 - C_2$.  $\square$
@@ -215,18 +226,20 @@ Instead of matching scores on raw data (where $p_{\mathcal{D}}$ may lie on a low
 >
 > $$
 > J_{\mathrm{DSM}}(\theta;\sigma) = \frac{1}{2}\mathbb{E}_{\boldsymbol{x} \sim p_{\mathcal{D}},  \boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0},\boldsymbol{I})}\!\left[\lVert \boldsymbol{s}_\theta(\boldsymbol{x} + \sigma\boldsymbol{\epsilon}) + \frac{\boldsymbol{\epsilon}}{\sigma} \rVert_2^2\right].
+>
 > $$
 >
 > Furthermore, by *Tweedie's formula* [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Lemma 3.3.2, p. 73 (PDF p. 78)), the posterior mean denoiser satisfies
 >
 > $$
 > \mathbb{E}[\boldsymbol{x} \mid \tilde{\boldsymbol{x}}] = \tilde{\boldsymbol{x}} + \sigma^2 \nabla_{\tilde{\boldsymbol{x}}} \log q_\sigma(\tilde{\boldsymbol{x}}),
+>
 > $$
 >
 > establishing that the optimal score $\boldsymbol{s}_{\theta^*}(\tilde{\boldsymbol{x}})$ points directly from the noisy sample toward the minimum-MSE denoised reconstruction.
 
 **Unifying CD-1 and Score Matching via de Bruijn's Identity..** 
-Although Contrastive Divergence (KL-based) and Score Matching (Fisher-divergence-based) appear distinct, Hyv\"arinen (2007) proved—as summarized in [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 24.45, p. 860 (PDF p. 894))—that 1-step Langevin MCMC from $\boldsymbol{x} \sim p_{\mathcal{D}}$ with step size $\epsilon$ yields a $\mathrm{CD}_1$ gradient whose leading-order expansion is $\frac{\epsilon^2}{2}\nabla_\theta D_F(p_{\mathcal{D}} \| p_\theta) + o(\epsilon^2)$. This reflects *de Bruijn's identity*, linking KL and Fisher divergences under Gaussian smoothing $\tilde{\boldsymbol{x}}_t \sim \mathcal{N}(\boldsymbol{x}, t\boldsymbol{I})$:
+Although Contrastive Divergence (KL-based) and Score Matching (Fisher-divergence-based) appear distinct, Hyvärinen (2007) proved—as summarized in [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 24.45, p. 860 (PDF p. 894))—that 1-step Langevin MCMC from $\boldsymbol{x} \sim p_{\mathcal{D}}$ with step size $\epsilon$ yields a $\mathrm{CD}_1$ gradient whose leading-order expansion is $\frac{\epsilon^2}{2}\nabla_\theta D_F(p_{\mathcal{D}} \| p_\theta) + o(\epsilon^2)$. This reflects *de Bruijn's identity*, linking KL and Fisher divergences under Gaussian smoothing $\tilde{\boldsymbol{x}}_t \sim \mathcal{N}(\boldsymbol{x}, t\boldsymbol{I})$:
 
 $$
 \frac{\mathrm{d}}{\mathrm{d}t} D_{\mathrm{KL}}(q_t \parallel p_{\theta,t}) = -\frac{1}{2} D_F(q_t \| p_{\theta,t}).
@@ -275,7 +288,7 @@ We present the two canonical training algorithms: Persistent Contrastive Diverge
 | Exact MCMC MLE | Estimates $\nabla_\theta \log Z_\theta$ | $O(K_{\mathrm{burn}})$ MCMC | Consistent | Prohibitive burn-in per step |
 | $\mathrm{CD}_k$ | Biased $\nabla_\theta \log Z_\theta$ | $O(k)$ MCMC ($k \approx 1$) | Biased | Spurious modes far from data |
 | PCD / SML | Persistent $\nabla_\theta \log Z_\theta$ | $O(K)$ persistent | Asymptotic | Chain mixing vs. $\theta$ drift |
-| Hyv\"arinen ISM | Eliminated | $O(D^2)$ Hessian trace | Consistent | Quadratic scaling in $D$ |
+| Hyvärinen ISM | Eliminated | $O(D^2)$ Hessian trace | Consistent | Quadratic scaling in $D$ |
 | Sliced SM (SSM) | Eliminated | $O(D)$ JVP/VJP | Consistent | Probe variance; manifold fragility |
 | Vincent DSM | Eliminated | $O(1)$ forward/back | Matches $q_\sigma$ | Bias vs. $\sigma\!\to\!0$ variance |
 | NCE | Learns $c \approx -\log Z_\theta$ | $O(1)$ binary loss | Consistent | Designing high-$D$ noise $p_n$ |

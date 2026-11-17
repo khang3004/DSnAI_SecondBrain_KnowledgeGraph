@@ -128,6 +128,7 @@ Notice that Q-learning is a special case of Expected Sarsa when $\pi$ is the det
 >
 > $$
 > \mathbb{E}\bigl[\max_{a} X_a\bigr]  \ge  \max_{a} \mathbb{E}[X_a]  =  \max_{a} q(a),
+>
 > $$
 >
 > with strict inequality whenever multiple actions have noisy estimates near the maximum [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 6, PDF pp. 156–157) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 19.4.2, p. 401). This positive *maximization bias* causes Q-learning to overestimate risky/high-variance suboptimal actions.
@@ -136,6 +137,7 @@ Notice that Q-learning is a special case of Expected Sarsa when $\pi$ is the det
 >
 > $$
 > Q_1(S_t, A_t)  \leftarrow  Q_1(S_t, A_t) + \alpha \Bigl[ R_{t+1} + \gamma Q_2\bigl(S_{t+1}, \arg\max_{a'} Q_1(S_{t+1}, a')\bigr) - Q_1(S_t, A_t) \Bigr].
+>
 > $$
 >
 > Since $Q_2$ is independent of the noise that selected $a^* = \arg\max_{a'} Q_1(S_{t+1}, a')$, $\mathbb{E}[Q_2(S_{t+1}, a^*)] = q(S_{t+1}, a^*)$ is unbiased for that action's true value.
@@ -164,18 +166,21 @@ Setting $\lambda = 0$ recovers $G_t^0 = G_{t:t+1}$ ($\mathrm{TD}(0)$), while $\l
 >
 > $$
 > \boldsymbol{z}_{-1} = \boldsymbol{0}, \qquad \boldsymbol{z}_t  \doteq  \gamma \lambda \boldsymbol{z}_{t-1} + \nabla_{\boldsymbol{w}} \hat{v}(S_t, \boldsymbol{w}_t),
+>
 > $$
 >
 > paired with the semi-gradient update driven by the one-step TD error $\delta_t = R_{t+1} + \gamma \hat{v}(S_{t+1}, \boldsymbol{w}_t) - \hat{v}(S_t, \boldsymbol{w}_t)$:
 >
 > $$
 > \boldsymbol{w}_{t+1}  \doteq  \boldsymbol{w}_t + \alpha \delta_t \boldsymbol{z}_t.
+>
 > $$
 >
 > For linear function approximation $\hat{v}(s, \boldsymbol{w}) = \boldsymbol{w}^{\top} \boldsymbol{x}(s)$ under offline (end-of-episode) weight accumulation, the sum of backward-view updates equals the sum of forward-view $\lambda$-return updates:
 >
 > $$
 > \sum_{t=0}^{T-1} \delta_t \boldsymbol{z}_t  =  \sum_{t=0}^{T-1} \bigl(G_t^\lambda - \boldsymbol{w}^{\top} \boldsymbol{x}(S_t)\bigr) \boldsymbol{x}(S_t),
+>
 > $$
 >
 > verified by telescoping the geometric series $G_t^\lambda - \hat{v}(S_t) = \sum_{k=t}^{T-1} (\gamma \lambda)^{k-t} \delta_k$ and exchanging summation indices [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 12, PDF pp. 315–316). For online step-by-step updates, *True Online $\mathrm{TD}(\lambda)$* eliminates the discrepancy via Dutch traces [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 12, PDF p. 321).
@@ -200,12 +205,14 @@ However, when *off-policy* sampling ($\mu \ne d^\pi$) is combined with bootstrap
 >
 > $$
 > \nabla_{\boldsymbol{w}} \mathrm{PBE}(\boldsymbol{w})  =  2 \mathbb{E}\bigl[\rho_t (\gamma \boldsymbol{x}_{t+1} - \boldsymbol{x}_t)\boldsymbol{x}_t^{\top}\bigr] \bigl(\mathbb{E}[\boldsymbol{x}_t \boldsymbol{x}_t^{\top}]\bigr)^{-1} \mathbb{E}[\rho_t \delta_t \boldsymbol{x}_t].
+>
 > $$
 >
 > Because the first and third expectations both depend on $\boldsymbol{x}_{t+1}$, multiplying single-step samples is biased. GTD2/TDC circumvents this double-sampling issue by maintaining an auxiliary $d$-vector $\boldsymbol{v}_t \approx (\mathbb{E}[\boldsymbol{x}_t \boldsymbol{x}_t^{\top}])^{-1} \mathbb{E}[\rho_t \delta_t \boldsymbol{x}_t]$ via a fast-timescale LMS update ($\boldsymbol{v}_{t+1} = \boldsymbol{v}_t + \beta \rho_t (\delta_t - \boldsymbol{v}_t^{\top} \boldsymbol{x}_t) \boldsymbol{x}_t$) and updating $\boldsymbol{w}$ on a slower timescale:
 >
 > $$
 > \boldsymbol{w}_{t+1}  =  \boldsymbol{w}_t + \alpha \rho_t \bigl(\delta_t \boldsymbol{x}_t - \gamma \boldsymbol{x}_{t+1} (\boldsymbol{x}_t^{\top} \boldsymbol{v}_t)\bigr) \qquad (\text{TDC}).
+>
 > $$
 
 ## Algorithmic Implementation & Comparative Synthesis

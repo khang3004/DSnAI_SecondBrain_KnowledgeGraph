@@ -79,6 +79,7 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})
 >   = \frac{1}{m}\sum_{i=0}^{m-1} H\!\left(p^{\text{gold}}_{i+1},  p_{\theta, i+1}\right)
 >   = -\frac{1}{m}\sum_{i=0}^{m-1} \log \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i).
+>
 > $$
 >
 > Minimizing $\sum_{\boldsymbol{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})$ is algebraically identical to Maximum Likelihood Estimation (MLE):
@@ -87,6 +88,7 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \hat{\theta}_{\text{MLE}}
 >   = \arg\min_\theta \sum_{\boldsymbol{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})
 >   = \arg\max_\theta \sum_{\boldsymbol{x}\in\mathcal{D}} \sum_{i=0}^{m-1} \log \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i).
+>
 > $$
 >
 > By the Shannon–McMillan–Breiman theorem for a stationary ergodic language process $p$, the empirical cross-entropy rate of a model $m = \mathbb{P}_\theta$ converges to $H(p, m) = -\lim_{n\to\infty} \frac{1}{n}\log m(w_1\dots w_n) \ge H(p)$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 3, p. 87). Exponentiating Eq. `(eq:pretrain:ce_loss)` yields *perplexity* (PPL), the length-normalized inverse probability of the sequence [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 3, p. 76) [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 5, p. 348):
@@ -95,6 +97,7 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \text{PPL}_\theta(\boldsymbol{x})
 >   = \exp\!\big(\mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})\big)
 >   = \left(\prod_{i=0}^{m-1} \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i)\right)^{-\frac{1}{m}}.
+>
 > $$
 
 > [!tip] Perplexity as Effective Vocabulary Branching Factor
@@ -121,18 +124,21 @@ Empirical scaling laws relate test cross-entropy loss $L(N, D)$ to non-embedding
 >
 > $$
 > L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},
+>
 > $$
 >
 > with empirically fitted constants $E = 1.69$, $A = 406.4$, $\alpha = 0.34$, $B = 410.7$, and $\beta = 0.28$. Given a fixed compute budget $C = 6ND$, we minimize $L(N,D)$ via the Lagrangian
 >
 > $$
 > \Lambda(N, D, \lambda) = E + A N^{-\alpha} + B D^{-\beta} + \lambda (6ND - C).
+>
 > $$
 >
 > Setting $\frac{\partial \Lambda}{\partial N} = 0$ and $\frac{\partial \Lambda}{\partial D} = 0$ yields $-\alpha A N^{-\alpha-1} + 6\lambda D = 0$ and $-\beta B D^{-\beta-1} + 6\lambda N = 0$. Multiplying the first by $N$ and the second by $D$ equates both to $6\lambda ND = \lambda C$:
 >
 > $$
 > \alpha A N^{-\alpha} = \beta B D^{-\beta}.
+>
 > $$
 >
 > Substituting $D = C/(6N)$ into Eq. `(eq:pretrain:balance)` gives the closed-form compute-optimal allocation:
@@ -140,6 +146,7 @@ Empirical scaling laws relate test cross-entropy loss $L(N, D)$ to non-embedding
 > $$
 > N^*(C) = G \left(\frac{C}{6}\right)^{a}, \qquad
 >   D^*(C) = G^{-1} \left(\frac{C}{6}\right)^{b},
+>
 > $$
 >
 > where $G = \left(\frac{\alpha A}{\beta B}\right)^{\frac{1}{\alpha+\beta}}$, $a = \frac{\beta}{\alpha+\beta} \approx 0.452$, and $b = \frac{\alpha}{\alpha+\beta} \approx 0.548$ (yielding the symmetric Chinchilla rule-of-thumb $N^* \propto C^{0.5}$, $D^* \propto C^{0.5}$, or $\approx 20$ tokens per parameter).
@@ -158,6 +165,7 @@ Full fine-tuning of an LLM updates all $N$ weights, requiring FP32 master weight
 >
 > $$
 > \boldsymbol{h} = \boldsymbol{W}_0 \boldsymbol{x} + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}\boldsymbol{x}.
+>
 > $$
 >
 > At initialization ($t=0$), $\boldsymbol{A}$ is sampled from $\mathcal{N}(0, \sigma^2)$ (or Kaiming uniform) while $\boldsymbol{B} = \boldsymbol{0}$, guaranteeing $\Delta \boldsymbol{W}_0 = \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A} = \boldsymbol{0}$ so the adapted model reproduces the pretrained outputs identically before step 1 [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (App. E, pp. 792–795); see also [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 214). Differentiating the loss $\mathcal{L}$ with respect to $(\boldsymbol{A}, \boldsymbol{B})$ yields
@@ -165,6 +173,7 @@ Full fine-tuning of an LLM updates all $N$ weights, requiring FP32 master weight
 > $$
 > \frac{\partial \mathcal{L}}{\partial \boldsymbol{B}} = \frac{\alpha}{r} \left(\frac{\partial \mathcal{L}}{\partial \boldsymbol{h}}\right) (\boldsymbol{A}\boldsymbol{x})^{\top}, \qquad
 >   \frac{\partial \mathcal{L}}{\partial \boldsymbol{A}} = \frac{\alpha}{r} \boldsymbol{B}^{\top} \left(\frac{\partial \mathcal{L}}{\partial \boldsymbol{h}}\right) \boldsymbol{x}^{\top}.
+>
 > $$
 >
 > Because $\boldsymbol{A} \neq \boldsymbol{0}$, $\frac{\partial \mathcal{L}}{\partial \boldsymbol{B}} \neq \boldsymbol{0}$ at $t=0$, allowing $\boldsymbol{B}$ to move off zero on the first optimizer step and subsequently backpropagate non-zero gradients into $\boldsymbol{A}$. Trainable parameters per adapted matrix drop from $d_{\text{out}} d_{\text{in}}$ to $r(d_{\text{in}} + d_{\text{out}})$—for example, targeting all linear projections of Llama 3 8B with $r=16$ requires only $42\text{M}$ trainable parameters ($0.5196\%$ of $8\text{B}$) [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 215). At inference, $\boldsymbol{W}_{\text{eff}} = \boldsymbol{W}_0 + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}$ merges into a single matrix with zero added latency [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (App. E, p. 779).

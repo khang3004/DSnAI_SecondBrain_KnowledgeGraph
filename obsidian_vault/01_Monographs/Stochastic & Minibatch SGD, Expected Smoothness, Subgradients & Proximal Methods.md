@@ -111,17 +111,22 @@ Instead, expected smoothness [[Source - Handbook of Convergence Theorems|stochas
 > Following [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Ch. 4, pp. 19–23), assume each component $f_i : \mathbb{R}^d \to \mathbb{R}$ is convex and $L_i$-smooth ($\lVert \nabla f_i(\boldsymbol{x}) - \nabla f_i(\boldsymbol{y}) \rVert \le L_i\lVert \boldsymbol{x} - \boldsymbol{y} \rVert$), with $L_{\max} \triangleq \max_{1\le i\le n} L_i$ and $L_{\mathrm{avg}} \triangleq \frac{1}{n}\sum_{i=1}^n L_i$. By the triangle inequality, $f$ is $L_f$-smooth with $L_f \le L_{\mathrm{avg}} \le L_{\max}$.
 > - **Expected Smoothness (Cocoercivity in Expectation).** By convex $L_i$-smoothness, each $f_i$ satisfies $\frac{1}{2L_{\max}}\lVert \nabla f_i(\boldsymbol{y}) - \nabla f_i(\boldsymbol{x}) \rVert^2 \le \frac{1}{2L_i}\lVert \nabla f_i(\boldsymbol{y}) - \nabla f_i(\boldsymbol{x}) \rVert^2 \le f_i(\boldsymbol{y}) - f_i(\boldsymbol{x}) - \langle \nabla f_i(\boldsymbol{x}), \boldsymbol{y} - \boldsymbol{x} \rangle$. Averaging uniformly over $i \in \{1,\dots,n\}$ yields
 >
+>
 > $$
 > \frac{1}{2L_{\max}}\mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{y}) - \nabla f_i(\boldsymbol{x}) \rVert^2\Bigr]
 >   \le f(\boldsymbol{y}) - f(\boldsymbol{x}) - \langle \nabla f(\boldsymbol{x}), \boldsymbol{y} - \boldsymbol{x} \rangle \triangleq D_f(\boldsymbol{y}; \boldsymbol{x}).
+>
 > $$
 >
 >   Setting $\boldsymbol{x} = \boldsymbol{\theta}^* \in \arg\min f$ (where $\nabla f(\boldsymbol{\theta}^*) = \boldsymbol{0}$) and $\boldsymbol{y} = \boldsymbol{\theta}$ gives
 >
+>
 > $$
 > \mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{\theta}) - \nabla f_i(\boldsymbol{\theta}^*) \rVert^2\Bigr] \le 2L_{\max}\bigl(f(\boldsymbol{\theta}) - \inf f\bigr).
+>
 > $$
 > - **Interpolation Constants.** Define the *function noise* $\Delta_f^*$ and *gradient noise at optimum* $\sigma_f^*$ by
+>
 >
 > $$
 > \begin{aligned}
@@ -129,6 +134,7 @@ Instead, expected smoothness [[Source - Handbook of Convergence Theorems|stochas
 >   \sigma_f^* &\triangleq \inf_{\boldsymbol{\theta}^* \in \arg\min f} \mathrm{Var}\bigl[\nabla f_i(\boldsymbol{\theta}^*)\bigr]
 >   = \inf_{\boldsymbol{\theta}^* \in \arg\min f} \mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{\theta}^*) \rVert^2\Bigr] \ge 0.
 > \end{aligned}
+>
 > $$
 >
 >   Under convexity and $L_i$-smoothness, $\mathrm{Var}[\nabla f_i(\boldsymbol{\theta}^*)]$ is invariant across all minimizers $\boldsymbol{\theta}^* \in \arg\min f$ by `(eq:sgd:exp-smooth-opt)`. Moreover, *interpolation* ($\exists \boldsymbol{\theta}^*$ with $f_i(\boldsymbol{\theta}^*) = \inf f_i \forall i$, typical of overparameterized models with $d \gg n$) holds if and only if $\Delta_f^* = 0$, which under convexity is equivalent to $\sigma_f^* = 0$. In general, $L_{\max}$-smoothness gives $\sigma_f^* \le 2L_{\max}\Delta_f^*$, and $\mu$-strong convexity of each $f_i$ gives $2\mu\Delta_f^* \le \sigma_f^*$.
@@ -139,10 +145,13 @@ Combining expected smoothness with the interpolation constants bounds the stocha
 > Assume each component $f_i$ is $L_i$-smooth with $L_{\max} = \max_i L_i$ [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lemmas 4.19–4.20, p. 24).
 > - **Smooth (Possibly Nonconvex) Variance Transfer:** Since $f_i$ is $L_{\max}$-smooth and bounded below, $\lVert \nabla f_i(\boldsymbol{\theta}) \rVert^2 \le 2L_{\max}(f_i(\boldsymbol{\theta}) - \inf f_i) = 2L_{\max}(f_i(\boldsymbol{\theta}) - f_i(\boldsymbol{\theta}^*)) + 2L_{\max}(f_i(\boldsymbol{\theta}^*) - \inf f_i)$. Taking expectations over $i$ yields
 >
+>
 > $$
 > \mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{\theta}) \rVert^2\Bigr] \le 2L_{\max}\bigl(f(\boldsymbol{\theta}) - \inf f\bigr) + 2L_{\max}\Delta_f^*.
+>
 > $$
 > - **Smooth Convex Variance Transfer:** If each $f_i$ is also convex, using $\lVert \boldsymbol{a}+\boldsymbol{b} \rVert^2 \le 2\lVert \boldsymbol{a} \rVert^2 + 2\lVert \boldsymbol{b} \rVert^2$ together with `(eq:sgd:exp-smooth-opt)` gives
+>
 >
 > $$
 > \begin{aligned}
@@ -150,6 +159,7 @@ Combining expected smoothness with the interpolation constants bounds the stocha
 >   &\le 2\mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{\theta}) - \nabla f_i(\boldsymbol{\theta}^*) \rVert^2\Bigr] + 2\mathbb{E}\Bigl[\lVert \nabla f_i(\boldsymbol{\theta}^*) \rVert^2\Bigr]  \\
 >   &\le 4L_{\max}\bigl(f(\boldsymbol{\theta}) - \inf f\bigr) + 2\sigma_f^*.
 > \end{aligned}
+>
 > $$
 
 > [!tip] Why Expected Smoothness Replaces Bounded Gradients
@@ -175,6 +185,7 @@ Intuitively, $\sum \eta_t = \infty$ guarantees sufficient cumulative step length
 > &\le \lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 - 2\eta_t\bigl(f(\boldsymbol{\theta}_t) - f(\boldsymbol{\theta}^*)\bigr) + \eta_t^2\Bigl(4L_{\max}\bigl(f(\boldsymbol{\theta}_t) - f(\boldsymbol{\theta}^*)\bigr) + 2\sigma_f^*\Bigr)  \\
 > &= \lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 - 2\eta_t(1 - 2\eta_t L_{\max})\bigl(f(\boldsymbol{\theta}_t) - f(\boldsymbol{\theta}^*)\bigr) + 2\eta_t^2 \sigma_f^*,
 > \end{aligned}
+>
 > $$
 >
 > where the inequality uses convexity of $f$ and variance transfer `(eq:sgd:vt-grad)`. Taking full expectations, summing over $t = 0,\dots,T-1$ with telescopic cancellation, dropping $\mathbb{E}\lVert \boldsymbol{\theta}_T - \boldsymbol{\theta}^* \rVert^2 \ge 0$, and applying Jensen's inequality to the weighted average $\bar{\boldsymbol{\theta}}_T \triangleq \sum_{t=0}^{T-1} p_{T,t}\boldsymbol{\theta}_t$ with $p_{T,t} = \frac{\eta_t(1 - 2\eta_t L_{\max})}{\sum_{k=0}^{T-1}\eta_k(1 - 2\eta_k L_{\max})}$ yields
@@ -182,23 +193,28 @@ Intuitively, $\sum \eta_t = \infty$ guarantees sufficient cumulative step length
 > $$
 > \mathbb{E}\bigl[f(\bar{\boldsymbol{\theta}}_T) - f(\boldsymbol{\theta}^*)\bigr]
 > \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{2\sum_{t=0}^{T-1}\eta_t(1 - 2\eta_t L_{\max})} + \frac{\sum_{t=0}^{T-1}\eta_t^2}{\sum_{t=0}^{T-1}\eta_t(1 - 2\eta_t L_{\max})} \sigma_f^*.
+>
 > $$
 >
 > Specializing `(eq:sgd:convex-master)` yields two canonical regimes:
 > - **Constant step size** ($\eta_t \equiv \eta < \frac{1}{2L_{\max}}$, uniform average $\bar{\boldsymbol{\theta}}_T = \frac{1}{T}\sum_{t=0}^{T-1}\boldsymbol{\theta}_t$):
 >
+>
 > $$
 > \mathbb{E}\bigl[f(\bar{\boldsymbol{\theta}}_T) - f(\boldsymbol{\theta}^*)\bigr]
 >   \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{2\eta(1 - 2\eta L_{\max})T} + \frac{\eta}{1 - 2\eta L_{\max}}\sigma_f^*.
+>
 > $$
 >
 >   If interpolation holds ($\sigma_f^* = 0$), constant-step SGD matches deterministic GD's $\mathcal{O}(1/T)$ rate. Otherwise, a fixed horizon choice $\eta = \frac{1}{2L_{\max}\sqrt{T}}$ (for $T \ge 4$) recovers $\mathcal{O}(1/\sqrt{T})$ rate and $\mathcal{O}(1/\varepsilon^2)$ complexity [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Cor. 5.6, p. 27).
 > - **Anytime decaying schedule** ($\eta_t = \frac{\eta_0}{\sqrt{t+1}}$ with $\eta_0 \le \frac{1}{2L_{\max}}$): using integral bounds $\sum_{t=0}^{T-1} (t+1)^{-1} \le \log T$ and $\sum_{t=0}^{T-1}(t+1)^{-1/2} \ge 2(\sqrt{T} - \sqrt{2})$ (so $\sum_{t=0}^{T-1}\eta_t(1-2\eta_t L_{\max}) \ge \eta_0\sqrt{T}$ for $T \ge 49$) yields
 >
+>
 > $$
 > \mathbb{E}\bigl[f(\bar{\boldsymbol{\theta}}_T) - f(\boldsymbol{\theta}^*)\bigr]
 >   \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{2\eta_0\sqrt{T}} + \frac{\eta_0 \log T}{\sqrt{T}}\sigma_f^*
 >   = \mathcal{O}\!\left(\frac{\log T}{\sqrt{T}}\right).
+>
 > $$
 
 Note that the optimal polynomial exponent in $\eta_t = \eta_0 (t+1)^{-\alpha}$ for minimizing the variance ratio $\frac{\sum \eta_t^2}{\sum \eta_t}$ over convex objectives is $\alpha = 1/2$, which balances $\mathcal{O}(T^{-(1-\alpha)})$ bias decay against $\mathcal{O}(T^{-\alpha})$ variance decay [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Remark 5.4, p. 26) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. (8.64), p. 295). When $f$ possesses quadratic curvature—either $\mu$-strong convexity or the nonconvex $\mu$-Polyak–Łojasiewicz ($\mu$-PL) inequality $\frac{1}{2}\lVert \nabla f(\boldsymbol{\theta}) \rVert^2 \ge \mu(f(\boldsymbol{\theta}) - \inf f)$—constant-step SGD converges *linearly* up to an explicit $\mathcal{O}(\eta \sigma_f^*/\mu)$ noise ball.
@@ -207,27 +223,33 @@ Note that the optimal polynomial exponent in $\eta_t = \eta_0 (t+1)^{-\alpha}$ f
 > Following [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thms. 5.7 & 5.9, pp. 28–30), let each component $f_i$ be $L_i$-smooth with $L_{\max} = \max_i L_i$.
 > - **$\mu$-Strongly Convex Case:** Suppose each $f_i$ is convex and $f$ is $\mu$-strongly convex, so $\langle \nabla f(\boldsymbol{\theta}), \boldsymbol{\theta} - \boldsymbol{\theta}^* \rangle \ge f(\boldsymbol{\theta}) - f(\boldsymbol{\theta}^*) + \frac{\mu}{2}\lVert \boldsymbol{\theta} - \boldsymbol{\theta}^* \rVert^2$. Repeating `(eq:sgd:convex-step)` with constant step size $0 < \eta \le \frac{1}{2L_{\max}}$ gives
 >
+>
 > $$
 > \begin{aligned}
 > \mathbb{E}\bigl[\lVert \boldsymbol{\theta}_{t+1} - \boldsymbol{\theta}^* \rVert^2\bigr]
 >   &\le (1 - \eta\mu)\mathbb{E}\bigl[\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2\bigr] + 2\eta(2\eta L_{\max} - 1)\mathbb{E}\bigl[f(\boldsymbol{\theta}_t) - f(\boldsymbol{\theta}^*)\bigr] + 2\eta^2\sigma_f^*  \\
 >   &\le (1 - \eta\mu)\mathbb{E}\bigl[\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2\bigr] + 2\eta^2\sigma_f^*.
 > \end{aligned}
+>
 > $$
 >
 >   Unrolling `(eq:sgd:sc-recurrence)` and summing the geometric series $\sum_{k=0}^{t-1}(1-\eta\mu)^k \le \frac{1}{\eta\mu}$ yields
 >
+>
 > $$
 > \mathbb{E}\bigl[\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2\bigr]
 >   \le (1 - \eta\mu)^t \lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 + \frac{2\eta \sigma_f^*}{\mu}.
+>
 > $$
 >
 >   Setting $\eta = \min\bigl\{\frac{\varepsilon\mu}{4\sigma_f^*},  \frac{1}{2L_{\max}}\bigr\}$ guarantees $\mathbb{E}\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 \le \varepsilon$ after $t \ge \max\bigl\{\frac{4\sigma_f^*}{\varepsilon\mu^2},  \frac{2L_{\max}}{\mu}\bigr\}\log\frac{2\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{\varepsilon} = \tilde{\mathcal{O}}(1/\varepsilon)$ iterations [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Cor. 5.8, p. 29). Under Robbins–Monro decay $\eta_t = \frac{2}{\mu(t + t_0)}$ with $t_0 \ge \frac{4L_{\max}}{\mu}$, `(eq:sgd:sc-recurrence)` yields $\mathbb{E}\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 = \mathcal{O}\bigl(\frac{\sigma_f^*}{\mu^2 t}\bigr)$ without tuning $\eta$ to $\varepsilon$.
 > - **Nonconvex $\mu$-PL Case:** Even without convexity, if $f$ is $\mu$-PL and $0 < \eta \le \frac{\mu}{L_f L_{\max}}$, applying $L_f$-smoothness $f(\boldsymbol{\theta}_{t+1}) \le f(\boldsymbol{\theta}_t) - \eta\langle \nabla f(\boldsymbol{\theta}_t), \nabla f_{i_t}(\boldsymbol{\theta}_t) \rangle + \frac{L_f \eta^2}{2}\lVert \nabla f_{i_t}(\boldsymbol{\theta}_t) \rVert^2$ together with `(eq:sgd:vt-func)` and the $\mu$-PL inequality gives
 >
+>
 > $$
 > \mathbb{E}\bigl[f(\boldsymbol{\theta}_t) - \inf f\bigr]
 >   \le (1 - \eta\mu)^t \bigl(f(\boldsymbol{\theta}_0) - \inf f\bigr) + \frac{\eta L_f L_{\max}}{\mu} \Delta_f^*.
+>
 > $$
 
 ### Minibatch Expected Smoothness & Linear-to-Saturation Scaling
@@ -241,12 +263,14 @@ Evaluating gradients on a minibatch $B_t \subset \{1,\dots,n\}$ of size $b$ with
 > \mathbb{E}_B\Bigl[\lVert \nabla f_B(\boldsymbol{y}) - \nabla f_B(\boldsymbol{x}) \rVert^2\Bigr] \le 2L_b  D_f(\boldsymbol{y}; \boldsymbol{x}),
 > \qquad
 > L_b = \frac{n(b-1)}{b(n-1)} L_f + \frac{n-b}{b(n-1)} L_{\max},
+>
 > $$
 >
 > and the minibatch gradient noise at $\boldsymbol{\theta}^*$ obeys the finite-population correction law
 >
 > $$
 > \sigma_b^* = \frac{n-b}{b(n-1)}\sigma_f^*.
+>
 > $$
 >
 > Consequently, all single-sample SGD guarantees hold verbatim upon substituting $(L_{\max}, \sigma_f^*) \mapsto (L_b, \sigma_b^*)$: for $\mu$-strongly convex $f$ and $0 < \eta \le \frac{1}{2L_b}$,
@@ -256,6 +280,7 @@ Evaluating gradients on a minibatch $B_t \subset \{1,\dots,n\}$ of size $b$ with
 > \le (1 - \eta\mu)^t\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 + \frac{2\eta \sigma_b^*}{\mu},
 > \qquad
 > T_\varepsilon(b) = \max\!\left\{\frac{2L_b}{\mu},  \frac{4\sigma_b^*}{\varepsilon\mu^2}\right\}\log\frac{2\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{\varepsilon}.
+>
 > $$
 
 Equation `(eq:sgd:minibatch-Lb)`–`(eq:sgd:minibatch-sc)` unifies the entire spectrum between single-sample SGD ($b=1 \implies L_1 = L_{\max},  \sigma_1^* = \sigma_f^*$) and deterministic full-batch GD ($b=n \implies L_n = L_f,  \sigma_n^* = 0$), and rigorously explains the empirical **linear-to-saturation batch scaling law**:
@@ -278,6 +303,7 @@ Standard SGD must shrink $\eta_t \to 0$ because $\mathrm{Var}[\nabla f_{i_t}(\bo
 >
 > $$
 > \boldsymbol{g}_t^{\mathrm{SVRG}} \triangleq \nabla f_{i_t}(\boldsymbol{\theta}_t) - \nabla f_{i_t}(\tilde{\boldsymbol{\theta}}) + \nabla f(\tilde{\boldsymbol{\theta}}), \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta \boldsymbol{g}_t^{\mathrm{SVRG}}.
+>
 > $$
 >
 > Because $\mathbb{E}[\nabla f_{i_t}(\tilde{\boldsymbol{\theta}})] = \nabla f(\tilde{\boldsymbol{\theta}})$, the estimator is strictly unbiased: $\mathbb{E}[\boldsymbol{g}_t^{\mathrm{SVRG}} \mid \boldsymbol{\theta}_t] = \nabla f(\boldsymbol{\theta}_t)$. Furthermore, applying variance bound `(eq:sgd:variance-decomp)` (centering around $\boldsymbol{y} = \nabla f(\tilde{\boldsymbol{\theta}}) - \nabla f(\boldsymbol{\theta}_t)$) and expected smoothness `(eq:sgd:exp-smooth-opt)` gives
@@ -289,6 +315,7 @@ Standard SGD must shrink $\eta_t \to 0$ because $\mathrm{Var}[\nabla f_{i_t}(\bo
 > &\le 2\mathbb{E}\Bigl[\lVert \nabla f_{i_t}(\boldsymbol{\theta}_t) - \nabla f_{i_t}(\boldsymbol{\theta}^*) \rVert^2\Bigr] + 2\mathbb{E}\Bigl[\lVert \nabla f_{i_t}(\tilde{\boldsymbol{\theta}}) - \nabla f_{i_t}(\boldsymbol{\theta}^*) \rVert^2\Bigr]  \\
 > &\le 4L_{\max}\bigl(f(\boldsymbol{\theta}_t) - \inf f\bigr) + 4L_{\max}\bigl(f(\tilde{\boldsymbol{\theta}}) - \inf f\bigr).
 > \end{aligned}
+>
 > $$
 >
 > Because the right-hand side of `(eq:sgd:svrg-var)` has zero $\sigma_f^*$ floor and shrinks to $0$ as $\boldsymbol{\theta}_t, \tilde{\boldsymbol{\theta}} \to \boldsymbol{\theta}^*$, SVRG converges *linearly* with a constant step size $\eta = \Theta(1/L_{\max})$, requiring only $\mathcal{O}\bigl((n + L_{\max}/\mu)\log(1/\varepsilon)\bigr)$ gradient evaluations for $\mu$-strongly convex finite sums while storing only $\mathcal{O}(d)$ parameters. By contrast, **SAGA** replaces the periodic full-batch snapshot $\tilde{\boldsymbol{\theta}}$ with a table of $n$ cached per-example gradients $\{\boldsymbol{g}_i^{\mathrm{loc}}\}_{i=1}^n$ and running average $\bar{\boldsymbol{g}} = \frac{1}{n}\sum_{i=1}^n \boldsymbol{g}_i^{\mathrm{loc}}$, updating $\boldsymbol{g}_t^{\mathrm{SAGA}} = \nabla f_{i_t}(\boldsymbol{\theta}_t) - \boldsymbol{g}_{i_t}^{\mathrm{loc}} + \bar{\boldsymbol{g}}$ and overwriting $\boldsymbol{g}_{i_t}^{\mathrm{loc}} \leftarrow \nabla f_{i_t}(\boldsymbol{\theta}_t)$ at $\mathcal{O}(nd)$ memory cost [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.4.5.2, p. 298).
@@ -309,6 +336,7 @@ Whenever $f$ is convex and continuous on $\mathbb{R}^d$, $\partial f(\boldsymbol
 > $$
 > \mathbb{E}_t\bigl[\lVert \boldsymbol{\theta}_{t+1} - \boldsymbol{\theta}^* \rVert^2\bigr]
 > \le \lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 - 2\eta_t\bigl(f(\boldsymbol{\theta}_t) - \inf f\bigr) + \eta_t^2 G^2.
+>
 > $$
 >
 > Summing from $t=0$ to $T-1$ and applying Jensen's inequality to the step-weighted average $\bar{\boldsymbol{\theta}}_T = \frac{\sum_{t=0}^{T-1}\eta_t\boldsymbol{\theta}_t}{\sum_{t=0}^{T-1}\eta_t}$ yields
@@ -316,6 +344,7 @@ Whenever $f$ is convex and continuous on $\mathbb{R}^d$, $\partial f(\boldsymbol
 > $$
 > \mathbb{E}\bigl[f(\bar{\boldsymbol{\theta}}_T) - \inf f\bigr]
 > \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 + G^2\sum_{t=0}^{T-1}\eta_t^2}{2\sum_{t=0}^{T-1}\eta_t}.
+>
 > $$
 > - **Fixed-horizon optimal constant step:** Setting $\eta_t \equiv \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert}{G\sqrt{T}}$ minimizes `(eq:sgd:ssd-master)`, giving $\mathbb{E}[f(\bar{\boldsymbol{\theta}}_T) - \inf f] \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert G}{\sqrt{T}}$, i.e., $T \ge \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 G^2}{\varepsilon^2} = \mathcal{O}(1/\varepsilon^2)$ complexity [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Cor. 9.7, p. 49).
 > - **Anytime decaying schedule:** Taking $\eta_t = \frac{\eta}{\sqrt{t+1}}$ yields $\mathcal{O}\bigl(\frac{\log T}{\sqrt{T}}\bigr)$ convergence, while adding projection onto a ball $B(\boldsymbol{0}, R)$ containing $\boldsymbol{\theta}^*$ (Projected SSD) eliminates the $\log T$ factor to achieve $\frac{1}{\sqrt{T}}\bigl(\frac{3R^2}{\eta} + \eta G^2\bigr)$ [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thms. 9.6 & 9.11, pp. 48, 51).
@@ -330,6 +359,7 @@ Subgradient descent slows to $\mathcal{O}(1/\sqrt{T})$ even when $F = f + g$ com
 >
 > $$
 > \operatorname{prox}_{\eta g}(\boldsymbol{v}) \triangleq \arg\min_{\boldsymbol{z} \in \mathbb{R}^d} \left\{ g(\boldsymbol{z}) + \frac{1}{2\eta}\lVert \boldsymbol{z} - \boldsymbol{v} \rVert^2 \right\}.
+>
 > $$
 >
 > **Fundamental Algebraic Properties** [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lemmas 8.15–8.17, pp. 43–44):
@@ -342,10 +372,12 @@ Subgradient descent slows to $\mathcal{O}(1/\sqrt{T})$ even when $F = f + g$ com
 > - *Indicator $\delta_{\mathcal{C}}$ (Projected GD):* $\operatorname{prox}_{\eta\delta_{\mathcal{C}}}(\boldsymbol{v}) = \Pi_{\mathcal{C}}(\boldsymbol{v}) = \arg\min_{\boldsymbol{z}\in\mathcal{C}}\lVert \boldsymbol{z} - \boldsymbol{v} \rVert^2$; for box constraints $[\boldsymbol{l}, \boldsymbol{u}]$, $[\Pi_{[\boldsymbol{l},\boldsymbol{u}]}(\boldsymbol{v})]_j = \min(\max(v_j, l_j), u_j)$.
 > - *$\ell_1$ norm $g(\boldsymbol{\theta}) = \lambda\lVert \boldsymbol{\theta} \rVert_1$ (ISTA Soft-Thresholding):* Setting $0 \in \eta\lambda\partial\lvert z_j \rvert + z_j - v_j$ coordinatewise gives
 >
+>
 > $$
 > \bigl[\operatorname{prox}_{\eta\lambda\lVert \cdot \rVert_1}(\boldsymbol{v})\bigr]_j
 >   = \operatorname{SoftThreshold}(v_j, \eta\lambda)
 >   \triangleq \operatorname{sign}(v_j) \max\bigl(\lvert v_j \rvert - \eta\lambda,  0\bigr),
+>
 > $$
 >
 >   yielding the Iterative Soft-Thresholding Algorithm $\boldsymbol{\theta}_{t+1} = \operatorname{SoftThreshold}(\boldsymbol{\theta}_t - \eta\nabla f(\boldsymbol{\theta}_t),  \eta\lambda)$.
@@ -355,15 +387,19 @@ Subgradient descent slows to $\mathcal{O}(1/\sqrt{T})$ even when $F = f + g$ com
 > - *Deterministic PGD* ($\boldsymbol{g}_t = \nabla f(\boldsymbol{\theta}_t)$, $f$ convex & $L$-smooth, $\eta \in (0, 1/L]$) [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thms. 10.3 & 10.5, pp. 53–56): Using the decreasing Lyapunov energy $E_t = \frac{1}{2\eta}\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2 + t(F(\boldsymbol{\theta}_t) - \inf F)$ establishes $F(\boldsymbol{\theta}_t) - \inf F \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2}{2\eta t} = \mathcal{O}(1/t)$ (avoiding the $\mathcal{O}(1/\sqrt{t})$ subgradient bottleneck). If $f$ is $\mu$-strongly convex, non-expansiveness + Lemma 8.17 gives linear contraction $\lVert \boldsymbol{\theta}_{t+1} - \boldsymbol{\theta}^* \rVert^2 \le (1 - \eta\mu)\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2$.
 > - *Stochastic PGD (SPGD)* ($\boldsymbol{g}_t = \nabla f_{i_t}(\boldsymbol{\theta}_t)$, composite noise $\sigma_F^* \triangleq \inf_{\boldsymbol{\theta}^*\in\arg\min F}\mathrm{Var}[\nabla f_i(\boldsymbol{\theta}^*)]$) [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Def. 8.21, Thms. 11.5 & 11.9, pp. 45, 57–62): Notice that $\sigma_F^* \ne \sigma_f^*$ in general because $\nabla f(\boldsymbol{\theta}^*) \in -\partial g(\boldsymbol{\theta}^*)$ need not vanish at the composite minimizer; rather, $\sigma_F^* \le 4L_{\max}(f(\boldsymbol{\theta}^*) - \inf f) + 2\sigma_f^*$. For convex $f_i$ and nonincreasing $\eta_t$ with $\eta_0 < \frac{1}{4L_{\max}}$,
 >
+>
 > $$
 > \mathbb{E}\bigl[F(\bar{\boldsymbol{\theta}}_t) - \inf F\bigr]
 >   \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 + 2\eta_0(F(\boldsymbol{\theta}_0) - \inf F)}{2(1 - 4\eta_0 L_{\max})\sum_{s=0}^{t-1}\eta_s} + \frac{2\sigma_F^* \sum_{s=0}^{t-1}\eta_s^2}{(1 - 4\eta_0 L_{\max})\sum_{s=0}^{t-1}\eta_s},
+>
 > $$
 >
 >   giving $\mathcal{O}\bigl((\log t)/\sqrt{t}\bigr)$ under $\eta_t = \eta_0/\sqrt{t+1}$; if $f$ is $\mu$-strongly convex and $\eta \in (0, \frac{1}{2L_{\max}}]$, SPGD contracts to a composite noise ball:
 >
+>
 > $$
 > \mathbb{E}\bigl[\lVert \boldsymbol{\theta}_t - \boldsymbol{\theta}^* \rVert^2\bigr] \le (1 - \eta\mu)^t \lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert^2 + \frac{2\eta \sigma_F^*}{\mu}.
+>
 > $$
 
 > [!tip] Why Exact Sparsity Requires Proximal Splitting, Not Subgradients
@@ -421,7 +457,7 @@ Table `tab:sgd:complexity` compiles the exact iteration and gradient-oracle comp
 
 > [!info] Cross-Book Synthesis: Pure Optimization vs. Generalization-Driven SGD
 > Comparing the four texts reveals a fundamental tension between minimizing finite-sum empirical risk $f(\boldsymbol{\theta})$ and minimizing true population risk $F_{\mathrm{pop}}(\boldsymbol{\theta})$:
-> - **Cram\'er–Rao Generalization Ceiling vs. Linear Convergence:** Garrigos & Gower [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Ch. 5–6, pp. 24–35) and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.4.5, pp. 297–298) emphasize that variance reduction (SVRG/SAGA) recovers linear $\mathcal{O}(\log(1/\varepsilon))$ optimization on fixed empirical sums. Conversely, Goodfellow et al. [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 8.1.3 & 8.3.1, pp. 280–282, 295–296) note that in the first pass over data, SGD follows an unbiased gradient of the *true generalization risk*, and because the Cram\'er–Rao statistical estimation limit caps excess test error decay at $\Omega(1/k)$ after $k$ samples, driving empirical error below statistical noise with faster-than-$\mathcal{O}(1/k)$ solvers yields diminishing returns and risks overfitting.
+> - **Cramér–Rao Generalization Ceiling vs. Linear Convergence:** Garrigos & Gower [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Ch. 5–6, pp. 24–35) and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.4.5, pp. 297–298) emphasize that variance reduction (SVRG/SAGA) recovers linear $\mathcal{O}(\log(1/\varepsilon))$ optimization on fixed empirical sums. Conversely, Goodfellow et al. [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 8.1.3 & 8.3.1, pp. 280–282, 295–296) note that in the first pass over data, SGD follows an unbiased gradient of the *true generalization risk*, and because the Cramér–Rao statistical estimation limit caps excess test error decay at $\Omega(1/k)$ after $k$ samples, driving empirical error below statistical noise with faster-than-$\mathcal{O}(1/k)$ solvers yields diminishing returns and risks overfitting.
 > - **Implicit Gradient-Variance Regularization & Valley Escape:** Prince [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 6.2, pp. 83–86; Sec. 9.2.2, p. 144) demonstrates both visually and via modified-loss backward error analysis that SGD with finite step size $\eta$ and batch size $b$ minimizes an effective surrogate objective $\tilde{L}_{\mathrm{SGD}}(\boldsymbol{\theta}) = L(\boldsymbol{\theta}) + \frac{\eta}{4}\lVert \nabla L(\boldsymbol{\theta}) \rVert^2 + \frac{\eta}{4K}\sum_{k=1}^K \lVert \nabla L_{B_k}(\boldsymbol{\theta}) - \nabla L(\boldsymbol{\theta}) \rVert^2$, actively biasing iterates toward flat basins where per-batch gradients agree—a bias lost when $b \to n$ or when variance is artificially stripped.
 > - **Practical Schedules & Averaging:** To reconcile fast early traversal with low asymptotic variance, Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.4.3–8.4.4, pp. 294–297) recommends linear warmup followed by cosine or polynomial $\eta_t \propto t^{-1/2}$ decay, paired with **Polyak–Ruppert iterate averaging** $\bar{\boldsymbol{\theta}}_t = \frac{1}{t}\sum_{k=1}^t \boldsymbol{\theta}_k$ (or Stochastic Weight Averaging, SWA) to match the asymptotic efficiency of second-order Hessian methods without inverting a $d\times d$ matrix.
 

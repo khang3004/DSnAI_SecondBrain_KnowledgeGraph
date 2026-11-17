@@ -86,6 +86,7 @@ Before introducing stochastic latent variables, we establish the geometric basel
 >
 > $$
 > \mathcal{E}(\boldsymbol{W}_1, \boldsymbol{W}_2) = \frac{1}{2}\sum_{n=1}^N \lVert \boldsymbol{W}_2 \boldsymbol{W}_1 \boldsymbol{x}_n - \boldsymbol{x}_n \rVert_2^2.
+>
 > $$
 >
 > At the unique global minimum (up to an invertible $M \times M$ basis change), the column space of $\boldsymbol{W}_2$ spans the exact $M$-dimensional principal subspace of the empirical covariance $\boldsymbol{S} = \frac{1}{N}\sum_{n=1}^N \tilde{\boldsymbol{x}}_n \tilde{\boldsymbol{x}}_n^{\top}$ (for centered data $\tilde{\boldsymbol{x}}_n$). Even with a single nonlinear hidden layer, if the decoder remains linear and squared error is used, the optimal projection still spans the linear PCA subspace [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 19, p. 576) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 14, p. 518).
@@ -94,12 +95,14 @@ Before introducing stochastic latent variables, we establish the geometric basel
 >
 > $$
 > \mathcal{L}_{\mathrm{DAE}}(\psi) = \mathbb{E}_{\boldsymbol{x} \sim p_{\mathrm{data}}} \mathbb{E}_{\tilde{\boldsymbol{x}} \sim C(\cdot\mid\boldsymbol{x})}\!\left[ \lVert r_\psi(\tilde{\boldsymbol{x}}) - \boldsymbol{x} \rVert_2^2 \right]
+>
 > $$
 >
 > yields the Bayes-optimal denoiser $r^*(\tilde{\boldsymbol{x}}) = \mathbb{E}[\boldsymbol{x} \mid \tilde{\boldsymbol{x}}]$. By Tweedie's formula for isotropic Gaussian corruption, the residual displacement estimates the Stein score of the smoothed data density $p_\sigma(\tilde{\boldsymbol{x}}) = \int p_{\mathrm{data}}(\boldsymbol{x})\mathcal{N}(\tilde{\boldsymbol{x}};\boldsymbol{x},\sigma^2\boldsymbol{I}) \mathrm{d}\boldsymbol{x}$:
 >
 > $$
 > r^*(\tilde{\boldsymbol{x}}) - \tilde{\boldsymbol{x}} = \sigma^2 \nabla_{\tilde{\boldsymbol{x}}} \log p_\sigma(\tilde{\boldsymbol{x}}) + o(\sigma^2).
+>
 > $$
 >
 >
@@ -107,6 +110,7 @@ Before introducing stochastic latent variables, we establish the geometric basel
 >
 > $$
 > \mathcal{L}_{\mathrm{CAE}}(\theta, \phi) = \mathcal{L}_{\mathrm{rec}}(\boldsymbol{x}, d_\theta(e_\phi(\boldsymbol{x}))) + \lambda \lVert \boldsymbol{J}_e(\boldsymbol{x}) \rVert_F^2.
+>
 > $$
 
 > [!tip] Manifold Tangent Geometry vs. Orthogonal Projection
@@ -126,12 +130,14 @@ Before introducing stochastic latent variables, we establish the geometric basel
 >   - \underbrace{D_{\mathrm{KL}}(q_\phi(\boldsymbol{z}\mid\boldsymbol{x}) \parallel p_\theta(\boldsymbol{z}))}_{\text{Prior Matching (Rate)}}
 >   =: \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \boldsymbol{x}).
 > \end{aligned}
+>
 > $$
 >
 > Equivalently, multiplying and dividing inside the expectation by $p_\theta(\boldsymbol{z} \mid \boldsymbol{x})$ yields the exact identity [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 19, p. 584) [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 1.2, p. 5):
 >
 > $$
 > \log p_\theta(\boldsymbol{x}) = \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \boldsymbol{x}) + D_{\mathrm{KL}}(q_\phi(\boldsymbol{z}\mid\boldsymbol{x}) \parallel p_\theta(\boldsymbol{z}\mid\boldsymbol{x})).
+>
 > $$
 >
 > Averaging over the empirical data distribution $q_{\mathcal{D}}(\boldsymbol{x})$ reveals that maximizing the ELBO jointly over $(\theta,\phi)$ minimizes the joint KL divergence in the augmented $(\boldsymbol{x},\boldsymbol{z})$ space [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 21, p. 828, p. 831):
@@ -140,6 +146,7 @@ Before introducing stochastic latent variables, we establish the geometric basel
 > \mathbb{E}_{q_{\mathcal{D}}(\boldsymbol{x})}\!\left[\log q_{\mathcal{D}}(\boldsymbol{x}) - \mathcal{L}_{\mathrm{ELBO}}(\theta, \phi; \boldsymbol{x})\right]
 >   = D_{\mathrm{KL}}(q_{\mathcal{D},\phi}(\boldsymbol{x}, \boldsymbol{z}) \parallel p_\theta(\boldsymbol{x}, \boldsymbol{z}))
 >   \ge D_{\mathrm{KL}}(q_{\mathcal{D}}(\boldsymbol{x}) \parallel p_\theta(\boldsymbol{x})),
+>
 > $$
 >
 > where $q_{\mathcal{D},\phi}(\boldsymbol{x}, \boldsymbol{z}) = q_{\mathcal{D}}(\boldsymbol{x}) q_\phi(\boldsymbol{z} \mid \boldsymbol{x})$.
@@ -149,6 +156,7 @@ Before introducing stochastic latent variables, we establish the geometric basel
 > $$
 > D_{\mathrm{KL}}(q_\phi(\boldsymbol{z}\mid\boldsymbol{x}) \parallel p_\theta(\boldsymbol{z}))
 >   = \frac{1}{2}\sum_{j=1}^{M}\!\left( \mu_{\phi,j}^2(\boldsymbol{x}) + \sigma_{\phi,j}^2(\boldsymbol{x}) - 1 - \log \sigma_{\phi,j}^2(\boldsymbol{x}) \right).
+>
 > $$
 
 ### The Pathwise Reparameterization Trick & Variance Reduction
@@ -161,6 +169,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 > $$
 > \nabla_\phi \mathbb{E}_{q_\phi(\boldsymbol{z}\mid\boldsymbol{x})}[f(\boldsymbol{z})]
 >   = \mathbb{E}_{q_\phi(\boldsymbol{z}\mid\boldsymbol{x})}\!\left[f(\boldsymbol{z}) \nabla_\phi \log q_\phi(\boldsymbol{z}\mid\boldsymbol{x})\right]
+>
 > $$
 >
 > is unbiased for any $f(\boldsymbol{z}) = \log p_\theta(\boldsymbol{x}\mid\boldsymbol{z})$, but suffers from prohibitively high Monte Carlo variance [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 19, p. 586).
@@ -169,6 +178,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 >
 > $$
 > \boldsymbol{z} = g_\phi(\boldsymbol{\epsilon}, \boldsymbol{x}) = \boldsymbol{\mu}_\phi(\boldsymbol{x}) + \boldsymbol{\sigma}_\phi(\boldsymbol{x}) \odot \boldsymbol{\epsilon}, \qquad \boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I}_M).
+>
 > $$
 >
 > Applying the law of the unconscious statistician transfers the $\phi$-dependence from the measure into the integrand, enabling low-variance pathwise differentiation:
@@ -177,6 +187,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 > \nabla_\phi \mathbb{E}_{q_\phi(\boldsymbol{z}\mid\boldsymbol{x})}[f(\boldsymbol{z})]
 >   = \mathbb{E}_{\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I}_M)}\!\left[ \left(\nabla_{\boldsymbol{z}} f(\boldsymbol{z})\big|_{\boldsymbol{z}=g_\phi(\boldsymbol{\epsilon},\boldsymbol{x})}\right)^{\top} \nabla_\phi g_\phi(\boldsymbol{\epsilon}, \boldsymbol{x}) \right]
 >   \approx \frac{1}{L}\sum_{l=1}^L \nabla_\phi f\!\left(g_\phi(\boldsymbol{\epsilon}^{(l)}, \boldsymbol{x})\right),
+>
 > $$
 >
 > where $L=1$ per datum in a mini-batch typically suffices for stochastic gradient optimization [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 19, p. 587).
@@ -190,6 +201,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 > \mathcal{L}_\beta(\theta, \phi; \boldsymbol{x})
 >   = \underbrace{-\mathbb{E}_{q_\phi(\boldsymbol{z}\mid\boldsymbol{x})}[\log p_\theta(\boldsymbol{x}\mid\boldsymbol{z})]}_{\text{Distortion } D}
 >   + \beta \underbrace{D_{\mathrm{KL}}(q_\phi(\boldsymbol{z}\mid\boldsymbol{x}) \parallel p_\theta(\boldsymbol{z}))}_{\text{Rate } R}.
+>
 > $$
 >
 > Setting $\beta=1$ recovers the negative ELBO; $\beta=0$ recovers a noisy autoencoder. Setting $\beta > 1$ penalizes the latent channel capacity $R$, which upper-bounds the mutual information $I(\boldsymbol{x}; \boldsymbol{z})$ and suppresses Total Correlation $\mathrm{TC}(\boldsymbol{z}) = D_{\mathrm{KL}}(q_\phi(\boldsymbol{z}) \parallel \prod_j q_\phi(z_j))$, encouraging disentangled factors (subject to inductive bias, as nonlinear latent models are fundamentally unidentifiable without structural priors) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 21, p. 832) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 17, p. 355).
@@ -198,6 +210,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 >
 > $$
 > k^* = \arg\min_{k \in \{1,\dots,K\}} \lVert \boldsymbol{z}_e(\boldsymbol{x}) - \boldsymbol{e}_k \rVert_2, \qquad \boldsymbol{z}_q(\boldsymbol{x}) = \boldsymbol{e}_{k^*}.
+>
 > $$
 >
 > Because $\arg\min$ has zero gradient almost everywhere, the backward pass uses the *straight-through estimator* (STE), copying gradients directly from $\boldsymbol{z}_q$ to $\boldsymbol{z}_e$: $\nabla_{\boldsymbol{z}_e} \mathcal{L}_{\mathrm{rec}} \approx \nabla_{\boldsymbol{z}_q} \mathcal{L}_{\mathrm{rec}}$. Codebook vectors and encoder outputs are aligned via stop-gradient ($\operatorname{sg}[\cdot]$) MSE terms:
@@ -207,6 +220,7 @@ To optimize $\mathcal{L}_{\mathrm{ELBO}}(\theta,\phi;\boldsymbol{x})$ via stocha
 >   = -\log p_\theta(\boldsymbol{x} \mid \boldsymbol{z}_q(\boldsymbol{x}))
 >   + \lVert \operatorname{sg}[\boldsymbol{z}_e(\boldsymbol{x})] - \boldsymbol{e}_{k^*} \rVert_2^2
 >   + \beta_{\mathrm{com}} \lVert \boldsymbol{z}_e(\boldsymbol{x}) - \operatorname{sg}[\boldsymbol{e}_{k^*}] \rVert_2^2,
+>
 > $$
 >
 > where the middle term updates the codebook (or is replaced by an exponential moving average with $\gamma=0.9$), and the final commitment term ($\beta_{\mathrm{com}} \approx 0.25$) prevents $\boldsymbol{z}_e(\boldsymbol{x})$ from drifting unboundedly [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 21, p. 851).

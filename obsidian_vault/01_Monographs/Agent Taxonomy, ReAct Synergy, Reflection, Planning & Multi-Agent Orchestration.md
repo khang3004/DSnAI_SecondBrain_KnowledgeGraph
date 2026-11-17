@@ -85,6 +85,7 @@ Isolating reasoning from acting induces complementary failure modes. Pure Chain-
 >
 > $$
 > \mathbb{P}(\tau \mid x) = \prod_{t=1}^{T} \pi(\hat{a}_t \mid c_t)   \pi(a_t \mid c_t, \hat{a}_t)   \mathcal{P}(o_{t+1} \mid s_t, a_t),
+>
 > $$
 >
 > where the context update satisfies $c_t' = (c_t, \hat{a}_t)$ after a thought and $c_{t+1} = (c_t', a_t, o_{t+1})$ after an external action. Because thoughts $\hat{a}_t \in \mathcal{L}$ incur zero environment cost, they serve as a differentiable-free working memory that (1) decomposes goals, (2) extracts salient entities from $o_t$, (3) reformulates failed queries, and (4) tracks subgoal completion.
@@ -96,6 +97,7 @@ Isolating reasoning from acting induces complementary failure modes. Pure Chain-
 > \text{ReAct} \to \text{CoT-SC}: \quad & \text{if } t > T_{\max} \text{ without } `Finish`[\cdot], \text{ back off to } \text{CoT-SC}(n),  \\
 >   \text{CoT-SC} \to \text{ReAct}: \quad & \text{if } \max_{y} \sum_{i=1}^{n} \mathbb{I}[y^{(i)} = y] < \frac{n}{2}, \text{ back off to ReAct}.
 > \end{aligned}
+>
 > $$
 >
 > In `(eq:agent:switch_react_cot)`, $T_{\max} = 7$ for HotpotQA and $T_{\max} = 5$ for FEVER (fewer than $0.84\%$ and $1.33\%$ of correct ReAct trajectories exceed these horizons, respectively). In `(eq:agent:switch_cot_react)`, a sub-majority consensus signals low internal confidence, triggering external retrieval.

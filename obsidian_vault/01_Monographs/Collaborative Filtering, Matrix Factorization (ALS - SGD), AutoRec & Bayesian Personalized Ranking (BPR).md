@@ -67,18 +67,21 @@ Given $M$ users $\mathcal{U}$ and $N$ items $\mathcal{I}$, recommender systems o
 >
 > $$
 > \hat{y}_{ui} = \bar{y}_u + \frac{\sum_{j \in \mathcal{N}_u(i)} \mathrm{sim}(i, j) (y_{uj} - \bar{y}_u)}{\sum_{j \in \mathcal{N}_u(i)} |\mathrm{sim}(i, j)|}.
+>
 > $$
 >
 > To capture global low-rank preference structure across sparse entries $\Omega$, *Biased Matrix Factorization* models $\hat{y}_{ui} = \mu + b_u + b_i + \boldsymbol{p}_u^{\top} \boldsymbol{q}_i$ and minimizes regularized squared error over $\Omega$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, pp. 773–776), [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 19, pp. 253–264):
 >
 > $$
 > \mathcal{L}_{\mathrm{MF}} = \sum_{(u,i)\in\Omega} \bigl(y_{ui} - \mu - b_u - b_i - \boldsymbol{p}_u^{\top} \boldsymbol{q}_i\bigr)^2 + \lambda\Bigl(\sum_u (\lVert \boldsymbol{p}_u \rVert_2^2 + b_u^2) + \sum_i (\lVert \boldsymbol{q}_i \rVert_2^2 + b_i^2)\Bigr).
+>
 > $$
 >
 > Although jointly non-convex in $(\boldsymbol{P}, \boldsymbol{Q})$, fixing $\boldsymbol{Q}$ makes $\mathcal{L}_{\mathrm{MF}}$ strictly convex quadratic in each $\boldsymbol{p}_u$, yielding *Alternating Least Squares (ALS)* closed-form updates [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, pp. 775–776):
 >
 > $$
 > \boldsymbol{p}_u \gets \Bigl(\sum_{i \in \Omega_u} \boldsymbol{q}_i \boldsymbol{q}_i^{\top} + \lambda \boldsymbol{I}_K\Bigr)^{-1} \sum_{i \in \Omega_u} (y_{ui} - \mu - b_u - b_i) \boldsymbol{q}_i.
+>
 > $$
 >
 > For *implicit feedback* with confidence weights $c_{ui} = 1 + \alpha r_{ui}$ and preference indicators $p_{ui} = \mathbb{I}(r_{ui} > 0)$, weighted ALS sums over all $N$ items using the Gram matrix trick $\boldsymbol{Q}^{\top}\boldsymbol{Q} + \sum_{i \in \mathcal{I}_u^+} (c_{ui}-1)\boldsymbol{q}_i\boldsymbol{q}_i^{\top}$ in $O(|\Omega| K^2 + M K^3)$ instead of $O(MNK^2)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, pp. 777–779).
@@ -90,12 +93,14 @@ Given $M$ users $\mathcal{U}$ and $N$ items $\mathcal{I}$, recommender systems o
 >
 > $$
 > \mathcal{L}_{\mathrm{AutoRec}} = \sum_{i=1}^N \lVert \bigl(\boldsymbol{y}^{(i)} - f(\boldsymbol{W}\sigma(\boldsymbol{V}\boldsymbol{y}^{(i)} + \boldsymbol{b}_1) + \boldsymbol{b}_2)\bigr) \odot \boldsymbol{m}^{(i)} \rVert_2^2 + \frac{\lambda}{2}(\lVert \boldsymbol{W} \rVert_F^2 + \lVert \boldsymbol{V} \rVert_F^2).
+>
 > $$
 >
 > For top-$K$ recommendation from implicit positives $\mathcal{I}_u^+$, pointwise regression treats missing items as absolute zeros, whereas *Bayesian Personalized Ranking (BPR)* maximizes the posterior probability of pairwise orderings $(i \succ_u j)$ for $i \in \mathcal{I}_u^+$, $j \notin \mathcal{I}_u^+$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, pp. 779–782):
 >
 > $$
 > \mathcal{L}_{\mathrm{BPR}} = -\sum_{(u, i, j) \in \mathcal{D}_S} \log \sigma\bigl(\hat{y}_{ui} - \hat{y}_{uj}\bigr) + \lambda \lVert \Theta \rVert_2^2,
+>
 > $$
 >
 > directly optimizing a smooth surrogate of Area Under the ROC Curve (AUC).

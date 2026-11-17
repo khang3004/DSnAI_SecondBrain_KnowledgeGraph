@@ -53,7 +53,7 @@ tags:
 
 ## Problem Formulation & Unified Notation
 
-Discrete-time Denoising Diffusion Probabilistic Models (DDPMs) and Noise-Conditional Score Networks (NCSNs / SMLD) both corrupt data $\boldsymbol{x}_0 \sim p_{\mathrm{data}}$ through a finite sequence of noise perturbations and learn to invert the process. Passing to the continuum limit ($\Delta t \to 0$, $N \to \infty$) unifies both paradigms under a single mathematical object: an It\^o stochastic differential equation (SDE) over $t \in [0, T]$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.1.1, pp. 87–89) [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 4.1, pp. 39–40) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.1, p. 877):
+Discrete-time Denoising Diffusion Probabilistic Models (DDPMs) and Noise-Conditional Score Networks (NCSNs / SMLD) both corrupt data $\boldsymbol{x}_0 \sim p_{\mathrm{data}}$ through a finite sequence of noise perturbations and learn to invert the process. Passing to the continuum limit ($\Delta t \to 0$, $N \to \infty$) unifies both paradigms under a single mathematical object: an Itô stochastic differential equation (SDE) over $t \in [0, T]$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.1.1, pp. 87–89) [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 4.1, pp. 39–40) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.1, p. 877):
 
 $$
 \mathrm{d}\boldsymbol{x}_t = \boldsymbol{f}(\boldsymbol{x}_t, t) \mathrm{d}t + g(t) \mathrm{d}\boldsymbol{w}_t, \qquad \boldsymbol{x}_0 \sim p_0 = p_{\mathrm{data}},
@@ -89,6 +89,7 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 > \boldsymbol{x}_{t+\Delta t} - \boldsymbol{x}_t = -\frac{1}{2}\beta(t)\boldsymbol{x}_t \Delta t + \sqrt{\beta(t)} \sqrt{\Delta t} \boldsymbol{\epsilon}_t + \mathcal{O}(\Delta t^2)
 >    \xrightarrow{\Delta t \to 0} 
 >   \mathrm{d}\boldsymbol{x}_t = -\frac{1}{2}\beta(t)\boldsymbol{x}_t \mathrm{d}t + \sqrt{\beta(t)} \mathrm{d}\boldsymbol{w}_t.
+>
 > $$
 >
 >
@@ -96,6 +97,7 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 >
 > $$
 > \mathrm{d}\boldsymbol{x}_t = \sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}} \mathrm{d}\boldsymbol{w}_t.
+>
 > $$
 >
 >
@@ -103,6 +105,7 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 >
 > $$
 > \frac{\mathrm{d}\boldsymbol{m}(t)}{\mathrm{d}t} = f(t)\boldsymbol{m}(t), \qquad \frac{\mathrm{d}P(t)}{\mathrm{d}t} = 2f(t)P(t) + g^2(t),
+>
 > $$
 >
 > with $\boldsymbol{m}(0) = \boldsymbol{x}_0$ and $P(0) = 0$. Solving via the integrating factor $E(s \to t) = \exp\!\left(\int_s^t f(u) \mathrm{d}u\right)$ gives:
@@ -112,35 +115,40 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 > \text{VP-SDE:}\quad & p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_t;  e^{-\frac{1}{2}B(t)}\boldsymbol{x}_0,  \bigl(1 - e^{-B(t)}\bigr)\boldsymbol{I}\right), \qquad B(t) := \int_0^t \beta(s) \mathrm{d}s,  \\
 >   \text{VE-SDE:}\quad & p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_t;  \boldsymbol{x}_0,  \bigl(\sigma^2(t) - \sigma^2(0)\bigr)\boldsymbol{I}\right).
 > \end{aligned}
+>
 > $$
 
-### It\^o's Lemma & Derivation of the Fokker-Planck Equation
+### Itô's Lemma & Derivation of the Fokker-Planck Equation
 
-Because sample paths of a Wiener process are almost surely continuous yet nowhere differentiable, classical calculus fails. Specifically, Brownian increments scale as $\mathrm{d}\boldsymbol{w}_t = \mathcal{O}(\sqrt{\mathrm{d}t})$ and obey the quadratic variation rule $(\mathrm{d}w_{t,i})(\mathrm{d}w_{t,j}) = \delta_{ij} \mathrm{d}t$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.1–C.1.2, pp. 413–415). Retaining $\mathcal{O}(\mathrm{d}t)$ terms in a second-order stochastic Taylor expansion yields It\^o's Lemma.
+Because sample paths of a Wiener process are almost surely continuous yet nowhere differentiable, classical calculus fails. Specifically, Brownian increments scale as $\mathrm{d}\boldsymbol{w}_t = \mathcal{O}(\sqrt{\mathrm{d}t})$ and obey the quadratic variation rule $(\mathrm{d}w_{t,i})(\mathrm{d}w_{t,j}) = \delta_{ij} \mathrm{d}t$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.1–C.1.2, pp. 413–415). Retaining $\mathcal{O}(\mathrm{d}t)$ terms in a second-order stochastic Taylor expansion yields Itô's Lemma.
 
-> [!important] Multidimensional It\^o's Lemma & Fokker-Planck Derivation
-> Let $\boldsymbol{x}_t \in \mathbb{R}^D$ solve $\mathrm{d}\boldsymbol{x}_t = \boldsymbol{f}(\boldsymbol{x}_t, t) \mathrm{d}t + g(t) \mathrm{d}\boldsymbol{w}_t$, and let $\varphi : \mathbb{R}^D \times [0, T] \to \mathbb{R}$ be $C^{2,1}$-smooth. Expanding $\varphi(\boldsymbol{x}_{t+\mathrm{d}t}, t+\mathrm{d}t) - \varphi(\boldsymbol{x}_t, t)$ and substituting $\mathrm{d}\boldsymbol{x}_t \mathrm{d}\boldsymbol{x}_t^\top = g^2(t) \mathrm{d}t \boldsymbol{I} + \mathcal{O}(\mathrm{d}t^{3/2})$ yields **It\^o's Formula** [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.3, Eq. (C.1.1), p. 416):
+> [!important] Multidimensional Itô's Lemma & Fokker-Planck Derivation
+> Let $\boldsymbol{x}_t \in \mathbb{R}^D$ solve $\mathrm{d}\boldsymbol{x}_t = \boldsymbol{f}(\boldsymbol{x}_t, t) \mathrm{d}t + g(t) \mathrm{d}\boldsymbol{w}_t$, and let $\varphi : \mathbb{R}^D \times [0, T] \to \mathbb{R}$ be $C^{2,1}$-smooth. Expanding $\varphi(\boldsymbol{x}_{t+\mathrm{d}t}, t+\mathrm{d}t) - \varphi(\boldsymbol{x}_t, t)$ and substituting $\mathrm{d}\boldsymbol{x}_t \mathrm{d}\boldsymbol{x}_t^\top = g^2(t) \mathrm{d}t \boldsymbol{I} + \mathcal{O}(\mathrm{d}t^{3/2})$ yields **Itô's Formula** [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.3, Eq. (C.1.1), p. 416):
 >
 > $$
 > \mathrm{d}\varphi(\boldsymbol{x}_t, t) = \left( \frac{\partial \varphi}{\partial t} + (\nabla_{\boldsymbol{x}}\varphi)^\top \boldsymbol{f}(\boldsymbol{x}_t, t) + \frac{1}{2}g^2(t) \mathrm{Tr}\!\left(\nabla_{\boldsymbol{x}}^2 \varphi\right) \right)\mathrm{d}t + g(t)(\nabla_{\boldsymbol{x}}\varphi)^\top \mathrm{d}\boldsymbol{w}_t.
+>
 > $$
 >
 > **Derivation of the Fokker-Planck Equation** [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.4, pp. 417–418): Take expectations under $\boldsymbol{x}_t \sim p_t$ for a compactly supported test function $\varphi(\boldsymbol{x})$ independent of $t$. Since $\mathbb{E}[(\nabla_{\boldsymbol{x}}\varphi)^\top \mathrm{d}\boldsymbol{w}_t] = 0$,
 >
 > $$
 > \frac{\mathrm{d}}{\mathrm{d}t}\mathbb{E}_{p_t}[\varphi(\boldsymbol{x}_t)] = \int_{\mathbb{R}^D} \varphi(\boldsymbol{x}) \frac{\partial p_t(\boldsymbol{x})}{\partial t} \mathrm{d}\boldsymbol{x} = \int_{\mathbb{R}^D} \left( (\nabla_{\boldsymbol{x}}\varphi)^\top \boldsymbol{f}(\boldsymbol{x}, t) + \frac{1}{2}g^2(t) \Delta \varphi(\boldsymbol{x}) \right) p_t(\boldsymbol{x}) \mathrm{d}\boldsymbol{x},
+>
 > $$
 >
 > where $\Delta = \mathrm{Tr}(\nabla_{\boldsymbol{x}}^2)$ is the Laplacian. Applying the divergence theorem (integration by parts) with vanishing boundary terms gives
 >
 > $$
 > \int_{\mathbb{R}^D} \varphi(\boldsymbol{x}) \left[ \frac{\partial p_t(\boldsymbol{x})}{\partial t} + \nabla_{\boldsymbol{x}} \cdot \bigl(\boldsymbol{f}(\boldsymbol{x}, t) p_t(\boldsymbol{x})\bigr) - \frac{1}{2}g^2(t) \Delta p_t(\boldsymbol{x}) \right] \mathrm{d}\boldsymbol{x} = 0.
+>
 > $$
 >
 > Since $\varphi$ is arbitrary, the integrand vanishes pointwise, yielding the **Fokker-Planck Equation**:
 >
 > $$
 > \frac{\partial p_t(\boldsymbol{x})}{\partial t} = -\nabla_{\boldsymbol{x}} \cdot \bigl(\boldsymbol{f}(\boldsymbol{x}, t) p_t(\boldsymbol{x})\bigr) + \frac{1}{2}g^2(t) \Delta p_t(\boldsymbol{x}).
+>
 > $$
 
 ### Anderson's Reverse-Time SDE & the Probability Flow ODE
@@ -164,13 +172,18 @@ where $\bar{\boldsymbol{w}}_t$ is a standard Wiener process in reverse time ($t$
 
 > [!tip] Why $\frac{1}{2}g^2$ in PF-ODE vs. $g^2$ in Reverse SDE?
 > Rewriting the reverse SDE `(eq:sde:reverse_sde)` as
-> \[
+>
+> $$
+>
 >   \mathrm{d}\bar{\boldsymbol{x}}_t = \underbrace{\left[\boldsymbol{f}(\bar{\boldsymbol{x}}_t, t) - \tfrac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t)\right]\mathrm{d}t}_{\text{Deterministic PF-ODE}}  -  \underbrace{\tfrac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t) \mathrm{d}t + g(t) \mathrm{d}\bar{\boldsymbol{w}}_t}_{\text{Time-Varying Langevin Corrector}}
-> \]
+>
+> $$
+>
 > shows that the extra $-\frac{1}{2}g^2 \nabla \log p_t$ drift exactly counterbalances the diffusive spreading of $g(t) \mathrm{d}\bar{\boldsymbol{w}}_t$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.5, Eq. (25.57), p. 881) [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.1.3, p. 94). In practice, the continuous noise injection in the SDE acts as an error-correcting Langevin step that compensates for discretization errors and imperfect score estimates, whereas the PF-ODE is deterministic, invertible, uniquely identifiable across architectures, and enables exact log-likelihood evaluation via the instantaneous change-of-variables formula [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.4, p. 880):
 >
 > $$
 > \log p_0(\boldsymbol{x}_0) = \log p_T(\boldsymbol{x}_T) + \int_0^T \nabla_{\boldsymbol{x}} \cdot \tilde{\boldsymbol{v}}_t(\boldsymbol{x}_t) \mathrm{d}t, \qquad \tilde{\boldsymbol{v}}_t(\boldsymbol{x}) = \boldsymbol{f}(\boldsymbol{x}, t) - \frac{1}{2}g^2(t)\boldsymbol{s}_\phi(\boldsymbol{x}, t).
+>
 > $$
 
 ### Girsanov's Theorem & Path-Measure Likelihood
@@ -182,12 +195,14 @@ While the Fokker-Planck equation guarantees *marginal* alignment $q_t(\boldsymbo
 >
 > $$
 > \frac{\mathrm{d}\mathbb{P}_{\boldsymbol{f}}}{\mathrm{d}\mathbb{P}_{\tilde{\boldsymbol{f}}}}(\boldsymbol{x}_{0:T}) = \exp\!\left( \int_0^T \frac{\boldsymbol{\delta}_t^\top}{g(t)} \mathrm{d}\boldsymbol{w}_t - \frac{1}{2}\int_0^T \frac{\|\boldsymbol{\delta}_t\|_2^2}{g^2(t)} \mathrm{d}t \right).
+>
 > $$
 >
-> Taking $\mathbb{P}$ as the true reverse-time SDE (drift $\boldsymbol{f} - g^2\nabla_{\boldsymbol{x}}\log p_t$) and $\mathbb{P}_\phi$ as the learned reverse SDE (drift $\boldsymbol{f} - g^2\boldsymbol{s}_\phi$), we have $\boldsymbol{\delta}_t = g^2(t)(\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) - \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x}_t))$. Since the It\^o integral has zero expectation under $\mathbb{P}$, the KL divergence between the full path measures simplifies to [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.2.1, Eq. (C.2.1), p. 425):
+> Taking $\mathbb{P}$ as the true reverse-time SDE (drift $\boldsymbol{f} - g^2\nabla_{\boldsymbol{x}}\log p_t$) and $\mathbb{P}_\phi$ as the learned reverse SDE (drift $\boldsymbol{f} - g^2\boldsymbol{s}_\phi$), we have $\boldsymbol{\delta}_t = g^2(t)(\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) - \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x}_t))$. Since the Itô integral has zero expectation under $\mathbb{P}$, the KL divergence between the full path measures simplifies to [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.2.1, Eq. (C.2.1), p. 425):
 >
 > $$
 > D_{\mathrm{KL}}(\mathbb{P}  \|  \mathbb{P}_\phi) = \frac{1}{2} \mathbb{E}_{\mathbb{P}}\!\left[ \int_0^T g^2(t) \bigl\|\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) - \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x}_t)\bigr\|_2^2 \mathrm{d}t \right] + \mathrm{Const.}
+>
 > $$
 >
 > By the data-processing inequality, $D_{\mathrm{KL}}(p_{\mathrm{data}}  \|  p_\phi(\boldsymbol{x}_0)) \le D_{\mathrm{KL}}(\mathbb{P}  \|  \mathbb{P}_\phi)$. Consequently, weighting score matching by $\lambda(t) = g^2(t)$ (the likelihood-weighting schedule) directly minimizes an upper bound on the negative data log-likelihood $-\mathbb{E}_{p_{\mathrm{data}}}[\log p_\phi(\boldsymbol{x}_0)]$.
@@ -201,12 +216,14 @@ Flow Matching (FM) bypasses stochastic forward SDEs by learning a deterministic 
 >
 > $$
 > \boldsymbol{v}_t(\boldsymbol{x}) := \mathbb{E}_{\boldsymbol{z} \sim p_t(\boldsymbol{z} \mid \boldsymbol{x})}\!\left[\boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z})\right] = \int \boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z}) \frac{p_t(\boldsymbol{x} \mid \boldsymbol{z}) \pi(\boldsymbol{z})}{p_t(\boldsymbol{x})} \mathrm{d}\boldsymbol{z}.
+>
 > $$
 >
 > Then $(p_t, \boldsymbol{v}_t)$ satisfies the marginal continuity equation $\partial_t p_t + \nabla_{\boldsymbol{x}}\cdot(p_t \boldsymbol{v}_t) = 0$. Moreover, the intractable Marginal FM objective $\mathcal{L}_{\mathrm{FM}}(\phi) = \mathbb{E}_{t, \boldsymbol{x}_t \sim p_t}[\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - \boldsymbol{v}_t(\boldsymbol{x}_t)\|_2^2]$ and the simulation-free **Conditional Flow Matching (CFM)** objective
 >
 > $$
 > \mathcal{L}_{\mathrm{CFM}}(\phi) := \mathbb{E}_{t \sim \mathcal{U}[0,1],  \boldsymbol{z} \sim \pi,  \boldsymbol{x}_t \sim p_t(\cdot \mid \boldsymbol{z})}\!\left[ \bigl\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - \boldsymbol{v}_t(\boldsymbol{x}_t \mid \boldsymbol{z})\bigr\|_2^2 \right]
+>
 > $$
 >
 > have identical gradients: $\nabla_\phi \mathcal{L}_{\mathrm{FM}}(\phi) = \nabla_\phi \mathcal{L}_{\mathrm{CFM}}(\phi)$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.2.2, pp. 141–147).
@@ -215,12 +232,14 @@ Flow Matching (FM) bypasses stochastic forward SDEs by learning a deterministic 
 >
 > $$
 > \boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z}) = \frac{\sigma_t'(\boldsymbol{z})}{\sigma_t(\boldsymbol{z})}\bigl(\boldsymbol{x} - \boldsymbol{\mu}_t(\boldsymbol{z})\bigr) + \boldsymbol{\mu}_t'(\boldsymbol{z}).
+>
 > $$
 >
 > Setting $\boldsymbol{z} = (\boldsymbol{x}_0, \boldsymbol{x}_1) \sim p_{\mathrm{src}} \times p_{\mathrm{tgt}}$ with the canonical linear interpolant $\boldsymbol{x}_t = (1-t)\boldsymbol{x}_0 + t\boldsymbol{x}_1$ ($\sigma_t \to 0$) reduces `(eq:sde:cfm_loss)` to the **Rectified Flow** objective [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.4, p. 159):
 >
 > $$
 > \mathcal{L}_{\mathrm{RF}}(\phi) = \mathbb{E}_{t \sim \mathcal{U}[0,1],  (\boldsymbol{x}_0, \boldsymbol{x}_1) \sim \pi}\!\left[ \bigl\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - (\boldsymbol{x}_1 - \boldsymbol{x}_0)\bigr\|_2^2 \right].
+>
 > $$
 
 Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \otimes p_{\mathrm{tgt}}$ with the deterministic flow coupling $\pi^{(k+1)}(\boldsymbol{x}_0, \boldsymbol{x}_1) = p_{\mathrm{src}}(\boldsymbol{x}_0)\delta(\boldsymbol{x}_1 - \Phi_{0 \to 1}^{(k)}(\boldsymbol{x}_0))$ (**Reflow**) preserves marginals, never increases convex transport cost $\mathbb{E}[c(\hat{\boldsymbol{z}}_1 - \boldsymbol{z}_0)] \le \mathbb{E}[c(\boldsymbol{x}_1 - \boldsymbol{x}_0)]$, and drives path curvature toward zero: $\min_{k \le K}\mathcal{S}(\boldsymbol{Z}^{(k)}) \le \frac{1}{K}\mathbb{E}[\|\boldsymbol{x}_1 - \boldsymbol{x}_0\|_2^2]$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.4.2–5.4.3, pp. 161–163).
@@ -283,7 +302,7 @@ Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \ot
 > *Figure:* Comparison of reverse-time generative dynamics sharing the same marginal densities $q(\boldsymbol{x}_t)$: (a) Anderson's reverse-time SDE injects Brownian noise balanced by $-g^2\nabla\log p_t$; (b) the deterministic Probability Flow ODE follows smooth, non-intersecting characteristic streamlines with $-\frac{1}{2}g^2\nabla\log p_t$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.3–25.4.4, Fig. 25.7, p. 879). (`probabilisticml_kevinmurphy_advancedtopics_p913_fig1.png`)
 
 > [!example] Visual Diagram (LaTeX / PDF)
-> *Unified mathematical bridge connecting discrete diffusion, Forward It\^o SDEs, Anderson's Reverse SDE, the Fokker-Planck Probability Flow ODE, and Conditional Flow Matching / Rectified Flow.* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
+> *Unified mathematical bridge connecting discrete diffusion, Forward Itô SDEs, Anderson's Reverse SDE, the Fokker-Planck Probability Flow ODE, and Conditional Flow Matching / Rectified Flow.* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
 
 > [!example] Visual Diagram (LaTeX / PDF)
 > *Geometric contrast between curved VP-SDE Probability Flow ODE trajectories (requiring many small solver steps) and straightened Rectified Flow / Optimal Transport interpolations $\boldsymbol{x}_t = (1-t)\boldsymbol{x}_0 + t\boldsymbol{x}_1$ (allowing large or single Euler steps).* — see rendered vector figure in `master.pdf` / `atlas.pdf`.
@@ -293,7 +312,7 @@ Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \ot
 
 ## Numerical Pitfalls, Edge Cases & Failure Modes
 
-> [!warning] Omitting the It\^o Correction or Misplacing the $\frac{1}{2}$ Factor in PF-ODE
+> [!warning] Omitting the Itô Correction or Misplacing the $\frac{1}{2}$ Factor in PF-ODE
 > Applying the classical chain rule to $\varphi(\boldsymbol{x}_t, t)$ omits the second-order quadratic variation term $\frac{1}{2}g^2(t)\mathrm{Tr}(\nabla_{\boldsymbol{x}}^2\varphi) \mathrm{d}t$ in `(eq:sde:ito_lemma)`, which breaks conservation of probability mass. Similarly, dropping $g(t) \mathrm{d}\bar{\boldsymbol{w}}_t$ from Anderson's reverse SDE `(eq:sde:reverse_sde)` without halving the score coefficient from $g^2(t)$ to $\frac{1}{2}g^2(t)$ yields an ODE whose marginals do *not* match $p_t(\boldsymbol{x})$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.1.4, p. 95).
 
 > [!warning] Score Singularity at $t \to 0$ and VE-SDE Variance Explosion

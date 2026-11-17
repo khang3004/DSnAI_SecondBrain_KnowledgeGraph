@@ -92,6 +92,7 @@ For an LG-SSM `(eq:ssm:lds_trans)`–`(eq:ssm:lds_obs)`, the joint distribution 
 > \boldsymbol{\mu}_{t|t-1} &= \boldsymbol{F}_t \boldsymbol{\mu}_{t-1|t-1} + \boldsymbol{B}_t \boldsymbol{u}_t + \boldsymbol{b}_t,  \\
 >   \boldsymbol{\Sigma}_{t|t-1} &= \boldsymbol{F}_t \boldsymbol{\Sigma}_{t-1|t-1} \boldsymbol{F}_t^{\top} + \boldsymbol{Q}_t.
 > \end{aligned}
+>
 > $$
 >
 >
@@ -103,6 +104,7 @@ For an LG-SSM `(eq:ssm:lds_trans)`–`(eq:ssm:lds_obs)`, the joint distribution 
 >   \boldsymbol{\mu}_{t|t} &= \boldsymbol{\mu}_{t|t-1} + \boldsymbol{K}_t (\boldsymbol{y}_t - \hat{\boldsymbol{y}}_t),  \\
 >   \boldsymbol{\Sigma}_{t|t} &= \boldsymbol{\Sigma}_{t|t-1} - \boldsymbol{K}_t \boldsymbol{H}_t \boldsymbol{\Sigma}_{t|t-1} = \boldsymbol{\Sigma}_{t|t-1} - \boldsymbol{K}_t \boldsymbol{S}_t \boldsymbol{K}_t^{\top}.
 > \end{aligned}
+>
 > $$
 >
 > Moreover, the exact log-marginal likelihood accumulates the one-step-ahead predictive log-densities: $\log p(\boldsymbol{y}_{1:T} \mid \boldsymbol{u}_{1:T}) = \sum_{t=1}^T \log \mathcal{N}(\boldsymbol{y}_t \mid \hat{\boldsymbol{y}}_t, \boldsymbol{S}_t)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. (8.36), p. 367).
@@ -115,6 +117,7 @@ For an LG-SSM `(eq:ssm:lds_trans)`–`(eq:ssm:lds_obs)`, the joint distribution 
 >   \boldsymbol{\mu}_{t|T} &= \boldsymbol{\mu}_{t|t} + \boldsymbol{J}_t (\boldsymbol{\mu}_{t+1|T} - \boldsymbol{\mu}_{t+1|t}),  \\
 >   \boldsymbol{\Sigma}_{t|T} &= \boldsymbol{\Sigma}_{t|t} + \boldsymbol{J}_t (\boldsymbol{\Sigma}_{t+1|T} - \boldsymbol{\Sigma}_{t+1|t})\boldsymbol{J}_t^{\top}.
 > \end{aligned}
+>
 > $$
 
 > [!tip] Kalman Gain as Inverse Signal-to-Noise Ratio
@@ -131,12 +134,14 @@ Deep neural SSMs parameterize dynamics in continuous time `(eq:ssm:ct_state)`–
 > \begin{aligned}
 > \boldsymbol{h}(t_k + \Delta) &= e^{\boldsymbol{A}\Delta}\boldsymbol{h}(t_k) + \left(\int_0^{\Delta} e^{\boldsymbol{A}\tau} \mathrm{d}\tau\right)\boldsymbol{B} x_k.
 > \end{aligned}
+>
 > $$
 >
 > Evaluating the matrix integral when $\boldsymbol{A}$ is invertible yields the exact *Zero-Order Hold (ZOH)* parameterization [[Source - Report - Mamba When Transformer is Not All You Need - AIVN|mamba]] (PDF p. 6):
 >
 > $$
 > \bar{\boldsymbol{A}} = \exp(\Delta\boldsymbol{A}), \qquad \bar{\boldsymbol{B}} = (\Delta\boldsymbol{A})^{-1}\bigl(\exp(\Delta\boldsymbol{A}) - \boldsymbol{I}\bigr)\Delta\boldsymbol{B}.
+>
 > $$
 >
 > For comparison, first-order Euler discretization gives $\bar{\boldsymbol{A}} = \boldsymbol{I} + \Delta\boldsymbol{A}$, $\bar{\boldsymbol{B}} = \Delta\boldsymbol{B}$, whereas the trapezoidal *Bilinear* (Tustin) method yields $\bar{\boldsymbol{A}} = (\boldsymbol{I} - \frac{\Delta}{2}\boldsymbol{A})^{-1}(\boldsymbol{I} + \frac{\Delta}{2}\boldsymbol{A})$ and $\bar{\boldsymbol{B}} = (\boldsymbol{I} - \frac{\Delta}{2}\boldsymbol{A})^{-1}\Delta\boldsymbol{B}$ [[Source - Report - Mamba When Transformer is Not All You Need - AIVN|mamba]] (PDF pp. 5–6).
@@ -145,6 +150,7 @@ Deep neural SSMs parameterize dynamics in continuous time `(eq:ssm:ct_state)`–
 >
 > $$
 > y_k = \sum_{j=0}^{k} \boldsymbol{C}\bar{\boldsymbol{A}}^{k-j}\bar{\boldsymbol{B}} x_j \quad \Longleftrightarrow \quad \boldsymbol{y} = \bar{\boldsymbol{K}} * \boldsymbol{x}, \quad \bar{\boldsymbol{K}} = \bigl(\boldsymbol{C}\bar{\boldsymbol{B}},  \boldsymbol{C}\bar{\boldsymbol{A}}\bar{\boldsymbol{B}},  \dots,  \boldsymbol{C}\bar{\boldsymbol{A}}^{L-1}\bar{\boldsymbol{B}}\bigr).
+>
 > $$
 >
 > Because $\bar{\boldsymbol{K}} \in \mathbb{R}^L$ is independent of the input sequence $\boldsymbol{x}$, training can evaluate `(eq:ssm:conv_dual)` in parallel across all $L$ positions in $O(L \log L)$ time via Fast Fourier Transforms (FFT), while autoregressive inference executes the recurrence step-by-step in $O(1)$ time and $O(N)$ state memory per channel [[Source - Report - Mamba When Transformer is Not All You Need - AIVN|mamba]] (PDF pp. 6–7).
@@ -180,6 +186,7 @@ followed by ZOH discretization $\bar{\boldsymbol{A}}_t = \exp(\Delta_t \boldsymb
 >
 > $$
 > (\boldsymbol{M}_2, \boldsymbol{v}_2) \bullet (\boldsymbol{M}_1, \boldsymbol{v}_1) \triangleq (\boldsymbol{M}_2 \boldsymbol{M}_1,  \boldsymbol{M}_2 \boldsymbol{v}_1 + \boldsymbol{v}_2).
+>
 > $$
 >
 > Since matrix multiplication is associative and distributes over vector addition, $\bullet$ is associative: $(c_3 \bullet c_2) \bullet c_1 = c_3 \bullet (c_2 \bullet c_1)$. Consequently, all prefix states $\boldsymbol{h}_t$ (the second component of $c_t \bullet \dots \bullet c_1$) can be computed in $O(\log L)$ parallel depth ($O(L/T)$ on $T$ processors) [[Source - Report - Mamba When Transformer is Not All You Need - AIVN|mamba]] (PDF p. 13). Strikingly, the exact same associative scan framework reduces classical Kalman filtering and RTS smoothing from $O(T)$ sequential steps to $O(\log T)$ parallel span on GPUs [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 8.2.3.4, p. 372).

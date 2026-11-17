@@ -77,6 +77,7 @@ In single-turn classification, error rates are additive across samples. In multi
 >
 > $$
 > p_\tau = \prod_{t=1}^{H} p_t \approx p_{\mathrm{step}}^{H}.
+>
 > $$
 >
 > To characterize non-deterministic capability versus production reliability across $k$ independent rollouts $\tau^{(1)},\dots,\tau^{(k)} \sim \pi_\theta(\cdot \mid s_0)$, we distinguish two estimators:
@@ -86,6 +87,7 @@ In single-turn classification, error rates are additive across samples. In multi
 > \mathrm{pass@}k &= \mathbb{P}\bigl(\exists  i \in \{1,\dots,k\} : \mathrm{Success}(\tau^{(i)}) = 1\bigr) = 1 - (1 - p_\tau)^k,  \\
 >   \mathrm{pass^}k &= \mathbb{P}\bigl(\forall  i \in \{1,\dots,k\} : \mathrm{Success}(\tau^{(i)}) = 1\bigr) = p_\tau^k = p_{\mathrm{step}}^{k H}.
 > \end{aligned}
+>
 > $$
 >
 > For $p_{\mathrm{step}} = 0.95$ and $H = 10$ steps, $p_\tau = 0.95^{10} \approx 0.599$. Over $k=5$ trials, $\mathrm{pass@}5 \approx 0.990$ (looks production-ready in a demo), whereas $\mathrm{pass^}5 \approx 0.077$ (fails $>92\%$ of 5-run SLA streaks).
@@ -101,18 +103,21 @@ Automated metrics (ROUGE, BLEU, BERTScore) act as fast, low-cost regression tren
 >
 > $$
 > \hat{w}_{A \succ B}(x) = \frac{1}{2}\Bigl[J_\phi(y_A, y_B \mid x) + \bigl(1 - J_\phi(y_B, y_A \mid x)\bigr)\Bigr].
+>
 > $$
 >
 > To validate that the automated judge aligns with Human-in-the-Loop (HITL) domain experts on a calibrated Golden Set $\mathcal{D}_{\mathrm{gold}}$ of size $N$, compute chance-corrected inter-rater agreement via Cohen's $\kappa$:
 >
 > $$
 > \kappa = \frac{p_o - p_e}{1 - p_e}, \qquad p_o = \frac{1}{N}\sum_{i=1}^{N}\mathbb{I}[c_{\mathrm{LLM}}^{(i)} = c_{\mathrm{HITL}}^{(i)}], \quad p_e = \sum_{c \in \mathcal{C}} \hat{p}_{\mathrm{LLM}}(c) \hat{p}_{\mathrm{HITL}}(c).
+>
 > $$
 >
 > When comparing a candidate agent $\pi_{\mathrm{cand}}$ against production $\pi_{\mathrm{prod}}$ over $N$ i.i.d. Golden Set tasks with observed win-rate difference $\Delta \hat{w} = \hat{w} - 0.5$ and per-prompt variance $\sigma_w^2$, a two-sided CI/CD promotion gate at significance level $\alpha$ and power $1-\beta$ requires sample size
 >
 > $$
 > N \ge \frac{(z_{1-\alpha/2} + z_{1-\beta})^2 \sigma_w^2}{(\Delta w_{\min})^2},
+>
 > $$
 >
 > where $\Delta w_{\min}$ is the minimum detectable improvement above the 0.25–1.5 percentage-point evaluation noise floor observed in reasoning-era benchmarks [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 16, p. 198).
@@ -131,6 +136,7 @@ Aggregate pass rates routinely conceal catastrophic failures on minority user co
 >
 > $$
 > \tau_{\mathrm{conf}}(r_a) = 1 - \frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}(r_a)}.
+>
 > $$
 >
 > High-risk irreversible tools ($C_{\mathrm{err}} \gg C_{\mathrm{HITL}}$, e.g., `execute\_payment` or `delete\_database\_entry`) drive $\tau_{\mathrm{conf}} \to 1$, mandating unconditional HITL approval [[Source - Agent Quality|agent_quality]] (p. 27); [[Source - A practical|practical_guide_building_agents]] (p. 31).

@@ -125,12 +125,14 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > m \le \lVert \boldsymbol{x} \rVert_p = m \left( \sum_{j=1}^n \left(\frac{\lvert x_j \rvert}{m}\right)^p \right)^{1/p} \le m  n^{1/p}
 >   \quad\Longrightarrow\quad
 >   \lim_{p \to \infty} \lVert \boldsymbol{x} \rVert_p = \max_{1 \le j \le n} \lvert x_j \rvert = \lVert \boldsymbol{x} \rVert_\infty,
+>
 > $$
 >
 > since $\lim_{p\to\infty} n^{1/p} = 1$. Moreover, any two norms on $\mathbb{R}^n$ are topologically equivalent; for the canonical $\ell_1, \ell_2, \ell_\infty$ triple, Cauchy–Schwarz gives the sharp chain
 >
 > $$
 > \lVert \boldsymbol{x} \rVert_\infty \le \lVert \boldsymbol{x} \rVert_2 \le \lVert \boldsymbol{x} \rVert_1 \le \sqrt{n} \lVert \boldsymbol{x} \rVert_2 \le n \lVert \boldsymbol{x} \rVert_\infty.
+>
 > $$
 >
 >
@@ -141,6 +143,7 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > \lVert \boldsymbol{A} \rVert_F &:= \sqrt{\sum_{i=1}^m \sum_{j=1}^n A_{ij}^2} = \sqrt{\mathrm{Tr}(\boldsymbol{A}^{\top}\boldsymbol{A})} = \lVert \mathrm{vec}(\boldsymbol{A}) \rVert_2 = \sqrt{\sum_{k=1}^r \sigma_k(\boldsymbol{A})^2},  \\
 >   \lVert \boldsymbol{A} \rVert_p &:= \sup_{\boldsymbol{x} \neq \boldsymbol{0}} \frac{\lVert \boldsymbol{A}\boldsymbol{x} \rVert_p}{\lVert \boldsymbol{x} \rVert_p} = \max_{\lVert \boldsymbol{x} \rVert_p = 1} \lVert \boldsymbol{A}\boldsymbol{x} \rVert_p, \qquad \lVert \boldsymbol{A} \rVert_2 = \sqrt{\lambda_{\max}(\boldsymbol{A}^{\top}\boldsymbol{A})} = \sigma_{\max}(\boldsymbol{A}),
 > \end{aligned}
+>
 > $$
 >
 > where $\sigma_k(\boldsymbol{A})$ are the singular values of $\boldsymbol{A}$. Both $\lVert \cdot \rVert_F$ and $\lVert \cdot \rVert_2$ are *orthogonally invariant*: for any orthogonal $\boldsymbol{U} \in \mathbb{R}^{m \times m}$ and $\boldsymbol{V} \in \mathbb{R}^{n \times n}$, $\lVert \boldsymbol{U}\boldsymbol{A}\boldsymbol{V} \rVert_F = \lVert \boldsymbol{A} \rVert_F$ (via trace cyclicity $\mathrm{Tr}(\boldsymbol{V}^{\top}\boldsymbol{A}^{\top}\boldsymbol{U}^{\top}\boldsymbol{U}\boldsymbol{A}\boldsymbol{V}) = \mathrm{Tr}(\boldsymbol{A}^{\top}\boldsymbol{A})$) and $\lVert \boldsymbol{U}\boldsymbol{A}\boldsymbol{V} \rVert_2 = \lVert \boldsymbol{A} \rVert_2$.
@@ -152,23 +155,33 @@ While every inner product induces a norm via $\lVert \boldsymbol{x} \rVert = \sq
 >
 > $$
 > \langle \boldsymbol{x}, \boldsymbol{y} \rangle_{\boldsymbol{M}} = \hat{\boldsymbol{x}}^{\top}\boldsymbol{M}\hat{\boldsymbol{y}}, \qquad \lVert \boldsymbol{x} \rVert_{\boldsymbol{M}} = \sqrt{\hat{\boldsymbol{x}}^{\top}\boldsymbol{M}\hat{\boldsymbol{x}}}.
+>
 > $$
 >
 >
 > **Theorem (Cauchy–Schwarz Inequality).** *For any $\boldsymbol{u}, \boldsymbol{v}$ in an inner-product space $(V, \langle \cdot, \cdot \rangle)$, $\lvert \langle \boldsymbol{u}, \boldsymbol{v} \rangle \rvert \le \lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert$, with equality if and only if $\boldsymbol{u}$ and $\boldsymbol{v}$ are linearly dependent* [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.17, p. 75).
 >
 > *Proof.* If $\boldsymbol{v} = \boldsymbol{0}$, both sides equal $0$. Otherwise $\lVert \boldsymbol{v} \rVert^2 > 0$; for any $t \in \mathbb{R}$, positive definiteness yields
-> \[
+>
+> $$
+>
 >   0 \le \lVert \boldsymbol{u} - t\boldsymbol{v} \rVert^2 = \langle \boldsymbol{u} - t\boldsymbol{v}, \boldsymbol{u} - t\boldsymbol{v} \rangle = \lVert \boldsymbol{u} \rVert^2 - 2t\langle \boldsymbol{u}, \boldsymbol{v} \rangle + t^2\lVert \boldsymbol{v} \rVert^2.
-> \]
+>
+> $$
+>
 > Setting $t = \langle \boldsymbol{u}, \boldsymbol{v} \rangle / \lVert \boldsymbol{v} \rVert^2$ (the orthogonal projection coordinate) simplifies the inequality to
-> \[
+>
+> $$
+>
 >   0 \le \lVert \boldsymbol{u} \rVert^2 - \frac{\langle \boldsymbol{u}, \boldsymbol{v} \rangle^2}{\lVert \boldsymbol{v} \rVert^2} \quad\Longleftrightarrow\quad \langle \boldsymbol{u}, \boldsymbol{v} \rangle^2 \le \lVert \boldsymbol{u} \rVert^2\lVert \boldsymbol{v} \rVert^2,
-> \]
+>
+> $$
+>
 > with equality iff $\boldsymbol{u} - t\boldsymbol{v} = \boldsymbol{0}$. Taking square roots gives $\lvert \langle \boldsymbol{u}, \boldsymbol{v} \rangle \rvert \le \lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert$ and immediately proves the triangle inequality $\lVert \boldsymbol{u}+\boldsymbol{v} \rVert^2 = \lVert \boldsymbol{u} \rVert^2 + 2\langle \boldsymbol{u}, \boldsymbol{v} \rangle + \lVert \boldsymbol{v} \rVert^2 \le (\lVert \boldsymbol{u} \rVert + \lVert \boldsymbol{v} \rVert)^2$, as well as defining the unique angle $\omega \in [0, \pi]$ via $\cos\omega = \langle \boldsymbol{u}, \boldsymbol{v} \rangle / (\lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert)$ for nonzero vectors. Two vectors are orthogonal ($\boldsymbol{u} \perp \boldsymbol{v}$) iff $\langle \boldsymbol{u}, \boldsymbol{v} \rangle = 0$, which yields the **Pythagorean Theorem** [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 2, p. 336):
 >
 > $$
 > \lVert \boldsymbol{u} + \boldsymbol{v} \rVert^2 = \lVert \boldsymbol{u} \rVert^2 + \lVert \boldsymbol{v} \rVert^2 \iff \langle \boldsymbol{u}, \boldsymbol{v} \rangle = 0.
+>
 > $$
 
 ### The Four Fundamental Subspaces and Orthogonal Complements
@@ -180,8 +193,10 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 > - **Dimension equality:** $\dim\mathrm{col}(\boldsymbol{A}) = \dim\mathrm{Row}(\boldsymbol{A}) = r$, with $\dim\mathrm{null}(\boldsymbol{A}) = n - r$ and $\dim\mathrm{null}(\boldsymbol{A}^{\top}) = m - r$.
 > - **Orthogonal complement duality (under the standard dot product):**
 >
+>
 > $$
 > \mathrm{Row}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A}) \subseteq \mathbb{R}^n, \qquad \mathrm{col}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A}^{\top}) \subseteq \mathbb{R}^m.
+>
 > $$
 > - **Direct-sum decompositions:** $\mathbb{R}^n = \mathrm{Row}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A})$ and $\mathbb{R}^m = \mathrm{col}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A}^{\top})$.
 >
@@ -200,12 +215,14 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 >
 > $$
 > \hat{\boldsymbol{y}} = \arg\min_{\boldsymbol{v} \in W} \lVert \boldsymbol{y} - \boldsymbol{v} \rVert_2, \qquad \lVert \boldsymbol{y} - \boldsymbol{v} \rVert_2^2 = \lVert \boldsymbol{y} - \hat{\boldsymbol{y}} \rVert_2^2 + \lVert \hat{\boldsymbol{y}} - \boldsymbol{v} \rVert_2^2 > \lVert \boldsymbol{y} - \hat{\boldsymbol{y}} \rVert_2^2 \quad \forall \boldsymbol{v} \in W \setminus \{\hat{\boldsymbol{y}}\}.
+>
 > $$
 >
 > *Proof.* Writing $\hat{\boldsymbol{y}} = \boldsymbol{B}\boldsymbol{\lambda} \in W$, the orthogonality condition $\boldsymbol{y} - \hat{\boldsymbol{y}} \in W^\perp$ requires $\boldsymbol{b}_j^{\top}(\boldsymbol{y} - \boldsymbol{B}\boldsymbol{\lambda}) = 0$ for all $j = 1,\dots,r$, i.e., $\boldsymbol{B}^{\top}\boldsymbol{B}\boldsymbol{\lambda} = \boldsymbol{B}^{\top}\boldsymbol{y}$. Because $\boldsymbol{B}$ has linearly independent columns, the Gram matrix $\boldsymbol{B}^{\top}\boldsymbol{B} \in \mathbb{R}^{r \times r}$ is symmetric positive definite ($\boldsymbol{u}^{\top}\boldsymbol{B}^{\top}\boldsymbol{B}\boldsymbol{u} = \lVert \boldsymbol{B}\boldsymbol{u} \rVert_2^2 > 0$ for $\boldsymbol{u} \neq \boldsymbol{0}$) and invertible, giving $\boldsymbol{\lambda} = (\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}\boldsymbol{y}$ and the linear projection operator $\hat{\boldsymbol{y}} = \boldsymbol{P}_W\boldsymbol{y}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 8–9, pp. 350–352), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.55–3.59, pp. 86–87):
 >
 > $$
 > \boldsymbol{P}_W = \boldsymbol{B}(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}.
+>
 > $$
 >
 > For uniqueness, if $\boldsymbol{y} = \hat{\boldsymbol{y}}_1 + \boldsymbol{z}_1 = \hat{\boldsymbol{y}}_2 + \boldsymbol{z}_2$, then $\hat{\boldsymbol{y}}_1 - \hat{\boldsymbol{y}}_2 = \boldsymbol{z}_2 - \boldsymbol{z}_1 \in W \cap W^\perp = \{\boldsymbol{0}\}$. For any $\boldsymbol{v} \in W \setminus \{\hat{\boldsymbol{y}}\}$, writing $\boldsymbol{y} - \boldsymbol{v} = (\boldsymbol{y} - \hat{\boldsymbol{y}}) + (\hat{\boldsymbol{y}} - \boldsymbol{v})$ couples a vector in $W^\perp$ with a nonzero vector in $W$; applying the Pythagorean Theorem `(eq:vecnorm:pythagoras)` yields `(eq:vecnorm:best_approx)`.
@@ -214,6 +231,7 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 >
 > $$
 > \boldsymbol{P}_W = \boldsymbol{Q}\boldsymbol{Q}^{\top} = \sum_{j=1}^r \boldsymbol{q}_j \boldsymbol{q}_j^{\top}, \qquad \boldsymbol{P}_{W^\perp} = \boldsymbol{I}_m - \boldsymbol{Q}\boldsymbol{Q}^{\top}.
+>
 > $$
 >
 > A square matrix $\boldsymbol{P} \in \mathbb{R}^{m \times m}$ is an orthogonal projector onto $\mathrm{col}(\boldsymbol{P})$ if and only if it is *idempotent* ($\boldsymbol{P}^2 = \boldsymbol{P}$) and *symmetric* ($\boldsymbol{P}^{\top} = \boldsymbol{P}$). Its eigenvalues lie strictly in $\{0, 1\}$ ($\mathrm{rank}(\boldsymbol{P}) = \mathrm{Tr}(\boldsymbol{P}) = r$) and $\lVert \boldsymbol{P} \rVert_2 = 1$ when $r \ge 1$. For an affine subspace $L = \boldsymbol{x}_0 + U$, shifting to the origin gives $\pi_L(\boldsymbol{x}) = \boldsymbol{x}_0 + \boldsymbol{P}_U(\boldsymbol{x} - \boldsymbol{x}_0)$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.72, p. 90).
@@ -230,6 +248,7 @@ Note the crucial distinction between *oblique* projections ($\boldsymbol{P}^2 = 
 >
 > $$
 > \boldsymbol{A}^{\top}\boldsymbol{A}\hat{\boldsymbol{x}} = \boldsymbol{A}^{\top}\boldsymbol{b} \quad\Longleftrightarrow\quad \boldsymbol{A}^{\top}(\boldsymbol{b} - \boldsymbol{A}\hat{\boldsymbol{x}}) = \boldsymbol{0} \quad\Longleftrightarrow\quad \boldsymbol{b} - \boldsymbol{A}\hat{\boldsymbol{x}} \in \mathrm{null}(\boldsymbol{A}^{\top}) = \mathrm{col}(\boldsymbol{A})^\perp.
+>
 > $$
 >
 > Equivalently, $\boldsymbol{A}\hat{\boldsymbol{x}} = \hat{\boldsymbol{b}} = \boldsymbol{P}_{\mathrm{col}(\boldsymbol{A})}\boldsymbol{b}$ is always unique, while $\hat{\boldsymbol{x}}$ is unique iff $\mathrm{null}(\boldsymbol{A}) = \{\boldsymbol{0}\}$ ($\mathrm{rank}(\boldsymbol{A}) = n$), in which case $\boldsymbol{A}^{\top}\boldsymbol{A} \succ 0$ and $\hat{\boldsymbol{x}} = (\boldsymbol{A}^{\top}\boldsymbol{A})^{-1}\boldsymbol{A}^{\top}\boldsymbol{b}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 14, p. 365).
@@ -239,6 +258,7 @@ Note the crucial distinction between *oblique* projections ($\boldsymbol{P}^2 = 
 >
 > $$
 > \hat{\boldsymbol{x}}_{\mathrm{LN}} = \boldsymbol{A}^{\top}(\boldsymbol{A}\boldsymbol{A}^{\top})^{-1}\boldsymbol{b}.
+>
 > $$
 >
 >
@@ -247,12 +267,14 @@ Note the crucial distinction between *oblique* projections ($\boldsymbol{P}^2 = 
 >
 > $$
 > \boldsymbol{A}\boldsymbol{A}^{+}\boldsymbol{A} = \boldsymbol{A}, \qquad \boldsymbol{A}^{+}\boldsymbol{A}\boldsymbol{A}^{+} = \boldsymbol{A}^{+}, \qquad (\boldsymbol{A}\boldsymbol{A}^{+})^{\top} = \boldsymbol{A}\boldsymbol{A}^{+}, \qquad (\boldsymbol{A}^{+}\boldsymbol{A})^{\top} = \boldsymbol{A}^{+}\boldsymbol{A}.
+>
 > $$
 >
 > Using the thin SVD $\boldsymbol{A} = \boldsymbol{U}_r \boldsymbol{\Sigma}_r \boldsymbol{V}_r^{\top}$ ($\sigma_1 \ge \dots \ge \sigma_r > 0$), $\boldsymbol{A}^{+}$ equals both the Tikhonov limit and the explicit spectral formula [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 2, Eq. 2.46–2.47, p. 46), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Eq. 7.191, p. 261):
 >
 > $$
 > \boldsymbol{A}^{+} = \lim_{\alpha \searrow 0} (\boldsymbol{A}^{\top}\boldsymbol{A} + \alpha\boldsymbol{I}_n)^{-1}\boldsymbol{A}^{\top} = \boldsymbol{V}_r \boldsymbol{\Sigma}_r^{-1} \boldsymbol{U}_r^{\top} = \sum_{k=1}^r \frac{1}{\sigma_k} \boldsymbol{v}_k \boldsymbol{u}_k^{\top}.
+>
 > $$
 >
 > **Theorem (Minimum-Norm Least-Squares Property).** *For any $\boldsymbol{A} \in \mathbb{R}^{m \times n}$ and $\boldsymbol{b} \in \mathbb{R}^m$, $\hat{\boldsymbol{x}}^* = \boldsymbol{A}^{+}\boldsymbol{b}$ is the unique vector minimizing $\lVert \boldsymbol{x} \rVert_2$ among all minimizers of $\lVert \boldsymbol{A}\boldsymbol{x} - \boldsymbol{b} \rVert_2$.*
@@ -357,16 +379,21 @@ Figure `fig:vecnorm:pgf_norms` visualizes the geometry of $\ell_p$ unit balls in
 >
 > $$
 > \kappa_2(\boldsymbol{A}^{\top}\boldsymbol{A}) = \frac{\sigma_{\max}(\boldsymbol{A})^2}{\sigma_{\min}(\boldsymbol{A})^2} = \kappa_2(\boldsymbol{A})^2.
+>
 > $$
 >
-> **Failure Example (L\"auchli Matrix):** Take $\varepsilon = 10^{-8}$ in IEEE-754 double precision ($\epsilon_{\mathrm{mach}} \approx 2.22 \times 10^{-16}$):
-> \[
+> **Failure Example (Läuchli Matrix):** Take $\varepsilon = 10^{-8}$ in IEEE-754 double precision ($\epsilon_{\mathrm{mach}} \approx 2.22 \times 10^{-16}$):
+>
+> $$
+>
 >   \boldsymbol{A} = \begin{bmatrix} 1 & 1 \\ \varepsilon & 0 \\ 0 & \varepsilon \end{bmatrix}
 >   \quad\Longrightarrow\quad
 >   \boldsymbol{A}^{\top}\boldsymbol{A} = \begin{bmatrix} 1 + \varepsilon^2 & 1 \\ 1 & 1 + \varepsilon^2 \end{bmatrix}
 >    \xrightarrow{\mathrm{fl}(1 + 10^{-16}) = 1} 
 >   \mathrm{fl}(\boldsymbol{A}^{\top}\boldsymbol{A}) = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}.
-> \]
+>
+> $$
+>
 > Although $\mathrm{rank}(\boldsymbol{A}) = 2$ with $\kappa_2(\boldsymbol{A}) = \sqrt{2 + \varepsilon^2}/\varepsilon \approx 1.41 \times 10^8$, rounding destroys independence; Cholesky on $\boldsymbol{A}^{\top}\boldsymbol{A}$ breaks near $\kappa_2(\boldsymbol{A}) \gtrsim \epsilon_{\mathrm{mach}}^{-1/2} \approx 10^8$, whereas Householder QR or SVD holds up to $\kappa_2(\boldsymbol{A}) \lesssim \epsilon_{\mathrm{mach}}^{-1} \approx 10^{16}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, p. 366), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, Sec. 11.2.2.3, p. 375).
 
 > [!warning] Classical vs. Modified Gram–Schmidt Loss of Orthogonality

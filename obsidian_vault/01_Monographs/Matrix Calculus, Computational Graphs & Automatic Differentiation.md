@@ -51,7 +51,7 @@ Modern statistical learning and deep architectures optimize scalar objectives
 $L : \Theta \to \mathbb{R}$ formed by deep compositions of vector-, matrix-, and
 tensor-valued maps. Let $U \subseteq \mathbb{R}^n$ be open and let
 $\boldsymbol{f} : U \to \mathbb{R}^m$ be differentiable at $\boldsymbol{x} \in U$. Coordinate-free
-differential calculus defines the *Fr\'{e}chet derivative* (or total
+differential calculus defines the *Fréchet derivative* (or total
 differential) at $\boldsymbol{x}$ as the unique linear map
 $D\boldsymbol{f}(\boldsymbol{x}) : \mathbb{R}^n \multimap \mathbb{R}^m$ satisfying
 
@@ -137,7 +137,7 @@ same space as the primal variables. Accordingly, this monograph adopts a
 ### The Multivariate Chain Rule & Kronecker Flattening
 
 > [!important] Theorem 1: Multivariate Chain Rule & Tensor-Matrix Isomorphism
-> Let $\boldsymbol{f} : U \subseteq \mathbb{R}^n \to V \subseteq \mathbb{R}^p$ be differentiable at $\boldsymbol{x} \in U$ and $\boldsymbol{g} : V \to \mathbb{R}^m$ be differentiable at $\boldsymbol{y} = \boldsymbol{f}(\boldsymbol{x})$. Then the composition $\boldsymbol{h} = \boldsymbol{g} \circ \boldsymbol{f} : U \to \mathbb{R}^m$ is differentiable at $\boldsymbol{x}$ with Fr\'{e}chet derivative $D\boldsymbol{h}(\boldsymbol{x}) = D\boldsymbol{g}(\boldsymbol{y}) \circ D\boldsymbol{f}(\boldsymbol{x})$, i.e., in matrix Jacobian form [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Eq. (5.48), p. 148); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. (7.252), p. 272):
+> Let $\boldsymbol{f} : U \subseteq \mathbb{R}^n \to V \subseteq \mathbb{R}^p$ be differentiable at $\boldsymbol{x} \in U$ and $\boldsymbol{g} : V \to \mathbb{R}^m$ be differentiable at $\boldsymbol{y} = \boldsymbol{f}(\boldsymbol{x})$. Then the composition $\boldsymbol{h} = \boldsymbol{g} \circ \boldsymbol{f} : U \to \mathbb{R}^m$ is differentiable at $\boldsymbol{x}$ with Fréchet derivative $D\boldsymbol{h}(\boldsymbol{x}) = D\boldsymbol{g}(\boldsymbol{y}) \circ D\boldsymbol{f}(\boldsymbol{x})$, i.e., in matrix Jacobian form [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Eq. (5.48), p. 148); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. (7.252), p. 272):
 >
 > $$
 > \boldsymbol{J}_{\boldsymbol{g}\circ\boldsymbol{f}}(\boldsymbol{x})
@@ -146,6 +146,7 @@ same space as the primal variables. Accordingly, this monograph adopts a
 >   \qquad
 >   \text{with entries }
 >   \frac{\partial h_i}{\partial x_j} = \sum_{k=1}^{p} \frac{\partial g_i}{\partial y_k} \frac{\partial f_k}{\partial x_j}.
+>
 > $$
 >
 > **Proof Sketch.** Expanding $\boldsymbol{f}(\boldsymbol{x}+\boldsymbol{s}) = \boldsymbol{y} + \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x})\boldsymbol{s} + \boldsymbol{r}_1(\boldsymbol{s})$ with $\lVert \boldsymbol{r}_1(\boldsymbol{s}) \rVert = o(\lVert \boldsymbol{s} \rVert)$ and substituting $\boldsymbol{t} = \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x})\boldsymbol{s} + \boldsymbol{r}_1(\boldsymbol{s})$ into $\boldsymbol{g}(\boldsymbol{y}+\boldsymbol{t}) = \boldsymbol{g}(\boldsymbol{y}) + \boldsymbol{J}_{\boldsymbol{g}}(\boldsymbol{y})\boldsymbol{t} + \boldsymbol{r}_2(\boldsymbol{t})$ yields
@@ -154,13 +155,15 @@ same space as the primal variables. Accordingly, this monograph adopts a
 > (\boldsymbol{g}\circ\boldsymbol{f})(\boldsymbol{x}+\boldsymbol{s}) - (\boldsymbol{g}\circ\boldsymbol{f})(\boldsymbol{x})
 >   = \boldsymbol{J}_{\boldsymbol{g}}(\boldsymbol{y})\boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x})\boldsymbol{s}
 >   + \underbrace{\boldsymbol{J}_{\boldsymbol{g}}(\boldsymbol{y})\boldsymbol{r}_1(\boldsymbol{s}) + \boldsymbol{r}_2(\boldsymbol{t})}_{o(\lVert \boldsymbol{s} \rVert)},
+>
 > $$
 >
-> because $\lVert \boldsymbol{t} \rVert \le (\lVert \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x}) \rVert_2 + o(1))\lVert \boldsymbol{s} \rVert$. Uniqueness of the Fr\'{e}chet linear approximation gives `(eq:matcalc:chain_rule)`. For scalar $g : \mathbb{R}^p \to \mathbb{R}$ ($m=1$), transposing `(eq:matcalc:chain_rule)` gives the gradient pull-back [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Eq. (6.46), p. 207):
+> because $\lVert \boldsymbol{t} \rVert \le (\lVert \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x}) \rVert_2 + o(1))\lVert \boldsymbol{s} \rVert$. Uniqueness of the Fréchet linear approximation gives `(eq:matcalc:chain_rule)`. For scalar $g : \mathbb{R}^p \to \mathbb{R}$ ($m=1$), transposing `(eq:matcalc:chain_rule)` gives the gradient pull-back [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Eq. (6.46), p. 207):
 >
 > $$
 > \nabla_{\boldsymbol{x}} (g \circ \boldsymbol{f})(\boldsymbol{x})
 >   = \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x})^{\top} \nabla_{\boldsymbol{y}} g(\boldsymbol{y}) \in \mathbb{R}^n.
+>
 > $$
 >
 >
@@ -178,6 +181,7 @@ Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in mat
 >   = \sum_{i=1}^m \sum_{j=1}^n \frac{\partial f}{\partial X_{ij}} \mathrm{d}X_{ij}
 >   = \mathrm{Tr}\!\big((\nabla_{\boldsymbol{X}} f(\boldsymbol{X}))^{\top}   \mathrm{d}\boldsymbol{X}\big)
 >   = \langle \nabla_{\boldsymbol{X}} f(\boldsymbol{X}), \mathrm{d}\boldsymbol{X} \rangle_F.
+>
 > $$
 >
 > By the Riesz representation theorem on $(\mathbb{R}^{m\times n}, \langle \cdot, \cdot \rangle_F)$, if $\mathrm{d}f = \mathrm{Tr}(\boldsymbol{G}^{\top} \mathrm{d}\boldsymbol{X})$ holds for all perturbations $\mathrm{d}\boldsymbol{X}$ and some $\boldsymbol{G} \in \mathbb{R}^{m\times n}$ independent of $\mathrm{d}\boldsymbol{X}$, then uniquely $\nabla_{\boldsymbol{X}} f(\boldsymbol{X}) = \boldsymbol{G}$.
@@ -186,16 +190,19 @@ Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in mat
 > - **Trace Bilinear Form** $f(\boldsymbol{X}) = \mathrm{Tr}(\boldsymbol{A}\boldsymbol{X}\boldsymbol{B})$:
 >         By linearity and cyclic invariance $\mathrm{Tr}(\boldsymbol{U}\boldsymbol{V}) = \mathrm{Tr}(\boldsymbol{V}\boldsymbol{U})$,
 >
+>
 > $$
 > \mathrm{d}f = \mathrm{Tr}(\boldsymbol{A} \mathrm{d}\boldsymbol{X} \boldsymbol{B})
 >           = \mathrm{Tr}(\boldsymbol{B}\boldsymbol{A} \mathrm{d}\boldsymbol{X})
 >           = \mathrm{Tr}\!\big((\boldsymbol{A}^{\top}\boldsymbol{B}^{\top})^{\top} \mathrm{d}\boldsymbol{X}\big)
 >           \implies \nabla_{\boldsymbol{X}} \mathrm{Tr}(\boldsymbol{A}\boldsymbol{X}\boldsymbol{B}) = \boldsymbol{A}^{\top} \boldsymbol{B}^{\top}.
+>
 > $$
 >
 >         Specializing to rank-1 $\boldsymbol{A} = \boldsymbol{a}^{\top}$, $\boldsymbol{B} = \boldsymbol{b}$ gives $\nabla_{\boldsymbol{X}} (\boldsymbol{a}^{\top} \boldsymbol{X}\boldsymbol{b}) = \boldsymbol{a}\boldsymbol{b}^{\top}$.
 > - **Matrix Quadratic Form** $f(\boldsymbol{X}) = \mathrm{Tr}(\boldsymbol{X}^{\top}\boldsymbol{A}\boldsymbol{X})$:
 >         Using $\mathrm{d}(\boldsymbol{U}\boldsymbol{V}) = (\mathrm{d}\boldsymbol{U})\boldsymbol{V} + \boldsymbol{U}(\mathrm{d}\boldsymbol{V})$ and $\mathrm{Tr}(\boldsymbol{M}) = \mathrm{Tr}(\boldsymbol{M}^{\top})$,
+>
 >
 > $$
 > \begin{aligned}
@@ -204,9 +211,11 @@ Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in mat
 >           &= \mathrm{Tr}\!\big(((\boldsymbol{A}+\boldsymbol{A}^{\top})\boldsymbol{X})^{\top} \mathrm{d}\boldsymbol{X}\big)
 >           \implies \nabla_{\boldsymbol{X}} \mathrm{Tr}(\boldsymbol{X}^{\top}\boldsymbol{A}\boldsymbol{X}) = (\boldsymbol{A} + \boldsymbol{A}^{\top})\boldsymbol{X}.
 > \end{aligned}
+>
 > $$
 > - **Matrix Multiplication VJP (`op.bprop`)** for $\boldsymbol{C} = \boldsymbol{A}\boldsymbol{B}$ inside scalar $L(\boldsymbol{C})$ [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 6.5.6, p. 216):
 >         Let $\boldsymbol{G} = \nabla_{\boldsymbol{C}} L$. Using $\mathrm{d}\boldsymbol{C} = (\mathrm{d}\boldsymbol{A})\boldsymbol{B} + \boldsymbol{A}(\mathrm{d}\boldsymbol{B})$ inside `(eq:matcalc:trace_trick)`:
+>
 >
 > $$
 > \mathrm{d}L = \mathrm{Tr}(\boldsymbol{G}^{\top} \mathrm{d}\boldsymbol{C})
@@ -214,9 +223,11 @@ Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in mat
 >           \implies
 >           \nabla_{\boldsymbol{A}} L = \boldsymbol{G}\boldsymbol{B}^{\top},\quad
 >           \nabla_{\boldsymbol{B}} L = \boldsymbol{A}^{\top}\boldsymbol{G}.
+>
 > $$
 > - **Matrix Inverse & Log-Determinant** (for invertible $\boldsymbol{X} \in \mathbb{R}^{n\times n}$):
 >         Differentiating $\boldsymbol{X}\boldsymbol{X}^{-1} = \boldsymbol{I}$ yields $(\mathrm{d}\boldsymbol{X})\boldsymbol{X}^{-1} + \boldsymbol{X} \mathrm{d}(\boldsymbol{X}^{-1}) = \boldsymbol{0} \implies \mathrm{d}(\boldsymbol{X}^{-1}) = -\boldsymbol{X}^{-1}(\mathrm{d}\boldsymbol{X})\boldsymbol{X}^{-1}$. Hence for $f(\boldsymbol{X}) = \mathrm{Tr}(\boldsymbol{X}^{-1} \boldsymbol{A})$,
+>
 >
 > $$
 > \begin{aligned}
@@ -224,13 +235,16 @@ Materializing $(mn) \times (pq)$ flattened Jacobians scales quadratically in mat
 >           = -\mathrm{Tr}(\boldsymbol{X}^{-1} \boldsymbol{A} \boldsymbol{X}^{-1} \mathrm{d}\boldsymbol{X}) \\
 >           &\implies \nabla_{\boldsymbol{X}} \mathrm{Tr}(\boldsymbol{X}^{-1}\boldsymbol{A}) = -\boldsymbol{X}^{-\top}\boldsymbol{A}^{\top}\boldsymbol{X}^{-\top}.
 >         \end{aligned}
+>
 > $$
 >
 >         For $\log\lvert \det(\boldsymbol{X}) \rvert$, Jacobi's formula gives $\mathrm{d}\det(\boldsymbol{X}) = \det(\boldsymbol{X})\mathrm{Tr}(\boldsymbol{X}^{-1} \mathrm{d}\boldsymbol{X})$, so
 >
+>
 > $$
 > \mathrm{d}\log\lvert \det(\boldsymbol{X}) \rvert = \mathrm{Tr}(\boldsymbol{X}^{-1} \mathrm{d}\boldsymbol{X})
 >           \implies \nabla_{\boldsymbol{X}} \log\lvert \det(\boldsymbol{X}) \rvert = \boldsymbol{X}^{-\top}.
+>
 > $$
 
 > [!tip] Why the Trace Trick Equals Coordinate-Free Adjoint Propagation
@@ -248,6 +262,7 @@ Explicit layers compute $\boldsymbol{y} = \boldsymbol{f}(\boldsymbol{x})$, where
 >   \quad \Longrightarrow \quad
 >   \boldsymbol{J}_{\boldsymbol{y}^*}(\boldsymbol{x})
 >   = -\left(\frac{\partial \boldsymbol{g}}{\partial \boldsymbol{y}^{\top}}\right)^{-1} \frac{\partial \boldsymbol{g}}{\partial \boldsymbol{x}^{\top}} \in \mathbb{R}^{m \times n}.
+>
 > $$
 >
 > For a downstream scalar loss $L(\boldsymbol{y}^*(\boldsymbol{x}))$ with upstream gradient $\boldsymbol{u} = \nabla_{\boldsymbol{y}^*} L \in \mathbb{R}^m$, we compute the VJP without forming $\boldsymbol{J}_{\boldsymbol{y}^*}$ or inverting $\boldsymbol{A}$ explicitly by solving a single $m \times m$ adjoint linear system for $\boldsymbol{\lambda} \in \mathbb{R}^m$:
@@ -258,6 +273,7 @@ Explicit layers compute $\boldsymbol{y} = \boldsymbol{f}(\boldsymbol{x})$, where
 >   = -\left(\frac{\partial \boldsymbol{g}}{\partial \boldsymbol{x}^{\top}}\right)^{\top} \boldsymbol{\lambda},
 >   \qquad \text{where }
 >   \left(\frac{\partial \boldsymbol{g}}{\partial \boldsymbol{y}^{\top}}\right)^{\top} \boldsymbol{\lambda} = \boldsymbol{u}.
+>
 > $$
 >
 > Notice that $\boldsymbol{\lambda}\mapsto \left(\frac{\partial \boldsymbol{g}}{\partial \boldsymbol{y}^{\top}}\right)^{\top}\boldsymbol{\lambda}$ and $\boldsymbol{\lambda} \mapsto \left(\frac{\partial \boldsymbol{g}}{\partial \boldsymbol{x}^{\top}}\right)^{\top} \boldsymbol{\lambda}$ are both single reverse-mode VJPs of $\boldsymbol{g}$ evaluated solely at $(\boldsymbol{x}, \boldsymbol{y}^*)$; thus Krylov solvers (GMRES/CG) or fixed-point iterations solve `(eq:matcalc:ift_vjp)` using $O(m+n)$ memory regardless of the number of forward solver steps $K$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 16.2.10, p. 641).
@@ -274,6 +290,7 @@ For a twice continuously differentiable scalar map $f : \mathbb{R}^n \to \mathbb
 >   = \boldsymbol{J}_{\nabla f}(\boldsymbol{x}) \boldsymbol{v}
 >   = \left.\frac{\mathrm{d}}{\mathrm{d}\alpha} \nabla_{\boldsymbol{x}} f(\boldsymbol{x} + \alpha\boldsymbol{v})\right|_{\alpha=0}
 >   = \nabla_{\boldsymbol{x}}\!\Big(\nabla_{\boldsymbol{x}} f(\boldsymbol{x})^{\top} \mathrm{stopgrad}(\boldsymbol{v})\Big).
+>
 > $$
 > - **Forward-over-Reverse ($\mathcal{F} \circ \mathcal{R}$, Pearlmutter / $\mathcal{R}$-operator):** Construct the reverse-mode gradient function $\boldsymbol{g}(\boldsymbol{x}) = \nabla_{\boldsymbol{x}} f(\boldsymbol{x})$, then execute one forward-mode JVP pass $\partial \boldsymbol{g}(\boldsymbol{x})[\boldsymbol{v}]$ with tangent seed $\dot{\boldsymbol{x}} = \boldsymbol{v}$. This achieves exact $\boldsymbol{H}\boldsymbol{v}$ in $O(W)$ FLOPs ($2\text{–}3\times$ gradient cost) and $O(W)$ memory without nested graph allocation.
 > - **Reverse-over-Forward ($\mathcal{R} \circ \mathcal{F}$):** Evaluate the directional derivative scalar $s(\boldsymbol{x}) = \partial f(\boldsymbol{x})[\boldsymbol{v}] = \nabla_{\boldsymbol{x}} f(\boldsymbol{x})^{\top} \boldsymbol{v}$ in one JVP pass, and then apply reverse mode to recover $\nabla_{\boldsymbol{x}} s(\boldsymbol{x}) = \boldsymbol{H}\boldsymbol{v}$ ([[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 8.2.2, p. 250)).
@@ -409,6 +426,7 @@ Figure `fig:matcalc:complexity_scaling` plots the exact arithmetic and memory cr
 >   E_{\text{cen}}(\epsilon) &\lesssim \frac{\lvert f"' \rvert}{6}\epsilon^2 + \frac{\lvert f \rvert\varepsilon_{\text{mach}}}{\epsilon}
 >    \implies  \epsilon^*_{\text{cen}} \sim \varepsilon_{\text{mach}}^{1/3}.
 > \end{aligned}
+>
 > $$
 >
 > In IEEE 754 `float64` ($\varepsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$), $\epsilon^*_{\text{cen}} \approx 6 \times 10^{-6}$; running central differences in `float32` ($\varepsilon_{\text{mach}} \approx 1.19 \times 10^{-7}$) with $\epsilon = 10^{-6}$ falls deep inside the cancellation regime ($\epsilon^*_{\text{cen}} \approx 5 \times 10^{-3}$), producing $O(1)$ relative errors even for bug-free AD.\\

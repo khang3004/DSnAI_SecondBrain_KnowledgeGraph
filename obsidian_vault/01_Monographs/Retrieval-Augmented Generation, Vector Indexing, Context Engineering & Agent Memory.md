@@ -85,12 +85,14 @@ Classic lexical retrieval represents queries and documents as high-dimensional s
 > $$
 > \mathrm{tf}_{t,d} = \begin{cases} 1 + \log_{10} \mathrm{count}(t,d) & \text{if } \mathrm{count}(t,d) > 0, \\ 0 & \text{otherwise,} \end{cases}
 >   \qquad \mathrm{idf}_t = \log_{10}\!\left(\frac{N}{\mathrm{df}_t}\right).
+>
 > $$
 >
 > Okapi BM25 replaces linear cosine normalization with bounded term-frequency saturation ($k \in [1.2, 2.0]$) and length normalization ($b \in [0, 1]$, typically $b = 0.75$):
 >
 > $$
 > \mathrm{score}_{\mathrm{BM25}}(q, d) = \sum_{t \in q} \underbrace{\log\!\left(\frac{N}{\mathrm{df}_t}\right)}_{\text{IDF weight}} \cdot \underbrace{\frac{\mathrm{tf}_{t,d} (k + 1)}{\mathrm{tf}_{t,d} + k\!\left(1 - b + b \frac{\lvert d \rvert}{\lvert d_{\mathrm{avg}} \rvert}\right)}}_{\text{length-normalized saturated TF}},
+>
 > $$
 >
 > or equivalently without the $(k+1)$ constant factor in the simplified form of [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF p. 268, Eq. (11.12)). Setting $k = 0$ collapses BM25 to binary term presence weighted by IDF, whereas $b = 0$ disables document-length normalization.
@@ -106,18 +108,21 @@ Sparse lexical matching fails when query and document use synonymous phrasing (v
 >
 > $$
 > s_{\mathrm{bi}}(q, d) = \langle \boldsymbol{z}_q, \boldsymbol{z}_d \rangle = \frac{E_Q(q)^{\top} E_D(d)}{\lVert E_Q(q) \rVert_2 \lVert E_D(d) \rVert_2}.
+>
 > $$
 >
 > Because $E_D(d)$ is independent of $q$, all $N$ document vectors are precomputed offline and indexed for sub-linear Approximate Nearest Neighbor (ANN) search. Conversely, a *cross-encoder* concatenates $q$ and $d$ into a single sequence $[q; `[SEP]`; d]$ and applies full self-attention across all $L_q + L_d$ tokens [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF p. 154):
 >
 > $$
 > s_{\mathrm{cross}}(q, d) = \sigma\!\left(\boldsymbol{w}^{\top} \mathrm{BERT}\!\big([q; `[SEP]`; d]\big)_{`[CLS]`}\right).
+>
 > $$
 >
 > Bridging both regimes, *ColBERT* late interaction precomputes per-token normalized document embeddings $\boldsymbol{E}_{d} = (\boldsymbol{E}_{d,1}, \dots, \boldsymbol{E}_{d,m_d})$ and computes a sum of maximum token similarities (*MaxSim*) at query time [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF p. 274, Eq. (11.20)):
 >
 > $$
 > s_{\mathrm{ColBERT}}(q, d) = \sum_{i=1}^{N_q} \max_{j=1,\dots,m_d} \langle \boldsymbol{E}_{q,i}, \boldsymbol{E}_{d,j} \rangle.
+>
 > $$
 
 > [!note] Source Figure
@@ -132,6 +137,7 @@ Because BM25 excels at exact entity/code matching while dense bi-encoders captur
 >
 > $$
 > \mathrm{RRF}(d; q) = \sum_{r \in \mathcal{R}} \frac{1}{\kappa + \mathrm{rank}_r(d)}, \qquad \kappa = 60.
+>
 > $$
 >
 > To evaluate ranked lists against ground-truth relevance judgments $\mathrm{rel}_i \in \{0, 1, \dots\}$ over a query set $Q$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF pp. 269–272, Eqs. (11.14)–(11.17)), let $R_r(q)$ be the set of relevant documents for query $q$ up to cutoff $r$:
@@ -143,6 +149,7 @@ Because BM25 excels at exact entity/code matching while dense bi-encoders captur
 >   \mathrm{MAP} &= \frac{1}{\lvert Q \rvert} \sum_{q \in Q} \frac{1}{\lvert R_r(q) \rvert} \sum_{d \in R_r(q)} \mathrm{Precision}_{\mathrm{rank}(d)}, &
 >   \mathrm{nDCG}@k &= \frac{1}{\mathrm{IDCG}@k} \sum_{i=1}^{k} \frac{2^{\mathrm{rel}_i} - 1}{\log_2(i + 1)},
 > \end{aligned}
+>
 > $$
 >
 > where $\mathrm{IDCG}@k$ is the ideal discounted cumulative gain of the oracle ranking.
@@ -170,6 +177,7 @@ In multi-turn agentic workflows, unbounded session histories $\mathcal{S}_t$ exh
 >
 > $$
 > \mathcal{M}_t = \mathcal{U}_{\mathrm{cons}}\!\big(\mathcal{M}_{t-1},  \mathcal{E}_\theta(\mathcal{S}_t)\big) \in \{\mathrm{Create}(m_{\mathrm{new}}),  \mathrm{Merge}(m_{\mathrm{old}}, m_{\mathrm{new}}),  \mathrm{Delete}(m_{\mathrm{invalid}})\}.
+>
 > $$
 
 ## Algorithmic Implementation & Comparative Synthesis

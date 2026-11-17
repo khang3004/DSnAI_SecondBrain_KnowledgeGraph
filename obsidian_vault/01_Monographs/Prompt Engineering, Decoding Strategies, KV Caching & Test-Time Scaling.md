@@ -110,6 +110,7 @@ Exact maximum a posteriori (MAP) decoding $\arg\max_{\boldsymbol{y}} \log \Pr_{\
 >
 > $$
 > \log \Pr(\boldsymbol{y}_{1:i} \mid \boldsymbol{x}) = \log \Pr(\boldsymbol{y}_{<i} \mid \boldsymbol{x}) + \log \Pr(y_i \mid \boldsymbol{x}, \boldsymbol{y}_{<i}).
+>
 > $$
 > - **Greedy Decoding:** Sets $|\mathcal{Y}_i| = 1$ by selecting $\hat{y}_i = \arg\max_{y_i \in \mathcal{V}} \log \Pr(y_i \mid \boldsymbol{x}, \boldsymbol{y}_{<i})$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 7.6.1, p. 196). Greedy decoding is $O(n|\mathcal{V}|)$ but is locally myopic and prone to repetitive degeneration.
 > - **Beam Search:** Maintains the top-$K$ hypotheses $\mathcal{Y}_i = \mathrm{argTopK}_{\boldsymbol{y} \in \mathcal{Y}_{i-1} \times \mathcal{V}} \log \Pr(\boldsymbol{y} \mid \boldsymbol{x})$ with beam width $K$ (typically $K \in \{2, 4\}$) [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 221–222). Beam search excels in constrained sequence-to-sequence tasks (e.g., machine translation) but often produces generic, low-entropy text in open-ended generation.
@@ -123,20 +124,25 @@ To restore diversity and match human-like entropy profiles, stochastic decoding 
 > p_{\tau}(w_j) = \frac{\exp(u_j / \tau)}{\sum_{v=1}^{|\mathcal{V}|} \exp(u_v / \tau)}, \qquad
 >   \lim_{\tau \to 0^+} p_{\tau}(w_j) = \mathbb{I}[j = \arg\max_v u_v], \quad
 >   \lim_{\tau \to \infty} p_{\tau}(w_j) = \frac{1}{|\mathcal{V}|}.
+>
 > $$
 >
 > Sampling directly from $p_{\tau}$ across all $|\mathcal{V}|$ tokens exposes generation to the *unreliable tail* (accumulated probability mass over thousands of implausible tokens). Two truncation filters eliminate this tail:
 > - **Top-$k$ Filtering:** Retain the $k$ highest-logit indices $\mathcal{V}_k = \mathrm{argTopK}(\boldsymbol{u}, k)$ and mask all other logits to $-\infty$ prior to softmax [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Sec. 5.3.2, pp. 388–393):
 >
+>
 > $$
 > \tilde{u}_j = \begin{cases} u_j & \text{if } j \in \mathcal{V}_k, \\ -\infty & \text{otherwise}, \end{cases}
 >     \qquad p_{\tau, k}(w_j) = \frac{\exp(\tilde{u}_j / \tau)}{\sum_{v \in \mathcal{V}_k} \exp(u_v / \tau)}.
+>
 > $$
 > - **Top-$p$ (Nucleus) Filtering:** Sort tokens in descending probability order $p_{\tau}(w_{(1)}) \ge p_{\tau}(w_{(2)}) \ge \dots \ge p_{\tau}(w_{(|\mathcal{V}|)})$ and define the minimal nucleus $\mathcal{V}_p = \{w_{(1)}, \dots, w_{(m^*)}\}$ whose cumulative mass meets threshold $p \in (0, 1]$ [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 222–224), [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 7.6.4, p. 200):
+>
 >
 > $$
 > m^* = \min \left\{ m \in \{1, \dots, |\mathcal{V}|\} : \sum_{r=1}^{m} p_{\tau}(w_{(r)}) \ge p \right\},
 >     \qquad p_{\tau, p}(w_j) = \frac{p_{\tau}(w_j) \mathbb{I}[w_j \in \mathcal{V}_p]}{\sum_{v \in \mathcal{V}_p} p_{\tau}(v)}.
+>
 > $$
 
 > [!tip] Why Nucleus ($p$) Adapts Better Than Fixed $k$
@@ -184,6 +190,7 @@ In causal self-attention, keys $\boldsymbol{k}_{t}$ and values $\boldsymbol{v}_{
 >
 > $$
 > M_{\mathrm{KV}} = 2 \cdot b \cdot s \cdot n_{\mathrm{layers}} \cdot n_{\mathrm{kv}} \cdot d_h \cdot p_{\mathrm{bytes}} \quad [\text{bytes}],
+>
 > $$
 >
 > where the factor of $2$ accounts for storing both $\boldsymbol{K}$ and $\boldsymbol{V}$ tensors. Architectural variants reduce $n_{\mathrm{kv}}$ relative to query heads $n_q$:
@@ -216,8 +223,10 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 > - If $r \le \frac{p(\hat{y})}{q(\hat{y})}$ (equivalently, always accept when $q(\hat{y}) \le p(\hat{y})$), **accept** $\hat{y}$.
 > - Otherwise, **reject** $\hat{y}$ and all subsequent draft tokens, and resample $\bar{y}$ from the normalized residual distribution
 >
+>
 > $$
 > p_{\mathrm{res}}(y) = \frac{\max(0,  p(y) - q(y))}{Z}, \qquad Z = \sum_{v \in \mathcal{V}} \max(0,  p(v) - q(v)) = 1 - \sum_{v \in \mathcal{V}} \min(p(v), q(v)).
+>
 > $$
 >
 >
@@ -231,6 +240,7 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 >   &= q(y)\min\!\left(1, \frac{p(y)}{q(y)}\right) + Z \cdot \frac{\max(0,  p(y) - q(y))}{Z}  \\
 >   &= \min(p(y), q(y)) + \max(0,  p(y) - q(y)) = p(y). \qquad \square
 > \end{aligned}
+>
 > $$
 >
 > If all $\tau$ draft tokens are accepted, the target model emits one bonus token from $p(\cdot \mid \boldsymbol{x}, \boldsymbol{y}_{<i}, \hat{\boldsymbol{y}}_{1:\tau})$ at zero extra forward-pass cost, yielding up to $\tau + 1$ exact target tokens per verification step.

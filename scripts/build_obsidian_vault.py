@@ -302,6 +302,12 @@ def clean_latex_text(text: str) -> str:
     s = re.sub(r"\\par(?![A-Za-z])", "\n", s)
     s = re.sub(r"\\newline(?![A-Za-z])", "\n", s)
     s = s.replace(r"\L{}", "Ł").replace(r"V\~{u}", "Vũ").replace(r"\textasciicircum", "^").replace(r"\eqqcolon", "=:")
+    for pat_acc, uni in (
+        (r"\\`\{?e\}?", "è"), (r"\\'\{?e\}?", "é"), (r"\\\^\{?e\}?", "ê"),
+        (r"\\\^\{?o\}?", "ô"), (r'\\"\{?o\}?', "ö"), (r'\\"\{?u\}?', "ü"),
+        (r'\\"\{?a\}?', "ä"), (r"\\`\{?a\}?", "à"), (r"\\'\{?a\}?", "á"),
+    ):
+        s = re.sub(pat_acc, uni, s)
     s = re.sub(r"\\verb\|([^|]*)\|", r"`\1`", s)
     s = re.sub(r"\.\\(?=\s)", ".", s)
 
@@ -405,6 +411,13 @@ def clean_latex_text(text: str) -> str:
     for k, v in sorted(simple_macros.items(), key=lambda kv: -len(kv[0])):
         s = re.sub(re.escape(k) + r"(?![A-Za-z])", lambda _m, rep=v: rep, s)
 
+    # Convert LaTeX display/inline delimiters \[ \] \( \) to $$ and $ BEFORE callouts & tables
+    # Use (?<!\\) so linebreaks like \\[4pt] are NOT treated as \[
+    s = re.sub(r"(?<!\\)\\\[", "\n$$\n", s)
+    s = re.sub(r"(?<!\\)\\\]", "\n$$\n", s)
+    s = re.sub(r"(?<!\\)\\\(", "$", s)
+    s = re.sub(r"(?<!\\)\\\)", "$", s)
+
     s = re.sub(r"\\section\*?\{([^}]*)\}", r"\n## \1\n", s)
     s = re.sub(r"\\subsection\*?\{([^}]*)\}", r"\n### \1\n", s)
     s = re.sub(r"\\subsubsection\*?\{([^}]*)\}", r"\n#### \1\n", s)
@@ -437,6 +450,9 @@ def clean_latex_text(text: str) -> str:
         def _repl(m: re.Match[str], ct: str = ctype, dt: str = default_title) -> str:
             title = m.group(1).strip() if m.group(1) else dt
             body = m.group(2).strip()
+            # Ensure blank line before/after markdown tables and $$ blocks inside callout
+            body = re.sub(r"([^\n])\n(\|[^\n]+\|\n\|[\s\-:|]+\|)", r"\1\n\n\2", body)
+            body = re.sub(r"([^\n])\n(\$\$)", r"\1\n\n\2", body)
             quoted = "\n".join(f"> {ln}" if ln.strip() else ">" for ln in body.splitlines())
             return f"\n> [!{ct}] {title}\n{quoted}\n"
 

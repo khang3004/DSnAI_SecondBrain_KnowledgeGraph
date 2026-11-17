@@ -72,12 +72,14 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 >
 > $$
 > (\boldsymbol{X} *_{\mathrm{flip}} \boldsymbol{W})[i, j] = \sum_{u=0}^{k_h - 1} \sum_{v=0}^{k_w - 1} \boldsymbol{X}[i - u, j - v]  \boldsymbol{W}[u, v].
+>
 > $$
 >
 > Deep learning frameworks instead implement *discrete cross-correlation* (omitting the flip), which is equivalent up to a learned re-indexing of $\boldsymbol{W}$ [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 9, PDF p. 348), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 14, PDF p. 499):
 >
 > $$
 > \boldsymbol{Z}[d, i, j] = b_d + \sum_{c=0}^{C_{\mathrm{in}}-1} \sum_{u=0}^{k_h - 1} \sum_{v=0}^{k_w - 1} \boldsymbol{X}[c, s_h i + d_h u - p_h,  s_w j + d_w v - p_w]  \boldsymbol{W}[d, c, u, v],
+>
 > $$
 >
 > where out-of-bounds indices evaluate to zero under zero-padding.
@@ -92,6 +94,7 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 > \vdots & \ddots & \ddots & \ddots & & \ddots & 0 \\
 > 0 & \cdots & 0 & w_0 & w_1 & \cdots & w_{k-1}
 > \end{bmatrix}.
+>
 > $$
 >
 > In 2D, $\boldsymbol{C}_{\boldsymbol{W}}$ is a *doubly block Toeplitz matrix* (or doubly block circulant under periodic boundary conditions) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 9, PDF p. 348). Consequently, backpropagation through a convolutional layer is simply multiplication by $\boldsymbol{C}_{\boldsymbol{W}}^{\top}$, which corresponds to a *transposed convolution* [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (PDF p. 517), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Fig. 10.13, p. 187). Parameter storage drops from $H W H_{\mathrm{out}} W_{\mathrm{out}}$ (dense MLP) to $k_h k_w$ per channel pair.
@@ -106,6 +109,7 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 >
 > $$
 > \mathcal{F}_{\boldsymbol{W}}(T_{\Delta} \boldsymbol{X}) = T_{\Delta} \mathcal{F}_{\boldsymbol{W}}(\boldsymbol{X}).
+>
 > $$
 >
 > *Proof.* Evaluating the left-hand side at output coordinate $(i, j)$ for channel $d$:
@@ -117,6 +121,7 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 > &= \sum_{c, u, v} \boldsymbol{X}[c, (i - \Delta_y) + u, (j - \Delta_x) + v]  \boldsymbol{W}[d, c, u, v] \\
 > &= \big(\mathcal{F}_{\boldsymbol{W}}(\boldsymbol{X})\big)[d, i - \Delta_y, j - \Delta_x] = \big(T_{\Delta}\mathcal{F}_{\boldsymbol{W}}(\boldsymbol{X})\big)[d, i, j]. \quad \blacksquare
 > \end{aligned}
+>
 > $$
 >
 > Pointwise nonlinearities $\sigma(\cdot)$ (e.g., ReLU) commute with $T_{\Delta}$, so any composition of stride-$1$ convolutions and pointwise activations preserves exact translation equivariance [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 9, PDF pp. 353–354), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 10, Eq. (10.2), p. 176).
@@ -133,6 +138,7 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 >
 > $$
 > R_l = R_{l-1} + (k_l^{\mathrm{eff}} - 1) J_{l-1} = 1 + \sum_{l'=1}^{l} d_{l'}(k_{l'} - 1) \prod_{i=1}^{l'-1} s_i, \qquad R_0 = 1.
+>
 > $$
 >
 > Thus, stacking $m$ stride-$1$ layers of $3 \times 3$ kernels ($d_l = 1$) grows the receptive field linearly as $R_m = 2m + 1$ while requiring $m(9 C^2)$ parameters—whereas a single $(2m+1)\times(2m+1)$ kernel requires $(2m+1)^2 C^2$ parameters (e.g., two $3\times 3$ layers match a $5\times 5$ receptive field with $18 C^2$ vs. $25 C^2$ weights, a $28\%$ reduction, plus an extra nonlinearity). Exponentially increasing dilation $d_l = 2^{l-1}$ with $s_l = 1$ achieves exponential receptive field growth $R_L = 2^{L+1} - 1$ without losing spatial resolution [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 14.4.1, PDF p. 516).
@@ -148,6 +154,7 @@ Setting $d_h = 1$, $s_h = 1$, and $p_h = (k_h - 1)/2$ for odd $k_h$ yields *same
 > = \frac{\mathrm{MACs}_{\mathrm{DS}}}{\mathrm{MACs}_{\mathrm{Std}}}
 > = \frac{k^2 C_{\mathrm{in}} + C_{\mathrm{in}} C_{\mathrm{out}}}{k^2 C_{\mathrm{in}} C_{\mathrm{out}}}
 > = \frac{1}{C_{\mathrm{out}}} + \frac{1}{k^2}.
+>
 > $$
 >
 > For $k = 3$ and $C_{\mathrm{out}} = 256$, this reduces compute and parameters by $\approx 8.7\times$ ($11.5\%$ of standard cost).

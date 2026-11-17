@@ -62,6 +62,7 @@ Industrial recommendation and advertising systems must score $N \sim 10^6\text{â
 >
 > $$
 > \hat{y}_{\mathrm{FM}}(\boldsymbol{x}) = w_0 + \sum_{i=1}^d w_i x_i + \sum_{i=1}^d \sum_{j=i+1}^d \langle \boldsymbol{v}_i, \boldsymbol{v}_j \rangle  x_i x_j.
+>
 > $$
 >
 > Using the algebraic identity $\sum_{i<j} \langle \boldsymbol{v}_i, \boldsymbol{v}_j \ranglex_i x_j = \frac{1}{2}\sum_{f=1}^k \Bigl[\bigl(\sum_{i=1}^d v_{i,f} x_i\bigr)^2 - \sum_{i=1}^d v_{i,f}^2 x_i^2\Bigr]$, FM evaluates all $\binom{d}{2}$ interactions in exact **linear time** $O(k d)$ (or $O(k \cdot \mathrm{nnz}(\boldsymbol{x}))$ for sparse inputs) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, p. 776).
@@ -75,12 +76,14 @@ Industrial recommendation and advertising systems must score $N \sim 10^6\text{â
 >
 > $$
 > \mathcal{L}_{\mathrm{TT}} = -\log\frac{\exp(s(u, i^+) - \log Q(i^+))}{\exp(s(u, i^+) - \log Q(i^+)) + \sum_{j \in \mathcal{B}^-} \exp(s(u, j) - \log Q(j))},
+>
 > $$
 >
 > where $Q(j)$ is item $j$'s sampling probability in mini-batch $\mathcal{B}$. Ranking quality at top-$K$ is evaluated via *Normalized Discounted Cumulative Gain* [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 22, pp. 782â€“784):
 >
 > $$
 > \mathrm{DCG}@K = \sum_{r=1}^K \frac{2^{\mathrm{rel}_r} - 1}{\log_2(r + 1)}, \qquad \mathrm{NDCG}@K = \frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K} \in [0, 1].
+>
 > $$
 
 > [!tip] Why Two-Stage Funnels Exist: Decoupling Recall from Interaction Precision

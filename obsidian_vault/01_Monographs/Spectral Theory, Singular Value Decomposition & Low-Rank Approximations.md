@@ -99,30 +99,44 @@ General square matrices over $\mathbb{R}$ may exhibit complex conjugate eigenval
 > - For every eigenvalue $\lambda$, its geometric multiplicity equals its algebraic multiplicity, yielding an orthonormal eigenbasis $\{\boldsymbol{q}_1,\dots,\boldsymbol{q}_n\}$ of $\mathbb{R}^n$.
 > - With $\boldsymbol{Q} = [\boldsymbol{q}_1  \cdots  \boldsymbol{q}_n] \in \mathbb{R}^{n \times n}$ ($\boldsymbol{Q}^{\top}\boldsymbol{Q} = \boldsymbol{Q}\boldsymbol{Q}^{\top} = \boldsymbol{I}_n$) and $\boldsymbol{\Lambda} = \mathrm{diag}(\lambda_1,\dots,\lambda_n)$, $\boldsymbol{A}$ admits the orthogonal diagonalization and rank-1 spectral expansion:
 >
+>
 > $$
 > \boldsymbol{A} = \boldsymbol{Q}\boldsymbol{\Lambda}\boldsymbol{Q}^{\top} = \sum_{i=1}^n \lambda_i \boldsymbol{q}_i \boldsymbol{q}_i^{\top}.
+>
 > $$
 >
 >
 >
 > **Proof.**
 > *(1) Real eigenvalues:* Suppose $\boldsymbol{A}\boldsymbol{z} = \lambda \boldsymbol{z}$ with $\lambda \in \mathbb{C}$ and nonzero $\boldsymbol{z} \in \mathbb{C}^n$. Taking the conjugate transpose $\boldsymbol{z}^H = \overline{\boldsymbol{z}}^{\top}$ and using $\boldsymbol{A}^H = \boldsymbol{A}^{\top} = \boldsymbol{A}$ (since $\boldsymbol{A}$ is real symmetric),
-> \[
+>
+> $$
+>
 >   \lambda \lVert \boldsymbol{z} \rVert_2^2 = \boldsymbol{z}^H (\boldsymbol{A}\boldsymbol{z}) = (\boldsymbol{z}^H \boldsymbol{A}\boldsymbol{z}) = (\boldsymbol{A}\boldsymbol{z})^H \boldsymbol{z} = \overline{\lambda}\lVert \boldsymbol{z} \rVert_2^2 \implies (\lambda - \overline{\lambda})\lVert \boldsymbol{z} \rVert_2^2 = 0.
-> \]
+>
+> $$
+>
 > Since $\lVert \boldsymbol{z} \rVert_2^2 > 0$, $\lambda = \overline{\lambda} \in \mathbb{R}$. Thus a real eigenvector $\boldsymbol{q}_1 \in \mathbb{R}^n$ with $\lVert \boldsymbol{q}_1 \rVert_2 = 1$ exists for $\lambda_1$.
 >
 > *(2) Orthogonality across distinct eigenspaces:* If $\boldsymbol{A}\boldsymbol{v}_1 = \lambda_1 \boldsymbol{v}_1$ and $\boldsymbol{A}\boldsymbol{v}_2 = \lambda_2 \boldsymbol{v}_2$ with $\lambda_1 \neq \lambda_2$, then
-> \[
+>
+> $$
+>
 >   \lambda_1 (\boldsymbol{v}_1^{\top} \boldsymbol{v}_2) = (\boldsymbol{A}\boldsymbol{v}_1)^{\top} \boldsymbol{v}_2 = \boldsymbol{v}_1^{\top} \boldsymbol{A}^{\top} \boldsymbol{v}_2 = \boldsymbol{v}_1^{\top} \boldsymbol{A}\boldsymbol{v}_2 = \lambda_2 (\boldsymbol{v}_1^{\top} \boldsymbol{v}_2).
-> \]
+>
+> $$
+>
 > Hence $(\lambda_1 - \lambda_2)(\boldsymbol{v}_1^{\top} \boldsymbol{v}_2) = 0 \implies \boldsymbol{v}_1^{\top} \boldsymbol{v}_2 = 0$.
 >
 > *(3)–(4) Existence of an orthonormal eigenbasis by induction on $n$:* The base case $n=1$ is immediate. Assume the claim holds for dimension $n-1$. By (1), choose a unit eigenvector $\boldsymbol{q}_1 \in \mathbb{R}^n$ with $\boldsymbol{A}\boldsymbol{q}_1 = \lambda_1\boldsymbol{q}_1$, and extend $\{\boldsymbol{q}_1\}$ to an orthonormal basis $[\boldsymbol{q}_1, \boldsymbol{W}_1]$ of $\mathbb{R}^n$ where $\boldsymbol{W}_1 \in \mathbb{R}^{n \times (n-1)}$ spans $\boldsymbol{q}_1^\perp$. For any $\boldsymbol{w} \in \boldsymbol{q}_1^\perp$, symmetry implies $\boldsymbol{q}_1^{\top} (\boldsymbol{A}\boldsymbol{w}) = (\boldsymbol{A}\boldsymbol{q}_1)^{\top} \boldsymbol{w} = \lambda_1 (\boldsymbol{q}_1^{\top} \boldsymbol{w}) = 0$, so $\boldsymbol{q}_1^\perp$ is $\boldsymbol{A}$-invariant. In this basis,
-> \[
+>
+> $$
+>
 >   [\boldsymbol{q}_1, \boldsymbol{W}_1]^{\top} \boldsymbol{A} [\boldsymbol{q}_1, \boldsymbol{W}_1] =
 >   \begin{bmatrix} \lambda_1 & \boldsymbol{0}^{\top} \\ \boldsymbol{0} & \boldsymbol{W}_1^{\top} \boldsymbol{A} \boldsymbol{W}_1 \end{bmatrix},
-> \]
+>
+> $$
+>
 > where $\boldsymbol{B} = \boldsymbol{W}_1^{\top} \boldsymbol{A} \boldsymbol{W}_1 \in \mathbb{S}^{n-1}$ is symmetric. By the induction hypothesis, $\boldsymbol{B} = \tilde{\boldsymbol{Q}}\tilde{\boldsymbol{\Lambda}}\tilde{\boldsymbol{Q}}^{\top}$ with $\tilde{\boldsymbol{Q}} \in \mathbb{R}^{(n-1)\times(n-1)}$ orthogonal. Setting $\boldsymbol{Q} = [\boldsymbol{q}_1, \boldsymbol{W}_1\tilde{\boldsymbol{Q}}]$ yields $\boldsymbol{Q}^{\top}\boldsymbol{Q} = \boldsymbol{I}_n$ and $\boldsymbol{Q}^{\top}\boldsymbol{A}\boldsymbol{Q} = \mathrm{diag}(\lambda_1,\lambda_2,\dots,\lambda_n) = \boldsymbol{\Lambda}$. Expanding $\boldsymbol{A} = \boldsymbol{Q}\boldsymbol{\Lambda}\boldsymbol{Q}^{\top}$ via the column–row outer product gives `(eq:svd:spectral)`, where each $\boldsymbol{P}_i = \boldsymbol{q}_i\boldsymbol{q}_i^{\top}$ satisfies $\boldsymbol{P}_i^2 = \boldsymbol{P}_i = \boldsymbol{P}_i^{\top}$ and $\boldsymbol{P}_i\boldsymbol{P}_j = \boldsymbol{0}$ for $i \neq j$.
 
 Spectral decomposition immediately diagonalizes any quadratic form $Q(\boldsymbol{x}) = \boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x}$ with $\boldsymbol{A} \in \mathbb{S}^n$. Under the orthogonal change of coordinates $\boldsymbol{y} = \boldsymbol{Q}^{\top} \boldsymbol{x}$ ($\lVert \boldsymbol{y} \rVert_2 = \lVert \boldsymbol{x} \rVert_2$), the Principal Axes Theorem [[Source - E D I T I O N|linear_algebra]] (Sec. 7.2, pp. 404–407) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 7.4.3–7.4.4, pp. 255–256) eliminates all cross-product terms $x_i x_j$:
@@ -145,21 +159,26 @@ In statistical learning (PCA, Fisher discriminant analysis, spectral clustering)
 >
 > $$
 > R(\boldsymbol{A}, \boldsymbol{x}) \triangleq \frac{\boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x}}{\boldsymbol{x}^{\top} \boldsymbol{x}}.
+>
 > $$
 >
 > Then:
 > - **Sequential Constrained Extrema [[Source - E D I T I O N|linear_algebra]] (Thms. 6–8, pp. 412–414):** Stationary points of $R(\boldsymbol{A},\boldsymbol{x})$ on the unit sphere $\{\boldsymbol{x} : \lVert \boldsymbol{x} \rVert_2 = 1\}$ are unit eigenvectors of $\boldsymbol{A}$. Moreover,
 >
+>
 > $$
 > \lambda_k = \max_{\substack{\lVert \boldsymbol{x} \rVert_2 = 1 \\ \boldsymbol{x} \perp \mathrm{span}(\boldsymbol{q}_1,\dots,\boldsymbol{q}_{k-1})}} \boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x}, \qquad k = 1,\dots,n,
+>
 > $$
 >
 >   with maximum attained at $\boldsymbol{x} = \boldsymbol{q}_k$, and $\lambda_n = \min_{\lVert \boldsymbol{x} \rVert_2 = 1} \boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x} \le R(\boldsymbol{A},\boldsymbol{x}) \le \lambda_1$.
 > - **Courant–Fischer Min-Max Principle:** Without explicit reference to prior eigenvectors, the $k$-th eigenvalue satisfies
 >
+>
 > $$
 > \lambda_k = \max_{\dim(\mathcal{V}) = k}   \min_{\boldsymbol{x} \in \mathcal{V} \setminus \{\boldsymbol{0}\}} R(\boldsymbol{A}, \boldsymbol{x})
 >     = \min_{\dim(\mathcal{W}) = n - k + 1}   \max_{\boldsymbol{x} \in \mathcal{W} \setminus \{\boldsymbol{0}\}} R(\boldsymbol{A}, \boldsymbol{x}).
+>
 > $$
 >
 >
@@ -168,15 +187,23 @@ In statistical learning (PCA, Fisher discriminant analysis, spectral clustering)
 > *Lagrangian stationarity:* For maximizing $\boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x}$ subject to $\boldsymbol{x}^{\top}\boldsymbol{x} = 1$, form $\mathcal{L}(\boldsymbol{x},\lambda) = \boldsymbol{x}^{\top} \boldsymbol{A} \boldsymbol{x} + \lambda(1 - \boldsymbol{x}^{\top}\boldsymbol{x})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 7.4.8, p. 259). Setting $\nabla_{\boldsymbol{x}}\mathcal{L} = 2\boldsymbol{A}\boldsymbol{x} - 2\lambda\boldsymbol{x} = \boldsymbol{0}$ yields $\boldsymbol{A}\boldsymbol{x} = \lambda\boldsymbol{x}$, where $R(\boldsymbol{A},\boldsymbol{x}) = \lambda$.
 >
 > *Sequential extrema via eigenbasis expansion:* Write any $\boldsymbol{x}$ satisfying $\lVert \boldsymbol{x} \rVert_2=1$ and $\boldsymbol{x}^{\top}\boldsymbol{q}_1 = \dots = \boldsymbol{x}^{\top}\boldsymbol{q}_{k-1} = 0$ in the eigenbasis $\boldsymbol{y} = \boldsymbol{Q}^{\top}\boldsymbol{x}$, so $y_1 = \dots = y_{k-1} = 0$ and $\sum_{i=k}^n y_i^2 = 1$. Since $\lambda_k \ge \lambda_i$ for all $i \ge k$,
-> \[
+>
+> $$
+>
 >   \boldsymbol{x}^{\top}\boldsymbol{A}\boldsymbol{x} = \sum_{i=k}^n \lambda_i y_i^2 \le \lambda_k \sum_{i=k}^n y_i^2 = \lambda_k,
-> \]
+>
+> $$
+>
 > with equality achieved at $\boldsymbol{x} = \boldsymbol{q}_k$ ($y_k = 1$, $y_{i \neq k} = 0$).
 >
 > *Courant–Fischer min-max:* Let $\mathcal{W}_0 = \mathrm{span}(\boldsymbol{q}_k,\dots,\boldsymbol{q}_n)$ (dimension $n-k+1$) and $\mathcal{V}_0 = \mathrm{span}(\boldsymbol{q}_1,\dots,\boldsymbol{q}_k)$ (dimension $k$). For any subspace $\mathcal{V}$ with $\dim(\mathcal{V}) = k$, Grassmann's dimension formula gives
-> \[
+>
+> $$
+>
 >   \dim(\mathcal{V} \cap \mathcal{W}_0) = \dim(\mathcal{V}) + \dim(\mathcal{W}_0) - \dim(\mathcal{V} + \mathcal{W}_0) \ge k + (n-k+1) - n = 1.
-> \]
+>
+> $$
+>
 > Hence there exists a unit vector $\boldsymbol{z} \in \mathcal{V} \cap \mathcal{W}_0$. Since $\boldsymbol{z} \in \mathcal{W}_0$, $\boldsymbol{z} = \sum_{i=k}^n y_i \boldsymbol{q}_i$ satisfies $R(\boldsymbol{A},\boldsymbol{z}) = \sum_{i=k}^n \lambda_i y_i^2 \le \lambda_k$, so $\min_{\boldsymbol{x} \in \mathcal{V} \setminus \{\boldsymbol{0}\}} R(\boldsymbol{A},\boldsymbol{x}) \le \lambda_k$ for every $k$-dimensional $\mathcal{V}$. Conversely, taking $\mathcal{V} = \mathcal{V}_0$ yields $\min_{\boldsymbol{x} \in \mathcal{V}_0 \setminus \{\boldsymbol{0}\}} R(\boldsymbol{A},\boldsymbol{x}) = \sum_{i=1}^k \lambda_i y_i^2 \ge \lambda_k$, establishing the $\max\min$ identity. The $\min\max$ identity follows analogously by intersecting any $(n-k+1)$-dimensional $\mathcal{W}$ with $\mathcal{V}_0$.
 
 Applying Courant–Fischer to the symmetric positive semidefinite Gram matrix $\boldsymbol{A}^{\top}\boldsymbol{A} \in \mathbb{S}_+^n$ gives an immediate variational characterization of singular values:
@@ -193,11 +220,15 @@ Every matrix $\boldsymbol{A} \in \mathbb{R}^{m \times n}$, regardless of aspect 
 
 > [!important] Theorem: Existence of Full, Reduced, and Compact SVD
 > Let $\boldsymbol{A} \in \mathbb{R}^{m \times n}$ have rank $r \le p = \min(m,n)$. Then there exist orthogonal matrices $\boldsymbol{U} = [\boldsymbol{u}_1  \cdots  \boldsymbol{u}_m] \in \mathbb{R}^{m \times m}$ and $\boldsymbol{V} = [\boldsymbol{v}_1  \cdots  \boldsymbol{v}_n] \in \mathbb{R}^{n \times n}$, and an $m \times n$ diagonal-structured matrix
-> \[
+>
+> $$
+>
 >   \boldsymbol{\Sigma} = \begin{bmatrix} \boldsymbol{\Sigma}_r & \boldsymbol{0} \\ \boldsymbol{0} & \boldsymbol{0} \end{bmatrix} \in \mathbb{R}^{m \times n},
 >   \qquad
 >   \boldsymbol{\Sigma}_r = \mathrm{diag}(\sigma_1,\dots,\sigma_r), \quad \sigma_1 \ge \dots \ge \sigma_r > 0,
-> \]
+>
+> $$
+>
 > such that $\boldsymbol{A} = \boldsymbol{U}\boldsymbol{\Sigma}\boldsymbol{V}^{\top}$ [[Source - E D I T I O N|linear_algebra]] (Thm. 10, p. 419) [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Thm. 4.22, p. 119). Equivalently, with $p = \min(m,n)$:
 >
 > $$
@@ -205,6 +236,7 @@ Every matrix $\boldsymbol{A} \in \mathbb{R}^{m \times n}$, regardless of aspect 
 > \boldsymbol{A} &= \boldsymbol{U}_p \boldsymbol{\Sigma}_p \boldsymbol{V}_p^{\top} \quad \text{(Economy / Thin SVD: }\boldsymbol{U}_p \in \mathbb{R}^{m\times p},  \boldsymbol{\Sigma}_p \in \mathbb{R}^{p\times p},  \boldsymbol{V}_p \in \mathbb{R}^{n\times p}\text{)},  \\
 >   \boldsymbol{A} &= \boldsymbol{U}_r \boldsymbol{\Sigma}_r \boldsymbol{V}_r^{\top} = \sum_{i=1}^r \sigma_i \boldsymbol{u}_i \boldsymbol{v}_i^{\top} \quad \text{(Compact SVD / Rank-1 Expansion)}.
 > \end{aligned}
+>
 > $$
 >
 >
@@ -214,12 +246,17 @@ Every matrix $\boldsymbol{A} \in \mathbb{R}^{m \times n}$, regardless of aspect 
 >
 > $$
 > (\boldsymbol{A}\boldsymbol{v}_i)^{\top} (\boldsymbol{A}\boldsymbol{v}_j) = \boldsymbol{v}_i^{\top} (\boldsymbol{A}^{\top}\boldsymbol{A}) \boldsymbol{v}_j = \lambda_j (\boldsymbol{v}_i^{\top} \boldsymbol{v}_j) = 0.
+>
 > $$
 >
 > For $i \in \{1,\dots,r\}$, define unit left-singular vectors $\boldsymbol{u}_i = \frac{1}{\sigma_i}\boldsymbol{A}\boldsymbol{v}_i \in \mathbb{R}^m$, so that $\boldsymbol{A}\boldsymbol{v}_i = \sigma_i\boldsymbol{u}_i$ and $\boldsymbol{u}_i^{\top} \boldsymbol{u}_j = \delta_{ij}$ by `(eq:svd:img_orth)`. For $j > r$, $\lVert \boldsymbol{A}\boldsymbol{v}_j \rVert_2 = \sigma_j = 0 \implies \boldsymbol{A}\boldsymbol{v}_j = \boldsymbol{0}$. Extend the orthonormal set $\{\boldsymbol{u}_1,\dots,\boldsymbol{u}_r\}$ to an orthonormal basis $\{\boldsymbol{u}_1,\dots,\boldsymbol{u}_m\}$ of $\mathbb{R}^m$ (for instance via Gram–Schmidt). Assembling $\boldsymbol{U} = [\boldsymbol{u}_1  \cdots  \boldsymbol{u}_m]$ and $\boldsymbol{V} = [\boldsymbol{v}_1  \cdots  \boldsymbol{v}_n]$ yields
-> \[
+>
+> $$
+>
 >   \boldsymbol{A}\boldsymbol{V} = [\boldsymbol{A}\boldsymbol{v}_1  \cdots  \boldsymbol{A}\boldsymbol{v}_r    \boldsymbol{0}  \cdots  \boldsymbol{0}] = [\sigma_1\boldsymbol{u}_1  \cdots  \sigma_r\boldsymbol{u}_r    \boldsymbol{0}  \cdots  \boldsymbol{0}] = \boldsymbol{U}\boldsymbol{\Sigma}.
-> \]
+>
+> $$
+>
 > Right-multiplying by $\boldsymbol{V}^{\top} = \boldsymbol{V}^{-1}$ yields $\boldsymbol{A} = \boldsymbol{U}\boldsymbol{\Sigma}\boldsymbol{V}^{\top}$. Truncating the zero rows/columns of $\boldsymbol{\Sigma}$ directly gives `(eq:svd:thin)` and `(eq:svd:compact)`.
 
 Multiplying $\boldsymbol{A}^{\top}\boldsymbol{A}$ and $\boldsymbol{A}\boldsymbol{A}^{\top}$ directly exposes the symmetric eigen-relations linking EVD and SVD [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 7.5.2, pp. 260–261):
@@ -248,10 +285,14 @@ $$
 $$
 
 By direct substitution using $\boldsymbol{U}_r^{\top}\boldsymbol{U}_r = \boldsymbol{V}_r^{\top}\boldsymbol{V}_r = \boldsymbol{I}_r$, $\boldsymbol{A}^{+}$ uniquely satisfies all four Moore–Penrose axioms: $\boldsymbol{A}\boldsymbol{A}^{+}\boldsymbol{A} = \boldsymbol{A}$, $\boldsymbol{A}^{+}\boldsymbol{A}\boldsymbol{A}^{+} = \boldsymbol{A}^{+}$, $(\boldsymbol{A}\boldsymbol{A}^{+})^{\top} = \boldsymbol{A}\boldsymbol{A}^{+}$, and $(\boldsymbol{A}^{+}\boldsymbol{A})^{\top} = \boldsymbol{A}^{+}\boldsymbol{A}$, where $\boldsymbol{A}\boldsymbol{A}^{+} = \boldsymbol{U}_r\boldsymbol{U}_r^{\top}$ is the orthogonal projector onto $\mathrm{col}(\boldsymbol{A})$ and $\boldsymbol{A}^{+}\boldsymbol{A} = \boldsymbol{V}_r\boldsymbol{V}_r^{\top}$ is the orthogonal projector onto $\mathrm{row}(\boldsymbol{A})$. Therefore, for any linear system $\boldsymbol{A}\boldsymbol{x} = \boldsymbol{b}$, $\hat{\boldsymbol{x}} = \boldsymbol{A}^{+} \boldsymbol{b}$ solves $\min_{\boldsymbol{x} \in \mathbb{R}^n} \lVert \boldsymbol{A}\boldsymbol{x} - \boldsymbol{b} \rVert_2$ with minimum Euclidean norm $\lVert \hat{\boldsymbol{x}} \rVert_2$:
-\[
+
+$$
+
   \lVert \boldsymbol{A}\boldsymbol{x} - \boldsymbol{b} \rVert_2^2
   = \lVert \boldsymbol{\Sigma}_r \boldsymbol{V}_r^{\top} \boldsymbol{x} - \boldsymbol{U}_r^{\top} \boldsymbol{b} \rVert_2^2 + \lVert \boldsymbol{U}_{m-r}^{\top} \boldsymbol{b} \rVert_2^2,
-\]
+
+$$
+
 because orthogonal transformations preserve $\ell_2$ norm; setting $\boldsymbol{V}_r^{\top} \hat{\boldsymbol{x}} = \boldsymbol{\Sigma}_r^{-1} \boldsymbol{U}_r^{\top} \boldsymbol{b}$ annihilates the first term while setting $\boldsymbol{V}_{n-r}^{\top} \hat{\boldsymbol{x}} = \boldsymbol{0}$ minimizes $\lVert \boldsymbol{x} \rVert_2^2 = \lVert \boldsymbol{V}_r^{\top}\boldsymbol{x} \rVert_2^2 + \lVert \boldsymbol{V}_{n-r}^{\top}\boldsymbol{x} \rVert_2^2$ [[Source - E D I T I O N|linear_algebra]] (Ex. 8, p. 424) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 2.9, p. 46).
 
 > [!tip] Geometric Action of SVD: Rotate, Scale/Embed, Rotate
@@ -272,31 +313,47 @@ Truncating the compact outer-product sum `(eq:svd:compact)` after $k < r$ terms 
 > \min_{\mathrm{rank}(\boldsymbol{B}) \le k} \lVert \boldsymbol{A} - \boldsymbol{B} \rVert_2 &= \lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_2 = \sigma_{k+1},  \\
 >   \min_{\mathrm{rank}(\boldsymbol{B}) \le k} \lVert \boldsymbol{A} - \boldsymbol{B} \rVert_F &= \lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_F = \sqrt{\sum_{i=k+1}^r \sigma_i^2}.
 > \end{aligned}
+>
 > $$
 >
 >
 > **Proof.**
 > *Part 1 (Spectral Norm [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (pp. 131–132)):* Since $\boldsymbol{A} - \boldsymbol{A}_k = \sum_{i=k+1}^r \sigma_i \boldsymbol{u}_i\boldsymbol{v}_i^{\top}$ has largest singular value $\sigma_{k+1}$, `(eq:svd:var_sv)` yields $\lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_2 = \sigma_{k+1}$. Now let $\boldsymbol{B} \in \mathbb{R}^{m \times n}$ be any matrix with $\mathrm{rank}(\boldsymbol{B}) \le k$. By Rank–Nullity, $\dim(\mathrm{null}(\boldsymbol{B})) = n - \mathrm{rank}(\boldsymbol{B}) \ge n - k$. Let $\mathcal{V}_{k+1} = \mathrm{span}(\boldsymbol{v}_1,\dots,\boldsymbol{v}_{k+1})$, which has $\dim(\mathcal{V}_{k+1}) = k + 1$. Because $(n-k) + (k+1) = n + 1 > n$, the intersection $\mathrm{null}(\boldsymbol{B}) \cap \mathcal{V}_{k+1}$ contains a unit vector $\boldsymbol{z} = \sum_{i=1}^{k+1} c_i \boldsymbol{v}_i$ ($\sum_{i=1}^{k+1} c_i^2 = 1$) with $\boldsymbol{B}\boldsymbol{z} = \boldsymbol{0}$. Hence
-> \[
+>
+> $$
+>
 >   \lVert \boldsymbol{A} - \boldsymbol{B} \rVert_2^2 \ge \lVert (\boldsymbol{A} - \boldsymbol{B})\boldsymbol{z} \rVert_2^2 = \lVert \boldsymbol{A}\boldsymbol{z} \rVert_2^2 = \Bigl\lVert \sum_{i=1}^{k+1} c_i \sigma_i \boldsymbol{u}_i \Bigr\rVert_2^2 = \sum_{i=1}^{k+1} c_i^2 \sigma_i^2 \ge \sigma_{k+1}^2 \sum_{i=1}^{k+1} c_i^2 = \sigma_{k+1}^2.
-> \]
+>
+> $$
+>
 > Taking square roots gives $\lVert \boldsymbol{A} - \boldsymbol{B} \rVert_2 \ge \sigma_{k+1} = \lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_2$.
 >
 > *Part 2 (Frobenius Norm [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Thm. 20.1, p. 250)):* First verify the error of $\boldsymbol{A}_k$ via $\lVert \boldsymbol{X} \rVert_F^2 = \mathrm{Tr}(\boldsymbol{X}^{\top}\boldsymbol{X})$ and cyclic trace invariance:
-> \[
+>
+> $$
+>
 >   \lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_F^2
 >   = \mathrm{Tr}\!\Bigl(\sum_{i=k+1}^r \sigma_i \boldsymbol{v}_i\boldsymbol{u}_i^{\top} \sum_{j=k+1}^r \sigma_j \boldsymbol{u}_j\boldsymbol{v}_j^{\top}\Bigr)
 >   = \sum_{i=k+1}^r \sigma_i^2 \mathrm{Tr}(\boldsymbol{v}_i\boldsymbol{v}_i^{\top})
 >   = \sum_{i=k+1}^r \sigma_i^2,
-> \]
+>
+> $$
+>
 > using $\boldsymbol{u}_i^{\top}\boldsymbol{u}_j = \delta_{ij}$ and $\mathrm{Tr}(\boldsymbol{v}_i\boldsymbol{v}_i^{\top}) = \boldsymbol{v}_i^{\top}\boldsymbol{v}_i = 1$. In particular, setting $k=0$ gives $\lVert \boldsymbol{A} \rVert_F^2 = \sum_{i=1}^r \sigma_i^2$. Next, for any $\boldsymbol{B}$ with $\mathrm{rank}(\boldsymbol{B}) \le k$, Mirsky's singular-value inequality (a consequence of Weyl's interlacing inequalities and orthogonal invariance of $\lVert \cdot \rVert_F$) states that
-> \[
+>
+> $$
+>
 >   \lVert \boldsymbol{A} - \boldsymbol{B} \rVert_F^2 \ge \sum_{i=1}^p \bigl(\sigma_i(\boldsymbol{A}) - \sigma_i(\boldsymbol{B})\bigr)^2.
-> \]
+>
+> $$
+>
 > (Alternatively, write $\boldsymbol{B} = \boldsymbol{P}_B\boldsymbol{B}$ where $\boldsymbol{P}_B \in \mathbb{R}^{m\times m}$ is the orthogonal projector onto $\mathrm{col}(\boldsymbol{B})$ of rank $\le k$: among matrices sharing column space $\mathrm{col}(\boldsymbol{B})$, orthogonal projection $\hat{\boldsymbol{B}} = \boldsymbol{P}_B\boldsymbol{A}$ minimizes $\lVert \boldsymbol{A}-\boldsymbol{B} \rVert_F^2 = \lVert (\boldsymbol{I}-\boldsymbol{P}_B)\boldsymbol{A} \rVert_F^2 + \lVert \boldsymbol{P}_B\boldsymbol{A}-\boldsymbol{B} \rVert_F^2$, leaving $\lVert \boldsymbol{A}-\hat{\boldsymbol{B}} \rVert_F^2 = \sum_{j=1}^p \sigma_j^2((\boldsymbol{I}-\boldsymbol{P}_B)\boldsymbol{A}) \ge \sum_{i=k+1}^r \sigma_i^2$ by `(eq:svd:var_sv)` and interlacing.) Since $\mathrm{rank}(\boldsymbol{B}) \le k$ forces $\sigma_i(\boldsymbol{B}) = 0$ for all $i \ge k+1$,
-> \[
+>
+> $$
+>
 >   \lVert \boldsymbol{A} - \boldsymbol{B} \rVert_F^2 \ge \sum_{i=k+1}^p \bigl(\sigma_i(\boldsymbol{A}) - 0\bigr)^2 = \sum_{i=k+1}^r \sigma_i^2 = \lVert \boldsymbol{A} - \boldsymbol{A}_k \rVert_F^2. 
-> \]
+>
+> $$
 
 Normalizing `(eq:svd:ey_frob)` by $\lVert \boldsymbol{A} \rVert_F^2 = \sum_{j=1}^r \sigma_j^2$ yields the exact relative reconstruction error and cumulative explained spectral energy for selecting truncation rank $k$ [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Eqs. (20.18)–(20.19), p. 251):
 
@@ -367,17 +424,25 @@ Figure `fig:svd:spectrum_error` quantifies the spectral decay and Eckart–Young
 
 > [!warning] Pitfall 1: Squaring the Condition Number via Normal Equations $\boldsymbol{A}^{\top}\boldsymbol{A}$
 > Constructing the SVD by explicitly forming $\boldsymbol{A}^{\top}\boldsymbol{A}$ and calling a symmetric eigensolver (the naive textbook hand-calculation recipe) squares the spectral condition number:
-> \[
+>
+> $$
+>
 >   \kappa_2(\boldsymbol{A}^{\top}\boldsymbol{A}) = \frac{\lambda_1(\boldsymbol{A}^{\top}\boldsymbol{A})}{\lambda_r(\boldsymbol{A}^{\top}\boldsymbol{A})} = \left(\frac{\sigma_1}{\sigma_r}\right)^2 = \bigl[\kappa_2(\boldsymbol{A})\bigr]^2.
-> \]
+>
+> $$
+>
 > In IEEE-754 double precision ($\epsilon_{\text{mach}} \approx 2.22 \times 10^{-16}$), any matrix with $\kappa_2(\boldsymbol{A}) \gtrsim 10^8$ causes $\sigma_r^2/\sigma_1^2 < \epsilon_{\text{mach}}$, completely obliterating small singular values and corrupting their singular vectors [[Source - E D I T I O N|linear_algebra]] (Numerical Note, p. 424) [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Sec. 4.5.2, p. 126). **Remedy:** Compute the SVD directly via Householder bidiagonalization + implicit QR (LAPACK `dgesdd`/`dgesvd`) or QR-stabilized subspace iterations (Algorithm `alg:svd:rsvd`).
 
 > [!warning] Pitfall 2: Naive Pseudoinverse vs. Truncated SVD under Ill-Conditioned Spectra
 > Consider solving a noisy linear inverse problem $\boldsymbol{b} = \boldsymbol{A}\boldsymbol{x}_\star + \boldsymbol{\eta}$ ($\lVert \boldsymbol{\eta} \rVert_2 \le \delta$) using the exact Moore–Penrose pseudoinverse `(eq:svd:pinv)` versus naive normal inversion $(\boldsymbol{A}^{\top}\boldsymbol{A})^{-1}\boldsymbol{A}^{\top}\boldsymbol{b}$. Expanding the reconstruction error in the singular bases gives
-> \[
+>
+> $$
+>
 >   \hat{\boldsymbol{x}} - \boldsymbol{x}_\star = \boldsymbol{A}^{+}\boldsymbol{b} - \boldsymbol{V}_r\boldsymbol{V}_r^{\top}\boldsymbol{x}_\star = \sum_{i=1}^r \frac{\boldsymbol{u}_i^{\top} \boldsymbol{\eta}}{\sigma_i} \boldsymbol{v}_i
 >   \implies \lVert \hat{\boldsymbol{x}} - \boldsymbol{x}_\star \rVert_2 \le \frac{\delta}{\sigma_r}.
-> \]
+>
+> $$
+>
 > When $\boldsymbol{A}$ is severely ill-conditioned ($\sigma_r \ll \delta$), unregularized inversion amplifies measurement noise and roundoff error by $1/\sigma_r \gg 1$, producing catastrophic oscillatory solutions; naive matrix inversion fails outright whenever $m \neq n$ or $\mathrm{rank}(\boldsymbol{A}) < n$. **Remedy:** Use *Truncated SVD (TSVD)* regularization $\boldsymbol{A}_k^{+} = \sum_{\sigma_i > \tau} \sigma_i^{-1} \boldsymbol{v}_i\boldsymbol{u}_i^{\top}$ with cutoff $\tau \ge \max(m,n)\epsilon_{\text{mach}}\sigma_1$ (the `rcond` tolerance in numerical libraries) or *Tikhonov/Ridge damping* $\sum_{i=1}^r \frac{\sigma_i}{\sigma_i^2 + \alpha}\boldsymbol{v}_i\boldsymbol{u}_i^{\top}$ aligned with $\lim_{\alpha \to 0^+} (\boldsymbol{A}^{\top}\boldsymbol{A}+\alpha\boldsymbol{I})^{-1}\boldsymbol{A}^{\top}$ [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Eq. (2.46), p. 46).
 
 > [!warning] Pitfall 3: Rank Determination by Pivots & Defective Non-Symmetric Matrices

@@ -73,6 +73,7 @@ Given a conditioning variable $\boldsymbol{c}$ (class label, text prompt, or ref
 >
 > $$
 > \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t \mid \boldsymbol{c}) = \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t) + \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{c} \mid \boldsymbol{x}_t).
+>
 > $$
 >
 > To trade off sample diversity against conditional fidelity, Classifier Guidance (CG) introduces a tempered tilted density $p_t(\boldsymbol{x}_t \mid \boldsymbol{c}, \omega) \propto p_t(\boldsymbol{x}_t)  p_t(\boldsymbol{c}\mid\boldsymbol{x}_t)^{\omega}$ with guidance scale $\omega \ge 0$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 8.2.2–8.2.3, p. 237):
@@ -80,6 +81,7 @@ Given a conditioning variable $\boldsymbol{c}$ (class label, text prompt, or ref
 > $$
 > \boldsymbol{s}_{\mathrm{CG}}(\boldsymbol{x}_t, t, \boldsymbol{c}; \omega)
 >   := \boldsymbol{s}_\phi(\boldsymbol{x}_t, t) + \omega \nabla_{\boldsymbol{x}_t} \log p_\psi(\boldsymbol{c} \mid \boldsymbol{x}_t, t),
+>
 > $$
 >
 > where $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t)$ is a separately trained time-dependent classifier on noisy inputs $\boldsymbol{x}_t$. Setting $\omega = 0$ recovers unconditional generation, $\omega = 1$ yields the true conditional score, and $\omega > 1$ sharpens mode concentration at the expense of diversity [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.6.2, p. 920).
@@ -92,6 +94,7 @@ Training a noise-robust classifier $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t
 > $$
 > \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{c} \mid \boldsymbol{x}_t)
 >   = \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t \mid \boldsymbol{c}) - \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t).
+>
 > $$
 >
 > Substituting this identity into `(eq:dsolver:cg_score)` yields the Classifier-Free Guidance score [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 8.3.3, p. 242):
@@ -99,6 +102,7 @@ Training a noise-robust classifier $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t
 > $$
 > \boldsymbol{s}_{\phi}^{\mathrm{CFG}}(\boldsymbol{x}_t, t, \boldsymbol{c}; \omega)
 >   := \omega \boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \boldsymbol{c}) + (1 - \omega) \boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \emptyset),
+>
 > $$
 >
 > where a single neural network $\boldsymbol{s}_\phi$ is trained jointly on paired $(\boldsymbol{x}_0, \boldsymbol{c})$ and unconditional $(\boldsymbol{x}_0, \emptyset)$ by randomly dropping $\boldsymbol{c} \gets \emptyset$ with probability $10\%$–$20\%$ [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 20.4.2, p. 611). Note that [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.6.3, p. 920) writes `(eq:dsolver:cfg_score)` as $(1+w)\boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \boldsymbol{c}) - w\boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \emptyset)$ with $w = \omega - 1$.
@@ -143,6 +147,7 @@ Integrating `(eq:dsolver:semilinear_ode)` from $s$ to $t < s$ using the integrat
 >   &= \frac{\alpha_t}{\alpha_s}\tilde{\boldsymbol{x}}_s - \alpha_t\!\left(\frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}\right)\boldsymbol{\epsilon}_\phi(\tilde{\boldsymbol{x}}_s, s)
 >   = \alpha_t \hat{\boldsymbol{x}}_0(\tilde{\boldsymbol{x}}_s, s) + \sigma_t \boldsymbol{\epsilon}_\phi(\tilde{\boldsymbol{x}}_s, s),
 > \end{aligned}
+>
 > $$
 >
 > since $\frac{g^2(\tau)}{2\sigma_\tau \alpha_\tau} = \frac{\mathrm{d}}{\mathrm{d}\tau}\!\left(\frac{\sigma_\tau}{\alpha_\tau}\right)$. Equivalently, [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.5.1, pp. 916–917) derives `(eq:dsolver:ddim)` from a non-Markovian forward process $q(\boldsymbol{x}_{t-1}\mid\boldsymbol{x}_t, \boldsymbol{x}_0)$ with variance $\tilde{\sigma}_t^2 = 0$, preserving training marginals while allowing arbitrary step skipping. Crucially, under $\boldsymbol{v}$-prediction, plain Euler equals DDIM; under $\boldsymbol{\epsilon}$-, $\boldsymbol{x}$-, or $\boldsymbol{s}$-prediction, *exponential Euler* equals DDIM $\ne$ plain Euler [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Obs. 9.2.1, p. 272).
@@ -156,6 +161,7 @@ Because DDIM is first-order (global error $O(h)$), quality degrades below $\sim 
 >
 > $$
 > \tilde{\Psi}_{s\to t}(\boldsymbol{x}_s) = \frac{\alpha_t}{\alpha_s}\boldsymbol{x}_s - \alpha_t \int_{\lambda_s}^{\lambda_t} e^{-\lambda} \hat{\boldsymbol{\epsilon}}_\phi(\hat{\boldsymbol{x}}_\lambda, \lambda) d\lambda.
+>
 > $$
 >
 > Expanding $\hat{\boldsymbol{\epsilon}}_\phi$ in an $(n-1)$-th order Taylor series around $\lambda_s$ with step $h = \lambda_t - \lambda_s > 0$ yields DPM-Solver-$n$ with local error $O(h^{n+1})$ and global error $O(h^n)$:
@@ -163,6 +169,7 @@ Because DDIM is first-order (global error $O(h)$), quality degrades below $\sim 
 > $$
 > \tilde{\boldsymbol{x}}_t = \frac{\alpha_t}{\alpha_s}\tilde{\boldsymbol{x}}_s - \alpha_t \sum_{k=0}^{n-1} \hat{\boldsymbol{\epsilon}}_\phi^{(k)}(\hat{\boldsymbol{x}}_{\lambda_s}, \lambda_s)  C_k + O(h^{n+1}),
 >   \qquad C_k := \int_{\lambda_s}^{\lambda_t} e^{-\lambda}\frac{(\lambda - \lambda_s)^k}{k!} d\lambda.
+>
 > $$
 >
 > For $n=1$, $C_0 = e^{-\lambda_s}(1 - e^{-h}) = \frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}$, recovering DDIM `(eq:dsolver:ddim)` [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 9.4.8, p. 291).
@@ -210,6 +217,7 @@ Progressive Distillation iteratively halves the required step count by training 
 >
 > $$
 > \tilde{\boldsymbol{x}} = \frac{\sigma_s \tilde{\boldsymbol{x}}_t - \sigma_t \boldsymbol{x}_s}{\alpha_t \sigma_s - \alpha_s \sigma_t}.
+>
 > $$
 >
 > Minimizing $\mathbb{E}_{s, \boldsymbol{x}_s}[w(\lambda_s)\lVert \boldsymbol{x}_\theta(\boldsymbol{x}_s, s) - \tilde{\boldsymbol{x}} \rVert_2^2]$ halves $N \to N/2 \to N/4 \to \dots$, and extends to CFG by first distilling $\omega \sim \mathcal{U}[\omega_{\min}, \omega_{\max}]$ into an $\omega$-conditioned teacher [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 10.3.4, p. 344).
@@ -233,6 +241,7 @@ $$
 >
 > $$
 > \mathcal{L}_{\mathrm{CM}}(\theta, \theta^-) = \mathcal{L}_{\mathrm{CT}}(\theta, \theta^-) + O(\Delta s^2).
+>
 > $$
 >
 > Taking $\Delta s \to 0$ yields the continuous-time objective [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Prop. 11.3.1, p. 362):
@@ -240,6 +249,7 @@ $$
 > $$
 > \mathcal{L}_{\mathrm{CM}}^\infty(\theta, \theta^-) = \mathbb{E}_{s, \boldsymbol{x}_0, \boldsymbol{\epsilon}}\!\left[\omega(s)  f_\theta(\boldsymbol{x}_s, s)^{\top} \frac{\mathrm{d}}{\mathrm{d}s}f_{\theta^-}(\boldsymbol{x}_s, s)\right],
 >   \quad \frac{\mathrm{d}}{\mathrm{d}s}f_{\theta^-} = \partial_s f_{\theta^-} + \partial_{\boldsymbol{x}} f_{\theta^-} \boldsymbol{v}^*,
+>
 > $$
 >
 > stabilized in sCM via the trigonometric schedule $\boldsymbol{x}_s = \cos(s)\boldsymbol{x}_0 + \sin(s)\boldsymbol{z}$ ($\boldsymbol{z} \sim \mathcal{N}(\boldsymbol{0}, \sigma_d^2\boldsymbol{I})$) and $f_\theta(\boldsymbol{x}, s) = \cos(s)\boldsymbol{x} - \sin(s)\sigma_d F_\theta(\boldsymbol{x}/\sigma_d, c_{\mathrm{noise}}(s))$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 11.3.8, p. 365).
@@ -265,6 +275,7 @@ $$
 > \Psi_{s\to t}(\boldsymbol{x}_s)
 >   \approx \underbrace{\frac{t}{s}\boldsymbol{x}_s + \frac{s-t}{s} g_\theta(\boldsymbol{x}_s, s, t)}_{\text{CTM}}
 >   = \underbrace{\boldsymbol{x}_s + (t-s) h_\theta(\boldsymbol{x}_s, s, t)}_{\text{Mean Flow}},
+>
 > $$
 >
 > where $g_\theta(\boldsymbol{x}_s, s, t) = \boldsymbol{x}_s - s  h_\theta(\boldsymbol{x}_s, s, t)$ and both losses are equivalent up to a $1/s^2$ time weighting. Setting $s=t$ recovers the instantaneous velocity $\boldsymbol{v}^*(\boldsymbol{x}_s, s)$, unifying diffusion/flow-matching training with $1$-step generation. For categorical data (text, segmentation), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.7, pp. 921–924) extends diffusion to discrete state spaces (D3PM) via row-stochastic transition matrices $\boldsymbol{Q}_t$ with tractable marginals $q(\boldsymbol{x}_t\mid\boldsymbol{x}_0) = \mathrm{Cat}(\boldsymbol{x}_t \mid \boldsymbol{x}_0 \bar{\boldsymbol{Q}}_t)$.

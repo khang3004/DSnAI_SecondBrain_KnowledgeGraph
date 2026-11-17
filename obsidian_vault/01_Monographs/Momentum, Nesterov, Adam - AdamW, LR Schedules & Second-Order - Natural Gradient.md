@@ -91,34 +91,45 @@ In optimization literature, momentum appears in three superficially distinct alg
 >
 > $$
 > \text{(ML Momentum)}\qquad \boldsymbol{m}_t = \beta_t \boldsymbol{m}_{t-1} + \boldsymbol{g}_t, \qquad \boldsymbol{\theta}_{t} = \boldsymbol{\theta}_{t-1} - \gamma_t \boldsymbol{m}_t.
+>
 > $$
 >
 > Then:
 > - **Heavy-Ball Equivalence:** For $t \ge 1$, the iterates $\{\boldsymbol{\theta}_t\}$ obey Polyak's Heavy-Ball form
 >
+>
 > $$
 > \boldsymbol{\theta}_t = \boldsymbol{\theta}_{t-1} - \hat{\gamma}_t \boldsymbol{g}_t + \hat{\beta}_t(\boldsymbol{\theta}_{t-1} - \boldsymbol{\theta}_{t-2}),
+>
 > $$
 >
 >   with $\hat{\gamma}_t = \gamma_t$, $\hat{\beta}_1 = 0$, and $\hat{\beta}_t = \frac{\gamma_t}{\gamma_{t-1}}\beta_t$ for $t \ge 2$ [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lemma 7.2, p. 36). When $\gamma_t \equiv \gamma$ is constant, $\hat{\beta}_t = \beta_t$.
 > - **Iterate-Moving-Average (IMA) Equivalence:** Choosing $(\eta_t, \lambda_t)$ satisfying $\beta_t \lambda_{t+1} = \frac{\gamma_{t-1}}{\gamma_t}\lambda_t - \beta_t$ and $\eta_t = (1 + \lambda_{t+1})\gamma_t$ (with $\boldsymbol{z}_0 = \boldsymbol{\theta}_0$ and $\boldsymbol{z}_{t-1} = \boldsymbol{\theta}_{t-1} + \lambda_t(\boldsymbol{\theta}_{t-1} - \boldsymbol{\theta}_{t-2})$), `(eq:optalg:ml_mom)` is identical to
 >
+>
 > $$
 > \boldsymbol{z}_t = \boldsymbol{z}_{t-1} - \eta_t \boldsymbol{g}_t, \qquad \boldsymbol{\theta}_t = \frac{\lambda_{t+1}}{\lambda_{t+1}+1}\boldsymbol{\theta}_{t-1} + \frac{1}{\lambda_{t+1}+1}\boldsymbol{z}_t.
+>
 > $$
 > - **Stochastic Convex Convergence:** If each component $f_i$ is convex and $L_{\max}$-smooth with gradient noise $\sigma_f^* = \inf_{\boldsymbol{\theta}^*\in\arg\min f}\mathrm{Var}[\nabla f_i(\boldsymbol{\theta}^*)]$ at optima, then choosing $\gamma_t = \frac{2\eta}{t+2}$ and $\beta_t = \frac{t-1}{t+1}$ ($t \ge 1$, corresponding to constant $\eta_t \equiv \eta \le \frac{1}{4L_{\max}}$ and $\lambda_t = \frac{t-1}{2}$) yields last-iterate convergence [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thm. 7.4 & Cor. 7.5, pp. 38–39):
 >
+>
 > $$
 > \mathbb{E}\bigl[f(\boldsymbol{\theta}_T) - \inf f\bigr] \le \frac{\lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert_2^2}{\eta T} + 2\eta\sigma_f^*,
+>
 > $$
 >
 >   giving $O(1/\varepsilon^2)$ complexity for $\eta = \frac{1}{4L_{\max}\sqrt{T}}$ (without iterate averaging).
 >
 >
 > **Proof of (1)–(2).** From `(eq:optalg:ml_mom)` at step $t-1$ ($t \ge 2$), $\boldsymbol{m}_{t-1} = \frac{1}{\gamma_{t-1}}(\boldsymbol{\theta}_{t-2} - \boldsymbol{\theta}_{t-1})$. Substituting into $\boldsymbol{\theta}_t = \boldsymbol{\theta}_{t-1} - \gamma_t(\beta_t\boldsymbol{m}_{t-1} + \boldsymbol{g}_t)$ gives $\boldsymbol{\theta}_t = \boldsymbol{\theta}_{t-1} - \gamma_t\boldsymbol{g}_t + \frac{\gamma_t\beta_t}{\gamma_{t-1}}(\boldsymbol{\theta}_{t-1} - \boldsymbol{\theta}_{t-2})$, proving `(eq:optalg:hb_form)`. For (2), isolating $\boldsymbol{z}_t = (1 + \lambda_{t+1})\boldsymbol{\theta}_t - \lambda_{t+1}\boldsymbol{\theta}_{t-1}$ and inserting `(eq:optalg:hb_form)` yields
-> \[
+>
+> $$
+>
 >   \boldsymbol{z}_t = \boldsymbol{\theta}_{t-1} + (1 + \lambda_{t+1})\hat{\beta}_t(\boldsymbol{\theta}_{t-1} - \boldsymbol{\theta}_{t-2}) - (1 + \lambda_{t+1})\gamma_t \boldsymbol{g}_t = \boldsymbol{z}_{t-1} - \eta_t \boldsymbol{g}_t,
-> \]
+>
+> $$
+>
 > because the stated recurrence ensures $(1+\lambda_{t+1})\hat{\beta}_t = (1+\lambda_{t+1})\frac{\gamma_t}{\gamma_{t-1}}\beta_t = \lambda_t$.
 
 While Theorem `thm:optalg:momentum_equiv` guarantees last-iterate stability in stochastic convex optimization, Polyak Heavy-Ball reveals its signature *square-root condition-number speedup* on deterministic strongly convex quadratics.
@@ -128,30 +139,44 @@ While Theorem `thm:optalg:momentum_equiv` guarantees last-iterate stability in s
 >
 > $$
 > \alpha^* = \frac{4}{(\sqrt{L} + \sqrt{\mu})^2}, \qquad \beta^* = \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^2,
+>
 > $$
 >
 > the augmented error state $\boldsymbol{\xi}_t = [(\boldsymbol{\theta}_t - \boldsymbol{\theta}^*)^{\top},  (\boldsymbol{\theta}_{t-1} - \boldsymbol{\theta}^*)^{\top}]^{\top}$ contracts asymptotically with spectral radius
 >
 > $$
 > \rho_{\mathrm{HB}}^* = \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1} = 1 - \frac{2}{\sqrt{\kappa} + 1},
+>
 > $$
 >
 > achieving $\lVert \boldsymbol{\theta}_T - \boldsymbol{\theta}^* \rVert_2 \le C_\delta (\rho_{\mathrm{HB}}^* + \delta)^T \lVert \boldsymbol{\theta}_0 - \boldsymbol{\theta}^* \rVert_2$ for any $\delta > 0$, improving iteration complexity from $O(\kappa \log(1/\varepsilon))$ for optimal gradient descent ($\rho_{\mathrm{GD}}^* = \frac{\kappa - 1}{\kappa + 1}$) to $O(\sqrt{\kappa}\log(1/\varepsilon))$.
 >
 > **Proof.** Write $\boldsymbol{A} = \boldsymbol{Q}\boldsymbol{\Lambda}\boldsymbol{Q}^{\top}$ via the spectral theorem and transform the error $\boldsymbol{e}_t = \boldsymbol{Q}^{\top}(\boldsymbol{\theta}_t - \boldsymbol{\theta}^*)$, where $\nabla f(\boldsymbol{\theta}_t) = \boldsymbol{A}(\boldsymbol{\theta}_t - \boldsymbol{\theta}^*)$. Each eigenmode $i \in \{1,\dots,P\}$ decouples into a $2\times 2$ linear dynamical system:
-> \[
+>
+> $$
+>
 >   \begin{bmatrix} e_{t+1,i} \\ e_{t,i} \end{bmatrix}
 >   = \underbrace{\begin{bmatrix} 1 + \beta - \alpha \lambda_i & -\beta \\ 1 & 0 \end{bmatrix}}_{\boldsymbol{T}(\lambda_i)}
 >   \begin{bmatrix} e_{t,i} \\ e_{t-1,i} \end{bmatrix}.
-> \]
+>
+> $$
+>
 > The eigenvalues $r \in \mathbb{C}$ of $\boldsymbol{T}(\lambda_i)$ satisfy the characteristic quadratic $r^2 - (1 + \beta - \alpha\lambda_i)r + \beta = 0$. Whenever the discriminant is non-positive,
-> \[
+>
+> $$
+>
 >   \Delta(\lambda_i) = (1 + \beta - \alpha\lambda_i)^2 - 4\beta \le 0 \iff (1 - \sqrt{\beta})^2 \le \alpha \lambda_i \le (1 + \sqrt{\beta})^2,
-> \]
+>
+> $$
+>
 > both roots form a complex-conjugate pair $r_{1,2} = \frac{1}{2}(1 + \beta - \alpha\lambda_i \pm \mathrm{i}\sqrt{-\Delta(\lambda_i)})$ lying strictly on the circle of radius $|r_1| = |r_2| = \sqrt{\beta}$ in $\mathbb{C}$. Enforcing $\Delta(\lambda_i) \le 0$ uniformly across the entire spectrum $[\mu, L]$ requires $(1-\sqrt{\beta})^2 \le \alpha \mu$ and $\alpha L \le (1+\sqrt{\beta})^2$. Minimizing the common spectral radius $\sqrt{\beta}$ makes both endpoint constraints tight:
-> \[
+>
+> $$
+>
 >   \frac{L}{\mu} = \kappa = \left(\frac{1 + \sqrt{\beta^*}}{1 - \sqrt{\beta^*}}\right)^2 \implies \sqrt{\kappa}(1 - \sqrt{\beta^*}) = 1 + \sqrt{\beta^*} \implies \sqrt{\beta^*} = \frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}.
-> \]
+>
+> $$
+>
 > Substituting $\sqrt{\beta^*}$ back into $\alpha^* \mu = (1 - \sqrt{\beta^*})^2 = \frac{4}{(\sqrt{\kappa}+1)^2}$ yields $\alpha^* = \frac{4}{\mu(\sqrt{\kappa}+1)^2} = \frac{4}{(\sqrt{L}+\sqrt{\mu})^2}$. By Gelfand's spectral radius formula $\lim_{T\to\infty}\lVert \boldsymbol{T}(\lambda_i)^T \rVert_2^{1/T} = \rho(\boldsymbol{T}(\lambda_i)) = \sqrt{\beta^*}$, establishing `(eq:optalg:hb_spectral)`.
 
 > [!tip] Newtonian Particle with Viscous Drag & Non-Normal Overshoot
@@ -175,33 +200,48 @@ Setting $\boldsymbol{v}_t = \boldsymbol{x}_{t+1} - \boldsymbol{x}_t$ and $\bolds
 >
 > $$
 > \lambda_{t+1} = \frac{1 + \sqrt{1 + 4\lambda_t^2}}{2}, \qquad \beta_t = \frac{\lambda_t - 1}{\lambda_{t+1}} \qquad (t \ge 1).
+>
 > $$
 >
 > Running `(eq:optalg:nag_nesterov)` with $\eta_t \equiv 1/L$ guarantees, for every $T \ge 1$:
 >
 > $$
 > f(\boldsymbol{x}_T) - f(\boldsymbol{x}^*) \le \frac{2L\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2}{(T + 1)^2} = O\!\left(\frac{1}{T^2}\right),
+>
 > $$
 >
 > improving quadratically upon deterministic gradient descent's $O(1/T)$ bound $\frac{L\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2^2}{2T}$ [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thm. 3.4, p. 14) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 8.3.3, p. 300). For $\mu$-strongly convex $L$-smooth objectives, constant $\eta_t \equiv 1/L$ and $\beta_t \equiv \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}$ achieve global linear convergence $f(\boldsymbol{x}_T) - f(\boldsymbol{x}^*) \le \left(1 - \frac{1}{\sqrt{\kappa}}\right)^T \bigl(f(\boldsymbol{x}_0) - f(\boldsymbol{x}^*) + \frac{\mu}{2}\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2\bigr)$.
 >
 > **Proof.** Let $A_t \triangleq \lambda_t^2$ and $a_{t+1} \triangleq \lambda_{t+1}$ for $t \ge 0$ (so $A_0 = 0$, $A_1 = a_1 = 1$). By `(eq:optalg:nag_seq)`, $\lambda_{t+1}^2 - \lambda_{t+1} = \lambda_t^2$, meaning $A_{t+1} = A_t + a_{t+1}$ and $a_{t+1}^2 = A_{t+1}$. Define the auxiliary mirror sequence $\boldsymbol{z}_0 = \boldsymbol{x}_0$ and
-> \[
+>
+> $$
+>
 >   \boldsymbol{z}_{t+1} = \boldsymbol{z}_t - \frac{a_{t+1}}{L}\nabla f(\boldsymbol{y}_t), \qquad \boldsymbol{y}_t = \frac{A_t}{A_{t+1}}\boldsymbol{x}_t + \frac{a_{t+1}}{A_{t+1}}\boldsymbol{z}_t.
-> \]
+>
+> $$
+>
 > (Unrolling $a_t\boldsymbol{z}_t = A_t\boldsymbol{x}_t - A_{t-1}\boldsymbol{x}_{t-1}$ gives $\boldsymbol{z}_t = \boldsymbol{x}_t + (a_t - 1)(\boldsymbol{x}_t - \boldsymbol{x}_{t-1})$, which upon substitution recovers $\boldsymbol{y}_t = \boldsymbol{x}_t + \frac{a_t - 1}{a_{t+1}}(\boldsymbol{x}_t - \boldsymbol{x}_{t-1}) = \boldsymbol{x}_t + \beta_t(\boldsymbol{x}_t - \boldsymbol{x}_{t-1})$.) Introduce the Lyapunov potential
-> \[
+>
+> $$
+>
 >   \mathcal{E}_t \triangleq A_t\bigl(f(\boldsymbol{x}_t) - f(\boldsymbol{x}^*)\bigr) + \frac{L}{2}\lVert \boldsymbol{z}_t - \boldsymbol{x}^* \rVert_2^2.
-> \]
+>
+> $$
+>
 > By $L$-smoothness at $\boldsymbol{y}_t$ and $\boldsymbol{x}_{t+1} = \boldsymbol{y}_t - \frac{1}{L}\nabla f(\boldsymbol{y}_t)$, descent yields $f(\boldsymbol{x}_{t+1}) \le f(\boldsymbol{y}_t) - \frac{1}{2L}\lVert \nabla f(\boldsymbol{y}_t) \rVert_2^2$. Meanwhile, convexity of $f$ at $\boldsymbol{y}_t$ gives $f(\boldsymbol{x}_t) \ge f(\boldsymbol{y}_t) + \langle \nabla f(\boldsymbol{y}_t), \boldsymbol{x}_t - \boldsymbol{y}_t \rangle$ and $f(\boldsymbol{x}^*) \ge f(\boldsymbol{y}_t) + \langle \nabla f(\boldsymbol{y}_t), \boldsymbol{x}^* - \boldsymbol{y}_t \rangle$. Weighting these two inequalities by $A_t$ and $a_{t+1}$ ($A_{t+1} = A_t + a_{t+1}$) and using $A_t(\boldsymbol{x}_t - \boldsymbol{y}_t) = a_{t+1}(\boldsymbol{y}_t - \boldsymbol{z}_t)$ yields
-> \[
+>
+> $$
+>
 >   A_{t+1} f(\boldsymbol{y}_t) \le A_t f(\boldsymbol{x}_t) + a_{t+1} f(\boldsymbol{x}^*) + a_{t+1}\langle \nabla f(\boldsymbol{y}_t), \boldsymbol{z}_t - \boldsymbol{x}^* \rangle.
-> \]
+>
+> $$
+>
 > Combining with $A_{t+1}f(\boldsymbol{x}_{t+1}) \le A_{t+1}f(\boldsymbol{y}_t) - \frac{A_{t+1}}{2L}\lVert \nabla f(\boldsymbol{y}_t) \rVert_2^2$ and subtracting $A_{t+1}f(\boldsymbol{x}^*)$ produces
 >
 > $$
 > A_{t+1}\bigl(f(\boldsymbol{x}_{t+1}) - f(\boldsymbol{x}^*)\bigr) - A_t\bigl(f(\boldsymbol{x}_t) - f(\boldsymbol{x}^*)\bigr)
 >   \le a_{t+1}\langle \nabla f(\boldsymbol{y}_t), \boldsymbol{z}_t - \boldsymbol{x}^* \rangle - \frac{A_{t+1}}{2L}\lVert \nabla f(\boldsymbol{y}_t) \rVert_2^2.
+>
 > $$
 >
 > Expanding $\frac{L}{2}\lVert \boldsymbol{z}_{t+1} - \boldsymbol{x}^* \rVert_2^2$ via $\boldsymbol{z}_{t+1} = \boldsymbol{z}_t - \frac{a_{t+1}}{L}\nabla f(\boldsymbol{y}_t)$ yields
@@ -209,6 +249,7 @@ Setting $\boldsymbol{v}_t = \boldsymbol{x}_{t+1} - \boldsymbol{x}_t$ and $\bolds
 > $$
 > \frac{L}{2}\lVert \boldsymbol{z}_{t+1} - \boldsymbol{x}^* \rVert_2^2 - \frac{L}{2}\lVert \boldsymbol{z}_t - \boldsymbol{x}^* \rVert_2^2
 >   = -a_{t+1}\langle \nabla f(\boldsymbol{y}_t), \boldsymbol{z}_t - \boldsymbol{x}^* \rangle + \frac{a_{t+1}^2}{2L}\lVert \nabla f(\boldsymbol{y}_t) \rVert_2^2.
+>
 > $$
 >
 > Adding `(eq:optalg:nag_step1)` and `(eq:optalg:nag_step2)` cancels the cross-term identically and leaves $\mathcal{E}_{t+1} - \mathcal{E}_t \le \frac{a_{t+1}^2 - A_{t+1}}{2L}\lVert \nabla f(\boldsymbol{y}_t) \rVert_2^2 = 0$. Finally, induction on `(eq:optalg:nag_seq)` shows $\lambda_t \ge \frac{t+1}{2}$ for all $t \ge 1$ (since $\lambda_1 = 1$ and $\lambda_{t+1} > \frac{1 + 2\lambda_t}{2} = \lambda_t + \frac{1}{2}$), whence $A_T = \lambda_T^2 \ge \frac{(T+1)^2}{4}$. Since $\mathcal{E}_T \le \mathcal{E}_0 = \frac{L}{2}\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2$, dividing by $A_T$ yields `(eq:optalg:nag_bound)`.
@@ -229,19 +270,25 @@ Even with momentum, isotropic methods apply a single scalar step size $\eta_t$ a
 > $$
 > \boldsymbol{m}_t = (1 - \beta_1)\sum_{i=1}^t \beta_1^{t-i}\boldsymbol{g}_i, \qquad
 >   \boldsymbol{v}_t = (1 - \beta_2)\sum_{i=1}^t \beta_2^{t-i}\boldsymbol{g}_i^{\odot 2}.
+>
 > $$
 >
 > Assuming stationary gradient moments $\mathbb{E}[\boldsymbol{g}_i] = \mathbb{E}[\boldsymbol{g}]$ and $\mathbb{E}[\boldsymbol{g}_i^{\odot 2}] = \mathbb{E}[\boldsymbol{g}^{\odot 2}]$ (or shifting weights onto the geometric sum $(1 - \beta_2)\sum_{i=1}^t \beta_2^{t-i} = 1 - \beta_2^t$ up to a transient non-stationarity remainder $\boldsymbol{\zeta}_t$),
-> \[
+>
+> $$
+>
 >   \mathbb{E}[\boldsymbol{m}_t] = (1 - \beta_1^t)\mathbb{E}[\boldsymbol{g}] + \boldsymbol{\zeta}_t^{(1)}, \qquad
 >   \mathbb{E}[\boldsymbol{v}_t] = (1 - \beta_2^t)\mathbb{E}[\boldsymbol{g}^{\odot 2}] + \boldsymbol{\zeta}_t^{(2)}.
-> \]
+>
+> $$
+>
 > Dividing out the geometric normalization shortfall yields the bias-corrected moments [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Alg. 8.7, p. 311) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eqs. (8.80)–(8.81), p. 300):
 >
 > $$
 > \hat{\boldsymbol{m}}_t = \frac{\boldsymbol{m}_t}{1 - \beta_1^t}, \qquad
 >   \hat{\boldsymbol{v}}_t = \frac{\boldsymbol{v}_t}{1 - \beta_2^t}, \qquad
 >   \Delta\boldsymbol{\theta}_t = -\eta_t \frac{\hat{\boldsymbol{m}}_t}{\sqrt{\hat{\boldsymbol{v}}_t} + \epsilon}.
+>
 > $$
 >
 > **Scale Invariance & Early-Step Stabilization:** At $t=1$, without bias correction ($\beta_1=0.9, \beta_2=0.999$), $\boldsymbol{m}_1/\sqrt{\boldsymbol{v}_1} = \frac{1-\beta_1}{\sqrt{1-\beta_2}}\mathrm{sign}(\boldsymbol{g}_1) \approx 3.162 \mathrm{sign}(\boldsymbol{g}_1)$, inflating the first step by over $3\times$ relative to $\eta_1$ (whereas RMSProp without correction exhibits severe early variance bias [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 8.5.3, p. 309)). With bias correction, $\hat{\boldsymbol{m}}_1/\sqrt{\hat{\boldsymbol{v}}_1} = \mathrm{sign}(\boldsymbol{g}_1)$, capping $|\Delta\theta_{1,j}| \le \eta_1$. Moreover, in the stationary regime ($\epsilon \to 0$, $t \gg (1-\beta_2)^{-1}$), Jensen's inequality on the ratio gives $|\hat{m}_{t,j}|/\sqrt{\hat{v}_{t,j}} \le 1$ whenever gradients remain aligned ($\boldsymbol{g}_i \approx \boldsymbol{g}$), bounding per-coordinate displacement to an approximate trust region $|\Delta\theta_{t,j}| \lesssim \eta_t$ invariant to positive gradient rescaling $\boldsymbol{g}_i \mapsto c \boldsymbol{g}_i$ ($c > 0$).
@@ -253,20 +300,34 @@ Equally critical in modern deep learning and LLM pretraining is how $L_2$ regula
 > [!important] Theorem: Coupled $L_2$ Regularization vs. Decoupled Weight Decay (AdamW)
 > Consider minimizing the $L_2$-penalized objective $\tilde{\mathcal{L}}(\boldsymbol{\theta}) = \mathcal{L}(\boldsymbol{\theta}) + \frac{\lambda}{2}\lVert \boldsymbol{\theta} \rVert_2^2$, whose stochastic gradient is $\tilde{\boldsymbol{g}}_t = \boldsymbol{g}_t + \lambda\boldsymbol{\theta}_{t-1}$.
 > - **Exact Equivalence under Vanilla SGD:** With no adaptive preconditioning ($\boldsymbol{P}_t = \boldsymbol{I}_P$), substituting $\tilde{\boldsymbol{g}}_t$ into SGD gives
->   \[
+>
+>
+> $$
+>
 >     \boldsymbol{\theta}_t = \boldsymbol{\theta}_{t-1} - \eta_t(\boldsymbol{g}_t + \lambda\boldsymbol{\theta}_{t-1}) = (1 - \eta_t\lambda)\boldsymbol{\theta}_{t-1} - \eta_t \boldsymbol{g}_t,
->   \]
+>
+>
+> $$
+>
 >   so $L_2$ regularization with strength $\lambda$ is algebraically identical to multiplicative weight decay with factor $\lambda_{\mathrm{WD}} = \eta_t\lambda$ [[Source - Understanding Deep Learning|understandingdl_simonprince]] (p. 156).
 > - **Coupled Distortion under Adam ($L_2$):** Injecting $\tilde{\boldsymbol{g}}_t = \boldsymbol{g}_t + \lambda\boldsymbol{\theta}_{t-1}$ into `(eq:optalg:adam_unroll)` mixes $\lambda\boldsymbol{\theta}_{t-1}$ into *both* $\boldsymbol{m}_t$ and $\boldsymbol{v}_t$, yielding (for $\beta_1=0$ for clarity, or exponentially smoothed for $\beta_1>0$):
->   \[
+>
+>
+> $$
+>
 >     \boldsymbol{\theta}_t = \boldsymbol{\theta}_{t-1} - \eta_t \frac{\hat{\boldsymbol{m}}_t^{\mathcal{L}}}{\sqrt{\hat{\boldsymbol{v}}_t^{\mathrm{coupled}}} + \epsilon}
 >     - \eta_t \frac{\lambda_{\mathrm{eff},t}}{\sqrt{\hat{\boldsymbol{v}}_t^{\mathrm{coupled}}} + \epsilon} \odot \boldsymbol{\theta}_{t-1}.
->   \]
+>
+>
+> $$
+>
 >   Consequently, parameters with historically large loss gradients (large $\sqrt{\hat{v}_{t,j}}$) receive strongly attenuated decay $\propto \lambda / \sqrt{\hat{v}_{t,j}}$, while flat directions undergo excessive shrinkage, coupling the optimal regularization hyperparameter $\lambda$ tightly to $\eta_t$ and gradient scale [[Source - Understanding Deep Learning|understandingdl_simonprince]] (p. 156).
 > - **AdamW Decoupling:** Loshchilov & Hutter (2019) decouple weight decay from gradient moments using pure loss gradients $\boldsymbol{g}_t = \nabla\mathcal{L}_{B_t}(\boldsymbol{\theta}_{t-1})$:
 >
+>
 > $$
 > \boldsymbol{\theta}_t = (1 - \eta_t \lambda)\boldsymbol{\theta}_{t-1} - \eta_t \frac{\hat{\boldsymbol{m}}_t}{\sqrt{\hat{\boldsymbol{v}}_t} + \epsilon},
+>
 > $$
 >
 >   restoring uniform exponential decay $(1 - \eta_t\lambda)$ across all weights independently of gradient curvature [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (p. 371) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (p. 94).
@@ -308,18 +369,24 @@ Minimizing the second-order Taylor model $M_t(\boldsymbol{\delta}) = \mathcal{L}
 >
 > $$
 > \boldsymbol{C}_{t+1} = \boldsymbol{V}_t^{\top} \boldsymbol{C}_t \boldsymbol{V}_t + \rho_t \boldsymbol{s}_t \boldsymbol{s}_t^{\top}, \qquad \boldsymbol{V}_t \triangleq \boldsymbol{I}_P - \rho_t \boldsymbol{y}_t \boldsymbol{s}_t^{\top},
+>
 > $$
 >
 > while Sherman–Morrison–Woodbury inversion gives the primal Hessian update [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eqs. (8.44), (8.48), pp. 290–291):
 >
 > $$
 > \boldsymbol{B}_{t+1} = \boldsymbol{B}_t + \frac{\boldsymbol{y}_t \boldsymbol{y}_t^{\top}}{\boldsymbol{y}_t^{\top} \boldsymbol{s}_t} - \frac{(\boldsymbol{B}_t\boldsymbol{s}_t)(\boldsymbol{B}_t\boldsymbol{s}_t)^{\top}}{\boldsymbol{s}_t^{\top} \boldsymbol{B}_t \boldsymbol{s}_t}.
+>
 > $$
 >
 > **Positive-Definiteness Preservation:** If $\boldsymbol{C}_t \succ \boldsymbol{0}$ and a Wolfe line search guarantees the curvature condition $\boldsymbol{y}_t^{\top} \boldsymbol{s}_t > 0$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. (8.47), p. 291), then for any nonzero $\boldsymbol{u} \in \mathbb{R}^P$,
-> \[
+>
+> $$
+>
 >   \boldsymbol{u}^{\top} \boldsymbol{C}_{t+1}\boldsymbol{u} = (\boldsymbol{V}_t\boldsymbol{u})^{\top} \boldsymbol{C}_t (\boldsymbol{V}_t\boldsymbol{u}) + \rho_t (\boldsymbol{s}_t^{\top} \boldsymbol{u})^2 > 0,
-> \]
+>
+> $$
+>
 > since $\boldsymbol{V}_t\boldsymbol{u} = \boldsymbol{0} \implies \boldsymbol{u} = \rho_t(\boldsymbol{s}_t^{\top}\boldsymbol{u})\boldsymbol{y}_t \neq \boldsymbol{0} \implies \boldsymbol{s}_t^{\top}\boldsymbol{u} \neq 0$, so both terms cannot vanish simultaneously. Hence $\boldsymbol{C}_{t+1} \succ \boldsymbol{0}$ inductively!
 >
 > **Two-Loop L-BFGS Compression:** Rather than storing $\boldsymbol{C}_t \in \mathbb{R}^{P \times P}$ ($O(P^2)$), L-BFGS retains only the most recent $M$ curvature pairs $\{(\boldsymbol{s}_i, \boldsymbol{y}_i)\}_{i=t-M}^{t-1}$ ($M \approx 5$–$20$) and unrolls `(eq:optalg:bfgs_inv)` from a scaled diagonal seed $\boldsymbol{C}_t^0 = \gamma_t \boldsymbol{I}_P$, $\gamma_t = \frac{\boldsymbol{s}_{t-1}^{\top}\boldsymbol{y}_{t-1}}{\boldsymbol{y}_{t-1}^{\top}\boldsymbol{y}_{t-1}}$:
@@ -327,6 +394,7 @@ Minimizing the second-order Taylor model $M_t(\boldsymbol{\delta}) = \mathcal{L}
 > $$
 > \boldsymbol{C}_t = (\boldsymbol{V}_{t-1}^{\top} \cdots \boldsymbol{V}_{t-M}^{\top})\boldsymbol{C}_t^0(\boldsymbol{V}_{t-M}\cdots\boldsymbol{V}_{t-1})
 >   + \sum_{k=t-M}^{t-1} \rho_k (\boldsymbol{V}_{t-1}^{\top}\cdots\boldsymbol{V}_{k+1}^{\top})\boldsymbol{s}_k\boldsymbol{s}_k^{\top}(\boldsymbol{V}_{k+1}\cdots\boldsymbol{V}_{t-1}).
+>
 > $$
 >
 > Applying $\boldsymbol{C}_t$ to $\boldsymbol{g}_t$ via a backward pass (computing $\boldsymbol{q} \leftarrow \boldsymbol{V}_{t-M}\cdots\boldsymbol{V}_{t-1}\boldsymbol{g}_t$ and scalars $\alpha_i = \rho_i \boldsymbol{s}_i^{\top}\boldsymbol{q}$) followed by $\boldsymbol{r} \leftarrow \boldsymbol{C}_t^0\boldsymbol{q}$ and a forward pass (accumulating $\boldsymbol{V}_i^{\top}$ products and $(\alpha_i - \rho_i\boldsymbol{y}_i^{\top}\boldsymbol{r})\boldsymbol{s}_i$) yields the exact quasi-Newton direction $\boldsymbol{d}_t = -\boldsymbol{C}_t\boldsymbol{g}_t$ in $O(MP)$ memory and $4MP + O(P)$ FLOPs [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.3.2, p. 291) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 8.6.3, p. 317).
@@ -340,35 +408,48 @@ For probabilistic prediction models $p_{\boldsymbol{\theta}}(y\mid\boldsymbol{x}
 > $$
 > \boldsymbol{F}(\boldsymbol{\theta}) \triangleq \mathbb{E}_{p_{\mathcal{D}}(\boldsymbol{x})}\mathbb{E}_{p_{\boldsymbol{\theta}}(y\mid\boldsymbol{x})}\!\left[\boldsymbol{s}_{\boldsymbol{\theta}}\boldsymbol{s}_{\boldsymbol{\theta}}^{\top}\right]
 >   = -\mathbb{E}_{p_{\mathcal{D}}(\boldsymbol{x})}\mathbb{E}_{p_{\boldsymbol{\theta}}(y\mid\boldsymbol{x})}\!\left[\nabla^2_{\boldsymbol{\theta}}\log p_{\boldsymbol{\theta}}(y\mid\boldsymbol{x})\right] \succeq \boldsymbol{0}.
+>
 > $$
 > - **KL Trust-Region Derivation:** Second-order Taylor expansion of the expected KL divergence (using $\mathbb{E}_{p_{\boldsymbol{\theta}}}[\boldsymbol{s}_{\boldsymbol{\theta}}] = \boldsymbol{0}$) yields $\mathbb{E}_{p_{\mathcal{D}}}[D_{\mathrm{KL}}(p_{\boldsymbol{\theta}} \parallel p_{\boldsymbol{\theta}+\boldsymbol{\delta}})] = \frac{1}{2}\boldsymbol{\delta}^{\top} \boldsymbol{F}(\boldsymbol{\theta})\boldsymbol{\delta} + O(\lVert \boldsymbol{\delta} \rVert_2^3)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. (5.81), p. 233; Eq. (6.82), p. 280). Minimizing the linearized objective subject to a KL penalty $\min_{\boldsymbol{\delta}} \boldsymbol{g}_t^{\top}\boldsymbol{\delta} + \frac{1}{2\eta_t}\boldsymbol{\delta}^{\top}\boldsymbol{F}(\boldsymbol{\theta}_t)\boldsymbol{\delta}$ gives the **Natural Gradient** update [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. (6.85)–(6.90), p. 281):
 >
+>
 > $$
 > \tilde{\nabla}\mathcal{L}(\boldsymbol{\theta}_t) \triangleq \boldsymbol{F}(\boldsymbol{\theta}_t)^{-1} \nabla\mathcal{L}(\boldsymbol{\theta}_t), \qquad \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \eta_t \tilde{\nabla}\mathcal{L}(\boldsymbol{\theta}_t).
+>
 > $$
 > - **Reparameterization Invariance:** Let $\boldsymbol{\theta} = \psi(\boldsymbol{\xi})$ be any smooth diffeomorphism with Jacobian $\boldsymbol{J} = \frac{\partial \boldsymbol{\theta}}{\partial \boldsymbol{\xi}}$. By the chain rule, $\nabla_{\boldsymbol{\xi}}\log p = \boldsymbol{J}^{\top}\nabla_{\boldsymbol{\theta}}\log p$ and $\nabla_{\boldsymbol{\xi}}\mathcal{L} = \boldsymbol{J}^{\top}\nabla_{\boldsymbol{\theta}}\mathcal{L}$, so $\boldsymbol{F}_{\boldsymbol{\xi}} = \boldsymbol{J}^{\top}\boldsymbol{F}_{\boldsymbol{\theta}}\boldsymbol{J}$. Consequently, for small $\eta_t$, the induced step in $\boldsymbol{\theta}$-space is invariant to parameterization:
->   \[
+>
+>
+> $$
+>
 >     \Delta\boldsymbol{\theta} \approx \boldsymbol{J}\Delta\boldsymbol{\xi}
 >     = -\eta_t \boldsymbol{J}(\boldsymbol{J}^{\top} \boldsymbol{F}_{\boldsymbol{\theta}}\boldsymbol{J})^{-1} (\boldsymbol{J}^{\top} \nabla_{\boldsymbol{\theta}}\mathcal{L})
 >     = -\eta_t \boldsymbol{F}_{\boldsymbol{\theta}}^{-1} \nabla_{\boldsymbol{\theta}}\mathcal{L}.
->   \]
+>
+>
+> $$
+>
 >   In exponential families with natural parameters $\boldsymbol{\lambda}$, cumulant $A(\boldsymbol{\lambda})$, and moment parameters $\boldsymbol{\mu} = \nabla_{\boldsymbol{\lambda}}A(\boldsymbol{\lambda})$, $\boldsymbol{F}(\boldsymbol{\lambda}) = \nabla^2_{\boldsymbol{\lambda}} A(\boldsymbol{\lambda}) = \frac{\partial \boldsymbol{\mu}}{\partial \boldsymbol{\lambda}}$, giving the remarkable duality $\tilde{\nabla}_{\boldsymbol{\lambda}}L(\boldsymbol{\lambda}) = \boldsymbol{F}(\boldsymbol{\lambda})^{-1}\nabla_{\boldsymbol{\lambda}}L(\boldsymbol{\lambda}) = \nabla_{\boldsymbol{\mu}}L(\boldsymbol{\mu})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. (6.99)–(6.101), p. 284).
 > - **Generalized Gauss–Newton (GGN) & Equivalence:** Let $f(\boldsymbol{x};\boldsymbol{\theta}) \in \mathbb{R}^C$ denote network logits, $\boldsymbol{J}_{\boldsymbol{\theta}}(\boldsymbol{x}) = \frac{\partial f}{\partial \boldsymbol{\theta}} \in \mathbb{R}^{C \times P}$ the network Jacobian, $\boldsymbol{r} = \nabla_f \log p(y\mid f)$, and $\boldsymbol{\Lambda} = -\nabla^2_f \log p(y\mid f) \succeq \boldsymbol{0}$. Differentiating `(eq:optalg:fim)` gives the exact NLL Hessian [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. (17.14)–(17.15), pp. 652–653):
+>
 >
 > $$
 > \nabla^2_{\boldsymbol{\theta}}\bigl(-\log p(y\mid f)\bigr) = \boldsymbol{J}_{\boldsymbol{\theta}}^{\top} \boldsymbol{\Lambda} \boldsymbol{J}_{\boldsymbol{\theta}} - \sum_{c=1}^C r_c \nabla^2_{\boldsymbol{\theta}} f_c
 >     \quad \xRightarrow{\text{drop }\nabla^2 f_c}\quad
 >     \boldsymbol{G}(\boldsymbol{\theta}) = \mathbb{E}_{\hat{p}}\!\left[\boldsymbol{J}_{\boldsymbol{\theta}}^{\top} \boldsymbol{\Lambda} \boldsymbol{J}_{\boldsymbol{\theta}}\right] \succeq \boldsymbol{0}.
+>
 > $$
 >
 >   Because $\boldsymbol{\Lambda}$ is the output Fisher of an exponential family loss (e.g., $\boldsymbol{I}_C$ for Gaussian MSE, $\mathrm{diag}(\boldsymbol{\pi})-\boldsymbol{\pi}\boldsymbol{\pi}^{\top}$ for softmax cross-entropy), $\boldsymbol{G}(\boldsymbol{\theta})$ equals $\boldsymbol{F}(\boldsymbol{\theta})$ identically and stays guaranteed positive semidefinite even at non-convex saddles [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.4.2.2, p. 281; Sec. 17.3.2, p. 653).
 > - **K-FAC Kronecker Factorization:** For a linear layer $\boldsymbol{s}_\ell = \boldsymbol{W}_\ell \boldsymbol{a}_{\ell-1}$ with vectorized weight gradient $\mathrm{vec}(\nabla_{\boldsymbol{W}_\ell}\log p) = \boldsymbol{g}_{\boldsymbol{s}_\ell} \otimes \boldsymbol{a}_{\ell-1}$, assuming approximate independence between forward activations $\boldsymbol{a}_{\ell-1} \in \mathbb{R}^{d_{\mathrm{in}}}$ and backpropagated pre-activation scores $\boldsymbol{g}_{\boldsymbol{s}_\ell} \in \mathbb{R}^{d_{\mathrm{out}}}$ yields the block-diagonal Kronecker approximation [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.4.4, p. 283) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 17.3.2, p. 653):
+>
 >
 > $$
 > \begin{aligned}
 >     \boldsymbol{F}_\ell &\approx \mathbb{E}[\boldsymbol{a}_{\ell-1}\boldsymbol{a}_{\ell-1}^{\top}] \otimes \mathbb{E}[\boldsymbol{g}_{\boldsymbol{s}_\ell}\boldsymbol{g}_{\boldsymbol{s}_\ell}^{\top}] = \boldsymbol{A}_{\ell-1} \otimes \boldsymbol{G}_\ell, \\
 >     \boldsymbol{F}_\ell^{-1} \mathrm{vec}(\nabla_{\boldsymbol{W}_\ell}\mathcal{L}) &\approx \mathrm{vec}\!\left(\boldsymbol{G}_\ell^{-1} (\nabla_{\boldsymbol{W}_\ell}\mathcal{L}) \boldsymbol{A}_{\ell-1}^{-1}\right),
 >   \end{aligned}
+>
 > $$
 >
 >   reducing per-layer inversion complexity from $O((d_{\mathrm{in}}d_{\mathrm{out}})^3)$ to $O(d_{\mathrm{in}}^3 + d_{\mathrm{out}}^3)$.

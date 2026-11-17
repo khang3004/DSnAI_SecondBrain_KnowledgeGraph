@@ -88,6 +88,7 @@ $$
 >     \frac{|\mathcal{D}_i^L(d, t)|}{|\mathcal{D}_i|}  c(\mathcal{D}_i^L(d, t))
 >     + \frac{|\mathcal{D}_i^R(d, t)|}{|\mathcal{D}_i|}  c(\mathcal{D}_i^R(d, t))
 >   \right].
+>
 > $$
 >
 > For regression, $c(\mathcal{D}_i) = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i}(y_n - \bar{y}_i)^2$ with $\bar{y}_i = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i} y_n$. For $C$-class classification with empirical class frequencies $\hat{\pi}_{ic} = \frac{1}{|\mathcal{D}_i|}\sum_{n \in \mathcal{D}_i}\mathbb{I}(y_n = c)$, standard impurity functions are:
@@ -97,12 +98,14 @@ $$
 > G_i &= \sum_{c=1}^{C} \hat{\pi}_{ic}(1 - \hat{\pi}_{ic}) = 1 - \sum_{c=1}^{C} \hat{\pi}_{ic}^2 \quad \text{(Gini index)},  \\
 >   H_i &= -\sum_{c=1}^{C} \hat{\pi}_{ic} \log \hat{\pi}_{ic} \quad \text{(Shannon entropy / deviance)}.
 > \end{aligned}
+>
 > $$
 >
 > To prevent overfitting from unpruned deep trees, minimal cost-complexity pruning grows a maximal tree $T_0$ and selects the subtree $T \preceq T_0$ minimizing
 >
 > $$
 > R_{\alpha}(T) = R(T) + \alpha |T|,
+>
 > $$
 >
 > where $R(T) = \sum_{j=1}^{|T|} \frac{|\mathcal{D}_j|}{N} c(\mathcal{D}_j)$ is total leaf impurity, $|T|$ is the number of terminal leaves, and $\alpha \ge 0$ is tuned via cross-validation.
@@ -124,12 +127,14 @@ Bootstrap Aggregating (Bagging) [[Source - Probabilistic Machine Learning|probab
 >   &= \frac{1}{B^2}\left(B\sigma^2 + B(B-1)\rho\sigma^2\right)
 >   = \rho\sigma^2 + \frac{1 - \rho}{B}\sigma^2.
 > \end{aligned}
+>
 > $$
 >
 > As $B \to \infty$, the second term vanishes and error converges to the irreducible correlation floor $\rho\sigma^2$. Moreover, in each bootstrap sample of size $N$, the probability that training example $i$ is never drawn is
 >
 > $$
 > \mathbb{P}(i \notin \mathcal{D}^{(b)}) = \left(1 - \frac{1}{N}\right)^{N} \xrightarrow{N \to \infty} e^{-1} \approx 0.368,
+>
 > $$
 >
 > leaving $\approx 36.8\%$ *out-of-bag* (OOB) instances per tree for internal cross-validation without a separate holdout set [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 18, p. 609).
@@ -156,12 +161,14 @@ freezing previously added learners $F_1, \dots, F_{m-1}$ [[Source - Probabilisti
 >   &= e^{-\beta}\sum_{\tilde{y}_i = F(\boldsymbol{x}_i)} \omega_{i,m} + e^{\beta}\sum_{\tilde{y}_i \neq F(\boldsymbol{x}_i)} \omega_{i,m}  \\
 >   &= (e^{\beta} - e^{-\beta}) \sum_{i=1}^{N} \omega_{i,m} \mathbb{I}(\tilde{y}_i \neq F(\boldsymbol{x}_i)) + e^{-\beta}\sum_{i=1}^{N}\omega_{i,m}.
 > \end{aligned}
+>
 > $$
 >
 > For any $\beta > 0$, the optimal weak learner minimizes weighted misclassification error:
 >
 > $$
 > F_m = \arg\min_{F} \sum_{i=1}^{N} \omega_{i,m} \mathbb{I}(\tilde{y}_i \neq F(\boldsymbol{x}_i)).
+>
 > $$
 >
 > Letting $\mathrm{err}_m = \frac{\sum_{i=1}^{N} \omega_{i,m}\mathbb{I}(\tilde{y}_i \neq F_m(\boldsymbol{x}_i))}{\sum_{i=1}^{N} \omega_{i,m}}$ and setting $\frac{\partial \mathcal{L}_m}{\partial \beta} = 0$ yields the closed-form step weight and multiplicative sample reweighting:
@@ -169,6 +176,7 @@ freezing previously added learners $F_1, \dots, F_{m-1}$ [[Source - Probabilisti
 > $$
 > \beta_m = \frac{1}{2}\log\!\left(\frac{1 - \mathrm{err}_m}{\mathrm{err}_m}\right), \qquad
 >   \omega_{i,m+1} = \omega_{i,m}\exp\!\left(2\beta_m \mathbb{I}(\tilde{y}_i \neq F_m(\boldsymbol{x}_i))\right) \cdot e^{-\beta_m}.
+>
 > $$
 >
 > Dropping the common factor $e^{-\beta_m}$ leaves misclassified examples scaled by $e^{2\beta_m} = \frac{1-\mathrm{err}_m}{\mathrm{err}_m} > 1$ whenever $\mathrm{err}_m < 0.5$.
@@ -188,12 +196,14 @@ and a regression tree $F_m$ is fit by least squares to $\{(\boldsymbol{x}_i, r_{
 >
 > $$
 > \tilde{\mathcal{L}}^{(m)}(q, \boldsymbol{w}) = \sum_{i=1}^{N} \left[g_{im} w_{q(\boldsymbol{x}_i)} + \frac{1}{2} h_{im} w_{q(\boldsymbol{x}_i)}^2\right] + \gamma J + \frac{1}{2}\lambda \sum_{j=1}^{J} w_j^2,
+>
 > $$
 >
 > where $g_{im} = \partial_{f}\ell(y_i, f_{m-1}(\boldsymbol{x}_i))$ and $h_{im} = \partial_{f}^2\ell(y_i, f_{m-1}(\boldsymbol{x}_i)) \ge 0$. Grouping samples by leaf index $I_j = \{i : q(\boldsymbol{x}_i) = j\}$ and defining $G_{jm} = \sum_{i \in I_j} g_{im}$ and $H_{jm} = \sum_{i \in I_j} h_{im}$ decouples Eq. `(eq:trees:xgb_taylor)` into $J$ independent quadratics:
 >
 > $$
 > \tilde{\mathcal{L}}^{(m)}(q, \boldsymbol{w}) = \sum_{j=1}^{J} \left[G_{jm} w_j + \frac{1}{2}(H_{jm} + \lambda) w_j^2\right] + \gamma J.
+>
 > $$
 >
 > Setting $\frac{\partial \tilde{\mathcal{L}}^{(m)}}{\partial w_j} = 0$ gives the exact Newton leaf weight and optimal tree structure score:
@@ -201,12 +211,14 @@ and a regression tree $F_m$ is fit by least squares to $\{(\boldsymbol{x}_i, r_{
 > $$
 > w_j^* = -\frac{G_{jm}}{H_{jm} + \lambda}, \qquad
 >   \tilde{\mathcal{L}}^{(m)}(q, \boldsymbol{w}^*) = -\frac{1}{2}\sum_{j=1}^{J}\frac{G_{jm}^2}{H_{jm} + \lambda} + \gamma J.
+>
 > $$
 >
 > Evaluating a candidate split $I = I_L \cup I_R$ yields the exact loss reduction (split gain):
 >
 > $$
 > \mathrm{Gain}(I_L, I_R) = \frac{1}{2}\left[\frac{G_L^2}{H_L + \lambda} + \frac{G_R^2}{H_R + \lambda} - \frac{(G_L + G_R)^2}{H_L + H_R + \lambda}\right] - \gamma,
+>
 > $$
 >
 > which automatically enforces $L_2$ leaf shrinkage ($\lambda$) and minimum-gain pre-pruning ($\gamma$).

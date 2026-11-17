@@ -81,21 +81,27 @@ Principal Component Analysis (PCA) admits two distinct geometric derivations—m
 > Assume centered data $\tilde{\boldsymbol{x}}_n = \boldsymbol{x}_n - \bar{\boldsymbol{x}}$ with covariance $\boldsymbol{S} = \frac{1}{N}\sum_{n=1}^N \tilde{\boldsymbol{x}}_n\tilde{\boldsymbol{x}}_n^{\top}$.
 > - **Maximum-Variance Formulation:** Seeking a unit direction $\boldsymbol{b}_1 \in \mathbb{R}^D$ ($\lVert \boldsymbol{b}_1 \rVert_2 = 1$) maximizing projected variance $V_1 = \frac{1}{N}\sum_{n=1}^N (\boldsymbol{b}_1^{\top} \tilde{\boldsymbol{x}}_n)^2 = \boldsymbol{b}_1^{\top} \boldsymbol{S} \boldsymbol{b}_1$ leads to the Lagrangian $\mathcal{L}(\boldsymbol{b}_1, \lambda_1) = \boldsymbol{b}_1^{\top} \boldsymbol{S} \boldsymbol{b}_1 + \lambda_1(1 - \boldsymbol{b}_1^{\top} \boldsymbol{b}_1)$. Setting $\nabla_{\boldsymbol{b}_1}\mathcal{L} = \boldsymbol{0}$ gives
 >
+>
 > $$
 > \boldsymbol{S}\boldsymbol{b}_1 = \lambda_1 \boldsymbol{b}_1, \qquad V_1 = \boldsymbol{b}_1^{\top} \boldsymbol{S} \boldsymbol{b}_1 = \lambda_1.
+>
 > $$
 >
 >   By induction with orthogonality constraints $\boldsymbol{b}_m^{\top} \boldsymbol{b}_j = 0$ ($j < m$), the $M$-dimensional variance-maximizing basis is $\boldsymbol{B} = \boldsymbol{U}_M = [\boldsymbol{u}_1, \dots, \boldsymbol{u}_M] \in \mathbb{R}^{D \times M}$ spanning the top-$M$ eigenspace of $\boldsymbol{S}$, capturing total variance $\sum_{m=1}^M \lambda_m$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 10.2, PDF p. 328).
 > - **Minimum-Reconstruction Formulation:** Seeking an orthonormal basis $\boldsymbol{B} \in \mathbb{R}^{D \times M}$ ($\boldsymbol{B}^{\top}\boldsymbol{B} = \boldsymbol{I}_M$) and latent codes $\{\boldsymbol{z}_n\}_{n=1}^N \subset \mathbb{R}^M$ minimizing mean squared error
 >
+>
 > $$
 > J_M(\boldsymbol{B}, \boldsymbol{Z}) = \frac{1}{N}\sum_{n=1}^N \lVert \tilde{\boldsymbol{x}}_n - \boldsymbol{B}\boldsymbol{z}_n \rVert_2^2 = \frac{1}{N}\lVert \tilde{\boldsymbol{X}} - \boldsymbol{Z}\boldsymbol{B}^{\top} \rVert_F^2,
+>
 > $$
 >
 >   differentiating with respect to $\boldsymbol{z}_n$ gives $\frac{\partial J_M}{\partial \boldsymbol{z}_n} = -\frac{2}{N}\boldsymbol{B}^{\top}(\tilde{\boldsymbol{x}}_n - \boldsymbol{B}\boldsymbol{z}_n) = \boldsymbol{0} \implies \boldsymbol{z}_n^\star = \boldsymbol{B}^{\top}\tilde{\boldsymbol{x}}_n$ (since $\boldsymbol{B}^{\top}\boldsymbol{B} = \boldsymbol{I}_M$). Substituting $\hat{\boldsymbol{x}}_n = \boldsymbol{B}\boldsymbol{B}^{\top}\tilde{\boldsymbol{x}}_n$ back into `(eq:em:pca_recon)` via the Pythagorean theorem yields
 >
+>
 > $$
 > J_M(\boldsymbol{B}) = \frac{1}{N}\sum_{n=1}^N \tilde{\boldsymbol{x}}_n^{\top}(\boldsymbol{I}_D - \boldsymbol{B}\boldsymbol{B}^{\top})\tilde{\boldsymbol{x}}_n = \mathrm{Tr}(\boldsymbol{S}) - \mathrm{Tr}(\boldsymbol{B}^{\top}\boldsymbol{S}\boldsymbol{B}) = \sum_{i=M+1}^D \lambda_i,
+>
 > $$
 >
 >   which is minimized identically at $\boldsymbol{B} = \boldsymbol{U}_M$ [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 16.1.2, p. 513)[[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 20.1.2, PDF p. 690).
@@ -112,19 +118,25 @@ Conventional PCA lacks a likelihood function, cannot generate samples, and assig
 > Define the generative process $\boldsymbol{z}_n \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I}_M)$ and $\boldsymbol{x}_n \mid \boldsymbol{z}_n \sim \mathcal{N}(\boldsymbol{W}\boldsymbol{z}_n + \boldsymbol{\mu}, \boldsymbol{\Psi})$, where $\boldsymbol{W} \in \mathbb{R}^{D \times M}$ is the factor loading matrix. Setting $\boldsymbol{\Psi} = \mathrm{diag}(\psi_1,\dots,\psi_D)$ gives **Factor Analysis**; restricting $\boldsymbol{\Psi} = \sigma^2 \boldsymbol{I}_D$ gives **Probabilistic PCA** [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 28.3.2, PDF p. 978).
 > - **Marginal & Posterior:** Integrating out $\boldsymbol{z}_n$ yields $p(\boldsymbol{x}_n) = \mathcal{N}(\boldsymbol{x}_n \mid \boldsymbol{\mu}, \boldsymbol{C})$ with $\boldsymbol{C} = \boldsymbol{W}\boldsymbol{W}^{\top} + \sigma^2 \boldsymbol{I}_D$. Applying the Woodbury matrix identity reduces $\boldsymbol{C}^{-1}$ from $\mathcal{O}(D^3)$ to $\mathcal{O}(M^3)$:
 >
+>
 > $$
 > \boldsymbol{C}^{-1} = \sigma^{-2}\boldsymbol{I}_D - \sigma^{-2}\boldsymbol{W}\boldsymbol{M}^{-1}\boldsymbol{W}^{\top}, \qquad \boldsymbol{M} = \boldsymbol{W}^{\top}\boldsymbol{W} + \sigma^2\boldsymbol{I}_M \in \mathbb{R}^{M \times M},
+>
 > $$
 >
 >   and Bayes' rule for linear-Gaussian models yields the exact latent posterior [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 16.2.2, p. 523):
 >
+>
 > $$
 > p(\boldsymbol{z}_n \mid \boldsymbol{x}_n) = \mathcal{N}\big(\boldsymbol{z}_n  \big|  \boldsymbol{M}^{-1}\boldsymbol{W}^{\top}(\boldsymbol{x}_n - \boldsymbol{\mu}),  \sigma^2\boldsymbol{M}^{-1}\big).
+>
 > $$
 > - **Closed-Form MLE (Tipping–Bishop):** Maximizing $\log p(\boldsymbol{X} \mid \boldsymbol{\mu}, \boldsymbol{W}, \sigma^2) = -\frac{N}{2}\big[D\log(2\pi) + \log\lvert \boldsymbol{C} \rvert + \mathrm{Tr}(\boldsymbol{C}^{-1}\boldsymbol{S})\big]$ yields $\hat{\boldsymbol{\mu}}_{\mathrm{ML}} = \bar{\boldsymbol{x}}$ and stationary points [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 16.2.3, p. 524)[[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 28.3.2, PDF p. 979):
 >
+>
 > $$
 > \boldsymbol{W}_{\mathrm{ML}} = \boldsymbol{U}_M(\boldsymbol{\Lambda}_M - \sigma^2\boldsymbol{I}_M)^{1/2}\boldsymbol{R}, \qquad \sigma^2_{\mathrm{ML}} = \frac{1}{D - M}\sum_{i=M+1}^D \lambda_i,
+>
 > $$
 >
 >   where $\boldsymbol{R} \in \mathbb{R}^{M \times M}$ is any orthogonal matrix ($\boldsymbol{R}\boldsymbol{R}^{\top} = \boldsymbol{I}_M$). All other eigenvector subsets are saddle points.
@@ -158,6 +170,7 @@ The Expectation-Maximization (EM) algorithm maximizes $\log p(\boldsymbol{X} \mi
 >
 > $$
 > \log p(\boldsymbol{X} \mid \boldsymbol{\theta}) = \mathcal{L}(q, \boldsymbol{\theta}) + D_{\mathrm{KL}}(q(\boldsymbol{Z}) \parallel p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta})),
+>
 > $$
 >
 > where the Evidence Lower Bound (ELBO) $\mathcal{L}(q, \boldsymbol{\theta})$ and Kullback–Leibler divergence are
@@ -167,18 +180,23 @@ The Expectation-Maximization (EM) algorithm maximizes $\log p(\boldsymbol{X} \mi
 > \mathcal{L}(q, \boldsymbol{\theta}) &= \sum_{\boldsymbol{Z}} q(\boldsymbol{Z}) \log \frac{p(\boldsymbol{X}, \boldsymbol{Z} \mid \boldsymbol{\theta})}{q(\boldsymbol{Z})} = \mathbb{E}_{q(\boldsymbol{Z})}[\log p(\boldsymbol{X}, \boldsymbol{Z} \mid \boldsymbol{\theta})] + \mathrm{H}(q),  \\
 >   D_{\mathrm{KL}}(q(\boldsymbol{Z}) \parallel p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta})) &= -\sum_{\boldsymbol{Z}} q(\boldsymbol{Z}) \log \frac{p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta})}{q(\boldsymbol{Z})} \ge 0,
 > \end{aligned}
+>
 > $$
 >
 > (with $\sum_{\boldsymbol{Z}}$ replaced by $\int \mathrm{d}\boldsymbol{Z}$ for continuous $\boldsymbol{Z}$). Non-negativity of KL divergence implies $\log p(\boldsymbol{X} \mid \boldsymbol{\theta}) \ge \mathcal{L}(q, \boldsymbol{\theta})$ for all $q$ and $\boldsymbol{\theta}$ (equivalently by Jensen's inequality). Alternating two coordinate-ascent steps from iterate $\boldsymbol{\theta}^{(t)}$:
 > - **E-step:** Hold $\boldsymbol{\theta}^{(t)}$ fixed and maximize $\mathcal{L}(q, \boldsymbol{\theta}^{(t)})$ over $q$. Since $\log p(\boldsymbol{X} \mid \boldsymbol{\theta}^{(t)})$ is independent of $q$, maximizing $\mathcal{L}$ minimizes $D_{\mathrm{KL}}(q(\boldsymbol{Z}) \parallel p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta}^{(t)}))$ to zero at
 >
+>
 > $$
 > q^{(t+1)}(\boldsymbol{Z}) = p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta}^{(t)}), \qquad \mathcal{L}(q^{(t+1)}, \boldsymbol{\theta}^{(t)}) = \log p(\boldsymbol{X} \mid \boldsymbol{\theta}^{(t)}).
+>
 > $$
 > - **M-step:** Hold $q^{(t+1)}$ fixed and maximize $\mathcal{L}(q^{(t+1)}, \boldsymbol{\theta})$ over $\boldsymbol{\theta}$. Dropping the entropy term $\mathrm{H}(q^{(t+1)})$ (independent of $\boldsymbol{\theta}$) reduces this to maximizing the expected complete-data log-likelihood $Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(t)})$:
 >
+>
 > $$
 > \boldsymbol{\theta}^{(t+1)} = \arg\max_{\boldsymbol{\theta}} Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(t)}), \qquad Q(\boldsymbol{\theta}; \boldsymbol{\theta}^{(t)}) := \mathbb{E}_{p(\boldsymbol{Z} \mid \boldsymbol{X}, \boldsymbol{\theta}^{(t)})}[\log p(\boldsymbol{X}, \boldsymbol{Z} \mid \boldsymbol{\theta})].
+>
 > $$
 >
 >
@@ -189,6 +207,7 @@ The Expectation-Maximization (EM) algorithm maximizes $\log p(\boldsymbol{X} \mi
 > \log p(\boldsymbol{X} \mid \boldsymbol{\theta}^{(t+1)}) &= \mathcal{L}(q^{(t+1)}, \boldsymbol{\theta}^{(t+1)}) + \underbrace{D_{\mathrm{KL}}(q^{(t+1)} \parallel p(\cdot \mid \boldsymbol{X}, \boldsymbol{\theta}^{(t+1)}))}_{\ge  0}  \\
 >   &\ge \mathcal{L}(q^{(t+1)}, \boldsymbol{\theta}^{(t+1)}) \ge \mathcal{L}(q^{(t+1)}, \boldsymbol{\theta}^{(t)}) = \log p(\boldsymbol{X} \mid \boldsymbol{\theta}^{(t)}).
 > \end{aligned}
+>
 > $$
 >
 > Moreover, at $\boldsymbol{\theta} = \boldsymbol{\theta}^{(t)}$, $\mathcal{L}(q^{(t+1)}, \boldsymbol{\theta})$ makes tangential contact with $\log p(\boldsymbol{X} \mid \boldsymbol{\theta})$ (matching both value and gradient) [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 15.4.1, p. 502).
