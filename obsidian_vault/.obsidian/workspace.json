@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "01_Monographs/Bias-Variance Decomposition, Overfitting, Generalization & Double Descent.md",
+                "file": "01_Monographs/MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Bias-Variance Decomposition, Overfitting, Generalization & Double Descent"
+              "title": "MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI"
             }
           }
         ]
@@ -187,6 +187,21 @@
   },
   "active": "fe639ea49e8d9585",
   "lastOpenFiles": [
+    "AGENTS.md",
+    "02_Concepts/Cauchy-Schwarz Inequality.md",
+    "01_Monographs/Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) & RLVR.md",
+    "01_Monographs/Classifier - Classifier-Free Guidance, DDIM - DPM-Solver ODEs & Consistency Models.md",
+    "01_Monographs/MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI.md",
+    "01_Monographs/Support Vector Machines, Margin Duality & Mercer Kernel Methods.md",
+    "02_Concepts/Shannon Entropy.md",
+    "02_Concepts/Self-Attention & Multi-Head Attention.md",
+    "01_Monographs/Spectral Theory, Singular Value Decomposition & Low-Rank Approximations.md",
+    "01_Monographs/Recurrent Neural Networks, BPTT, LSTMs - GRUs & Long-Range Gradient Flow.md",
+    "01_Monographs/Agent Taxonomy, ReAct Synergy, Reflection, Planning & Multi-Agent Orchestration.md",
+    "02_Concepts/BPE & Subword Tokenization.md",
+    "01_Monographs/Convolutional Neural Networks, Translation Equivariance & Vision Backbones.md",
+    "00_MOC/ST 07 - Agent Taxonomies, ReAct, Planning & Multi-Agent Patterns.md",
+    "01_Monographs/Bias-Variance Decomposition, Overfitting, Generalization & Double Descent.md",
     "01_Monographs/Vector Spaces, Norms, Orthogonality & Least-Squares Projections.md",
     "03_Sources/Source - Reinforcement Learning - An Overview.md",
     "03_Sources/Source - Reinforcement Learning from Human Feedback.md",
@@ -198,21 +213,6 @@
     "03_Sources/Source - E D I T I O N.md",
     "03_Sources/Source - Introduction-PROBABILITY-for-DATA-SCIENCE.md",
     "03_Sources/Source - Understanding Deep Learning.md",
-    "03_Sources/Source - The Principles of Diffusion Models.md",
-    "03_Sources/Source - Probabilistic Machine Learning.md",
-    "03_Sources/Source - Machine Learning co ban.md",
-    "03_Sources/Source - Fall 2022.md",
-    "03_Sources/Source - Antonio Torralba, Phillip Isola, and William Freeman.md",
-    "03_Sources/Source - Dive into Deep Learning.md",
-    "03_Sources/Source - Tutorial on Diffusion Models for Imaging and Vision.md",
-    "03_Sources/Source - Foundations.md",
-    "03_Sources/Source - Deep Learning.md",
-    "03_Sources/Source - The Ultimate n8n Starter Kit (2025).md",
-    "03_Sources/Source - Speech and Language Processing.md",
-    "03_Sources/Source - Published as a conference paper at ICLR 2023.md",
-    "03_Sources/Source - Prototype to.md",
-    "03_Sources/Source - MCP book.md",
-    "03_Sources/Source - Report - Mamba When Transformer is Not All You Need - AIVN.md",
     "02_Concepts/Icon\r",
     "04_Cheatsheets/Icon\r",
     "03_Sources/Icon\r",
