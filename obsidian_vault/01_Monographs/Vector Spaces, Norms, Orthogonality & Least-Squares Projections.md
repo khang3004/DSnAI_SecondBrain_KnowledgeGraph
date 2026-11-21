@@ -88,12 +88,10 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Every source adopts slightly different typographical and domain conventions across linear algebra, machine learning, and deep learning. The table below maps each convention onto our unified monograph standard.
 >
->
->
 > **Table:** Cross-book notation mapping across [[Source - E D I T I O N|linear_algebra]] (Ch. 4, 6), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 2, 3), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, 11), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 2), and [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 1).
 >
 > | **Concept** | **Lay et al. (2016)** | **Deisenroth et al. (2020)** | **Murphy (2022)** | **Goodfellow et al. (2016)** | **Vũ (2018) / Unified** |
-> | — | — | — | — | — | — |
+> | --- | --- | --- | --- | --- | --- |
 > | Column vector / Matrix | $\mathbf{x}, \mathbf{u}$; $A$ (italic) | $\boldsymbol{x}$; $\boldsymbol{A}$ (bold italic) | $\mathbf{x}$; $\mathbf{A}$ (bold upright) | $\boldsymbol{x}$; $\boldsymbol{A}$ (bold italic) | $\boldsymbol{x}$, $\boldsymbol{A}$ ($\boldsymbol{A}^{\mathsf{H}}$ in $\mathbb{C}$) |
 > | Column / Null space | $\mathrm{Col} A$, $\mathrm{Nul} A$ | $\mathrm{Im}(\Phi)$, $\ker(\Phi)$ | $\mathrm{range}(\mathbf{A})$, $\mathrm{nullspace}(\mathbf{A})$ | Column space / range | $\mathrm{col}(\boldsymbol{A})$, $\mathrm{null}(\boldsymbol{A})$ |
 > | Inner product | $\mathbf{u} \cdot \mathbf{v} = \mathbf{u}^{\top}\mathbf{v}$ | $\langle \boldsymbol{x}, \boldsymbol{y}\rangle = \hat{\boldsymbol{x}}^{\top}\boldsymbol{A}\hat{\boldsymbol{y}}$ | $\langle \mathbf{x}, \mathbf{y}\rangle \triangleq \mathbf{x}^{\top}\mathbf{y}$ | $\boldsymbol{x}^{\top}\boldsymbol{y}$ | $\langle \boldsymbol{x}, \boldsymbol{y} \rangle$; $\boldsymbol{x}^{\top}\boldsymbol{y}$ in $\mathbb{R}^n$ |
@@ -101,7 +99,6 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > | Orthogonal projection | $\hat{\mathbf{y}} = \mathrm{proj}_W\mathbf{y} = UU^{\top}\mathbf{y}$ | $\pi_U(\boldsymbol{x}) = \boldsymbol{P}_\pi\boldsymbol{x}$, $\boldsymbol{B}(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}$ | $\mathrm{Proj}(\mathbf{y}; \mathbf{A}) = \mathbf{A}(\mathbf{A}^{\top}\mathbf{A})^{-1}\mathbf{A}^{\top}\mathbf{y}$ | $\boldsymbol{r}(\boldsymbol{x}) = \boldsymbol{D}\boldsymbol{D}^{\top}\boldsymbol{x}$ (PCA) | $\boldsymbol{P}_W\boldsymbol{y}$ ($= \boldsymbol{Q}\boldsymbol{Q}^{\top}\boldsymbol{y}$ for ONB) |
 > | Pseudoinverse | $(A^{\top} A)^{-1}A^{\top}$ (full col. rank) | $(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}$ | $\mathbf{A}^\dagger = \mathbf{V}\mathbf{S}^{-1}\mathbf{U}^{\top}$ | $\boldsymbol{A}^+ = \boldsymbol{V}\boldsymbol{D}^+\boldsymbol{U}^{\top}$ | $\boldsymbol{A}^{+} = \boldsymbol{V}\boldsymbol{\Sigma}^{+}\boldsymbol{U}^{\top}$ |
 > | Least-squares model | $A\mathbf{x} \approx \mathbf{b}$; $X\boldsymbol{\beta} = \mathbf{y} + \boldsymbol{\varepsilon}$ | $\boldsymbol{B}\boldsymbol{\lambda} \approx \boldsymbol{x}$ (subspace fit) | $\mathbf{X}\mathbf{w} \approx \mathbf{y}$ ($\mathrm{RSS}(\mathbf{w})$) | $\min_{\boldsymbol{D}}\lVert \boldsymbol{X} - \boldsymbol{X}\boldsymbol{d}\boldsymbol{d}^{\top} \rVert_F^2$ | $\min_{\boldsymbol{x}}\lVert \boldsymbol{A}\boldsymbol{x} - \boldsymbol{b} \rVert_2^2$ |
->
 >
 > **Four Crucial Conceptual Reconciliations:**
 > - **"$\ell_0$ Norm" Misnomer:** Goodfellow et al. explicitly caution that counting nonzero entries $\sum_i \mathbb{I}(x_i \neq 0)$ is *not* a norm because scaling $\boldsymbol{x}$ by $\alpha \neq 0$ leaves the count unchanged, violating $\lVert \alpha\boldsymbol{x} \rVert = |\alpha|\lVert \boldsymbol{x} \rVert$; Murphy labels $\lVert \boldsymbol{x} \rVert_0$ a "pseudo norm" for the same reason [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 2, Sec. 2.5, p. 40), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Sec. 7.1.3, p. 235).
@@ -125,16 +122,13 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > m \le \lVert \boldsymbol{x} \rVert_p = m \left( \sum_{j=1}^n \left(\frac{\lvert x_j \rvert}{m}\right)^p \right)^{1/p} \le m  n^{1/p}
 >   \quad\Longrightarrow\quad
 >   \lim_{p \to \infty} \lVert \boldsymbol{x} \rVert_p = \max_{1 \le j \le n} \lvert x_j \rvert = \lVert \boldsymbol{x} \rVert_\infty,
->
 > $$
 >
 > since $\lim_{p\to\infty} n^{1/p} = 1$. Moreover, any two norms on $\mathbb{R}^n$ are topologically equivalent; for the canonical $\ell_1, \ell_2, \ell_\infty$ triple, Cauchy–Schwarz gives the sharp chain
 >
 > $$
 > \lVert \boldsymbol{x} \rVert_\infty \le \lVert \boldsymbol{x} \rVert_2 \le \lVert \boldsymbol{x} \rVert_1 \le \sqrt{n} \lVert \boldsymbol{x} \rVert_2 \le n \lVert \boldsymbol{x} \rVert_\infty.
->
 > $$
->
 >
 > For matrices $\boldsymbol{A} \in \mathbb{R}^{m \times n}$, two principal norms govern learning and stability [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Sec. 7.1.3.2, pp. 235–236), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 2, Eq. 2.33 & 2.49, pp. 40, 47):
 >
@@ -143,7 +137,6 @@ Throughout this leaf, column vectors are denoted by bold lowercase letters ($\bo
 > \lVert \boldsymbol{A} \rVert_F &:= \sqrt{\sum_{i=1}^m \sum_{j=1}^n A_{ij}^2} = \sqrt{\mathrm{Tr}(\boldsymbol{A}^{\top}\boldsymbol{A})} = \lVert \mathrm{vec}(\boldsymbol{A}) \rVert_2 = \sqrt{\sum_{k=1}^r \sigma_k(\boldsymbol{A})^2},  \\
 >   \lVert \boldsymbol{A} \rVert_p &:= \sup_{\boldsymbol{x} \neq \boldsymbol{0}} \frac{\lVert \boldsymbol{A}\boldsymbol{x} \rVert_p}{\lVert \boldsymbol{x} \rVert_p} = \max_{\lVert \boldsymbol{x} \rVert_p = 1} \lVert \boldsymbol{A}\boldsymbol{x} \rVert_p, \qquad \lVert \boldsymbol{A} \rVert_2 = \sqrt{\lambda_{\max}(\boldsymbol{A}^{\top}\boldsymbol{A})} = \sigma_{\max}(\boldsymbol{A}),
 > \end{aligned}
->
 > $$
 >
 > where $\sigma_k(\boldsymbol{A})$ are the singular values of $\boldsymbol{A}$. Both $\lVert \cdot \rVert_F$ and $\lVert \cdot \rVert_2$ are *orthogonally invariant*: for any orthogonal $\boldsymbol{U} \in \mathbb{R}^{m \times m}$ and $\boldsymbol{V} \in \mathbb{R}^{n \times n}$, $\lVert \boldsymbol{U}\boldsymbol{A}\boldsymbol{V} \rVert_F = \lVert \boldsymbol{A} \rVert_F$ (via trace cyclicity $\mathrm{Tr}(\boldsymbol{V}^{\top}\boldsymbol{A}^{\top}\boldsymbol{U}^{\top}\boldsymbol{U}\boldsymbol{A}\boldsymbol{V}) = \mathrm{Tr}(\boldsymbol{A}^{\top}\boldsymbol{A})$) and $\lVert \boldsymbol{U}\boldsymbol{A}\boldsymbol{V} \rVert_2 = \lVert \boldsymbol{A} \rVert_2$.
@@ -155,34 +148,28 @@ While every inner product induces a norm via $\lVert \boldsymbol{x} \rVert = \sq
 >
 > $$
 > \langle \boldsymbol{x}, \boldsymbol{y} \rangle_{\boldsymbol{M}} = \hat{\boldsymbol{x}}^{\top}\boldsymbol{M}\hat{\boldsymbol{y}}, \qquad \lVert \boldsymbol{x} \rVert_{\boldsymbol{M}} = \sqrt{\hat{\boldsymbol{x}}^{\top}\boldsymbol{M}\hat{\boldsymbol{x}}}.
->
 > $$
->
 >
 > **Theorem (Cauchy–Schwarz Inequality).** *For any $\boldsymbol{u}, \boldsymbol{v}$ in an inner-product space $(V, \langle \cdot, \cdot \rangle)$, $\lvert \langle \boldsymbol{u}, \boldsymbol{v} \rangle \rvert \le \lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert$, with equality if and only if $\boldsymbol{u}$ and $\boldsymbol{v}$ are linearly dependent* [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.17, p. 75).
 >
 > *Proof.* If $\boldsymbol{v} = \boldsymbol{0}$, both sides equal $0$. Otherwise $\lVert \boldsymbol{v} \rVert^2 > 0$; for any $t \in \mathbb{R}$, positive definiteness yields
 >
 > $$
->
 >   0 \le \lVert \boldsymbol{u} - t\boldsymbol{v} \rVert^2 = \langle \boldsymbol{u} - t\boldsymbol{v}, \boldsymbol{u} - t\boldsymbol{v} \rangle = \lVert \boldsymbol{u} \rVert^2 - 2t\langle \boldsymbol{u}, \boldsymbol{v} \rangle + t^2\lVert \boldsymbol{v} \rVert^2.
->
 > $$
 >
 > Setting $t = \langle \boldsymbol{u}, \boldsymbol{v} \rangle / \lVert \boldsymbol{v} \rVert^2$ (the orthogonal projection coordinate) simplifies the inequality to
 >
 > $$
->
 >   0 \le \lVert \boldsymbol{u} \rVert^2 - \frac{\langle \boldsymbol{u}, \boldsymbol{v} \rangle^2}{\lVert \boldsymbol{v} \rVert^2} \quad\Longleftrightarrow\quad \langle \boldsymbol{u}, \boldsymbol{v} \rangle^2 \le \lVert \boldsymbol{u} \rVert^2\lVert \boldsymbol{v} \rVert^2,
->
 > $$
 >
 > with equality iff $\boldsymbol{u} - t\boldsymbol{v} = \boldsymbol{0}$. Taking square roots gives $\lvert \langle \boldsymbol{u}, \boldsymbol{v} \rangle \rvert \le \lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert$ and immediately proves the triangle inequality $\lVert \boldsymbol{u}+\boldsymbol{v} \rVert^2 = \lVert \boldsymbol{u} \rVert^2 + 2\langle \boldsymbol{u}, \boldsymbol{v} \rangle + \lVert \boldsymbol{v} \rVert^2 \le (\lVert \boldsymbol{u} \rVert + \lVert \boldsymbol{v} \rVert)^2$, as well as defining the unique angle $\omega \in [0, \pi]$ via $\cos\omega = \langle \boldsymbol{u}, \boldsymbol{v} \rangle / (\lVert \boldsymbol{u} \rVert\lVert \boldsymbol{v} \rVert)$ for nonzero vectors. Two vectors are orthogonal ($\boldsymbol{u} \perp \boldsymbol{v}$) iff $\langle \boldsymbol{u}, \boldsymbol{v} \rangle = 0$, which yields the **Pythagorean Theorem** [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 2, p. 336):
 >
 > $$
 > \lVert \boldsymbol{u} + \boldsymbol{v} \rVert^2 = \lVert \boldsymbol{u} \rVert^2 + \lVert \boldsymbol{v} \rVert^2 \iff \langle \boldsymbol{u}, \boldsymbol{v} \rangle = 0.
->
 > $$
+>
 
 ### The Four Fundamental Subspaces and Orthogonal Complements
 
@@ -193,13 +180,11 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 > - **Dimension equality:** $\dim\mathrm{col}(\boldsymbol{A}) = \dim\mathrm{Row}(\boldsymbol{A}) = r$, with $\dim\mathrm{null}(\boldsymbol{A}) = n - r$ and $\dim\mathrm{null}(\boldsymbol{A}^{\top}) = m - r$.
 > - **Orthogonal complement duality (under the standard dot product):**
 >
->
 > $$
 > \mathrm{Row}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A}) \subseteq \mathbb{R}^n, \qquad \mathrm{col}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A}^{\top}) \subseteq \mathbb{R}^m.
->
 > $$
-> - **Direct-sum decompositions:** $\mathbb{R}^n = \mathrm{Row}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A})$ and $\mathbb{R}^m = \mathrm{col}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A}^{\top})$.
 >
+> - **Direct-sum decompositions:** $\mathbb{R}^n = \mathrm{Row}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A})$ and $\mathbb{R}^m = \mathrm{col}(\boldsymbol{A}) \oplus \mathrm{null}(\boldsymbol{A}^{\top})$.
 >
 > *Proof.* By the row–column rule, $\boldsymbol{A}\boldsymbol{x} = \boldsymbol{0}$ holds iff every row $\boldsymbol{A}_{i,:}$ satisfies $\boldsymbol{A}_{i,:}\boldsymbol{x} = 0$. Since the rows span $\mathrm{Row}(\boldsymbol{A})$, $\boldsymbol{x} \in \mathrm{null}(\boldsymbol{A})$ iff $\boldsymbol{x}$ is orthogonal to every vector in $\mathrm{Row}(\boldsymbol{A})$, establishing $\mathrm{Row}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A})$. Applying the identical argument to $\boldsymbol{A}^{\top}$ and using $\mathrm{Row}(\boldsymbol{A}^{\top}) = \mathrm{col}(\boldsymbol{A})$ gives $\mathrm{col}(\boldsymbol{A})^\perp = \mathrm{null}(\boldsymbol{A}^{\top})$. Counting pivots and free columns in reduced row echelon form yields $r + \dim\mathrm{null}(\boldsymbol{A}) = n$; via the SVD $\boldsymbol{A} = \boldsymbol{U}\boldsymbol{\Sigma}\boldsymbol{V}^{\top}$ (Section `sec:vecnorm:lsq_pinv`), the first $r$ columns of $\boldsymbol{V}$ and $\boldsymbol{U}$ span $\mathrm{Row}(\boldsymbol{A})$ and $\mathrm{col}(\boldsymbol{A})$, while the remaining $n-r$ columns of $\boldsymbol{V}$ and $m-r$ columns of $\boldsymbol{U}$ form orthonormal bases for $\mathrm{null}(\boldsymbol{A})$ and $\mathrm{null}(\boldsymbol{A}^{\top})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Sec. 7.5.4, p. 262).
 
@@ -215,14 +200,12 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 >
 > $$
 > \hat{\boldsymbol{y}} = \arg\min_{\boldsymbol{v} \in W} \lVert \boldsymbol{y} - \boldsymbol{v} \rVert_2, \qquad \lVert \boldsymbol{y} - \boldsymbol{v} \rVert_2^2 = \lVert \boldsymbol{y} - \hat{\boldsymbol{y}} \rVert_2^2 + \lVert \hat{\boldsymbol{y}} - \boldsymbol{v} \rVert_2^2 > \lVert \boldsymbol{y} - \hat{\boldsymbol{y}} \rVert_2^2 \quad \forall \boldsymbol{v} \in W \setminus \{\hat{\boldsymbol{y}}\}.
->
 > $$
 >
 > *Proof.* Writing $\hat{\boldsymbol{y}} = \boldsymbol{B}\boldsymbol{\lambda} \in W$, the orthogonality condition $\boldsymbol{y} - \hat{\boldsymbol{y}} \in W^\perp$ requires $\boldsymbol{b}_j^{\top}(\boldsymbol{y} - \boldsymbol{B}\boldsymbol{\lambda}) = 0$ for all $j = 1,\dots,r$, i.e., $\boldsymbol{B}^{\top}\boldsymbol{B}\boldsymbol{\lambda} = \boldsymbol{B}^{\top}\boldsymbol{y}$. Because $\boldsymbol{B}$ has linearly independent columns, the Gram matrix $\boldsymbol{B}^{\top}\boldsymbol{B} \in \mathbb{R}^{r \times r}$ is symmetric positive definite ($\boldsymbol{u}^{\top}\boldsymbol{B}^{\top}\boldsymbol{B}\boldsymbol{u} = \lVert \boldsymbol{B}\boldsymbol{u} \rVert_2^2 > 0$ for $\boldsymbol{u} \neq \boldsymbol{0}$) and invertible, giving $\boldsymbol{\lambda} = (\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}\boldsymbol{y}$ and the linear projection operator $\hat{\boldsymbol{y}} = \boldsymbol{P}_W\boldsymbol{y}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 8–9, pp. 350–352), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.55–3.59, pp. 86–87):
 >
 > $$
 > \boldsymbol{P}_W = \boldsymbol{B}(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top}.
->
 > $$
 >
 > For uniqueness, if $\boldsymbol{y} = \hat{\boldsymbol{y}}_1 + \boldsymbol{z}_1 = \hat{\boldsymbol{y}}_2 + \boldsymbol{z}_2$, then $\hat{\boldsymbol{y}}_1 - \hat{\boldsymbol{y}}_2 = \boldsymbol{z}_2 - \boldsymbol{z}_1 \in W \cap W^\perp = \{\boldsymbol{0}\}$. For any $\boldsymbol{v} \in W \setminus \{\hat{\boldsymbol{y}}\}$, writing $\boldsymbol{y} - \boldsymbol{v} = (\boldsymbol{y} - \hat{\boldsymbol{y}}) + (\hat{\boldsymbol{y}} - \boldsymbol{v})$ couples a vector in $W^\perp$ with a nonzero vector in $W$; applying the Pythagorean Theorem `(eq:vecnorm:pythagoras)` yields `(eq:vecnorm:best_approx)`.
@@ -231,7 +214,6 @@ For any subspace $W \subseteq \mathbb{R}^d$, its *orthogonal complement* is $W^\
 >
 > $$
 > \boldsymbol{P}_W = \boldsymbol{Q}\boldsymbol{Q}^{\top} = \sum_{j=1}^r \boldsymbol{q}_j \boldsymbol{q}_j^{\top}, \qquad \boldsymbol{P}_{W^\perp} = \boldsymbol{I}_m - \boldsymbol{Q}\boldsymbol{Q}^{\top}.
->
 > $$
 >
 > A square matrix $\boldsymbol{P} \in \mathbb{R}^{m \times m}$ is an orthogonal projector onto $\mathrm{col}(\boldsymbol{P})$ if and only if it is *idempotent* ($\boldsymbol{P}^2 = \boldsymbol{P}$) and *symmetric* ($\boldsymbol{P}^{\top} = \boldsymbol{P}$). Its eigenvalues lie strictly in $\{0, 1\}$ ($\mathrm{rank}(\boldsymbol{P}) = \mathrm{Tr}(\boldsymbol{P}) = r$) and $\lVert \boldsymbol{P} \rVert_2 = 1$ when $r \ge 1$. For an affine subspace $L = \boldsymbol{x}_0 + U$, shifting to the origin gives $\pi_L(\boldsymbol{x}) = \boldsymbol{x}_0 + \boldsymbol{P}_U(\boldsymbol{x} - \boldsymbol{x}_0)$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 3, Eq. 3.72, p. 90).
@@ -248,7 +230,6 @@ Note the crucial distinction between *oblique* projections ($\boldsymbol{P}^2 = 
 >
 > $$
 > \boldsymbol{A}^{\top}\boldsymbol{A}\hat{\boldsymbol{x}} = \boldsymbol{A}^{\top}\boldsymbol{b} \quad\Longleftrightarrow\quad \boldsymbol{A}^{\top}(\boldsymbol{b} - \boldsymbol{A}\hat{\boldsymbol{x}}) = \boldsymbol{0} \quad\Longleftrightarrow\quad \boldsymbol{b} - \boldsymbol{A}\hat{\boldsymbol{x}} \in \mathrm{null}(\boldsymbol{A}^{\top}) = \mathrm{col}(\boldsymbol{A})^\perp.
->
 > $$
 >
 > Equivalently, $\boldsymbol{A}\hat{\boldsymbol{x}} = \hat{\boldsymbol{b}} = \boldsymbol{P}_{\mathrm{col}(\boldsymbol{A})}\boldsymbol{b}$ is always unique, while $\hat{\boldsymbol{x}}$ is unique iff $\mathrm{null}(\boldsymbol{A}) = \{\boldsymbol{0}\}$ ($\mathrm{rank}(\boldsymbol{A}) = n$), in which case $\boldsymbol{A}^{\top}\boldsymbol{A} \succ 0$ and $\hat{\boldsymbol{x}} = (\boldsymbol{A}^{\top}\boldsymbol{A})^{-1}\boldsymbol{A}^{\top}\boldsymbol{b}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Thm. 14, p. 365).
@@ -258,23 +239,19 @@ Note the crucial distinction between *oblique* projections ($\boldsymbol{P}^2 = 
 >
 > $$
 > \hat{\boldsymbol{x}}_{\mathrm{LN}} = \boldsymbol{A}^{\top}(\boldsymbol{A}\boldsymbol{A}^{\top})^{-1}\boldsymbol{b}.
->
 > $$
->
 >
 > **Case 3: Unified Moore–Penrose Pseudoinverse ($\boldsymbol{A}^{+}$).**
 > For *any* $\boldsymbol{A} \in \mathbb{R}^{m \times n}$ of arbitrary rank $r \le \min(m, n)$, the Moore–Penrose pseudoinverse $\boldsymbol{A}^{+} \in \mathbb{R}^{n \times m}$ is the unique matrix satisfying the four Penrose equations [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Eq. 7.186, p. 261):
 >
 > $$
 > \boldsymbol{A}\boldsymbol{A}^{+}\boldsymbol{A} = \boldsymbol{A}, \qquad \boldsymbol{A}^{+}\boldsymbol{A}\boldsymbol{A}^{+} = \boldsymbol{A}^{+}, \qquad (\boldsymbol{A}\boldsymbol{A}^{+})^{\top} = \boldsymbol{A}\boldsymbol{A}^{+}, \qquad (\boldsymbol{A}^{+}\boldsymbol{A})^{\top} = \boldsymbol{A}^{+}\boldsymbol{A}.
->
 > $$
 >
 > Using the thin SVD $\boldsymbol{A} = \boldsymbol{U}_r \boldsymbol{\Sigma}_r \boldsymbol{V}_r^{\top}$ ($\sigma_1 \ge \dots \ge \sigma_r > 0$), $\boldsymbol{A}^{+}$ equals both the Tikhonov limit and the explicit spectral formula [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 2, Eq. 2.46–2.47, p. 46), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, Eq. 7.191, p. 261):
 >
 > $$
 > \boldsymbol{A}^{+} = \lim_{\alpha \searrow 0} (\boldsymbol{A}^{\top}\boldsymbol{A} + \alpha\boldsymbol{I}_n)^{-1}\boldsymbol{A}^{\top} = \boldsymbol{V}_r \boldsymbol{\Sigma}_r^{-1} \boldsymbol{U}_r^{\top} = \sum_{k=1}^r \frac{1}{\sigma_k} \boldsymbol{v}_k \boldsymbol{u}_k^{\top}.
->
 > $$
 >
 > **Theorem (Minimum-Norm Least-Squares Property).** *For any $\boldsymbol{A} \in \mathbb{R}^{m \times n}$ and $\boldsymbol{b} \in \mathbb{R}^m$, $\hat{\boldsymbol{x}}^* = \boldsymbol{A}^{+}\boldsymbol{b}$ is the unique vector minimizing $\lVert \boldsymbol{x} \rVert_2$ among all minimizers of $\lVert \boldsymbol{A}\boldsymbol{x} - \boldsymbol{b} \rVert_2$.*
@@ -308,7 +285,6 @@ Gram–Schmidt constructs $\hat{\boldsymbol{Q}}$ column-by-column via successive
 >     $R_{kj} \leftarrow \boldsymbol{q}_k^{\top} \boldsymbol{v}_j$  *// Project updated column $\boldsymbol{v}_j$, not $\boldsymbol{a}_j$*
 >     $\boldsymbol{v}_j \leftarrow \boldsymbol{v}_j - R_{kj}\boldsymbol{q}_k$  *// Remove component along $\boldsymbol{q}_k$ immediately*
 >
->
 > **return** $\hat{\boldsymbol{Q}} = [\boldsymbol{q}_1, \dots, \boldsymbol{q}_n]$, $\hat{\boldsymbol{R}}$
 
 Although MGS improves orthogonality over CGS, finite-precision orthogonality of MGS still degrades proportionally to $\kappa_2(\boldsymbol{A})$. For unconditional machine-precision orthogonality $\lVert \boldsymbol{Q}^{\top}\boldsymbol{Q} - \boldsymbol{I} \rVert_2 = \mathcal{O}(\epsilon_{\mathrm{mach}})$, numerical linear algebra libraries (LAPACK `DGEQRF` / `DGELS`) left-multiply $\boldsymbol{A}$ by $n$ orthogonal **Householder reflectors** $\boldsymbol{H}_k = \boldsymbol{I}_m - \beta_k \tilde{\boldsymbol{v}}_k \tilde{\boldsymbol{v}}_k^{\top}$ (with $\beta_k = 2/\lVert \tilde{\boldsymbol{v}}_k \rVert_2^2$, $\boldsymbol{H}_k^{\top} = \boldsymbol{H}_k$, $\boldsymbol{H}_k^2 = \boldsymbol{I}_m$) to annihilate subdiagonal entries directly into $\boldsymbol{R} = \boldsymbol{H}_n \cdots \boldsymbol{H}_1 \boldsymbol{A}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, Sec. 6.4, p. 360). Choosing $s = \mathrm{sign}(z_1)\lVert \boldsymbol{z} \rVert_2$ and $v_1 = z_1 + s$ in Algorithm `alg:vecnorm:householder` (equivalently mapping $\boldsymbol{z} \mapsto -s \boldsymbol{e}_1$) enforces same-sign addition and prevents catastrophic cancellation.
@@ -321,7 +297,7 @@ Although MGS improves orthogonality over CGS, finite-precision orthogonality of 
 >
 >   $\boldsymbol{z} \leftarrow \boldsymbol{R}_{k:m,  k}$  *// Subcolumn from diagonal $k$ to row $m$*
 >   $s \leftarrow \mathrm{sign}(z_1)\lVert \boldsymbol{z} \rVert_2$ (taking $\mathrm{sign}(0) = +1$)
->   $\boldsymbol{v} \leftarrow \boldsymbol{z}$; \quad $v_1 \leftarrow z_1 + s$  *// Same-sign sum avoids cancellation; maps $\boldsymbol{z} \mapsto -s\boldsymbol{e}_1$*
+>   $\boldsymbol{v} \leftarrow \boldsymbol{z}$;   $v_1 \leftarrow z_1 + s$  *// Same-sign sum avoids cancellation; maps $\boldsymbol{z} \mapsto -s\boldsymbol{e}_1$*
 >   $\beta \leftarrow 2 / (\boldsymbol{v}^{\top}\boldsymbol{v})$
 >   $\boldsymbol{R}_{k:m,  k:n} \leftarrow \boldsymbol{R}_{k:m,  k:n} - \beta \boldsymbol{v}\bigl(\boldsymbol{v}^{\top} \boldsymbol{R}_{k:m,  k:n}\bigr)$  *// Apply $\boldsymbol{H}_k$ implicitly in $\mathcal{O}((m-k)(n-k))$*
 >   $\boldsymbol{y}_{k:m} \leftarrow \boldsymbol{y}_{k:m} - \beta \boldsymbol{v}(\boldsymbol{v}^{\top} \boldsymbol{y}_{k:m})$  *// Accumulate $\boldsymbol{Q}^{\top}\boldsymbol{b}$ without forming $\boldsymbol{Q}$*
@@ -336,7 +312,7 @@ Table `tab:vecnorm:solvers` summarizes the computational complexity and backward
 **Table:** Comparison of direct least-squares solvers for $\boldsymbol{A} \in \mathbb{R}^{m \times n}$ ($m \ge n$), where $\rho = \lVert \boldsymbol{b} - \boldsymbol{A}\hat{\boldsymbol{x}} \rVert_2 / (\lVert \boldsymbol{A} \rVert_2\lVert \hat{\boldsymbol{x}} \rVert_2)$ measures residual-to-signal scale. Derived from [[Source - E D I T I O N|linear_algebra]] (Ch. 6, pp. 360, 366–367) and [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 7, p. 265; Ch. 11, p. 375).
 
 | **Method** | **FLOPs ($m \ge n$)** | **Orthogonality Loss $\lVert \hat{\boldsymbol{Q}}^{\top}\hat{\boldsymbol{Q}} - \boldsymbol{I} \rVert_2$** | **Relative Forward Error ($\epsilon = \epsilon_{\mathrm{mach}}$)** | **Rank-Deficient / Regime Suitability** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Normal Eq. + Cholesky | $mn^2 + \tfrac{1}{3}n^3$ | N/A ($\boldsymbol{A}^{\top}\boldsymbol{A}$ formed) | $\mathcal{O}\bigl(\epsilon \kappa_2(\boldsymbol{A})^2\bigr)$ | Fails if $\mathrm{rank}(\boldsymbol{A}) < n$; fast only when $\kappa_2(\boldsymbol{A})$ is small |
 | Classical GS (CGS) | $2mn^2$ | $\mathcal{O}\bigl(\epsilon \kappa_2(\boldsymbol{A})^2\bigr)$ | Unreliable (orthogonality lost) | Avoid in floating point without reorthogonalization |
 | Modified GS (MGS) | $2mn^2$ | $\mathcal{O}\bigl(\epsilon \kappa_2(\boldsymbol{A})\bigr)$ | $\mathcal{O}\bigl(\epsilon [\kappa_2(\boldsymbol{A}) + \kappa_2(\boldsymbol{A})^2\rho]\bigr)$ | Good if $\boldsymbol{Q}$ needed explicitly; needs pivoting if rank-deficient |
@@ -379,19 +355,16 @@ Figure `fig:vecnorm:pgf_norms` visualizes the geometry of $\ell_p$ unit balls in
 >
 > $$
 > \kappa_2(\boldsymbol{A}^{\top}\boldsymbol{A}) = \frac{\sigma_{\max}(\boldsymbol{A})^2}{\sigma_{\min}(\boldsymbol{A})^2} = \kappa_2(\boldsymbol{A})^2.
->
 > $$
 >
 > **Failure Example (Läuchli Matrix):** Take $\varepsilon = 10^{-8}$ in IEEE-754 double precision ($\epsilon_{\mathrm{mach}} \approx 2.22 \times 10^{-16}$):
 >
 > $$
->
 >   \boldsymbol{A} = \begin{bmatrix} 1 & 1 \\ \varepsilon & 0 \\ 0 & \varepsilon \end{bmatrix}
 >   \quad\Longrightarrow\quad
 >   \boldsymbol{A}^{\top}\boldsymbol{A} = \begin{bmatrix} 1 + \varepsilon^2 & 1 \\ 1 & 1 + \varepsilon^2 \end{bmatrix}
 >    \xrightarrow{\mathrm{fl}(1 + 10^{-16}) = 1} 
 >   \mathrm{fl}(\boldsymbol{A}^{\top}\boldsymbol{A}) = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}.
->
 > $$
 >
 > Although $\mathrm{rank}(\boldsymbol{A}) = 2$ with $\kappa_2(\boldsymbol{A}) = \sqrt{2 + \varepsilon^2}/\varepsilon \approx 1.41 \times 10^8$, rounding destroys independence; Cholesky on $\boldsymbol{A}^{\top}\boldsymbol{A}$ breaks near $\kappa_2(\boldsymbol{A}) \gtrsim \epsilon_{\mathrm{mach}}^{-1/2} \approx 10^8$, whereas Householder QR or SVD holds up to $\kappa_2(\boldsymbol{A}) \lesssim \epsilon_{\mathrm{mach}}^{-1} \approx 10^{16}$ [[Source - E D I T I O N|linear_algebra]] (Ch. 6, p. 366), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, Sec. 11.2.2.3, p. 375).

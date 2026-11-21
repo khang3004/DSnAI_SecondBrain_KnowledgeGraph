@@ -51,9 +51,9 @@ flowchart LR
 - **1. WHAT — Decoupled FTI Architecture**
 - **2. IMBALANCE & SPLIT-INVARIANT FEATURES**
   $$
-  \mathcal{L}_{\mathrm{FL}}(p_t)=-\alpha_t(1-p_t)^\gamma\log(p_t),\quad W_i^{\mathrm{eff}}=\frac{1-\beta}{1-\beta^{N_i}}
+  \mathcal{L}_{\mathrm{FL}}(p_t)=-\alpha_t(1-p_t)^\gamma\log(p_t),  W_i^{\mathrm{eff}}=\frac{1-\beta}{1-\beta^{N_i}}
   $$
-- **3. SHIFT TAXONOMY — Factorizing P(X,Y)**
+- **3. SHIFT TAXONOMY — Factorizing $P(X,Y)$**
 - **4. DRIFT METRICS — KS, PSI & Kernel MMD**
   $$
   \mathrm{PSI}=\sum_{b=1}^{B}(q_b-p_b)\ln\frac{q_b}{p_b}

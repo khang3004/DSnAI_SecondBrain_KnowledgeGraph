@@ -57,16 +57,13 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The five primary sources adopt distinct indexing conventions, logarithm bases, and matrix orientations across pretraining, scaling laws, and LoRA. Table `tab:pretrain:notation` establishes a unified notation used throughout this monograph.
 >
->
->
->
 > | Concept | Source Conventions | Unified Monograph Notation |
-> | — | — | — |
+> | --- | --- | --- |
 > | Token Sequence | $x_0, \dots, x_m$ [[Source - Foundations of Large Language Models]] (Ch. 1, p. 7); $w_1, \dots, w_N$ [[Source - Speech and Language Processing]] (Ch. 3, p. 76); `inputs`/`targets` (Raschka) | $\boldsymbol{x} = (x_0, \dots, x_m) \in \mathcal{V}^{m+1}$ |
 > | Perplexity Base | $\text{PPL}(W) = 2^{H(p,m)}$ (base 2) [[Source - Speech and Language Processing]] (Ch. 3, p. 88) vs. $\exp(\mathcal{L}_{\text{CE}})$ (base $e$) [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (Ch. 5, p. 348) | $\text{PPL}(\boldsymbol{x}) = \exp(\mathcal{L}_{\text{CE}})$ (nats) |
 > | Scaling Law | $L(N,D) = aN^b + cD^d + \epsilon_\infty$ ($b,d < 0$) [[Source - Foundations of Large Language Models]] (Ch. 2, p. 65) | $L(N,D) = E + A N^{-\alpha} + B D^{-\beta}$ ($\alpha,\beta > 0$) |
 > | LoRA Orientation | Row-vector $\boldsymbol{x}\boldsymbol{A}\boldsymbol{B}$ with $\boldsymbol{A}\in\mathbb{R}^{d_{\text{in}}\times r}$ [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (App. E, p. 792) vs. column-vector [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 214) | Column-vector $\boldsymbol{h} = \boldsymbol{W}_0\boldsymbol{x} + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}\boldsymbol{x}$, $\boldsymbol{A}\in\mathbb{R}^{r\times d_{\text{in}}}$, $\boldsymbol{B}\in\mathbb{R}^{d_{\text{out}}\times r}$ |
-> | Prompt Masking | `ignore\_index=-100` [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (Ch. 7, p. 539); user-turn vs. final-turn [[Source - Reinforcement Learning from Human Feedback]] (Ch. 4, p. 37) | Binary mask $m_i \in \{0,1\}$ (target $-100$ when $m_i = 0$) |
+> | Prompt Masking | `ignore_index=-100` [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (Ch. 7, p. 539); user-turn vs. final-turn [[Source - Reinforcement Learning from Human Feedback]] (Ch. 4, p. 37) | Binary mask $m_i \in \{0,1\}$ (target $-100$ when $m_i = 0$) |
 
 ## Core Mathematical Derivations & Theorems
 
@@ -79,7 +76,6 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})
 >   = \frac{1}{m}\sum_{i=0}^{m-1} H\!\left(p^{\text{gold}}_{i+1},  p_{\theta, i+1}\right)
 >   = -\frac{1}{m}\sum_{i=0}^{m-1} \log \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i).
->
 > $$
 >
 > Minimizing $\sum_{\boldsymbol{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})$ is algebraically identical to Maximum Likelihood Estimation (MLE):
@@ -88,7 +84,6 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \hat{\theta}_{\text{MLE}}
 >   = \arg\min_\theta \sum_{\boldsymbol{x}\in\mathcal{D}} \mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})
 >   = \arg\max_\theta \sum_{\boldsymbol{x}\in\mathcal{D}} \sum_{i=0}^{m-1} \log \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i).
->
 > $$
 >
 > By the Shannon–McMillan–Breiman theorem for a stationary ergodic language process $p$, the empirical cross-entropy rate of a model $m = \mathbb{P}_\theta$ converges to $H(p, m) = -\lim_{n\to\infty} \frac{1}{n}\log m(w_1\dots w_n) \ge H(p)$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 3, p. 87). Exponentiating Eq. `(eq:pretrain:ce_loss)` yields *perplexity* (PPL), the length-normalized inverse probability of the sequence [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 3, p. 76) [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 5, p. 348):
@@ -97,8 +92,8 @@ In the post-training SFT stage, we are given an instruction dataset $\mathcal{D}
 > \text{PPL}_\theta(\boldsymbol{x})
 >   = \exp\!\big(\mathcal{L}_{\text{CE}}(\theta; \boldsymbol{x})\big)
 >   = \left(\prod_{i=0}^{m-1} \mathbb{P}_\theta(x_{i+1} \mid x_0, \dots, x_i)\right)^{-\frac{1}{m}}.
->
 > $$
+>
 
 > [!tip] Perplexity as Effective Vocabulary Branching Factor
 > If a model assigns uniform probability $1/K$ to $K$ plausible next tokens at every step, then $\mathbb{P}_\theta(x_{i+1}\mid x_{\le i}) = 1/K$ and $\text{PPL}_\theta(\boldsymbol{x}) = (K^{-m})^{-1/m} = K$. Thus, perplexity measures the *weighted average branching factor* of the model's uncertainty [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 3, p. 77). At initialization over a GPT-2 vocabulary of $\lvert \mathcal{V} \rvert = 50{,}257$, $\mathcal{L}_{\text{CE}} \approx \ln(50{,}257) \approx 10.82$ nats, giving $\text{PPL} \approx 48{,}726$; the untrained model is effectively guessing uniformly across nearly the entire vocabulary [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 5, p. 348).
@@ -124,21 +119,18 @@ Empirical scaling laws relate test cross-entropy loss $L(N, D)$ to non-embedding
 >
 > $$
 > L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},
->
 > $$
 >
 > with empirically fitted constants $E = 1.69$, $A = 406.4$, $\alpha = 0.34$, $B = 410.7$, and $\beta = 0.28$. Given a fixed compute budget $C = 6ND$, we minimize $L(N,D)$ via the Lagrangian
 >
 > $$
 > \Lambda(N, D, \lambda) = E + A N^{-\alpha} + B D^{-\beta} + \lambda (6ND - C).
->
 > $$
 >
 > Setting $\frac{\partial \Lambda}{\partial N} = 0$ and $\frac{\partial \Lambda}{\partial D} = 0$ yields $-\alpha A N^{-\alpha-1} + 6\lambda D = 0$ and $-\beta B D^{-\beta-1} + 6\lambda N = 0$. Multiplying the first by $N$ and the second by $D$ equates both to $6\lambda ND = \lambda C$:
 >
 > $$
 > \alpha A N^{-\alpha} = \beta B D^{-\beta}.
->
 > $$
 >
 > Substituting $D = C/(6N)$ into Eq. `(eq:pretrain:balance)` gives the closed-form compute-optimal allocation:
@@ -146,7 +138,6 @@ Empirical scaling laws relate test cross-entropy loss $L(N, D)$ to non-embedding
 > $$
 > N^*(C) = G \left(\frac{C}{6}\right)^{a}, \qquad
 >   D^*(C) = G^{-1} \left(\frac{C}{6}\right)^{b},
->
 > $$
 >
 > where $G = \left(\frac{\alpha A}{\beta B}\right)^{\frac{1}{\alpha+\beta}}$, $a = \frac{\beta}{\alpha+\beta} \approx 0.452$, and $b = \frac{\alpha}{\alpha+\beta} \approx 0.548$ (yielding the symmetric Chinchilla rule-of-thumb $N^* \propto C^{0.5}$, $D^* \propto C^{0.5}$, or $\approx 20$ tokens per parameter).
@@ -165,7 +156,6 @@ Full fine-tuning of an LLM updates all $N$ weights, requiring FP32 master weight
 >
 > $$
 > \boldsymbol{h} = \boldsymbol{W}_0 \boldsymbol{x} + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}\boldsymbol{x}.
->
 > $$
 >
 > At initialization ($t=0$), $\boldsymbol{A}$ is sampled from $\mathcal{N}(0, \sigma^2)$ (or Kaiming uniform) while $\boldsymbol{B} = \boldsymbol{0}$, guaranteeing $\Delta \boldsymbol{W}_0 = \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A} = \boldsymbol{0}$ so the adapted model reproduces the pretrained outputs identically before step 1 [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (App. E, pp. 792–795); see also [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 214). Differentiating the loss $\mathcal{L}$ with respect to $(\boldsymbol{A}, \boldsymbol{B})$ yields
@@ -173,7 +163,6 @@ Full fine-tuning of an LLM updates all $N$ weights, requiring FP32 master weight
 > $$
 > \frac{\partial \mathcal{L}}{\partial \boldsymbol{B}} = \frac{\alpha}{r} \left(\frac{\partial \mathcal{L}}{\partial \boldsymbol{h}}\right) (\boldsymbol{A}\boldsymbol{x})^{\top}, \qquad
 >   \frac{\partial \mathcal{L}}{\partial \boldsymbol{A}} = \frac{\alpha}{r} \boldsymbol{B}^{\top} \left(\frac{\partial \mathcal{L}}{\partial \boldsymbol{h}}\right) \boldsymbol{x}^{\top}.
->
 > $$
 >
 > Because $\boldsymbol{A} \neq \boldsymbol{0}$, $\frac{\partial \mathcal{L}}{\partial \boldsymbol{B}} \neq \boldsymbol{0}$ at $t=0$, allowing $\boldsymbol{B}$ to move off zero on the first optimizer step and subsequently backpropagate non-zero gradients into $\boldsymbol{A}$. Trainable parameters per adapted matrix drop from $d_{\text{out}} d_{\text{in}}$ to $r(d_{\text{in}} + d_{\text{out}})$—for example, targeting all linear projections of Llama 3 8B with $r=16$ requires only $42\text{M}$ trainable parameters ($0.5196\%$ of $8\text{B}$) [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 215). At inference, $\boldsymbol{W}_{\text{eff}} = \boldsymbol{W}_0 + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}$ merges into a single matrix with zero added latency [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (App. E, p. 779).
@@ -190,7 +179,7 @@ QLoRA extends LoRA by compressing the frozen base weights $\boldsymbol{W}_0$ int
 
 ### Instruction-Masked SFT with QLoRA and Gradient Checkpointing
 
-In instruction fine-tuning, raw JSONL pairs (Alpaca, ShareGPT, or OpenAI schemas) are serialized via a chat template with explicit role delimiters (e.g., `<|im\_start|>system`, `user`, `assistant`, `<|im\_end|>`) [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, pp. 208–209). To prevent the model from wasting capacity memorizing user prompts, target tokens corresponding to system and user turns are replaced with PyTorch's `ignore\_index=-100` (Figure `fig:pretrain:alpaca_masking`), restricting the cross-entropy gradient to assistant response tokens [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 7, pp. 539–540) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 4, p. 37).
+In instruction fine-tuning, raw JSONL pairs (Alpaca, ShareGPT, or OpenAI schemas) are serialized via a chat template with explicit role delimiters (e.g., `<|im_start|>system`, `user`, `assistant`, `<|im_end|>`) [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, pp. 208–209). To prevent the model from wasting capacity memorizing user prompts, target tokens corresponding to system and user turns are replaced with PyTorch's `ignore_index=-100` (Figure `fig:pretrain:alpaca_masking`), restricting the cross-entropy gradient to assistant response tokens [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 7, pp. 539–540) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 4, p. 37).
 
 > [!note] Source Figure
 > *Figure:* Alpaca-style instruction loss masking: input tokens are fed intact to the model, while instruction/prompt positions in the target tensor are replaced by $-100$ so cross-entropy is evaluated solely on the response and `<|endoftext|>` token [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 7, Fig. 7.13, p. 539). (`build_large_language_model_from_scratch_p539_fig1.png`)
@@ -226,17 +215,17 @@ At pretraining scale, single-GPU memory cannot hold model states or activations.
 **Table:** Memory footprint and systems trade-offs across pretraining and fine-tuning regimes.
 
 | Training Regime | Memory / Param | 7B VRAM | Communication / Compute Trade-off |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | Full FT (FP32 AdamW) | $16\text{ B}$ ($4\text{W}+4\text{G}+8\text{Opt}$) | $\sim 112\text{ GB}$ (+act.) | Zero recompute; prohibitive single-GPU footprint [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 212) |
 | DP / ZeRO-3 ($P$ GPUs) | $16/P\text{ B}$ (sharded) | $\sim 14\text{ GB}$ ($P=8$) | All-gather / reduce-scatter overhead per layer [[Source - Foundations of Large Language Models]] (Ch. 2, p. 61) |
-| LoRA (FP16 + AdamW) | $2\text{ B} + O(r/d)$ | $14\text{–}15.6\text{ GB}$ | Non-destructive; multi-tenant adapter swapping [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 215) |
-| QLoRA (NF4 + Paged 8b) | $\sim 0.5\text{ B} + O(r/d)$ | $9.1\text{–}9.3\text{ GB}$ | $\sim 30\%$ slower due to on-the-fly NF4 dequantization [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 215) |
+| LoRA (FP16 + AdamW) | $2\text{ B} + O(r/d)$ | $14\text{--}15.6\text{ GB}$ | Non-destructive; multi-tenant adapter swapping [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 215) |
+| QLoRA (NF4 + Paged 8b) | $\sim 0.5\text{ B} + O(r/d)$ | $9.1\text{--}9.3\text{ GB}$ | $\sim 30\%$ slower due to on-the-fly NF4 dequantization [[Source - LLM Engineer’s Handbook]] (Ch. 5, p. 215) |
 
 > [!info] Cross-Book Synthesis: Prompt Masking, Learning Rates, and Sequence Packing
 > Comparing post-training recipes reveals three critical design choices:
 > - **Prompt Masking vs. Full-Sequence Loss**: Lambert distinguishes *user-turn masking* (training on all assistant turns) from *final-turn masking* (masking all prior context) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 4, p. 37). Conversely, Raschka notes empirical findings (Shi et al., 2024) where omitting the $-100$ mask can aid short-instruction tasks, making masking an empirical hyperparameter [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 7, p. 540).
-> - **Learning-Rate Scaling**: Because SFT operates on smaller datasets with a strong pretrained initialization, [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 4, p. 37) recommends an SFT peak learning rate $10\times$–$100\times$ lower than pretraining (e.g., OLMo 2 drops from $3\times 10^{-4}$ in pretraining to $1\times 10^{-5}$ in SFT), whereas sequence packing increases effective tokens per batch and permits $5\text{–}8\times 10^{-5}$.
-> - **LoRA Hyperparameters**: [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 214) recommends targeting all attention ($Q, K, V, O$) and MLP linear layers with $\alpha = 2r$ (e.g., $r=16, \alpha=32$) and weight decay $0.01$ over $1\text{–}5$ epochs.
+> - **Learning-Rate Scaling**: Because SFT operates on smaller datasets with a strong pretrained initialization, [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 4, p. 37) recommends an SFT peak learning rate $10\times$–$100\times$ lower than pretraining (e.g., OLMo 2 drops from $3\times 10^{-4}$ in pretraining to $1\times 10^{-5}$ in SFT), whereas sequence packing increases effective tokens per batch and permits $5\text{--}8\times 10^{-5}$.
+> - **LoRA Hyperparameters**: [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 5, p. 214) recommends targeting all attention ($Q, K, V, O$) and MLP linear layers with $\alpha = 2r$ (e.g., $r=16, \alpha=32$) and weight decay $0.01$ over $1\text{--}5$ epochs.
 
 ## Numerical Pitfalls, Edge Cases & Failure Modes
 

@@ -57,8 +57,8 @@ flowchart LR
   $$
   R_l = R_{l-1} + d_l(k_l-1)\prod_{i=1}^{l-1}s_i
   $$
-- **4. VISION BACKBONES — VGG \to ResNet \to U-Net**
-- **5. COST — Operator Complexity (k\times k,  C_{\mathrm{in}}\to C_{\mathrm{out}})**
+- **4. VISION BACKBONES — VGG $\to$ ResNet $\to$ U-Net**
+- **5. COST — Operator Complexity ($k\times k,  C_{\mathrm{in}}\to C_{\mathrm{out}}$)**
 - **6. USE-CASES — Dense & Mobile Vision**
 
 ## Related Sources

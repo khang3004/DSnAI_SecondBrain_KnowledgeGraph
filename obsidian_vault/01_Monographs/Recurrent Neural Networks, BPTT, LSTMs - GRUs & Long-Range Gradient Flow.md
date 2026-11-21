@@ -54,16 +54,13 @@ $$
   \bar{\mathcal{L}}(\theta) = \frac{1}{T} \sum_{t=1}^{T} \ell(\boldsymbol{y}_t, \boldsymbol{o}_t).
 $$
 
-{
 The same recurrent state mechanism supports four primary sequence topologies (see [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 14.6, PDF p. 326) and [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.1–15.2.3, PDF pp. 533–538)): (i) *sequence labeling* (aligned many-to-many mapping $\boldsymbol{x}_{1:T} \mapsto \boldsymbol{y}_{1:T}$), (ii) *sequence classification* (many-to-one mapping $\boldsymbol{x}_{1:T} \mapsto \boldsymbol{y}_T$ using $\boldsymbol{h}_T$), (iii) *autoregressive generation / language modeling* (factorizing $p(\boldsymbol{y}_{1:T}) = \prod_{t=1}^T p(\boldsymbol{y}_t \mid \boldsymbol{y}_{1:t-1})$ with $\boldsymbol{x}_t = \boldsymbol{y}_{t-1}$), and (iv) *encoder–decoder seq2seq* (encoding $\boldsymbol{x}_{1:T_x}$ into a context vector and decoding $\boldsymbol{y}_{1:T_y}$). Because hidden-to-hidden recurrence allows unbounded state dependence, finite-size RNNs with rational weights are Turing-universal ([[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 10.1, PDF p. 394); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.1, PDF p. 534)).
-}
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks use conflicting matrix letters (notably swapping $\boldsymbol{U}$ and $\boldsymbol{W}$) and differing tensor layouts (column vectors vs. batch-first row matrices): Goodfellow et al. [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 10), Jurafsky & Martin [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 14), and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2). This monograph adopts the explicit subscript convention $\boldsymbol{W}_{hh}, \boldsymbol{W}_{hx}, \boldsymbol{W}_{oh}$ and column vectors $\boldsymbol{x}_t, \boldsymbol{h}_t, \boldsymbol{c}_t$.
-> 
 >
 > | **Concept** | **Goodfellow et al. (2017)** | **Jurafsky & Martin (2026)** | **Murphy Intro (2025)** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Time-step index | Superscript $\boldsymbol{x}^{(t)}, \boldsymbol{h}^{(t)}, \boldsymbol{o}^{(t)}$ ($t=1\dots\tau$) | Subscript $\boldsymbol{x}_t, \boldsymbol{h}_t, \boldsymbol{y}_t$ ($t=1\dots n$) | Subscript $\boldsymbol{x}_t, \boldsymbol{h}_t, \boldsymbol{o}_t$ or batch $\boldsymbol{X}_t, \boldsymbol{H}_t$ |
 > | Input $\to$ Hidden | $\boldsymbol{U}$ | $\boldsymbol{W}$ | $\boldsymbol{W}_{hx}$ (or $\boldsymbol{W}_{xh}$ in vec2seq) |
 > | Hidden $\to$ Hidden | $\boldsymbol{W}$ | $\boldsymbol{U}$ | $\boldsymbol{W}_{hh}$ |
@@ -85,7 +82,6 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >
 > $$
 > \nabla_{\boldsymbol{h}_T}\mathcal{L} = \boldsymbol{W}_{oh}^{\top} \nabla_{\boldsymbol{o}_T}\mathcal{L}.
->
 > $$
 >
 > For $t = T-1, \dots, 1$, $\boldsymbol{h}_t$ has two descendants ($\boldsymbol{o}_t$ and $\boldsymbol{h}_{t+1}$). Applying the multivariable chain rule gives the backward recursion:
@@ -96,14 +92,12 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >   + \left(\frac{\partial \boldsymbol{o}_t}{\partial \boldsymbol{h}_t}\right)^{\top} \nabla_{\boldsymbol{o}_t}\mathcal{L}
 >   = \boldsymbol{W}_{hh}^{\top} \mathrm{diag}\big(\phi'(\boldsymbol{a}_{t+1})\big) \nabla_{\boldsymbol{h}_{t+1}}\mathcal{L}
 >   + \boldsymbol{W}_{oh}^{\top} \nabla_{\boldsymbol{o}_t}\mathcal{L}.
->
 > $$
 >
 > Unrolling `(eq:rnn:bptt_rec)` expresses the sensitivity of the loss at step $t$ to an earlier hidden state $\boldsymbol{h}_k$ ($k < t$) through a product of $t-k$ step-to-step Jacobians $\boldsymbol{J}_j := \frac{\partial \boldsymbol{h}_j}{\partial \boldsymbol{h}_{j-1}} = \mathrm{diag}\big(\phi'(\boldsymbol{a}_j)\big)\boldsymbol{W}_{hh}$:
 >
 > $$
 > \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{h}_k} = \prod_{j=k+1}^{t} \boldsymbol{J}_j = \prod_{j=k+1}^{t} \mathrm{diag}\big(\phi'(\boldsymbol{a}_j)\big)\boldsymbol{W}_{hh}.
->
 > $$
 >
 > Summing contributions across all time steps yields the exact parameter gradients [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Eqs. 10.22–10.28, PDF p. 401):
@@ -115,15 +109,14 @@ Unfolding the cyclic recurrence in `(eq:rnn:elman_state)` across $t=1,\dots,T$ y
 >   \nabla_{\boldsymbol{W}_{hx}}\mathcal{L} &= \sum_{t=1}^{T} \mathrm{diag}\big(\phi'(\boldsymbol{a}_t)\big)(\nabla_{\boldsymbol{h}_t}\mathcal{L})\boldsymbol{x}_t^{\top}, &
 >   \nabla_{\boldsymbol{b}_h}\mathcal{L} &= \sum_{t=1}^{T} \mathrm{diag}\big(\phi'(\boldsymbol{a}_t)\big)\nabla_{\boldsymbol{h}_t}\mathcal{L}.
 > \end{aligned}
->
 > $$
 >
 > Equivalently, writing $\boldsymbol{h}_t = f(\boldsymbol{x}_t, \boldsymbol{h}_{t-1}, \boldsymbol{w}_h)$ yields the recursive sensitivity [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 15.22, PDF p. 541):
 >
 > $$
 > \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{w}_h} = \frac{\partial f(\boldsymbol{x}_t,\boldsymbol{h}_{t-1},\boldsymbol{w}_h)}{\partial \boldsymbol{w}_h} + \sum_{i=1}^{t-1} \left(\prod_{j=i+1}^t \frac{\partial f(\boldsymbol{x}_j,\boldsymbol{h}_{j-1},\boldsymbol{w}_h)}{\partial \boldsymbol{h}_{j-1}}\right)\frac{\partial f(\boldsymbol{x}_i,\boldsymbol{h}_{i-1},\boldsymbol{w}_h)}{\partial \boldsymbol{w}_h}.
->
 > $$
+>
 
 ### Spectral Radius Analysis of Vanishing and Exploding Gradients
 
@@ -134,7 +127,6 @@ The Jacobian product `(eq:rnn:jacobian_prod)` governs whether long-range credit 
 >
 > $$
 > \boldsymbol{J}^{\Delta} = \boldsymbol{Q}\boldsymbol{\Lambda}^{\Delta}\boldsymbol{Q}^{-1}.
->
 > $$
 >
 > If a gradient perturbation $\delta \boldsymbol{v}$ lies along a unit eigenvector $\boldsymbol{v}$ with eigenvalue $\lambda$, backpropagating $\Delta$ steps scales the perturbation to $\delta \boldsymbol{J}^{\Delta}\boldsymbol{v} = \delta \lambda^{\Delta}\boldsymbol{v}$, whose norm is $\delta\lvert \lambda \rvert^{\Delta}$:
@@ -147,7 +139,6 @@ The Jacobian product `(eq:rnn:jacobian_prod)` governs whether long-range credit 
 > \lVert \frac{\partial \boldsymbol{h}_t}{\partial \boldsymbol{h}_k} \rVert_2
 >   \le \prod_{j=k+1}^{t} \lVert \mathrm{diag}(\phi'(\boldsymbol{a}_j)) \rVert_2 \lVert \boldsymbol{W}_{hh} \rVert_2
 >   \le \big(\gamma \sigma_{\max}(\boldsymbol{W}_{hh})\big)^{t-k}.
->
 > $$
 >
 > Thus $\sigma_{\max}(\boldsymbol{W}_{hh}) < 1/\gamma$ is a *sufficient condition* for gradients to vanish exponentially for all input sequences [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.6, PDF p. 541). Conversely, $\rho(\boldsymbol{J}) > 1$ along active non-saturated modes is necessary for gradient explosion.
@@ -157,9 +148,7 @@ The Jacobian product `(eq:rnn:jacobian_prod)` governs whether long-range credit 
 
 ### Constant Error Carousel (CEC) & Gated Architectures: LSTM and GRU
 
-{
 Rather than tuning $\boldsymbol{W}_{hh}$ to sit precariously on the $\rho = 1$ boundary, gated RNNs introduce *additive* state highways with input-dependent, dynamically learned time constants ([[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 10.10, PDF pp. 423–427); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.7, PDF p. 542)).
-}
 
 > [!important] LSTM Equations & Constant Error Carousel Highway
 > The Long Short-Term Memory (LSTM) augments the hidden output $\boldsymbol{h}_t \in \mathbb{R}^{d_h}$ with an explicit memory cell $\boldsymbol{c}_t \in \mathbb{R}^{d_h}$ regulated by three sigmoidal gates ($\boldsymbol{f}_t, \boldsymbol{i}_t, \boldsymbol{o}_t \in (0,1)^{d_h}$) and a candidate state $\tilde{\boldsymbol{c}}_t \in (-1,1)^{d_h}$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Eqs. 14.20–14.27, PDF p. 324); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eqs. 15.27–15.32, PDF pp. 543–544):
@@ -173,7 +162,6 @@ Rather than tuning $\boldsymbol{W}_{hh}$ to sit precariously on the $\rho = 1$ b
 >   \boldsymbol{c}_t &= \boldsymbol{f}_t \odot \boldsymbol{c}_{t-1} + \boldsymbol{i}_t \odot \tilde{\boldsymbol{c}}_t && \text{(additive cell-state update)},  \\
 >   \boldsymbol{h}_t &= \boldsymbol{o}_t \odot \tanh(\boldsymbol{c}_t) && \text{(gated hidden output)}.
 > \end{aligned}
->
 > $$
 >
 > Differentiating $\boldsymbol{c}_t$ with respect to $\boldsymbol{c}_{t-1}$ along the direct cell-state highway (holding the gate activations fixed as functions of $\boldsymbol{h}_{t-1}$) yields the diagonal Jacobian
@@ -182,7 +170,6 @@ Rather than tuning $\boldsymbol{W}_{hh}$ to sit precariously on the $\rho = 1$ b
 > \left.\frac{\partial \boldsymbol{c}_t}{\partial \boldsymbol{c}_{t-1}}\right|_{\text{direct}} = \mathrm{diag}(\boldsymbol{f}_t)
 >   \implies
 >   \left.\frac{\partial \boldsymbol{c}_t}{\partial \boldsymbol{c}_k}\right|_{\text{direct}} = \mathrm{diag}\!\left(\prod_{j=k+1}^{t} \boldsymbol{f}_j\right).
->
 > $$
 >
 > This additive self-loop forms the *Constant Error Carousel (CEC)*: whenever the forget gate remains open ($f_{j,m} \approx 1$, $i_{j,m} \approx 0$), error gradients propagate backward across $t-k$ steps with near-unit gain and *zero* repeated multiplication by $\boldsymbol{W}_{hh}$ or $\tanh'(\cdot)$.
@@ -202,9 +189,7 @@ When $z_{t,m} \to 1$, dimension $m$ copies $h_{t-1,m}$ unchanged; when $r_{t,m} 
 
 ## Algorithmic Implementation & Comparative Synthesis
 
-{
 Full BPTT over a sequence of length $T$ requires $O(T)$ sequential steps and $O(T d_h)$ memory to cache intermediate activations, making long sequences ($T \gg 10^3$) prohibitive ([[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 10.2, PDF p. 396); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.2.5, PDF p. 541)). In practice, training combines *Truncated BPTT (TBPTT)* over contiguous chunks of length $K$ (with hidden-state carryover) and *global $L_2$-norm gradient clipping* [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 10.11.1, PDF pp. 429–430) to prevent gradient cliffs.
-}
 
 > [!example] Algorithm: Truncated BPTT with Hidden-State Carryover and Norm Gradient Clipping
 > **Input:** Ordered sequence $(\boldsymbol{x}_{1:T}, \boldsymbol{y}_{1:T})$, chunk length $K$, clipping threshold $\nu > 0$, learning rate $\eta$, initial parameters $\theta$
@@ -229,7 +214,7 @@ Full BPTT over a sequence of length $T$ requires $O(T)$ sequential steps and $O(
 **Table:** Complexity and gradient-flow comparison across recurrent architectures (input dim $d_x$, hidden dim $d_h$, chunk/sequence length $K \le T$).
 
 | **Architecture** | **Recurrent Params** | **Time / Step** | **BPTT Mem.** | **Long-Range Mechanism** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Elman SRN | $d_h(d_x + d_h + 1)$ | $O(d_h(d_x + d_h))$ | $O(K d_h)$ | None ($\boldsymbol{J}_t$ product decays/explodes) |
 | LSTM (4 gates) | $4 d_h(d_x + d_h + 1)$ | $O(4 d_h(d_x + d_h))$ | $O(K d_h)$ | Additive cell $\boldsymbol{c}_t$ (CEC, $\prod \boldsymbol{f}_t$) |
 | GRU (3 gates) | $3 d_h(d_x + d_h + 1)$ | $O(3 d_h(d_x + d_h))$ | $O(K d_h)$ | Convex interpolation $\boldsymbol{z}_t \odot \boldsymbol{h}_{t-1}$ |

@@ -56,7 +56,7 @@ flowchart LR
 
 - **1. WHAT — Continuum Limit: VP-SDE & VE-SDE**
   $$
-  \mathrm{d}\boldsymbol{x}_t=\boldsymbol{f}(\boldsymbol{x}_t,t) \mathrm{d}t+g(t) \mathrm{d}\boldsymbol{w}_t,\quad \mathrm{d}\boldsymbol{w}_t\sim\mathcal{N}(\boldsymbol{0},\mathrm{d}t \boldsymbol{I})
+  \mathrm{d}\boldsymbol{x}_t=\boldsymbol{f}(\boldsymbol{x}_t,t) \mathrm{d}t+g(t) \mathrm{d}\boldsymbol{w}_t,  \mathrm{d}\boldsymbol{w}_t\sim\mathcal{N}(\boldsymbol{0},\mathrm{d}t \boldsymbol{I})
   $$
 - **2. HOW — Itô's Lemma & Fokker-Planck PDE**
   $$

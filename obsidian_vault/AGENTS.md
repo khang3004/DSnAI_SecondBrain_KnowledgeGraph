@@ -2,7 +2,7 @@
 
 `obsidian_vault/` is a **generated, strictly validated Obsidian Knowledge Graph** built by `scripts/build_obsidian_vault.py` from `scripts/concept_graph_spec.py`, `data/taxonomy_tree.json`, `data/book_index.json`, and `monographs/**/*.tex`.
 
-**NEVER hand-edit generated files inside `obsidian_vault/`** — all changes must be made in `scripts/concept_graph_spec.py`, `scripts/build_obsidian_vault.py`, or the source `.tex` monographs, then rebuilt and audited.
+**NEVER hand-edit generated files inside `obsidian_vault/`** — all changes must be made in `scripts/concept_graph_spec.py`, `scripts/build_obsidian_vault.py`, or the source `.tex` monographs, then rebuilt and audited. (`build_obsidian_vault.py` preserves this `AGENTS.md` file when regenerating subdirectories.)
 
 ## 1. Vault & Graph Topology
 - `00_MOC/` — `00_Home_MOC.md`, `00_Concept_Graph_Index.md`, Domain MOCs (`D01..`), Parent-Topic MOCs (`PT ..`), Sub-Topic MOCs (`ST ..`).
@@ -25,13 +25,16 @@ When adding nodes to `scripts/concept_graph_spec.py`:
 
 ## 3. Obsidian-Specific Markdown & MathJax Render Rules
 Standard Markdown validity does NOT guarantee clean rendering in Obsidian Live Preview / Reading View. Always enforce:
-1. **MathJax Macro Compatibility:**
+1. **MathJax Macro & Delimiter Compatibility:**
    - Never emit `\bm`, `\vecb`, `\mat`, `\abs`, `\norm`, `\KL`, `\JS`, `\Wass`, `\argmax`, `\argmin`, `\coloneqq`, or `\eqqcolon`. Expand to `\boldsymbol`, `\lVert...\rVert`, `\lvert...\rvert`, `\parallel`, `\arg\max`, `\arg\min`, `:=`, `=:`.
    - Use standard `$$ ... $$` and single-line `$ ... $` (never leave `\[...\]` or `\(...\)`, and never match `\\[4pt]` line breaks as `\[`).
+   - Never leave leading/trailing spaces inside inline math (`$ x$` or `$x $` breaks Obsidian MathJax) and never emit Markdown backticks (from `\texttt`) inside `$...$` (expand `\texttt` $\to$ `\mathtt` inside math).
    - Do not use `\Vval` or `\Qval` without word-boundary spacing (avoid `\gammaV`).
 2. **Markdown Tables (Especially Inside Callouts):**
-   - Obsidian **requires a blank line** (or bare `>` inside a `> [!callout]`) immediately before every table header `| ... |`.
-   - Never leave unescaped `|` inside `$...$` in table cells (convert `|` $\to$ `\mid` and `\|` $\to$ `\parallel`); strip `|alias` from `[[Note|alias]]` inside tables.
+   - **Never run `---` $\to$ `—` dash replacement on table separator rows:** Obsidian strictly requires ASCII `| --- | --- |` (never Unicode `| — |`).
+   - Obsidian **requires a blank line** (or bare `>` inside a `> [!callout]`) immediately before every table header `| ... |` AND immediately after the last table row.
+   - Never leave unescaped `|` or `\|` inside `$...$` in table cells (convert `|` $\to$ `\mid` and `\|` $\to$ `\parallel`), strip `|alias` from `[[Note|alias]]` inside tables, and skip concept auto-linking on table rows so injected aliases never split columns.
+   - Unwrap TeX layout groups (`{\small ...}`, `{\sloppy ...}`, `\resizebox{...}{...}{...}`) so no stray `{` or `}` lines appear around tables.
 3. **Algorithms & Accents:**
    - Convert `algorithm2e` blocks via `convert_algorithm_block` (3-pass nested macro expansion + `\Return` handling).
    - Convert LaTeX accents (`\`e`, `\'e`, `\^o`, `\"o`, `\"u`, `\"a`, `\L{}`) to Unicode (`è`, `é`, `ô`, `ö`, `ü`, `ä`, `Ł`).

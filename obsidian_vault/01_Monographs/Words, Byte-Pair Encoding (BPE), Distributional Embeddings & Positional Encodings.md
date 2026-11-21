@@ -48,14 +48,11 @@ as formalized both as a one-hot matrix product in [[Source - Speech and Language
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The three primary references adopt distinct conventions for vocabulary size, embedding dimension, target-versus-context matrices, and sequence indices. Table `tab:tok:notation` establishes a unified symbol set used throughout this monograph.
 >
->
->
->
 > | **Concept** | **Unified** | **J&M** | **Raschka** | **Murphy Intro** |
-> | — | — | — | — | — |
-> | Vocabulary size | $\lvert \mathcal{V} \rvert$ | $\lvert V \rvert$ | `vocab\_size` | $M$ (Sec. 20.5, p. 705) |
-> | Embedding dim. | $d$ | $d$ | `output\_dim` | $D$ (Sec. 20.5, p. 705) |
-> | Context length | $N$ | $N$ | `max\_length` | $T$ (Sec. 20.5.2, p. 708) |
+> | --- | --- | --- | --- | --- |
+> | Vocabulary size | $\lvert \mathcal{V} \rvert$ | $\lvert V \rvert$ | `vocab_size` | $M$ (Sec. 20.5, p. 705) |
+> | Embedding dim. | $d$ | $d$ | `output_dim` | $D$ (Sec. 20.5, p. 705) |
+> | Context length | $N$ | $N$ | `max_length` | $T$ (Sec. 20.5.2, p. 708) |
 > | Embedding matrix | $\boldsymbol{E} \in \mathbb{R}^{\lvert \mathcal{V} \rvert\times d}$ | $\boldsymbol{E}$ | `emb.weight` | $\boldsymbol{V}, \boldsymbol{U} \in \mathbb{R}^{D \times M}$ |
 > | Target / context vec. | $\boldsymbol{w}_i, \boldsymbol{c}_j \in \mathbb{R}^d$ | $\boldsymbol{w}, \boldsymbol{c}$ | $\boldsymbol{e}_t$ (tied) | $\boldsymbol{v}_i, \boldsymbol{u}_j \in \mathbb{R}^D$ |
 > | Neg. samples count | $k$ | $k$ | — (autoregressive) | $K$ (Sec. 20.5.2.3, p. 709) |
@@ -65,14 +62,13 @@ as formalized both as a one-hot matrix product in [[Source - Speech and Language
 
 ### Unicode, Byte-Pair Encoding (BPE), and Edit Distance
 
-Representing arbitrary multilingual text cannot rely on ASCII ($7$-bit, $128$ codes) or fixed word-level dictionaries, which suffer from out-of-vocabulary (OOV) failures and morphological explosion across polysynthetic or agglutinative languages [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 2.2–2.3, pp. 37–41 (PDF pp. 45–49)). Unicode assigns each character a unique code point in $`U+0000`$–$`U+10FFFF`$ ($1{,}114{,}111$ slots), and UTF-8 encodes each code point into $1$ to $4$ bytes in a prefix-free, self-synchronizing, ASCII-compatible format.
+Representing arbitrary multilingual text cannot rely on ASCII ($7$-bit, $128$ codes) or fixed word-level dictionaries, which suffer from out-of-vocabulary (OOV) failures and morphological explosion across polysynthetic or agglutinative languages [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 2.2–2.3, pp. 37–41 (PDF pp. 45–49)). Unicode assigns each character a unique code point in $\mathtt{U+0000}$–$\mathtt{U+10FFFF}$ ($1{,}114{,}111$ slots), and UTF-8 encodes each code point into $1$ to $4$ bytes in a prefix-free, self-synchronizing, ASCII-compatible format.
 
 > [!important] BPE Greedy Pair-Merge Objective & Minimum Edit Distance
 > Let $\mathcal{C}_{\mathrm{pre}}$ be a multiset of pre-tokenized strings segmented at whitespace/punctuation boundaries (e.g., via regex pre-tokenization [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 2.6, p. 55 (PDF p. 63))), where each string $s \in \mathcal{C}_{\mathrm{pre}}$ has corpus multiplicity $f(s)$ and is initialized as a sequence of base symbols from $\Sigma_0$. At merge iteration $m \in \{1,\dots,k\}$, given current vocabulary $\mathcal{V}_{m-1}$, BPE selects the adjacent symbol pair $(a^*, b^*) \in \mathcal{V}_{m-1} \times \mathcal{V}_{m-1}$ maximizing total corpus co-occurrence frequency:
 >
 > $$
 > (a^*, b^*) = \arg\max_{(a, b) \in \mathcal{V}_{m-1}^2} \sum_{s \in \mathcal{C}_{\mathrm{pre}}} f(s) \cdot \mathrm{count}(ab \text{ in } s),
->
 > $$
 >
 > replaces every non-overlapping occurrence of $(a^*, b^*)$ with a new merged symbol $z_m = a^* b^*$, and sets $\mathcal{V}_m = \mathcal{V}_{m-1} \cup \{z_m\}$, yielding $\lvert \mathcal{V}_k \rvert = \lvert \Sigma_0 \rvert + k$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 2.4.1, pp. 43–44 (PDF pp. 51–52)).
@@ -85,7 +81,6 @@ Representing arbitrary multilingual text cannot rely on ASCII ($7$-bit, $128$ co
 >     D[i, j-1] + \mathrm{ins}(Y_j), \\
 >     D[i-1, j-1] + \mathrm{sub}(X_i, Y_j),
 >   \end{cases}
->
 > $$
 >
 > where standard Levenshtein weights set $\mathrm{del}=\mathrm{ins}=1$ and $\mathrm{sub}(x,y) = 2 \mathbb{I}[x \neq y]$ (or $1$ for unit substitution cost) [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 2.9, pp. 62–63 (PDF pp. 70–71)).
@@ -110,14 +105,12 @@ While sparse count vectors of dimension $\lvert \mathcal{V} \rvert$ capture co-o
 >
 > $$
 > P(D=1 \mid w, c) = \sigma(\boldsymbol{c}^{\top} \boldsymbol{w}), \qquad P(D=0 \mid w, c) = 1 - \sigma(\boldsymbol{c}^{\top} \boldsymbol{w}) = \sigma(-\boldsymbol{c}^{\top} \boldsymbol{w}).
->
 > $$
 >
 > Noise words $c_{\mathrm{neg}, 1}, \dots, c_{\mathrm{neg}, k}$ are sampled independently from the $\alpha$-smoothed unigram distribution with $\alpha = 3/4$:
 >
 > $$
 > P_\alpha(w') = \frac{\mathrm{count}(w')^\alpha}{\sum_{u \in \mathcal{V}} \mathrm{count}(u)^\alpha},
->
 > $$
 >
 > which upweights rare words relative to raw unigram frequencies [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Eq. (5.19), p. 140 (PDF p. 148)). Minimizing the negative log-likelihood of one positive pair and $k$ negative samples defines the per-instance SGNS loss:
@@ -125,7 +118,6 @@ While sparse count vectors of dimension $\lvert \mathcal{V} \rvert$ capture co-o
 > $$
 > \mathcal{L}_{\mathrm{SGNS}}(\boldsymbol{w}, \boldsymbol{c}_{\mathrm{pos}}, \{\boldsymbol{c}_{\mathrm{neg},i}\}_{i=1}^k)
 >   = -\log \sigma(\boldsymbol{c}_{\mathrm{pos}}^{\top} \boldsymbol{w}) - \sum_{i=1}^k \log \sigma(-\boldsymbol{c}_{\mathrm{neg},i}^{\top} \boldsymbol{w}).
->
 > $$
 >
 > Using $\frac{\mathrm{d}}{\mathrm{d}z}\log\sigma(z) = 1 - \sigma(z)$ and $\frac{\mathrm{d}}{\mathrm{d}z}\log\sigma(-z) = -\sigma(z)$, the exact gradients with respect to $\boldsymbol{c}_{\mathrm{pos}}$, $\boldsymbol{c}_{\mathrm{neg},i}$, and $\boldsymbol{w}$ are:
@@ -136,8 +128,8 @@ While sparse count vectors of dimension $\lvert \mathcal{V} \rvert$ capture co-o
 >   \frac{\partial \mathcal{L}_{\mathrm{SGNS}}}{\partial \boldsymbol{c}_{\mathrm{neg},i}} &= \sigma(\boldsymbol{c}_{\mathrm{neg},i}^{\top} \boldsymbol{w})\boldsymbol{w},  \\
 >   \frac{\partial \mathcal{L}_{\mathrm{SGNS}}}{\partial \boldsymbol{w}} &= \bigl(\sigma(\boldsymbol{c}_{\mathrm{pos}}^{\top} \boldsymbol{w}) - 1\bigr)\boldsymbol{c}_{\mathrm{pos}} + \sum_{i=1}^k \sigma(\boldsymbol{c}_{\mathrm{neg},i}^{\top} \boldsymbol{w})\boldsymbol{c}_{\mathrm{neg},i}.
 > \end{aligned}
->
 > $$
+>
 
 ### Implicit Matrix Factorization: Shifted PMI SVD and GloVe
 
@@ -150,14 +142,12 @@ Although Word2Vec is framed as predictive neural classification, both Murphy [[S
 > \frac{\partial }{\partial z_{ij}} \Bigl[ x_{ij}\log\sigma(z_{ij}) + k \cdot x_i P_\alpha(j) \log\sigma(-z_{ij}) \Bigr] = 0
 >    \implies 
 >   x_{ij}(1 - \sigma(z_{ij})) - k  x_i P_\alpha(j)\sigma(z_{ij}) = 0.
->
 > $$
 >
 > Solving for $e^{z_{ij}} = \sigma(z_{ij}) / (1 - \sigma(z_{ij}))$ gives the exact optimal inner product:
 >
 > $$
 > \boldsymbol{w}_i^{\top} \boldsymbol{c}_j = \log\!\left(\frac{x_{ij}}{x_i P_\alpha(j)}\right) - \log k = \mathrm{PMI}_\alpha(i, j) - \log k,
->
 > $$
 >
 > where $\mathrm{PMI}(i, j) = \log \frac{P(i,j)}{P(i)P(j)}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. (20.143), p. 707 (PDF p. 737)). Thus, SGNS implicitly performs a rank-$d$ factorization of the $\log k$-shifted PMI matrix.
@@ -167,7 +157,6 @@ Although Word2Vec is framed as predictive neural classification, both Murphy [[S
 > $$
 > \mathcal{L}_{\mathrm{GloVe}} = \sum_{i,j \in \mathcal{V}} h(x_{ij})\bigl(\boldsymbol{u}_j^{\top} \boldsymbol{v}_i + b_i + c_j - \log x_{ij}\bigr)^2, \qquad
 >   h(x) = \begin{cases} (x/x_{\max})^{0.75} & x < x_{\max}, \\ 1 & x \ge x_{\max}, \end{cases}
->
 > $$
 >
 > where $x_{\max} = 100$ prevents ultra-frequent stopword pairs from dominating the squared loss.
@@ -191,7 +180,6 @@ $$
 > \begin{bmatrix} \mathrm{PE}_{(p+\Delta p, 2i)} \\ \mathrm{PE}_{(p+\Delta p, 2i+1)} \end{bmatrix}
 >   = \begin{bmatrix} \cos(\omega_i \Delta p) & \sin(\omega_i \Delta p) \\ -\sin(\omega_i \Delta p) & \cos(\omega_i \Delta p) \end{bmatrix}
 >   \begin{bmatrix} \mathrm{PE}_{(p, 2i)} \\ \mathrm{PE}_{(p, 2i+1)} \end{bmatrix}.
->
 > $$
 >
 > RoPE elevates this rotation directly into the attention dot product. Partitioning $\boldsymbol{q}_m, \boldsymbol{k}_n \in \mathbb{R}^{d_h}$ into $d_h/2$ two-dimensional subspaces (identified with $\mathbb{C}^{d_h/2}$), RoPE applies the block-diagonal rotation matrix $\boldsymbol{R}_{\Theta, m}^{d_h} = \mathrm{diag}\bigl(\boldsymbol{R}(\theta_0 m), \dots, \boldsymbol{R}(\theta_{d_h/2-1} m)\bigr)$ where $\theta_i = 10000^{-2i/d_h}$:
@@ -199,15 +187,14 @@ $$
 > $$
 > \tilde{\boldsymbol{q}}_m = \boldsymbol{R}_{\Theta, m}^{d_h} \boldsymbol{q}_m, \qquad
 >   \tilde{\boldsymbol{k}}_n = \boldsymbol{R}_{\Theta, n}^{d_h} \boldsymbol{k}_n.
->
 > $$
 >
 > Because rotation matrices satisfy $(\boldsymbol{R}_{\Theta, m}^{d_h})^{\top} \boldsymbol{R}_{\Theta, n}^{d_h} = \boldsymbol{R}_{\Theta, n-m}^{d_h}$, the attention logit depends *strictly* on the relative displacement $n - m$:
 >
 > $$
 > \tilde{\boldsymbol{q}}_m^{\top} \tilde{\boldsymbol{k}}_n = \boldsymbol{q}_m^{\top} \bigl(\boldsymbol{R}_{\Theta, m}^{d_h}\bigr)^{\top} \boldsymbol{R}_{\Theta, n}^{d_h} \boldsymbol{k}_n = \boldsymbol{q}_m^{\top} \boldsymbol{R}_{\Theta, n-m}^{d_h} \boldsymbol{k}_n.
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -246,7 +233,7 @@ Algorithm `alg:tok:bpe` unifies the two-phase BPE procedure from Jurafsky & Mart
 **Table:** Asymptotic time and space complexity across tokenization, static embedding, and positional encoding methods ($\lvert \mathcal{C} \rvert$: corpus tokens; $k$: BPE merges; $N$: sequence length; $d$: embedding dimension).
 
 | **Method** | **Time Complexity** | **Space / Params** | **Key Operational Trade-off** |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | BPE Training (naive) | $O(k \cdot \lvert \mathcal{C} \rvert_{\mathrm{uniq}})$ | $O(\lvert \mathcal{V} \rvert + \lvert \mathcal{C} \rvert_{\mathrm{uniq}})$ | Heap-indexed pair counts reduce update cost to $O(\log \lvert \mathcal{V} \rvert)$ per occurrence. |
 | BPE Encoding | $O(N \log N)$ or $O(N \cdot k_{\mathrm{local}})$ | $O(\lvert \mathcal{V} \rvert)$ | Deterministic greedy merge by training rank; no `<\|unk\|>` tokens needed. |
 | SGNS (Word2Vec) | $O(\lvert \mathcal{C} \rvert \cdot L \cdot k \cdot d)$ | $2\lvert \mathcal{V} \rvert d$ | Avoids $O(\lvert \mathcal{V} \rvert)$ softmax via $k$ negative samples; static per type. |
@@ -256,7 +243,7 @@ Algorithm `alg:tok:bpe` unifies the two-phase BPE procedure from Jurafsky & Mart
 | RoPE | $O(N d)$ per layer | $0$ (buffers) | Exact relative inner product $\tilde{\boldsymbol{q}}_m^{\top} \tilde{\boldsymbol{k}}_n$; supports base-$\theta$ context scaling. |
 
 > [!info] Cross-Book Synthesis: Static Vectors vs. Contextual LLM Input Pipelines
-> Jurafsky & Martin [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 5, pp. 139–143) and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 20.5, pp. 707–711) treat embeddings primarily as *static* lexical representations learned via SGNS, GloVe, or shifted-PMI SVD, where word analogies ($\boldsymbol{v}_{\text{queen}} \approx \boldsymbol{v}_{\text{king}} - \boldsymbol{v}_{\text{man}} + \boldsymbol{v}_{\text{woman}}$) emerge from log-linear co-occurrence geometry (justified theoretically by the RAND-WALK latent discourse model [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 20.5.5, p. 711)). By contrast, Raschka [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 2.6–2.8, pp. 107–139) constructs embeddings as the trainable first layer of an autoregressive Transformer: a sliding window of length `max\_length` and stride $s$ extracts input–target tensor pairs $(\boldsymbol{X}_{t:t+N-1}, \boldsymbol{X}_{t+1:t+N})$, `nn.Embedding` maps IDs to $\mathbb{R}^d$, and positional vectors are added before self-attention. In modern LLMs, $\boldsymbol{E}$ is frequently weight-tied to the unembedding head $\boldsymbol{U} = \boldsymbol{E}^{\top}$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 7.5, pp. 194–195 (PDF pp. 202–203)), unifying input representation and next-token logit projection.
+> Jurafsky & Martin [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 5, pp. 139–143) and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 20.5, pp. 707–711) treat embeddings primarily as *static* lexical representations learned via SGNS, GloVe, or shifted-PMI SVD, where word analogies ($\boldsymbol{v}_{\text{queen}} \approx \boldsymbol{v}_{\text{king}} - \boldsymbol{v}_{\text{man}} + \boldsymbol{v}_{\text{woman}}$) emerge from log-linear co-occurrence geometry (justified theoretically by the RAND-WALK latent discourse model [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 20.5.5, p. 711)). By contrast, Raschka [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 2.6–2.8, pp. 107–139) constructs embeddings as the trainable first layer of an autoregressive Transformer: a sliding window of length `max_length` and stride $s$ extracts input–target tensor pairs $(\boldsymbol{X}_{t:t+N-1}, \boldsymbol{X}_{t+1:t+N})$, `nn.Embedding` maps IDs to $\mathbb{R}^d$, and positional vectors are added before self-attention. In modern LLMs, $\boldsymbol{E}$ is frequently weight-tied to the unembedding head $\boldsymbol{U} = \boldsymbol{E}^{\top}$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 7.5, pp. 194–195 (PDF pp. 202–203)), unifying input representation and next-token logit projection.
 
 ## Visual Diagnostics & Geometric Structure
 

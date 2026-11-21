@@ -56,7 +56,7 @@ flowchart LR
   $$
 - **4. CONNECTIONS — Fourier, Chebyshev & attention**
 - **5. COST — full-graph vs mini-batch sampling**
-- **6. USE-CASES — transductive, inductive & latent G**
+- **6. USE-CASES — transductive, inductive & latent $G$**
 
 ## Related Sources
 

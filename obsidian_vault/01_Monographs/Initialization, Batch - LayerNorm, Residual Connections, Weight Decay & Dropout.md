@@ -63,8 +63,9 @@ $$
 where $\boldsymbol{\theta} = \{\boldsymbol{W}^{(l)}, \boldsymbol{b}^{(l)}\}_{l=1}^L$ collects all trainable parameters, $\Omega(\boldsymbol{\theta})$ is a parameter norm penalty (typically applied only to weights $\boldsymbol{W}^{(l)}$), and $\lambda \ge 0$ governs regularization strength.
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | Concept | Prince | Goodfellow et al. | Bishop & Bishop | Unified Monograph Notation |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Layer weights & biases | $\boldsymbol{\Omega}_k, \boldsymbol{\beta}_k$ | $\boldsymbol{W}^{(l)}, \boldsymbol{b}^{(l)}$ | $\boldsymbol{W}, \boldsymbol{w}_0$ (or $\boldsymbol{W}^{(l)}$) | $\boldsymbol{W}^{(l)} \in \mathbb{R}^{D_l \times D_{l-1}}$, $\boldsymbol{b}^{(l)} \in \mathbb{R}^{D_l}$ |
 > | Pre-/post-activations | $\boldsymbol{f}_k, \boldsymbol{h}_k = a[\boldsymbol{f}_{k-1}]$ | $\boldsymbol{a}^{(l)}, \boldsymbol{h}^{(l)} = g(\boldsymbol{a}^{(l)})$ | $\boldsymbol{a}, \boldsymbol{z} = h(\boldsymbol{a})$ | $\boldsymbol{f}^{(l)}, \boldsymbol{h}^{(l)} = \phi(\boldsymbol{f}^{(l)})$ |
 > | Norm scale & shift | $\gamma_c, \delta_c$ (per channel) | $\gamma, \beta$ | $\gamma_i, \beta_i$ | $\boldsymbol{\gamma}, \boldsymbol{\beta}$ (`scale`, `shift` in Raschka) |
@@ -72,9 +73,7 @@ where $\boldsymbol{\theta} = \{\boldsymbol{W}^{(l)}, \boldsymbol{b}^{(l)}\}_{l=1
 > | Dropout mask | Random zeroing | $\boldsymbol{d} \in \{0,1\}^n$, $\frac{1}{2}\boldsymbol{W}$ at test | Bernoulli mask | $\boldsymbol{m} \sim \mathrm{Bern}(p)$, inverted scaling $1/p$ |
 > | Residual block | $\boldsymbol{f}_k[\boldsymbol{x}] + \boldsymbol{x}$ | Skip connections | $\boldsymbol{z}_l = \mathcal{F}_l(\boldsymbol{z}_{l-1}) + \boldsymbol{z}_{l-1}$ | $\boldsymbol{x}^{(l+1)} = \boldsymbol{x}^{(l)} + \mathcal{F}_l(\boldsymbol{x}^{(l)})$ |
 >
->
-> 
-> {*Reconciled Sources:* [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 7, 9, 11), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 7), [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 7.4, 9), and [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 4.2, 4.4).}
+> *Reconciled Sources:* [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 7, 9, 11), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 7), [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 7.4, 9), and [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 4.2, 4.4).
 
 ## Core Mathematical Derivations & Theorems
 
@@ -89,7 +88,6 @@ At initialization, biases are set to $\boldsymbol{b}^{(l)} = \boldsymbol{0}$ and
 > \mathrm{Var}\!\left(f_i^{(l)}\right) = \sum_{j=1}^{D_{l-1}} \mathrm{Var}\!\left(W_{ij}^{(l)} h_j^{(l-1)}\right)
 >   = \sum_{j=1}^{D_{l-1}} \mathbb{E}\!\left[\left(W_{ij}^{(l)}\right)^2\right] \mathbb{E}\!\left[\left(h_j^{(l-1)}\right)^2\right]
 >   = D_{l-1} \sigma_l^2 \mathbb{E}\!\left[\left(h_j^{(l-1)}\right)^2\right].
->
 > $$
 >
 > **Case 1: Linear / $\tanh$ regime (Xavier/Glorot).** In the linear regime around $0$ ($\phi(z) \approx z$), $\mathbb{E}[(h_j^{(l-1)})^2] = \mathrm{Var}(f_j^{(l-1)})$. Enforcing $\mathrm{Var}(f_i^{(l)}) = \mathrm{Var}(f_j^{(l-1)})$ requires $D_{l-1}\sigma_l^2 = 1$. Repeating the argument for the backward gradient $\boldsymbol{\delta}^{(l-1)} = (\boldsymbol{W}^{(l)})^{\top} \boldsymbol{\delta}^{(l)} \odot \phi'(\boldsymbol{f}^{(l-1)})$ yields $D_l \sigma_l^2 = 1$. Averaging the fan-in and fan-out constraints gives **Xavier/Glorot initialization**:
@@ -97,7 +95,6 @@ At initialization, biases are set to $\boldsymbol{b}^{(l)} = \boldsymbol{0}$ and
 > $$
 > \sigma_{\text{Xavier}}^2 = \frac{2}{D_{l-1} + D_l}, \qquad
 >   W_{ij}^{(l)} \sim \mathcal{U}\!\left(-\sqrt{\frac{6}{D_{l-1}+D_l}},  \sqrt{\frac{6}{D_{l-1}+D_l}}\right).
->
 > $$
 >
 > **Case 2: ReLU nonlinearity (Kaiming/He).** For $\phi(z) = \mathrm{ReLU}(z) = \max(0, z)$ and a symmetric zero-mean pre-activation density $p(f) = p(-f)$, half of the pre-activations are clipped to zero, so the second moment of the post-activation is exactly half the pre-activation variance [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 7, Eq. (7.30), PDF p. 123):
@@ -107,7 +104,6 @@ At initialization, biases are set to $\boldsymbol{b}^{(l)} = \boldsymbol{0}$ and
 >   = \int_0^{\infty} f^2  p(f) \mathrm{d}f
 >   = \frac{1}{2}\int_{-\infty}^{\infty} f^2  p(f) \mathrm{d}f
 >   = \frac{1}{2}\mathrm{Var}\!\left(f_j^{(l-1)}\right).
->
 > $$
 >
 > Substituting `(eq:normres:relu_half)` into `(eq:normres:var_forward)` gives $\mathrm{Var}(f_i^{(l)}) = \frac{1}{2} D_{l-1} \sigma_l^2 \mathrm{Var}(f_j^{(l-1)})$. Preserving variance across all $L$ layers therefore requires **Kaiming/He initialization**:
@@ -116,16 +112,15 @@ At initialization, biases are set to $\boldsymbol{b}^{(l)} = \boldsymbol{0}$ and
 > \sigma_{\text{He, fwd}}^2 = \frac{2}{D_{l-1}} \quad (\text{fan-in}), \qquad
 >   \sigma_{\text{He, bwd}}^2 = \frac{2}{D_l} \quad (\text{fan-out}), \qquad
 >   \sigma_{\text{He, avg}}^2 = \frac{4}{D_{l-1} + D_l}.
->
 > $$
+>
 
 > [!tip] Why ReLU Needs the $\sqrt{2}$ Weight Standard Deviation Factor
 > A ReLU unit sets negative pre-activations to zero, discarding $50\%$ of the signal energy at every layer. Without the factor of $2$ in $\sigma_l^2 = 2/D_{l-1}$ (i.e., $\sqrt{2}$ in weight standard deviation), the activation variance decays geometrically as $(1/2)^L$; after $L = 30$ layers, variance shrinks by $2^{-30} \approx 9.3 \times 10^{-10}$, starving both forward representations and backward gradients.
 
 ### Normalization Layers: BatchNorm, LayerNorm, RMSNorm & GroupNorm
 
-{ Even with exact initialization, parameter updates during training alter layer statistics and induce ill-conditioned curvature. As shown in [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 7.4, pp. 224–229), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 11, PDF p. 218), and [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 4.2, PDF pp. 257–268), normalization layers standardize activations along specific tensor axes and re-introduce learnable affine degrees of freedom $\boldsymbol{\gamma}, \boldsymbol{\beta}$.
-}
+ Even with exact initialization, parameter updates during training alter layer statistics and induce ill-conditioned curvature. As shown in [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 7.4, pp. 224–229), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 11, PDF p. 218), and [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 4.2, PDF pp. 257–268), normalization layers standardize activations along specific tensor axes and re-introduce learnable affine degrees of freedom $\boldsymbol{\gamma}, \boldsymbol{\beta}$.
 
 For a 4D activation tensor $\boldsymbol{X} \in \mathbb{R}^{N \times C \times H \times W}$ (where $N$ is batch size, $C$ is channels/features, and $H, W$ are spatial or sequence dimensions), each normalization family computes mean $\mu_i$ and variance $\sigma_i^2$ over an index set $\mathcal{S}_i$ specific to element $i = (n, c, h, w)$:
 
@@ -139,10 +134,8 @@ $$
 > [!important] Exact Normalization Axes, BatchNorm Jacobian Coupling & RMSNorm
 > - **BatchNorm (BN):** $\mathcal{S}_i^{\text{BN}} = \{(n', c, h', w') : n' \in [N],  h' \in [H],  w' \in [W]\}$ with $|\mathcal{S}_i^{\text{BN}}| = NHW$. During training, BN couples all $N$ batch elements via $\mu_c, \sigma_c^2$. Differentiating $\hat{x}_n = (x_n - \mu_B)/\sqrt{\sigma_B^2 + \epsilon}$ with respect to $x_n$ yields the coupled mini-batch Jacobian:
 >
->
 > $$
 > \frac{\partial \mathcal{L}}{\partial x_n} = \frac{1}{\sqrt{\sigma_B^2 + \epsilon}} \left[ \frac{\partial \mathcal{L}}{\partial \hat{x}_n} - \frac{1}{N}\sum_{m=1}^N \frac{\partial \mathcal{L}}{\partial \hat{x}_m} - \frac{\hat{x}_n}{N}\sum_{m=1}^N \frac{\partial \mathcal{L}}{\partial \hat{x}_m} \hat{x}_m \right].
->
 > $$
 >
 >   At inference, BN replaces mini-batch statistics with exponential moving averages $\hat{\mu}_{\text{run}}, \hat{\sigma}_{\text{run}}^2$ accumulated during training.
@@ -150,12 +143,10 @@ $$
 > - **GroupNorm (GN) & InstanceNorm (IN):** Partition $C$ channels into $G$ groups of $C/G$ channels: $\mathcal{S}_i^{\text{GN}} = \{(n, c', h', w') : \lfloor c'/(C/G)\rfloor = \lfloor c/(C/G)\rfloor,  h' \in [H],  w' \in [W]\}$. Setting $G=1$ recovers LN; setting $G=C$ recovers InstanceNorm [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 11, Fig. 11.14, PDF p. 218).
 > - **RMSNorm:** Used in modern LLMs (e.g., LLaMA, Gemma) for computational efficiency [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (PDF p. 705), RMSNorm drops mean centering and normalizes solely by the root mean square over the feature dimension $D$:
 >
->
 > $$
 > \bar{x}_i = \frac{x_i}{\mathrm{RMS}(\boldsymbol{x})}, \qquad
 >     \mathrm{RMS}(\boldsymbol{x}) = \sqrt{\frac{1}{D}\sum_{j=1}^D x_j^2 + \epsilon}, \qquad
 >     y_i = \gamma_i \bar{x}_i.
->
 > $$
 >
 >   Eliminating the mean subtraction saves one reduction pass over $D$ elements while preserving re-scaling invariance: $\mathrm{RMS}(\alpha\boldsymbol{x}) = \alpha \mathrm{RMS}(\boldsymbol{x})$ for $\alpha > 0$.
@@ -175,7 +166,6 @@ $$
 > \frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(l)}}
 >   = \frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(L)}} \left( \boldsymbol{I} + \frac{\partial }{\partial \boldsymbol{x}^{(l)}} \sum_{k=l}^{L-1} \mathcal{F}_k\!\left(\boldsymbol{x}^{(k)}\right) \right)
 >   = \frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(L)}} \prod_{k=l}^{L-1} \left( \boldsymbol{I} + \frac{\partial \mathcal{F}_k(\boldsymbol{x}^{(k)})}{\partial \boldsymbol{x}^{(k)}} \right).
->
 > $$
 >
 > The additive identity $\boldsymbol{I}$ creates an unimpeded **gradient highway**: $\frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(L)}}$ propagates directly to any earlier layer $l$ without being attenuated by repeated matrix multiplications [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 4.4, PDF pp. 280–287). Expanding the nested composition across $L$ blocks reveals an implicit ensemble of $2^L$ computational paths of lengths $0$ through $L$ [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 9.5, Eq. (9.40), p. 276).
@@ -194,7 +184,6 @@ In Transformer architectures, placement of LayerNorm/RMSNorm relative to the res
 > $$
 > (\boldsymbol{H} + \lambda\boldsymbol{I})\tilde{\boldsymbol{w}} = \boldsymbol{H}\boldsymbol{w}^*
 >   \implies \tilde{w}_i' = \frac{\Lambda_{ii}}{\Lambda_{ii} + \lambda} (w_i^*)' \quad \text{in the eigenbasis of } \boldsymbol{H}.
->
 > $$
 >
 > Directions with high curvature ($\Lambda_{ii} \gg \lambda$) are preserved ($\frac{\Lambda_{ii}}{\Lambda_{ii}+\lambda} \approx 1$), whereas flat, low-curvature directions ($\Lambda_{ii} \ll \lambda$) are shrunk toward zero [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Ch. 7.1.1, pp. 232–234), [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 9.2, p. 262).
@@ -204,7 +193,6 @@ In Transformer architectures, placement of LayerNorm/RMSNorm relative to the res
 > $$
 > \tilde{P}_{\text{ens}}(y \mid \boldsymbol{v}) \propto \left(\prod_{\boldsymbol{d}\in\{0,1\}^D} \exp\!\left(\boldsymbol{W}_{y,:}(\boldsymbol{d}\odot\boldsymbol{v}) + b_y\right)\right)^{2^{-D}}
 >   = \exp\!\left(\frac{1}{2}\boldsymbol{W}_{y,:}\boldsymbol{v} + b_y\right),
->
 > $$
 >
 > showing that weight scaling at inference is *exact* for single-layer softmax/linear models and a strong approximation for deep nonlinear networks.
@@ -233,7 +221,7 @@ Algorithm `alg:normres:preln_bn` details the exact forward mechanics of a Pre-LN
 >
 >   Compute batch statistics $\boldsymbol{\mu}_B, \boldsymbol{\sigma}_B^2$ over $(N, H, W)$ for each channel $c \in [C]$
 >   $\hat{\boldsymbol{X}}_{:,c,:,:} \leftarrow (\boldsymbol{X}_{:,c,:,:} - \mu_{B,c}) / \sqrt{\sigma_{B,c}^2 + \epsilon}$
->   Update running buffers: $\hat{\boldsymbol{\mu}} \leftarrow (1-\rho)\hat{\boldsymbol{\mu}} + \rho\boldsymbol{\mu}_B$, \quad $\hat{\boldsymbol{\sigma}}^2 \leftarrow (1-\rho)\hat{\boldsymbol{\sigma}}^2 + \frac{N}{N-1}\rho\boldsymbol{\sigma}_B^2$
+>   Update running buffers: $\hat{\boldsymbol{\mu}} \leftarrow (1-\rho)\hat{\boldsymbol{\mu}} + \rho\boldsymbol{\mu}_B$,   $\hat{\boldsymbol{\sigma}}^2 \leftarrow (1-\rho)\hat{\boldsymbol{\sigma}}^2 + \frac{N}{N-1}\rho\boldsymbol{\sigma}_B^2$
 >
 > **else**:
 >
@@ -244,7 +232,7 @@ Algorithm `alg:normres:preln_bn` details the exact forward mechanics of a Pre-LN
 **Table:** Comparison of Normalization Schemes across Axes, Complexity, and Inductive Properties.
 
 | Method | Reduction Axes | Params | Train/Eval Match | Primary Domain & Trade-offs |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | BatchNorm | $(N, H, W)$ | $2C$ | No (EMA) | Vision CNNs; smooths loss landscape, fails at small $N$ |
 | LayerNorm | $(C, H, W)$ / $D$ | $2D$ | Yes | Transformers/NLP; batch-independent, mean-centered |
 | RMSNorm | Feature dim $D$ | $D$ | Yes | Modern LLMs; faster than LN, drops shift invariance |

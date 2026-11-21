@@ -62,10 +62,8 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Because LLM alignment bridges NLP, classical RL, and generative modeling, each textbook adopts slightly different symbols for identical mathematical objects. Table `tab:align:notation_tbl` establishes a unified notation used throughout this monograph.
 >
->
->
 > | **Concept** | **RLHF** | **LLMs** | **Murphy** | **J&M / Diff.** | **Unified** |
-> | — | — | — | — | — | — |
+> | --- | --- | --- | --- | --- | --- |
 > | Prompt / Context | $x$ | $x$ | $s$ ($x$) | $x$ / $c$ | $x \sim \mathcal{D}$ |
 > | Completion | $y$ | $y$ | $a$ ($y$) | $o$ / $x_{0:T}$ | $y = y_{1:T}$ |
 > | Preference Pair | $y_c \succ y_r$ | $y_a \succ y_b$ | $y_w \succ y_l$ | $o_w \succ o_l$ | $y_w \succ y_l$ |
@@ -82,14 +80,12 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > P(y_w \succ y_l \mid x) = \frac{\exp(r^*(x, y_w))}{\exp(r^*(x, y_w)) + \exp(r^*(x, y_l))} = \sigma\!\big(r^*(x, y_w) - r^*(x, y_l)\big),
->
 > $$
 >
 > where $\sigma(z) = (1 + e^{-z})^{-1}$. Equivalently, the reward gap $\delta = r^*(x, y_w) - r^*(x, y_l)$ equals the log-odds $\log \frac{P(y_w \succ y_l \mid x)}{1 - P(y_w \succ y_l \mid x)}$. Parameterizing $r_\phi(x,y) = h_{\mathrm{last}}(x,y)^\top W_r$ via a linear head on the final Transformer hidden state at the $\langle\mathrm{EOS}\rangle$ token [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 4, p. 180), we train $r_\phi$ by minimizing the negative log-likelihood over preference dataset $\mathcal{D}_{\mathrm{pref}}$:
 >
 > $$
 > \mathcal{L}_{\mathrm{RM}}(\phi) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\big(r_\phi(x, y_w) - r_\phi(x, y_l) - m(y_w, y_l)\big) \right],
->
 > $$
 >
 > where $m(y_w, y_l) = 0$ recovers the standard objective and $m(y_w, y_l) > 0$ incorporates the Llama 2 annotator-rating margin [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 15, p. 180).
@@ -104,29 +100,26 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > \max_{\pi}   \mathbb{E}_{x \sim \mathcal{D}} \Big[ \mathbb{E}_{y \sim \pi(\cdot \mid x)}[r_\phi(x,y)] - \beta D_{\mathrm{KL}}\!\big(\pi(y \mid x)  \|  \pi_{\mathrm{ref}}(y \mid x)\big) \Big].
->
 > $$
 >
 > Expanding $D_{\mathrm{KL}}(\pi  \|  \pi_{\mathrm{ref}}) = \mathbb{E}_{y \sim \pi}\big[\log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}\big]$, negating to form a minimization, dividing by $\beta > 0$, and introducing the prompt-dependent partition function
 >
 > $$
 > Z(x) = \sum_{y} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right),
->
 > $$
 >
 > we rewrite Eq. `(eq:align:rlhf_obj)` as minimizing
 >
 > $$
 > \min_{\pi}   \mathbb{E}_{x \sim \mathcal{D}} \!\left[ D_{\mathrm{KL}}\!\left( \pi(y \mid x)  \Big\|  \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right) \right) - \log Z(x) \right].
->
 > $$
 >
 > Since $\log Z(x)$ is independent of $\pi$ and $D_{\mathrm{KL}}(p  \|  q) \ge 0$ with equality if and only if $p = q$ almost everywhere, the unique global optimum is the exponential-tilted Gibbs policy:
 >
 > $$
 > \pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x) \exp\!\left(\frac{1}{\beta} r_\phi(x,y)\right).
->
 > $$
+>
 
 > [!tip] Control as Inference & Posterior Sampling
 > Murphy [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Ch. 6, p. 155) highlights that Eq. `(eq:align:gibbs_opt)` is identically Bayes' rule in the control-as-inference framework: treating $\pi_{\mathrm{ref}}(y \mid x)$ as a prior and $\exp(r_\phi(x,y)/\beta)$ as the likelihood $p(O=1 \mid x,y)$ of an optimality event $O=1$, RLHF performs amortized posterior sampling from $p(y \mid x, O=1) \propto \pi_{\mathrm{ref}}(y \mid x)\exp(r_\phi(x,y)/\beta)$.
@@ -138,35 +131,31 @@ post-training can be viewed either as a *single-turn contextual bandit* with seq
 >
 > $$
 > r(x,y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)} + \beta \log Z(x).
->
 > $$
 >
 > Substituting Eq. `(eq:align:dpo_reparam)` into the Bradley-Terry likelihood `(eq:align:bt_prob)` causes $\beta \log Z(x)$ to cancel identically between $y_w$ and $y_l$:
 >
 > $$
 > P^*(y_w \succ y_l \mid x) = \sigma\!\left( \beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)} - \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)} \right).
->
 > $$
 >
 > Replacing $\pi^*$ with a parametric policy $\pi_\theta$ yields the DPO maximum-likelihood objective:
 >
 > $$
 > \mathcal{L}_{\mathrm{DPO}}(\theta; \pi_{\mathrm{ref}}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}_{\mathrm{pref}}} \!\left[ \log \sigma\!\left( \hat{r}_\theta(x, y_w) - \hat{r}_\theta(x, y_l) \right) \right],
->
 > $$
 >
 > where $\hat{r}_\theta(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}$ is the *implicit reward*. Differentiating Eq. `(eq:align:dpo_loss)` with respect to $\theta$ gives
 >
 > $$
 > \nabla_\theta \mathcal{L}_{\mathrm{DPO}}(\theta) = -\beta \mathbb{E}_{(x, y_w, y_l)} \Big[ \underbrace{\sigma\!\big(\hat{r}_\theta(x, y_l) - \hat{r}_\theta(x, y_w)\big)}_{\text{misranking weight}} \big( \nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x) \big) \Big].
->
 > $$
 >
 > The scalar weight $\sigma(\hat{r}_\theta(x,y_l) - \hat{r}_\theta(x,y_w))$ vanishes when the policy already ranks $y_w$ well above $y_l$ and amplifies updates when the implicit reward model misranks the pair [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 8.4.2, p. 222).
 
 ### Transfer to Continuous/Denoising Domains: Diffusion-DPO
 
-In diffusion models, a sample $x_0$ is generated via a $T$-step Markov reverse chain $x_{0:T}$ conditioned on prompt $c$, with $\pi_\theta(x_{0:T} \mid c) = \pi_\theta(x_T \mid c)\prod_{t=1}^T \pi_\theta(x_{t-1} \mid x_t, c)$. Evaluating the marginal likelihood $\pi_\theta(x_0 \mid c)$ is intractable, and backpropagating through all $T \sim 10^2\text{–}10^3$ denoising steps is memory-prohibitive [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 8.5, pp. 250–252). Applying Jensen's inequality to the convex function $-\log \sigma(\cdot)$ over posterior trajectories $x_{1:T} \sim \pi_\theta(\cdot \mid x_0, c)$ and sampling a single timestep $t \sim \mathcal{U}\{1,\dots,T\}$ yields the tractable single-step Diffusion-DPO upper bound:
+In diffusion models, a sample $x_0$ is generated via a $T$-step Markov reverse chain $x_{0:T}$ conditioned on prompt $c$, with $\pi_\theta(x_{0:T} \mid c) = \pi_\theta(x_T \mid c)\prod_{t=1}^T \pi_\theta(x_{t-1} \mid x_t, c)$. Evaluating the marginal likelihood $\pi_\theta(x_0 \mid c)$ is intractable, and backpropagating through all $T \sim 10^2\text{--}10^3$ denoising steps is memory-prohibitive [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 8.5, pp. 250–252). Applying Jensen's inequality to the convex function $-\log \sigma(\cdot)$ over posterior trajectories $x_{1:T} \sim \pi_\theta(\cdot \mid x_0, c)$ and sampling a single timestep $t \sim \mathcal{U}\{1,\dots,T\}$ yields the tractable single-step Diffusion-DPO upper bound:
 
 $$
 \tilde{\mathcal{L}}_{\mathrm{Diff\text{-}DPO}}(\theta; \pi_{\mathrm{ref}}) = \mathbb{E}_{(c, x_0^w, x_0^l),  t,  \epsilon \sim \mathcal{N}(0,I)} \!\left[ -\log \sigma\!\big(-\beta T   w(t)   [\Delta_{\mathrm{MSE}}(x_t^w) - \Delta_{\mathrm{MSE}}(x_t^l)]\big) \right],
@@ -179,13 +168,10 @@ where $\Delta_{\mathrm{MSE}}(x_t) = \|\hat{\epsilon}_\theta(x_t, t, c) - \epsilo
 ### From Critic-Based PPO to Critic-Free RLOO, GRPO, GSPO, and RLVR
 
 While PPO optimizes a clipped surrogate objective with per-token Generalized Advantage Estimation (GAE) from a learned value network $V_\psi(s_t)$, [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 6, pp. 64–72) notes that maintaining a critic comparable in size to the policy doubles memory overhead and introduces value-estimation bias. Modern post-training increasingly favors *group-relative, critic-free* estimators that sample $G$ completions $\{y_1, \dots, y_G\} \sim \pi_{\theta_{\mathrm{old}}}(\cdot \mid x)$ per prompt:
-\begin{sloppypar}
 - **RLOO (REINFORCE Leave-One-Out):** Computes an unbiased leave-one-out baseline $b(x, y_i) = \frac{1}{G-1}\sum_{j \neq i} R(x, y_j)$ so that $A_i^{\mathrm{RLOO}} = R(x, y_i) - b(x, y_i)$ [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 6, p. 58).
 - **GRPO (Group Relative Policy Optimization):** Normalizes rewards within each group via $A_i = \frac{r_i - \mathrm{mean}(\{r_j\}_{j=1}^G)}{\mathrm{std}(\{r_j\}_{j=1}^G)}$, applying an explicit per-token KL penalty in the loss rather than in the reward [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Ch. 6, p. 151) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 6, pp. 66–67).
 - **GSPO (Group Sequence Policy Optimization):** Replaces high-variance token ratios $\rho_{i,t}(\theta)$ with a length-normalized sequence ratio $\rho_i(\theta) = \big(\frac{\pi_\theta(y_i \mid x)}{\pi_{\theta_{\mathrm{old}}}(y_i \mid x)}\big)^{1/|y_i|}$, matching importance sampling to sequence rewards [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 6, p. 70).
 - **RLVR (RL with Verifiable Rewards):** Replaces the learned Bradley-Terry RM with a deterministic verifier $R_{\mathrm{ver}}(x,y) \in \{0, 1\}$ (e.g., symbolic math equivalence on `\boxed{}` or code unit tests), enabling large-scale reasoning without reward hacking [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Ch. 6, p. 148) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 7, pp. 95–96).
-
-\end{sloppypar}
 
 > [!note] Source Figure
 > *Figure:* Comparison of (a) three-stage RLHF (PPO) requiring an explicit Reward Model and Value Function versus (b) Direct Preference Optimization (DPO), which fits the policy directly on pairwise preference data via closed-form reparameterization [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 4, Fig. 4.10, p. 193). (`foundations_large_language_models_p200_fig1.png`)
@@ -208,7 +194,6 @@ While PPO optimizes a clipped surrogate objective with per-token Generalized Adv
 >     Compute $\Delta_{\mathrm{rej}} \leftarrow \log \pi_\theta(y_l \mid x) - \log \pi_{\mathrm{ref}}(y_l \mid x)$
 >     Update $\theta$ by minimizing $\mathcal{L}_{\mathrm{DPO}} = -\log \sigma\!\big(\beta(\Delta_{\mathrm{chosen}} - \Delta_{\mathrm{rej}})\big)$
 >
->
 > **else**:
 >
 >   **for** each prompt batch $x \sim \mathcal{D}$:
@@ -220,7 +205,7 @@ While PPO optimizes a clipped surrogate objective with per-token Generalized Adv
 **Table:** Computational, memory, and statistical comparison of LLM post-training optimizers.
 
 | **Method** | **Models** | **Rollouts** | **Critic** | **On-Policy** | **Primary Trade-off** |
-| — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- |
 | PPO (RLHF) | 4 ($\pi_\theta, \pi_{\mathrm{ref}}, r_\phi, V_\psi$) | $1$ (or $G$) | Yes | Yes | Highest memory; per-token GAE credit |
 | RLOO | 3 ($\pi_\theta, \pi_{\mathrm{ref}}, r_\phi$) | $G \ge 2$ | No | Yes | Unbiased LOO baseline; sequence advantage |
 | GRPO (RLVR) | 2 ($\pi_\theta, \pi_{\mathrm{ref}}$) | $G \ge 4$ | No | Yes | No RM or critic; excels on math and code |

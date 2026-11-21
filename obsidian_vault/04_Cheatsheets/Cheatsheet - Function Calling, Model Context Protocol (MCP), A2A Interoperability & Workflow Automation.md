@@ -54,7 +54,7 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. WHAT — \mathcal{O}(MN)\to\mathcal{O}(M+N) protocol hub**
+- **1. WHAT — $\mathcal{O}(MN)\to\mathcal{O}(M+N)$ protocol hub**
   $$
   C_{\text{bespoke}}=\mathcal{O}(MN) \longrightarrow C_{\text{proto}}=\mathcal{O}(M+N)
   $$

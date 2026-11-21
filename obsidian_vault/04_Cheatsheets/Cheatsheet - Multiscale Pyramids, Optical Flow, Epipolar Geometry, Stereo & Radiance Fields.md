@@ -57,26 +57,26 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. MULTISCALE PYRAMIDS — \frac{4}{3} memory**
+- **1. MULTISCALE PYRAMIDS — $\frac{4}{3}$ memory**
   $$
-  G_{\ell+1}=\downarrow_2(g_\sigma*G_\ell),\quad L_\ell=G_\ell-\uparrow_2(G_{\ell+1})
+  G_{\ell+1}=\downarrow_2(g_\sigma*G_\ell),  L_\ell=G_\ell-\uparrow_2(G_{\ell+1})
   $$
 - **2. OPTICAL FLOW — Lucas–Kanade vs Horn–Schunck**
   $$
-  I_x u + I_y v + I_t = 0 \quad (\nabla I^{\top}\boldsymbol{u} + I_t = 0)
+  I_x u + I_y v + I_t = 0   (\nabla I^{\top}\boldsymbol{u} + I_t = 0)
   $$
 - **3. CAMERA CALIBRATION & HOMOGRAPHY**
   $$
-  \tilde{\boldsymbol{x}}\sim \boldsymbol{K}[\boldsymbol{R}\mid \boldsymbol{t}]\tilde{\boldsymbol{X}},\qquad \tilde{\boldsymbol{x}}'\sim \boldsymbol{H}\tilde{\boldsymbol{x}} \text{ (8 DoF)}
+  \tilde{\boldsymbol{x}}\sim \boldsymbol{K}[\boldsymbol{R}\mid \boldsymbol{t}]\tilde{\boldsymbol{X}},  \tilde{\boldsymbol{x}}'\sim \boldsymbol{H}\tilde{\boldsymbol{x}} \text{ (8 DoF)}
   $$
 - **4. EPIPOLAR GEOMETRY & STEREO DEPTH**
   $$
-  (\tilde{\boldsymbol{x}}')^{\top}\boldsymbol{F}\tilde{\boldsymbol{x}}=0,\quad \boldsymbol{E}=[\boldsymbol{t}]_\times\boldsymbol{R},\quad Z=\frac{fB}{x_L-x_R}
+  (\tilde{\boldsymbol{x}}')^{\top}\boldsymbol{F}\tilde{\boldsymbol{x}}=0,  \boldsymbol{E}=[\boldsymbol{t}]_\times\boldsymbol{R},  Z=\frac{fB}{x_L-x_R}
   $$
 - **5. STRUCTURE FROM MOTION (SfM) & SLAM**
 - **6. RADIANCE FIELDS (NeRF) & VOLUMETRIC RENDERING**
   $$
-  \hat{\boldsymbol{C}}(\boldsymbol{r})=\int_{t_n}^{t_f} T(t)\sigma(\boldsymbol{r}(t))\boldsymbol{c}(\boldsymbol{r}(t),\boldsymbol{d}) \mathrm{d}t,\quad T(t)=e^{-\int_{t_n}^t \sigma \mathrm{d}s}
+  \hat{\boldsymbol{C}}(\boldsymbol{r})=\int_{t_n}^{t_f} T(t)\sigma(\boldsymbol{r}(t))\boldsymbol{c}(\boldsymbol{r}(t),\boldsymbol{d}) \mathrm{d}t,  T(t)=e^{-\int_{t_n}^t \sigma \mathrm{d}s}
   $$
 
 ## Related Sources

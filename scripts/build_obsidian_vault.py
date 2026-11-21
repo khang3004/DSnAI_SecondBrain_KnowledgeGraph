@@ -181,10 +181,12 @@ def convert_latex_table_to_markdown(block: str) -> str:
         for c in re.split(r"(?<!\\)&", rr):
             cell = clean_latex_text(c).replace("\n", " ").strip()
             cell = re.sub(r"\[\[([^\]|]+)\|[^\]]+\]\]", r"[[\1]]", cell)
-            # Replace bare | inside inline math $...$ with \mid so Obsidian never splits table columns
+            # Replace bare | or \| inside inline math $...$ so Obsidian never splits table columns
             cell = re.sub(
-                r"\$([^$]+)\$",
-                lambda m: "$" + m.group(1).replace("\\|", "\\parallel ").replace("|", "\\mid ") + "$",
+                r"(?<!\\)\$(?!\$)([^$]+?)(?<!\\)\$(?!\$)",
+                lambda m: "$"
+                + m.group(1).replace("\\|", "\\parallel ").replace("|", "\\mid ").strip()
+                + "$",
                 cell,
             )
             cells.append(cell.replace("|", "\\|"))
@@ -196,12 +198,12 @@ def convert_latex_table_to_markdown(block: str) -> str:
     norm_rows = [r + [""] * (ncols - len(r)) for r in rows]
     md_lines = []
     if caption:
-        md_lines.append(f"\n**Table:** {caption}\n")
+        md_lines.append(f"**Table:** {caption}\n")
     md_lines.append("| " + " | ".join(norm_rows[0]) + " |")
     md_lines.append("| " + " | ".join("---" for _ in range(ncols)) + " |")
     for r in norm_rows[1:]:
         md_lines.append("| " + " | ".join(r) + " |")
-    return "\n" + "\n".join(md_lines) + "\n"
+    return "\n\n" + "\n".join(md_lines) + "\n\n"
 
 
 def convert_algorithm_block(block: str) -> str:
@@ -268,6 +270,34 @@ def convert_figure_block(block: str) -> str:
     return f"\n> [!example] Visual Diagram (LaTeX / PDF)\n> *{cap}* — see rendered vector figure in `master.pdf` / `atlas.pdf`.\n"
 
 
+def unwrap_tex_groups(text: str) -> str:
+    """Unwrap TeX layout groups like {\\sloppy ...}, {\\small ...}, and \\resizebox{...}{...}{...}."""
+    s = replace_macro_3arg(text, "resizebox", lambda _w, _h, body: body)
+    s = re.sub(r"\\begin\{sloppypar\}(.*?)\\end\{sloppypar\}", r"\1", s, flags=re.DOTALL)
+    group_pat = re.compile(
+        r"\{\s*\\(?:sloppy|small|scriptsize|footnotesize|tiny|normalsize|raggedright|centering|begingroup)\b"
+    )
+    for _ in range(4):
+        out: list[str] = []
+        i = 0
+        n = len(s)
+        changed = False
+        while i < n:
+            if s[i] == "{" and group_pat.match(s, i):
+                res = read_balanced(s, i)
+                if res is not None:
+                    out.append(res[0])
+                    i = res[1]
+                    changed = True
+                    continue
+            out.append(s[i])
+            i += 1
+        s = "".join(out)
+        if not changed:
+            break
+    return s
+
+
 def clean_latex_text(text: str) -> str:
     """Expand custom monograph LaTeX macros into Obsidian-compatible MathJax & Markdown."""
     cleaned_lines: list[str] = []
@@ -277,6 +307,7 @@ def clean_latex_text(text: str) -> str:
         ln = re.sub(r"(?<!\\)%.*$", "", ln)
         cleaned_lines.append(ln)
     s = "\n".join(cleaned_lines)
+    s = unwrap_tex_groups(s)
 
     s = re.sub(r"\\documentclass(?:\[[^\]]*\])?\{[^}]*\}", "", s)
     s = s.replace("\\begin{document}", "").replace("\\end{document}", "")
@@ -348,9 +379,51 @@ def clean_latex_text(text: str) -> str:
         s = replace_macro_1arg(s, "set", lambda a: rf"\{{{a}\}}")
         s = replace_macro_1arg(s, "ceil", lambda a: rf"\lceil {a} \rceil")
         s = replace_macro_1arg(s, "floor", lambda a: rf"\lfloor {a} \rfloor")
+
+    # Convert LaTeX display/inline math delimiters & math environments to $$ / $ FIRST
+    # so subsequent math-aware passes (\texttt/\textbf/\emph) recognize all display equations.
+    # Use (?<!\\) so linebreaks like \\[4pt] are NOT treated as \[
+    s = re.sub(r"(?<!\\)\\\[", "\n$$\n", s)
+    s = re.sub(r"(?<!\\)\\\]", "\n$$\n", s)
+    s = re.sub(r"(?<!\\)\\\(", "$", s)
+    s = re.sub(r"(?<!\\)\\\)", "$", s)
+
+    for env in ("equation", "equation*", "align", "align*", "gather", "gather*", "multline", "multline*"):
+        s = re.sub(
+            rf"\\begin\{{{re.escape(env)}\}}(.*?)\\end\{{{re.escape(env)}\}}",
+            lambda m, is_al=("align" in env): (
+                f"\n$$\n\\begin{{aligned}}\n{m.group(1).strip()}\n\\end{{aligned}}\n$$\n"
+                if is_al
+                else f"\n$$\n{m.group(1).strip()}\n$$\n"
+            ),
+            s,
+            flags=re.DOTALL,
+        )
+    s = re.sub(
+        r"\\begin\{alignat\*?\}\{([^}]*)\}(.*?)\\end\{alignat\*?\}",
+        lambda m: f"\n$$\n\\begin{{alignedat}}{{{m.group(1)}}}\n{m.group(2).strip()}\n\\end{{alignedat}}\n$$\n",
+        s,
+        flags=re.DOTALL,
+    )
+    s = re.sub(r"\\begin\{proof\}(?:\[([^\]]*)\])?", lambda m: f"\n**{m.group(1) or 'Proof'}.** ", s)
+    s = s.replace("\\end{proof}", r" $\blacksquare$" + "\n")
+
+    # Step 1: Inside math ($...$ / $$...$$), convert \texttt/\textbf/\emph to MathJax-safe \mathtt/\mathbf/\mathit
+    math_split_pat = re.compile(r"(\$\$.*?\$\$|(?<!\\)\$(?!\$)[^$\n]+?(?<!\\)\$(?!\$))", flags=re.DOTALL)
+    m_parts = math_split_pat.split(s)
+    for mi in range(1, len(m_parts), 2):
+        seg = m_parts[mi]
+        seg = replace_macro_1arg(seg, "texttt", lambda a: rf"\mathtt{{{a}}}")
+        seg = replace_macro_1arg(seg, "textbf", lambda a: rf"\mathbf{{{a}}}")
+        seg = replace_macro_1arg(seg, "emph", lambda a: rf"\mathit{{{a}}}")
+        m_parts[mi] = seg
+    s = "".join(m_parts)
+
+    # Step 2: Rejoined prose pass so \textbf{... $math$ ...} and \emph{... $math$ ...} match balanced braces intact
+    for _ in range(2):
         s = replace_macro_1arg(s, "emph", lambda a: f"*{a}*")
         s = replace_macro_1arg(s, "textbf", lambda a: f"**{a}**")
-        s = replace_macro_1arg(s, "texttt", lambda a: f"`{a}`")
+        s = replace_macro_1arg(s, "texttt", lambda a: f"`{a.replace(chr(92) + '_', '_')}`")
 
     simple_macros = {
         r"\R": r"\mathbb{R}",
@@ -411,28 +484,9 @@ def clean_latex_text(text: str) -> str:
     for k, v in sorted(simple_macros.items(), key=lambda kv: -len(kv[0])):
         s = re.sub(re.escape(k) + r"(?![A-Za-z])", lambda _m, rep=v: rep, s)
 
-    # Convert LaTeX display/inline delimiters \[ \] \( \) to $$ and $ BEFORE callouts & tables
-    # Use (?<!\\) so linebreaks like \\[4pt] are NOT treated as \[
-    s = re.sub(r"(?<!\\)\\\[", "\n$$\n", s)
-    s = re.sub(r"(?<!\\)\\\]", "\n$$\n", s)
-    s = re.sub(r"(?<!\\)\\\(", "$", s)
-    s = re.sub(r"(?<!\\)\\\)", "$", s)
-
     s = re.sub(r"\\section\*?\{([^}]*)\}", r"\n## \1\n", s)
     s = re.sub(r"\\subsection\*?\{([^}]*)\}", r"\n### \1\n", s)
     s = re.sub(r"\\subsubsection\*?\{([^}]*)\}", r"\n#### \1\n", s)
-
-    for env in ("equation", "equation*", "align", "align*", "gather", "gather*"):
-        s = re.sub(
-            rf"\\begin\{{{re.escape(env)}\}}(.*?)\\end\{{{re.escape(env)}\}}",
-            lambda m, is_al=("align" in env): (
-                f"\n$$\n\\begin{{aligned}}\n{m.group(1).strip()}\n\\end{{aligned}}\n$$\n"
-                if is_al
-                else f"\n$$\n{m.group(1).strip()}\n$$\n"
-            ),
-            s,
-            flags=re.DOTALL,
-        )
 
     s = re.sub(r"\\begin\{(?:itemize|enumerate)\}(?:\[[^\]]*\])?", "", s)
     s = re.sub(r"\\end\{(?:itemize|enumerate)\}", "", s)
@@ -450,37 +504,84 @@ def clean_latex_text(text: str) -> str:
         def _repl(m: re.Match[str], ct: str = ctype, dt: str = default_title) -> str:
             title = m.group(1).strip() if m.group(1) else dt
             body = m.group(2).strip()
-            # Ensure blank line before/after markdown tables and $$ blocks inside callout
+            # Strip stray standalone brace lines inside callout
+            body = re.sub(r"^\s*[{}]\s*$", "", body, flags=re.MULTILINE).strip()
+            # Normalize $$...$$ blocks: blank line before opening & after closing, ZERO blank lines inside
+            body = re.sub(
+                r"\$\$(.*?)\$\$",
+                lambda mm: "\n\n$$\n" + "\n".join(ln for ln in mm.group(1).splitlines() if ln.strip()) + "\n$$\n\n",
+                body,
+                flags=re.DOTALL,
+            )
+            # Ensure blank line before AND after markdown tables inside callout
             body = re.sub(r"([^\n])\n(\|[^\n]+\|\n\|[\s\-:|]+\|)", r"\1\n\n\2", body)
-            body = re.sub(r"([^\n])\n(\$\$)", r"\1\n\n\2", body)
+            body = re.sub(r"(\|[^\n]+\|)\n([^\n|])", r"\1\n\n\2", body)
+            # If callout starts directly with a table, insert a blank '>' line after [!callout] title
+            if body.startswith("|"):
+                body = "\n" + body
             quoted = "\n".join(f"> {ln}" if ln.strip() else ">" for ln in body.splitlines())
             return f"\n> [!{ct}] {title}\n{quoted}\n"
 
         s = re.sub(pattern, _repl, s, flags=re.DOTALL)
 
-    s = s.replace("~", " ").replace("---", "—").replace("--", "–").replace("``", '"').replace("''", '"')
+    # Strip any remaining standalone { or } lines
+    s = re.sub(r"^(?:>\s*)?[{}]\s*$", lambda m: ">" if m.group(0).lstrip().startswith(">") else "", s, flags=re.MULTILINE)
+
+    # Normalize top-level $$...$$ blocks so no internal blank lines remain
+    s = re.sub(
+        r"(?m)^(\$\$)\n(.*?)\n(\$\$)$",
+        lambda mm: "$$\n" + "\n".join(ln for ln in mm.group(2).splitlines() if ln.strip()) + "\n$$",
+        s,
+        flags=re.DOTALL,
+    )
+
+    # Normalize dashes/quotes ONLY outside math and NEVER on Markdown table separator lines (| --- |)
+    s = s.replace("~", " ").replace("``", '"').replace("''", '"')
     s = s.replace(r"\&", "&").replace(r"\;", " ").replace(r"\,", " ")
     s = re.sub(r"\\vspace\*?\{[^}]*\}", "", s)
     s = re.sub(r"\\hspace\*?\{[^}]*\}", " ", s)
-    # Ensure inline $...$ never spans newlines (outside $$...$$)
+
+    protect_pat = re.compile(
+        r"(\$\$.*?\$\$|(?<!\\)\$(?!\$)[^$\n]+?(?<!\\)\$(?!\$)|^(?:>\s*)?\|[\s\-:|]+\|\s*$)",
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    p_parts = protect_pat.split(s)
+    for pi in range(0, len(p_parts), 2):
+        seg = p_parts[pi].replace("---", "—").replace("--", "–")
+        seg = re.sub(r"\\q?quad(?![A-Za-z])", " ", seg)
+        p_parts[pi] = seg
+    s = "".join(p_parts)
+
+    # Ensure inline $...$ never spans newlines and has no leading/trailing spaces (Obsidian MathJax rule)
     disp_parts = re.split(r"(\$\$.*?\$\$)", s, flags=re.DOTALL)
     for di in range(0, len(disp_parts), 2):
         disp_parts[di] = re.sub(
-            r"(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)",
+            r"(?<!\\)\$(?!\$)([^$]+?)(?<!\\)\$(?!\$)",
             lambda m: "$" + re.sub(r"\s*\n\s*", " ", m.group(1)).strip() + "$",
             disp_parts[di],
             flags=re.DOTALL,
         )
     s = "".join(disp_parts)
 
+    # Ensure blank line before and after top-level tables too
+    s = re.sub(r"([^\n>])\n(\|[^\n]+\|\n\|[\s\-:|]+\|)", r"\1\n\n\2", s)
+    s = re.sub(r"(\|[^\n]+\|)\n([^\n|>])", r"\1\n\n\2", s)
+
+    # Collapse consecutive empty blockquote lines inside callouts (never touching non-empty lines)
+    s = re.sub(r"(?:\n>[ \t]*(?=\n|$)){2,}", "\n>", s)
     s = re.sub(r"\n{3,}", "\n\n", s)
     return s.strip()
 
 
 def link_bookcites(text: str, slug_to_note: dict[str, str]) -> tuple[str, list[str]]:
-    """Replace \\bookcite{slug}{loc} with Obsidian wikilinks to 03_Sources/."""
+    """Replace \\bookcite{slug}{loc} (including nested cites) with Obsidian wikilinks to 03_Sources/."""
     cited: list[str] = []
-    out = replace_macro_2arg(text, "bookcite", lambda s, l: _link_bookcite_helper(s, l, slug_to_note, cited))
+    out = text
+    for _ in range(3):
+        nxt = replace_macro_2arg(out, "bookcite", lambda s, l: _link_bookcite_helper(s, l, slug_to_note, cited))
+        if nxt == out:
+            break
+        out = nxt
     return out, cited
 
 
@@ -501,7 +602,7 @@ def autolink_concepts_in_markdown(
     """Link first prose occurrence of known concepts outside math, links, and headings."""
     linked: set[str] = set()
     token_pat = re.compile(
-        r"(\$\$.*?\$\$|\$[^$\n]+\$|\[\[[^\]]+\]\]|`[^`]+`|^#{1,6}\s+.*$)",
+        r"(\$\$.*?\$\$|\$[^$\n]+\$|\[\[[^\]]+\]\]|`[^`]+`|^#{1,6}\s+.*$|^(?:>\s*)?\|[^\n]*$)",
         flags=re.DOTALL | re.MULTILINE,
     )
     parts = token_pat.split(md)
@@ -548,7 +649,7 @@ def extract_cheatsheet_summary(cs_path: Path) -> tuple[str, list[tuple[str, str]
         if not title_res:
             continue
         raw_title = title_res[0]
-        btitle = clean_latex_text(raw_title).replace("$-$", "—").replace("$", "").strip()
+        btitle = clean_latex_text(raw_title).replace("$-$", "—").strip()
         btitle = re.sub(r"^(\d+)\s+", r"\1. ", btitle)
         body_start = title_res[1]
         body_res = read_balanced(raw, body_start) if body_start < len(raw) and raw[body_start] == "{" else None
@@ -583,10 +684,12 @@ def build_vault() -> None:
     taxonomy = json.loads((ROOT / "data" / "taxonomy_tree.json").read_text(encoding="utf-8"))
     book_index = json.loads((ROOT / "data" / "book_index.json").read_text(encoding="utf-8"))
 
-    if VAULT.exists():
-        shutil.rmtree(VAULT)
+    VAULT.mkdir(parents=True, exist_ok=True)
     for sub in (".obsidian", "00_MOC", "01_Monographs", "02_Concepts", "03_Sources", "04_Cheatsheets"):
-        (VAULT / sub).mkdir(parents=True, exist_ok=True)
+        sub_dir = VAULT / sub
+        if sub_dir.exists():
+            shutil.rmtree(sub_dir)
+        sub_dir.mkdir(parents=True, exist_ok=True)
 
     books_raw = book_index.get("books", [])
     slug_to_book: dict[str, dict[str, Any]] = {}

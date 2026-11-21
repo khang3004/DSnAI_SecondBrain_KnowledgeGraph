@@ -50,20 +50,20 @@ flowchart LR
 
 - **1. PINHOLE & THIN-LENS OPTICS — 3D to 2D**
   $$
-  x = f\frac{X}{Z},\quad y = f\frac{Y}{Z},\qquad \frac{1}{z_o}+\frac{1}{z_i}=\frac{1}{f}
+  x = f\frac{X}{Z},  y = f\frac{Y}{Z},  \frac{1}{z_o}+\frac{1}{z_i}=\frac{1}{f}
   $$
 - **2. COLOR & GAMMA — linear vs perceptual**
 - **3. LSI FILTERING & SEPARABILITY — spatial domain**
   $$
-  (I*h)[y,x]=\sum_{i,j}I[y-i,x-j]h[i,j],\quad G_\sigma(x,y)=g_\sigma(x)g_\sigma(y)
+  (I*h)[y,x]=\sum_{i,j}I[y-i,x-j]h[i,j],  G_\sigma(x,y)=g_\sigma(x)g_\sigma(y)
   $$
 - **4. 2D FOURIER & CONVOLUTION THEOREM**
   $$
-  \hat I[u,v]=\sum_{y,x}I[y,x]e^{-i2\pi(\frac{ux}{W}+\frac{vy}{H})},\quad \mathcal{F}\{I*h\}=\hat I\odot\hat h
+  \hat I[u,v]=\sum_{y,x}I[y,x]e^{-i2\pi(\frac{ux}{W}+\frac{vy}{H})},  \mathcal{F}\{I*h\}=\hat I\odot\hat h
   $$
 - **5. DERIVATIVES & EDGE OPERATORS**
   $$
-  \nabla(G_\sigma*I)=(\nabla G_\sigma)*I,\quad \Delta I = \partial_{xx}I+\partial_{yy}I
+  \nabla(G_\sigma*I)=(\nabla G_\sigma)*I,  \Delta I = \partial_{xx}I+\partial_{yy}I
   $$
 - **6. SAMPLING & NYQUIST ANTI-ALIASING**
   $$

@@ -61,17 +61,13 @@ To make `(eq:flow:mle)` computationally viable in high dimensions, an invertible
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks adopt distinct conventions for latent variables, forward versus inverse directions, and continuous-time indexing. Table `tab:flow:notation` reconciles these conventions into the unified notation used throughout this monograph.
 >
-> 
-> {
->
 > | **Concept** | **Murphy Adv.** | **Bishop** | **Prince** | **Unified Notation** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Base latent | $\boldsymbol{u} \sim p(\boldsymbol{u})$ | $\boldsymbol{z} \sim p_z(\boldsymbol{z})$ | $\boldsymbol{z} \sim \Pr(\boldsymbol{z})$ | $\boldsymbol{z} \sim p_Z(\boldsymbol{z})$ |
 > | Forward / Inverse | $\boldsymbol{x} = f(\boldsymbol{u})$, $\boldsymbol{u} = g(\boldsymbol{x})$ | $\boldsymbol{x} = f(\boldsymbol{z}, \boldsymbol{w})$, $\boldsymbol{z} = g(\boldsymbol{x}, \boldsymbol{w})$ | $\boldsymbol{x} = \mathrm{f}[\boldsymbol{z}, \boldsymbol{\phi}]$, $\boldsymbol{z} = \mathrm{f}^{-1}[\boldsymbol{x}, \boldsymbol{\phi}]$ | $\boldsymbol{x} = f_\theta(\boldsymbol{z})$, $\boldsymbol{z} = f_\theta^{-1}(\boldsymbol{x})$ |
 > | Coupling split | $\boldsymbol{u} = (\boldsymbol{u}_A, \boldsymbol{u}_B)$, $\Theta(\boldsymbol{u}_B)$ | $\boldsymbol{z} = (\boldsymbol{z}_A, \boldsymbol{z}_B)$, $s(\boldsymbol{z}_A), b(\boldsymbol{z}_A)$ | $\boldsymbol{h} = [\boldsymbol{h}_1^{\top}, \boldsymbol{h}_2^{\top}]^{\top}$, $\boldsymbol{\beta}, \boldsymbol{\gamma}$ | $\boldsymbol{z} = (\boldsymbol{z}_A, \boldsymbol{z}_B)$, $\boldsymbol{s}(\boldsymbol{z}_A), \boldsymbol{t}(\boldsymbol{z}_A)$ |
 > | ODE vector field | $\frac{\mathrm{d}\boldsymbol{x}}{\mathrm{d}t} = F(\boldsymbol{x}(t), t)$ | $\frac{\mathrm{d}\boldsymbol{z}(t)}{\mathrm{d}t} = f(\boldsymbol{z}(t), \boldsymbol{w})$ | — | $\frac{\mathrm{d}\boldsymbol{z}(t)}{\mathrm{d}t} = \boldsymbol{v}_\theta(\boldsymbol{z}(t), t)$ |
 > | Time convention | $t=0$ base $\to$ $t=T$ data | $t=0$ base $\to$ $t=T$ data | — | $t=0$ base $\to$ $t=T$ data |
-> }
 
 ## Core Mathematical Derivations & Theorems
 
@@ -80,14 +76,12 @@ To make `(eq:flow:mle)` computationally viable in high dimensions, an invertible
 >
 > $$
 > \int_{\mathcal{A}} p_X(\boldsymbol{x}) \mathrm{d}\boldsymbol{x} = \int_{g(\mathcal{A})} p_Z(\boldsymbol{z}) \mathrm{d}\boldsymbol{z}.
->
 > $$
 >
 > Applying the multivariate substitution $\boldsymbol{z} = g(\boldsymbol{x})$ with infinitesimal volume element $\mathrm{d}\boldsymbol{z} = \lvert \det \boldsymbol{J}_g(\boldsymbol{x}) \rvert \mathrm{d}\boldsymbol{x}$ yields
 >
 > $$
 > \int_{\mathcal{A}} p_X(\boldsymbol{x}) \mathrm{d}\boldsymbol{x} = \int_{\mathcal{A}} p_Z(g(\boldsymbol{x})) \lvert \det \boldsymbol{J}_g(\boldsymbol{x}) \rvert \mathrm{d}\boldsymbol{x} \implies p_X(\boldsymbol{x}) = p_Z(g(\boldsymbol{x})) \lvert \det \boldsymbol{J}_g(\boldsymbol{x}) \rvert.
->
 > $$
 >
 > By the inverse function theorem, differentiating $f(g(\boldsymbol{x})) = \boldsymbol{x}$ gives $\boldsymbol{J}_f(g(\boldsymbol{x})) \boldsymbol{J}_g(\boldsymbol{x}) = \boldsymbol{I}_D$, whence $\det \boldsymbol{J}_g(\boldsymbol{x}) = \left(\det \boldsymbol{J}_f(\boldsymbol{z})\right)^{-1}$ [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 18, Ex. 18.1, p. 559 (PDF p. 571)).
@@ -96,8 +90,8 @@ To make `(eq:flow:mle)` computationally viable in high dimensions, an invertible
 >
 > $$
 > \log p_X(\boldsymbol{x}) = \log p_Z(\boldsymbol{z}) - \sum_{k=1}^L \log \lvert \det \boldsymbol{J}_{f_k}(\boldsymbol{h}_{k-1}) \rvert = \log p_Z(\boldsymbol{z}) + \sum_{k=1}^L \log \lvert \det \boldsymbol{J}_{f_k^{-1}}(\boldsymbol{h}_k) \rvert.
->
 > $$
+>
 
 > [!tip] Jacobian Expansion, Compression & Density Conservation
 > In 1D, `(eq:flow:cov_proof)` reduces to $p_X(x) = p_Z(z) \lvert f'(z) \rvert^{-1}$. Because total probability mass is conserved, stretching a local interval ($\lvert f'(z) \rvert > 1$) dilutes the probability density ($p_X(x) < p_Z(z)$), whereas compressing an interval ($\lvert f'(z) \rvert < 1$) concentrates probability mass ($p_X(x) > p_Z(z)$) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 16, p. 304 (PDF p. 318)). In $\mathbb{R}^D$, $\lvert \det \boldsymbol{J}_f(\boldsymbol{z}) \rvert$ measures the local $D$-dimensional volume scaling factor of the parallelotope spanned by the columns of $\boldsymbol{J}_f(\boldsymbol{z})$.
@@ -119,14 +113,12 @@ Linear transformations $\boldsymbol{x} = \boldsymbol{A}\boldsymbol{z} + \boldsym
 >     \boldsymbol{z}_A = \boldsymbol{x}_A, \\
 >     \boldsymbol{z}_B = \exp(-\boldsymbol{s}(\boldsymbol{x}_A)) \odot (\boldsymbol{x}_B - \boldsymbol{t}(\boldsymbol{x}_A)),
 >   \end{cases}
->
 > $$
 >
 > where $\boldsymbol{s}, \boldsymbol{t} : \mathbb{R}^d \to \mathbb{R}^{D-d}$ are arbitrary (non-invertible) neural networks and $\odot$ is the Hadamard product. Differentiating `(eq:flow:realnvp)` yields a block lower-triangular Jacobian:
 >
 > $$
 > \boldsymbol{J}_f(\boldsymbol{z}) = \begin{bmatrix} \boldsymbol{I}_d & \boldsymbol{0} \\ \frac{\partial \boldsymbol{x}_B}{\partial \boldsymbol{z}_A} & \mathrm{diag}\!\left(\exp(\boldsymbol{s}(\boldsymbol{z}_A))\right) \end{bmatrix} \implies \log \lvert \det \boldsymbol{J}_f(\boldsymbol{z}) \rvert = \sum_{j=1}^{D-d} s_j(\boldsymbol{z}_A).
->
 > $$
 >
 > Notice that the off-diagonal block $\frac{\partial \boldsymbol{x}_B}{\partial \boldsymbol{z}_A}$ never enters the determinant, so $\boldsymbol{s}$ and $\boldsymbol{t}$ require neither invertibility nor Jacobian evaluation, and both $f$ and $f^{-1}$ execute in a single parallel pass [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 18, p. 551 (PDF p. 563)).
@@ -135,7 +127,6 @@ Linear transformations $\boldsymbol{x} = \boldsymbol{A}\boldsymbol{z} + \boldsym
 >
 > $$
 > \boldsymbol{W} = \boldsymbol{P}\boldsymbol{L}\left(\boldsymbol{U} + \mathrm{diag}(\boldsymbol{s})\right),
->
 > $$
 >
 > where $\boldsymbol{P}$ is a fixed permutation matrix, $\boldsymbol{L}$ is lower-triangular with ones on the diagonal, and $\boldsymbol{U}$ is strictly upper-triangular, reduces the determinant cost from $O(C^3)$ to $O(C)$ via $\log\lvert \det \boldsymbol{W} \rvert = \sum_{c=1}^C \log\lvert s_c \rvert$.
@@ -149,14 +140,12 @@ Instead of splitting dimensions into two blocks, an *autoregressive flow* applie
 >
 > $$
 > x_i = z_i \exp(\alpha_i(\boldsymbol{x}_{1:i-1})) + \mu_i(\boldsymbol{x}_{1:i-1}) \Longleftrightarrow z_i = \left(x_i - \mu_i(\boldsymbol{x}_{1:i-1})\right)\exp(-\alpha_i(\boldsymbol{x}_{1:i-1})).
->
 > $$
 >
 > **Inverse Autoregressive Flow (IAF):** Conditions on the *latent* prefix $\boldsymbol{z}_{1:i-1}$:
 >
 > $$
 > x_i = z_i \exp(\alpha_i(\boldsymbol{z}_{1:i-1})) + \mu_i(\boldsymbol{z}_{1:i-1}) \Longleftrightarrow z_i = \left(x_i - \mu_i(\boldsymbol{z}_{1:i-1})\right)\exp(-\alpha_i(\boldsymbol{z}_{1:i-1})).
->
 > $$
 >
 > In both cases, $\frac{\partial x_i}{\partial z_j} = 0$ for all $j > i$, so $\boldsymbol{J}_f$ is lower-triangular and $\log\lvert \det\boldsymbol{J}_f \rvert = \sum_{i=1}^D \alpha_i$ in $O(D)$ operations once the conditioner outputs are computed. Using masked MLPs (MADE), *MAF* evaluates all $\alpha_i(\boldsymbol{x}_{1:i-1}), \mu_i(\boldsymbol{x}_{1:i-1})$ in $O(1)$ parallel forward passes (fast density evaluation for MLE) but requires $D$ sequential steps to sample $\boldsymbol{x}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 23, p. 840 (PDF p. 874)). Conversely, *IAF* samples $\boldsymbol{x}$ in $O(1)$ parallel pass (ideal for variational posteriors and WaveNet distillation) but requires $D$ sequential steps to invert $\boldsymbol{x} \to \boldsymbol{z}$ for arbitrary data density evaluation [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 23, p. 841 (PDF p. 875)), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 16, p. 313 (PDF p. 327)).
@@ -179,28 +168,24 @@ By the Picard–Lindelöf theorem, if $\boldsymbol{v}_\theta(\cdot, t)$ is unifo
 > \log p_{t+\Delta t}(\boldsymbol{z}_{t+\Delta t}) &= \log p_t(\boldsymbol{z}_t) - \log \lvert \det\!\left(\boldsymbol{I}_D + \Delta t \nabla_{\boldsymbol{z}}\boldsymbol{v}_\theta(\boldsymbol{z}_t, t)\right) \rvert + O(\Delta t^2)  \\
 >   &= \log p_t(\boldsymbol{z}_t) - \Delta t \mathrm{Tr}\!\left(\nabla_{\boldsymbol{z}}\boldsymbol{v}_\theta(\boldsymbol{z}_t, t)\right) + O(\Delta t^2).
 > \end{aligned}
->
 > $$
 >
 > Dividing by $\Delta t$ and taking $\Delta t \to 0$ yields the *Instantaneous Change-of-Variables Formula* [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 18, Eq. (18.28), p. 557 (PDF p. 569)), [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.1.2, p. 133 (PDF p. 138)):
 >
 > $$
 > \frac{\mathrm{d}}{\mathrm{d}t}\log p_t(\boldsymbol{z}(t)) = -\mathrm{Tr}\!\left(\frac{\partial \boldsymbol{v}_\theta(\boldsymbol{z}(t), t)}{\partial \boldsymbol{z}(t)}\right) = -\nabla_{\boldsymbol{z}} \cdot \boldsymbol{v}_\theta(\boldsymbol{z}(t), t).
->
 > $$
 >
 > Integrating from $t=0$ to $t=T$ gives the exact log-likelihood without any determinant or architectural restriction on $\boldsymbol{v}_\theta$:
 >
 > $$
 > \log p_X(\boldsymbol{x}) = \log p_Z(\boldsymbol{z}(0)) - \int_0^T \nabla_{\boldsymbol{z}} \cdot \boldsymbol{v}_\theta(\boldsymbol{z}(t), t) \mathrm{d}t.
->
 > $$
 >
 > **Link to Continuity & Fokker–Planck Equations:** Expanding the total derivative $\frac{\mathrm{d}}{\mathrm{d}t}\log p_t(\boldsymbol{z}(t)) = \partial_t \log p_t + \boldsymbol{v}_\theta^{\top} \nabla_{\boldsymbol{z}}\log p_t$ in `(eq:flow:inst_cov)` and multiplying by $p_t$ yields the *Continuity Equation* (Liouville's theorem for probability conservation) [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (App. B.1–B.2, pp. 404–411 (PDF pp. 409–416)):
 >
 > $$
 > \frac{\partial p_t(\boldsymbol{z})}{\partial t} + \nabla_{\boldsymbol{z}} \cdot \left(p_t(\boldsymbol{z}) \boldsymbol{v}_\theta(\boldsymbol{z}, t)\right) = 0,
->
 > $$
 >
 > which is precisely the zero-diffusion ($g(t)=0$) deterministic limit of the Fokker–Planck equation $\partial_t p_t = -\nabla \cdot (\boldsymbol{v}_\theta p_t) + \frac{1}{2}g^2(t)\Delta p_t$.
@@ -238,13 +223,13 @@ For high-resolution images, discrete flows (RealNVP, Glow) avoid ODE solvers by 
 
 **Table:** Computational and structural comparison of exact-likelihood normalizing flow families [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 23, pp. 835–845), [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 18, pp. 549–558).
 
-| **Flow Family** | **Sampling $\boldsymbol{z} \to \boldsymbol{x}$** | **Density $\boldsymbol{x} \to \boldsymbol{z}$** | **Log-Det Cost** | **Key Trade-Off** |
-| — | — | — | — | — |
-| Coupling (RealNVP / Glow) | $O(1)$ parallel pass | $O(1)$ parallel pass | $O(D)$ (diag) + $O(C)$ ($1{\times}1$ LU) | Symmetric speed; requires deep stacking for cross-dim mixing |
-| MAF | $O(D)$ sequential | $O(1)$ parallel pass | $O(D)$ (triangular) | Fast MLE training; slow $O(D)$ ancestral sampling |
-| IAF | $O(1)$ parallel pass | $O(D)$ sequential | $O(D)$ (triangular) | Fast sampling (VAE/distillation); slow MLE on data |
-| Residual Flow (iResNet) | $O(K)$ fixed-point | $O(1)$ forward pass | Unbiased power series | Unconstrained layers; requires Lipschitz $< 1$ spectral norm |
-| Continuous (FFJORD) | $O(\text{NFE})$ ODE solve | $O(\text{NFE})$ ODE solve | $O(D)$ per NFE (Hutchinson) | Free-form $\boldsymbol{v}_\theta$, $O(1)$ memory; high NFE if stiff |
+| **Flow Family**           | **Sampling $\boldsymbol{z} \to \boldsymbol{x}$** | **Density $\boldsymbol{x} \to \boldsymbol{z}$** | **Log-Det Cost**                         | **Key Trade-Off**                                                   |
+| ------------------------- | ------------------------------------------------ | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------- |
+| Coupling (RealNVP / Glow) | $O(1)$ parallel pass                             | $O(1)$ parallel pass                            | $O(D)$ (diag) + $O(C)$ ($1{\times}1$ LU) | Symmetric speed; requires deep stacking for cross-dim mixing        |
+| MAF                       | $O(D)$ sequential                                | $O(1)$ parallel pass                            | $O(D)$ (triangular)                      | Fast MLE training; slow $O(D)$ ancestral sampling                   |
+| IAF                       | $O(1)$ parallel pass                             | $O(D)$ sequential                               | $O(D)$ (triangular)                      | Fast sampling (VAE/distillation); slow MLE on data                  |
+| Residual Flow (iResNet)   | $O(K)$ fixed-point                               | $O(1)$ forward pass                             | Unbiased power series                    | Unconstrained layers; requires Lipschitz $< 1$ spectral norm        |
+| Continuous (FFJORD)       | $O(\text{NFE})$ ODE solve                        | $O(\text{NFE})$ ODE solve                       | $O(D)$ per NFE (Hutchinson)              | Free-form $\boldsymbol{v}_\theta$, $O(1)$ memory; high NFE if stiff |
 
 > [!info] Cross-Book Synthesis: Likelihood Objectives & Bridge to Flow Matching
 > **Forward vs. Reverse KL Training:** As shown in [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 23, pp. 831–832) and [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 16, p. 320), flows support two complementary objectives. Given data samples $\boldsymbol{x} \sim p_{\mathrm{data}}$, MLE minimizes $D_{\mathrm{KL}}(p_{\mathrm{data}} \parallel p_\theta)$, requiring fast inverse evaluation $f_\theta^{-1}(\boldsymbol{x})$ (favoring RealNVP, Glow, MAF). Conversely, when approximating an unnormalized target density $q(\boldsymbol{x})$ (e.g., a VAE posterior or WaveNet teacher), one minimizes the reverse KL $D_{\mathrm{KL}}(p_\theta \parallel q)$ using reparameterized samples $\boldsymbol{x} = f_\theta(\boldsymbol{z})$, requiring fast forward sampling (favoring IAF).

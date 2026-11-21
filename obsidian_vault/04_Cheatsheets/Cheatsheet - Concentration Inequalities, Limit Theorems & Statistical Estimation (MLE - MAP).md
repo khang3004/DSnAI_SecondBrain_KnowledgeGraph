@@ -51,8 +51,8 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. CONCENTRATION — finite-N tail bounds**
-- **2. LIMIT THEOREMS — N\to\infty laws**
+- **1. CONCENTRATION — finite-$N$ tail bounds**
+- **2. LIMIT THEOREMS — $N\to\infty$ laws**
 - **3. FISHER & CRLB — curvature & efficiency**
   $$
   \boldsymbol{F}(\theta)=\mathrm{Cov}_\theta[\boldsymbol{s}]=-\mathbb{E}_\theta[\nabla^2_\theta\log p(X\mid\theta)]

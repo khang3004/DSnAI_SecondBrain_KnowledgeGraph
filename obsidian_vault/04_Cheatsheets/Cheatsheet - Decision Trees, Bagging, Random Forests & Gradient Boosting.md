@@ -65,7 +65,7 @@ flowchart LR
   $$
 - **4. CONNECTIONS — AdaBoost & Functional Gradient**
   $$
-  \beta_m=\tfrac{1}{2}\log\frac{1-\mathrm{err}_m}{\mathrm{err}_m},\quad \omega_{i,m+1}\propto\omega_{i,m}e^{2\beta_m\mathbb I(\tilde y_i\ne F_m(\boldsymbol{x}_i))}
+  \beta_m=\tfrac{1}{2}\log\frac{1-\mathrm{err}_m}{\mathrm{err}_m},  \omega_{i,m+1}\propto\omega_{i,m}e^{2\beta_m\mathbb I(\tilde y_i\ne F_m(\boldsymbol{x}_i))}
   $$
 - **5. COST — Exact Sorting vs Histogram Binning**
 - **6. USE-CASES — When Trees Rule Tabular ML**

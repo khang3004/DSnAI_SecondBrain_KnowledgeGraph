@@ -58,7 +58,7 @@ flowchart LR
   $$
   \mathrm{Attention}(\boldsymbol{Q},\boldsymbol{K},\boldsymbol{V}) = \mathrm{softmax}\!\left(\frac{\boldsymbol{Q}\boldsymbol{K}^{\top}}{\sqrt{d_k}}\right)\boldsymbol{V}
   $$
-- **2. WHY 1/\sqrt{d_k} & PRE-SOFTMAX MASKING**
+- **2. WHY $1/\sqrt{d_k}$ & PRE-SOFTMAX MASKING**
   $$
   \mathrm{Var}(\boldsymbol{q}^{\top}\boldsymbol{k}) = d_k  \implies  \mathrm{Var}\!\left(\frac{\boldsymbol{q}^{\top}\boldsymbol{k}}{\sqrt{d_k}}\right) = 1
   $$
@@ -67,7 +67,7 @@ flowchart LR
   \mathrm{MHA}(\boldsymbol{X}) = \mathrm{Concat}(\boldsymbol{H}_1,\dots,\boldsymbol{H}_H)\boldsymbol{W}_O
   $$
 - **4. ARCHITECTURES — GPT vs. BERT vs. T5 vs. ViT**
-- **5. COST & FLASHATTENTION — beating O(HN^2) HBM**
+- **5. COST & FLASHATTENTION — beating $O(HN^2)$ HBM**
 - **6. KERNEL VIEW & TIED UNEMBEDDING**
 
 ## Related Sources

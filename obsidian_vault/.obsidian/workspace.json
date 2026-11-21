@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "01_Monographs/MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI.md",
-                "mode": "source",
+                "file": "02_Concepts/Lagrange Duality & KKT.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI"
+              "title": "Lagrange Duality & KKT"
             }
           }
         ]
@@ -55,8 +55,8 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
-                "matchingCase": false,
+                "query": "Dual",
+                "matchingCase": true,
                 "explainSearch": false,
                 "collapseAll": false,
                 "extraContext": false,
@@ -79,7 +79,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -187,36 +188,36 @@
   },
   "active": "fe639ea49e8d9585",
   "lastOpenFiles": [
-    "AGENTS.md",
-    "02_Concepts/Cauchy-Schwarz Inequality.md",
-    "01_Monographs/Bradley-Terry Reward Models, KL-Regularized RLHF, Direct Preference Optimization (DPO) & RLVR.md",
-    "01_Monographs/Classifier - Classifier-Free Guidance, DDIM - DPM-Solver ODEs & Consistency Models.md",
-    "01_Monographs/MDPs, Bellman Optimality Equations, Policy - Value Iteration & GPI.md",
-    "01_Monographs/Support Vector Machines, Margin Duality & Mercer Kernel Methods.md",
-    "02_Concepts/Shannon Entropy.md",
-    "02_Concepts/Self-Attention & Multi-Head Attention.md",
-    "01_Monographs/Spectral Theory, Singular Value Decomposition & Low-Rank Approximations.md",
-    "01_Monographs/Recurrent Neural Networks, BPTT, LSTMs - GRUs & Long-Range Gradient Flow.md",
-    "01_Monographs/Agent Taxonomy, ReAct Synergy, Reflection, Planning & Multi-Agent Orchestration.md",
-    "02_Concepts/BPE & Subword Tokenization.md",
-    "01_Monographs/Convolutional Neural Networks, Translation Equivariance & Vision Backbones.md",
-    "00_MOC/ST 07 - Agent Taxonomies, ReAct, Planning & Multi-Agent Patterns.md",
-    "01_Monographs/Bias-Variance Decomposition, Overfitting, Generalization & Double Descent.md",
-    "01_Monographs/Vector Spaces, Norms, Orthogonality & Least-Squares Projections.md",
-    "03_Sources/Source - Reinforcement Learning - An Overview.md",
-    "03_Sources/Source - Reinforcement Learning from Human Feedback.md",
-    "03_Sources/Source - Francis Bach.md",
-    "03_Sources/Source - Handbook of Convergence Theorems.md",
-    "03_Sources/Source - Optimal Transport in Large-Scale.md",
-    "03_Sources/Source - Mathematics for Machine Learning.md",
-    "03_Sources/Source - Math behind KAN.md",
-    "03_Sources/Source - E D I T I O N.md",
-    "03_Sources/Source - Introduction-PROBABILITY-for-DATA-SCIENCE.md",
-    "03_Sources/Source - Understanding Deep Learning.md",
-    "02_Concepts/Icon\r",
-    "04_Cheatsheets/Icon\r",
+    "00_MOC/00_Concept_Graph_Index.md",
+    "01_Monographs/Change-of-Variables, Coupling - Autoregressive Normalizing Flows & Neural ODEs.md",
+    "00_MOC/00_Home_MOC.md",
+    "00_MOC/D07 - Agentic AI Architectures, Protocols & Production ML Systems.md",
+    "00_MOC/D06 - Reinforcement Learning, Control & LLM Alignment.md",
+    "00_MOC/D05 - Transformers, Language Modeling & LLM Engineering.md",
+    "00_MOC/D04 - Deep Generative Modeling - VAEs, Flows, EBMs, GANs & Diffusion.md",
+    "00_MOC/D03 - Neural Architectures, Representations & Regularization.md",
+    "00_MOC/D02 - Classical, Kernel & Probabilistic Machine Learning.md",
+    "00_MOC/D01 - Mathematical Foundations for Machine Intelligence.md",
+    "00_MOC/PT 07 - Recommender Systems, Collaborative Filtering & Neural Ranking.md",
+    "00_MOC/PT 07 - Production ML Systems, Evaluation, Observability & AgentOps.md",
+    "00_MOC/PT 07 - Agentic Reasoning, Memory, RAG, MCP - A2A & Workflows.md",
+    "00_MOC/PT 06 - Policy Gradients, Model-Based RL, MARL & LLM Alignment.md",
+    "00_MOC/PT 06 - Bandits, Markov Decision Processes & Value-Based RL.md",
+    "00_MOC/PT 05 - LLM Pretraining, Adaptation, Prompting & Efficient Inference.md",
+    "00_MOC/PT 05 - Tokenization, Embeddings, Attention & Transformer Architectures.md",
+    "00_MOC/PT 04 - Diffusion Models, Score SDEs, Flow Matching & Fast Samplers.md",
+    "00_MOC/PT 04 - Autoencoders, VAEs, Normalizing Flows, EBMs & GANs.md",
+    "00_MOC/PT 03 - Computer Vision, Image Formation & 3D Scene Understanding.md",
+    "00_MOC/PT 03 - Convolutional, Graph, Recurrent & State-Space Architectures.md",
+    "00_MOC/PT 03 - MLPs, Kolmogorov-Arnold Networks, Residuals & Regularization.md",
+    "00_MOC/PT 02 - Latent Variables, Graphical Models, VI & MCMC Sampling.md",
+    "00_MOC/PT 02 - Linear Models, Generalization, Kernels & Ensembles.md",
+    "00_MOC/PT 01 - Convex, Smooth & Stochastic Optimization.md",
+    "00_MOC/PT 01 - Probability Theory, Information Theory & Optimal Transport.md",
     "03_Sources/Icon\r",
     "00_MOC/Icon\r",
+    "02_Concepts/Icon\r",
+    "04_Cheatsheets/Icon\r",
     "01_Monographs/Icon\r"
   ]
 }

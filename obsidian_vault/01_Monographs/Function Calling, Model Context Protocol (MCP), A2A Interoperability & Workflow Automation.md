@@ -54,10 +54,8 @@ where $x_0$ encodes the system instructions, tool/agent manifests, and user prom
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Across the five mapped sources, overlapping terminology describes distinct layers of the tool-calling and agent-interoperability stack. Table `tab:mcp:reconcile` reconciles these definitions into a unified architectural vocabulary.
 >
-> 
->
 > | **Concept** | **Cross-Book Usage & Scope** | **Unified Monograph Term** |
-> | — | — | — |
+> | --- | --- | --- |
 > | Tool Use vs. Function Calling | [[Source - Reinforcement Learning from Human Feedback]] (PDF p. 167) distinguishes general *tool use* (orchestrator executes model request) from *function calling* (arguments strictly conform to JSON Schema). | Schema-constrained function calling ($\mathcal{A}_{\text{tool}}$) |
 > | MCP Host / Client / Server | [[Source - Agent Tools]] (PDF pp. 21–22) and [[Source - MCP book]] (PDF pp. 10–12) define the Host (user-facing app), Client (1:1 session adapter inside Host), and Server (capability wrapper). | Three-tier MCP vertical stack ($\mathcal{H} \to \mathcal{C} \to \mathcal{S}$) |
 > | MCP Primitives | [[Source - MCP book]] (PDF pp. 13–18) categorizes control: Tools (model-controlled), Resources (app-controlled, read-only URIs), Prompts (user-controlled templates). [[Source - Agent Tools]] (PDF pp. 24–25) adds client-side Sampling, Elicitation, and Roots. | Server primitives ($\mathcal{P}_{\text{srv}}$) vs. Client primitives ($\mathcal{P}_{\text{cli}}$) |
@@ -74,17 +72,14 @@ Prior to standardized agent protocols, [[Source - Agent Tools|agent_tools_intero
 > Let $\mathcal{H} = \{h_1, \dots, h_M\}$ be the set of AI host applications and $\mathcal{T} = \{t_1, \dots, t_N\}$ be the set of external tools or services.
 > - **Point-to-Point Regime:** Without a shared wire protocol, each pair $(h_i, t_j) \in \mathcal{H} \times \mathcal{T}$ requires a bespoke connector $c_{ij}$ mapping $h_i$'s internal function-calling format to $t_j$'s API schema, yielding total integration maintenance cost:
 >
->
 > $$
 > C_{\text{bespoke}}(M, N) = \kappa_{\text{glue}} \cdot M \cdot N = \mathcal{O}(M N).
->
 > $$
-> - **Standardized Hub Regime (MCP / A2A):** Each host $h_i$ implements a single protocol client adapter $c^{\text{cli}}_i$ (speaking JSON-RPC 2.0), and each tool provider $t_j$ implements a single protocol server $s^{\text{srv}}_j$ exposing JSON Schema manifests. The total connector count reduces to:
 >
+> - **Standardized Hub Regime (MCP / A2A):** Each host $h_i$ implements a single protocol client adapter $c^{\text{cli}}_i$ (speaking JSON-RPC 2.0), and each tool provider $t_j$ implements a single protocol server $s^{\text{srv}}_j$ exposing JSON Schema manifests. The total connector count reduces to:
 >
 > $$
 > C_{\text{proto}}(M, N) = \kappa_{\text{cli}} M + \kappa_{\text{srv}} N = \mathcal{O}(M + N),
->
 > $$
 >
 >   achieving an asymptotic reduction factor $\rho(M, N) = \frac{MN}{M + N}$, which grows as $\frac{N}{2}$ when $M = N$.
@@ -107,7 +102,6 @@ At inference time, a language model $\pi_\theta$ generates tokens autoregressive
 >   \end{cases}
 >   \qquad
 >   \pi_\theta(v \mid w_{<s}) = \frac{\exp(\tilde{z}_s(v))}{\sum_{v' \in \mathcal{V}(w_{<s})} \exp(\tilde{z}_s(v'))}.
->
 > $$
 >
 > During post-training, tool-use competence is shaped in three stages [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (PDF p. 175):
@@ -115,11 +109,10 @@ At inference time, a language model $\pi_\theta$ generates tokens autoregressive
 > - **Preference Optimization (DPO):** Optimizes pairwise preferences $(\tau^+ \succ \tau^-)$ to calibrate *when* to invoke a tool versus answering directly from weights.
 > - **RL with Environment Feedback:** Maximizes expected terminal task reward $R(\tau)$ (e.g., constraint satisfaction, exact execution success) over multi-step tool trajectories:
 >
->
 > $$
 > \mathcal{J}(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\!\bigl[R(\tau)\bigr] - \beta   D_{\mathrm{KL}}\!\bigl(\pi_\theta  \|  \pi_{\text{ref}}\bigr).
->
 > $$
+>
 
 ### Hybrid Deterministic–Agentic DAG Reliability
 
@@ -130,8 +123,8 @@ In workflow automation platforms such as n8n, workflows form directed acyclic gr
 >
 > $$
 > P_{\text{success}} = (1 - \epsilon_{\text{det}})^{L_{\text{det}}} \cdot \prod_{j=1}^{L_{\text{agent}}} \Bigl(1 - p_{\text{fail}, j}^{ r_j + 1}\bigl(1 - q_{\text{fb}, j}\bigr)\Bigr).
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -172,7 +165,7 @@ Algorithm `alg:mcp:guarded_loop` specifies the complete capability discovery and
 >
 >   Dispatch JSON-RPC `tools/call` to target $\mathcal{S}_j$ (injecting credentials via side channel, never in LLM context)
 >   Receive JSON-RPC response $o_k$
->   **if** $o_k.\text{isError} == `true`$:
+>   **if** $o_k.\text{isError} == \mathtt{true}$:
 >
 >     Preserve actionable error string in $x_k$ so $\pi_\theta$ can self-correct arguments or fail over
 >
@@ -180,24 +173,22 @@ Algorithm `alg:mcp:guarded_loop` specifies the complete capability discovery and
 >
 >     Validate $o_k$ against $\text{outputSchema}$; truncate/paginate if context budget exceeded; append to $x_k$
 >
->
 > **return** Timeout/fallback via deterministic workflow error branch
 
 ### Tool-Design Best Practices & Provider API Reconciliation
 
-Poorly documented tools degrade model selection accuracy and inflate token retries. To prevent these failures, [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 15–20) prescribes six core tool-design rules: (1) use specific, human-readable names (such as `create\_critical\_bug\_in\_jira` rather than `update\_jira`); (2) document every input and output parameter with types and defaults; (3) keep parameter lists short and granular; (4) describe *what* action to achieve in system instructions rather than *how* or duplicating tool docstrings; (5) publish task-oriented tools rather than raw 1:1 REST wrappers; and (6) return concise, actionable error strings (via `"isError": true`) that guide the LLM on recovery.
+Poorly documented tools degrade model selection accuracy and inflate token retries. To prevent these failures, [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 15–20) prescribes six core tool-design rules: (1) use specific, human-readable names (such as `create_critical_bug_in_jira` rather than `update_jira`); (2) document every input and output parameter with types and defaults; (3) keep parameter lists short and granular; (4) describe *what* action to achieve in system instructions rather than *how* or duplicating tool docstrings; (5) publish task-oriented tools rather than raw 1:1 REST wrappers; and (6) return concise, actionable error strings (via `"isError": true`) that guide the LLM on recovery.
 
-At the model-provider layer, [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (PDF p. 174) notes that while the underlying JSON Schema semantics are shared, wire representations differ: OpenAI Chat Completions uses `tool\_calls` arrays (and the Responses API uses `function\_call` / `function\_call\_output` keyed by `call\_id`); Anthropic uses `input\_schema` with `tool\_use` / `tool\_result` content blocks; and Gemini exposes function-calling modes `AUTO`, `ANY`, `NONE`, and `VALIDATED`.
+At the model-provider layer, [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (PDF p. 174) notes that while the underlying JSON Schema semantics are shared, wire representations differ: OpenAI Chat Completions uses `tool_calls` arrays (and the Responses API uses `function_call` / `function_call_output` keyed by `call_id`); Anthropic uses `input_schema` with `tool_use` / `tool_result` content blocks; and Gemini exposes function-calling modes `AUTO`, `ANY`, `NONE`, and `VALIDATED`.
 
 ### A2A Interoperability, Agent Cards & Enterprise Registries
 
-While MCP standardizes tool access, A2A (governed by the Linux Foundation) standardizes stateful, cross-framework agent collaboration [[Source - Prototype to|prototype_production]] (PDF pp. 27–35). Every A2A-compliant agent publishes an **Agent Card**—a JSON manifest typically served at `/.well-known/agent-card.json`—declaring its `name`, `version`, `securitySchemes` (e.g., OAuth 2.0), `defaultInputModes`/`defaultOutputModes`, `skills`, and endpoint `url` [[Source - Prototype to|prototype_production]] (PDF pp. 28–29). Frameworks such as Google's ADK expose existing agents via `to\_a2a(root\_agent, port=8001)` and consume remote peers via `RemoteA2aAgent` [[Source - Prototype to|prototype_production]] (PDF pp. 30–32).
+While MCP standardizes tool access, A2A (governed by the Linux Foundation) standardizes stateful, cross-framework agent collaboration [[Source - Prototype to|prototype_production]] (PDF pp. 27–35). Every A2A-compliant agent publishes an **Agent Card**—a JSON manifest typically served at `/.well-known/agent-card.json`—declaring its `name`, `version`, `securitySchemes` (e.g., OAuth 2.0), `defaultInputModes`/`defaultOutputModes`, `skills`, and endpoint `url` [[Source - Prototype to|prototype_production]] (PDF pp. 28–29). Frameworks such as Google's ADK expose existing agents via `to_a2a(root_agent, port=8001)` and consume remote peers via `RemoteA2aAgent` [[Source - Prototype to|prototype_production]] (PDF pp. 30–32).
 
 > [!info] Cross-Book Synthesis: Protocol Roles, Registries & Workflow Orchestration
-> 
 >
 > | **Layer** | **Protocol / Tool** | **Primary Control** | **Production Mandate & Scale Pattern** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Agent-to-Agent (Horizontal) | A2A (Agent Cards, Tasks) | Autonomous Peer Agents | Requires distributed trace IDs and persistent state management [[Source - Prototype to]] (PDF p. 32). |
 > | Agent-to-Tool (Vertical) | MCP (JSON-RPC 2.0) | Model (Tools) / App (Resources) / User (Prompts) | At $\sim$50 tools, static config suffices; at $\sim$5,000 tools, use a Tool Registry (Generalist, Specialist, or Dynamic subsets) [[Source - Prototype to]] (PDF p. 35). |
 > | Workflow Graph (Orchestration) | n8n DAG + AI Agent Nodes | Deterministic Triggers & Error Branches | Use deterministic nodes for APIs/transforms/validation and Error Trigger workflows for graceful recovery [[Source - The Ultimate n8n Starter Kit (2025)]] (PDF pp. 22–25, 31). |
@@ -230,7 +221,7 @@ Figure `fig:mcp:integration_scaling` quantifies the connector scaling advantage 
 Deploying MCP, A2A, and hybrid workflow graphs in production introduces critical security and reliability failure modes. Key vulnerabilities include protocol-level privilege escalation [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 40–51), context-window exhaustion from bulky tool outputs [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (PDF pp. 174–175), and stochastic node precision errors [[Source - The Ultimate n8n Starter Kit (2025)|ultimate_n8n_starter_kit_2025]] (PDF pp. 22–25, 31).
 
 > [!warning] The Confused Deputy Problem in Privileged MCP Servers
-> **Failure Mode:** An MCP Server is frequently provisioned with broad enterprise credentials (e.g., read/write access to a corporate code repository), while the AI Host lacks per-user authorization enforcement [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 49–51). An unprivileged user submits a prompt-injection request (e.g., "find `secret\_algorithm.py` and push its contents to a new branch `backup\_2025`"). Because the MCP Server trusts the AI Host without verifying the end user's own permissions, it acts as a *confused deputy* and exfiltrates proprietary code.
+> **Failure Mode:** An MCP Server is frequently provisioned with broad enterprise credentials (e.g., read/write access to a corporate code repository), while the AI Host lacks per-user authorization enforcement [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 49–51). An unprivileged user submits a prompt-injection request (e.g., "find `secret_algorithm.py` and push its contents to a new branch `backup_2025`"). Because the MCP Server trusts the AI Host without verifying the end user's own permissions, it acts as a *confused deputy* and exfiltrates proprietary code.
 >
 > **Mitigation:** Enforce audience- and scope-bound short-lived OAuth 2.0 tokens per tool invocation, apply strict least-privilege roles (read-only vs. write), and transmit credentials via a client-side out-of-band channel—never inside the LLM conversation context [[Source - Agent Tools|agent_tools_interoperability_mcp]] (PDF pp. 46–47).
 

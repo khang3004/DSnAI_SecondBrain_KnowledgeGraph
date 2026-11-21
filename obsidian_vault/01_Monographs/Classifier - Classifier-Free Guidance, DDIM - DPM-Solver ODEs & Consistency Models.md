@@ -50,17 +50,13 @@ where $t \in [0, T]$ runs from clean data ($t=0$) to the Gaussian prior ($t=T$),
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source texts adopt slightly different conventions for forward noise schedules, guidance weights, and latent state symbols. Table `tab:dsolver:notation` establishes a unified notation used throughout this monograph.
 >
-> 
-> {
->
 > | **Concept** | **Unified** | **Diffusion Princ.** | **Murphy Adv.** | **Bishop** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Noisy state | $\boldsymbol{x}_t$ | $\boldsymbol{x}_t$ (Ch. 8–11) | $\boldsymbol{x}_t$ (Sec. 25.5) | $\boldsymbol{z}$ |
 > | Forward kernel | $\alpha_t \boldsymbol{x}_0 + \sigma_t \boldsymbol{\epsilon}$ | $\alpha_t \boldsymbol{x}_0 + \sigma_t \boldsymbol{\epsilon}$ | $\sqrt{\bar{\alpha}_t}\boldsymbol{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}$ | $q(\boldsymbol{z}_t \mid \boldsymbol{x})$ |
 > | Guidance scale | $\omega \ge 0$ | $\omega$ (Sec. 8.2–8.3) | $w = \omega - 1$ (Sec. 25.6.3) | $\lambda$ |
 > | Half-log SNR | $\lambda_t = \log(\alpha_t/\sigma_t)$ | $\lambda_t$ (Eq. 9.4.2) | — | — |
 > | Flow / consistency | $\Psi_{s\to t}(\boldsymbol{x}_s)$ | $\Psi_{s\to t}$, $f_\theta(\boldsymbol{x}_s, s)$ | $f(\boldsymbol{z}_s; \theta)$ (Fig. 25.12) | — |
-> }
 
 ## Guidance, Controllable Generation & Preference Alignment
 
@@ -73,7 +69,6 @@ Given a conditioning variable $\boldsymbol{c}$ (class label, text prompt, or ref
 >
 > $$
 > \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t \mid \boldsymbol{c}) = \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t) + \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{c} \mid \boldsymbol{x}_t).
->
 > $$
 >
 > To trade off sample diversity against conditional fidelity, Classifier Guidance (CG) introduces a tempered tilted density $p_t(\boldsymbol{x}_t \mid \boldsymbol{c}, \omega) \propto p_t(\boldsymbol{x}_t)  p_t(\boldsymbol{c}\mid\boldsymbol{x}_t)^{\omega}$ with guidance scale $\omega \ge 0$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 8.2.2–8.2.3, p. 237):
@@ -81,7 +76,6 @@ Given a conditioning variable $\boldsymbol{c}$ (class label, text prompt, or ref
 > $$
 > \boldsymbol{s}_{\mathrm{CG}}(\boldsymbol{x}_t, t, \boldsymbol{c}; \omega)
 >   := \boldsymbol{s}_\phi(\boldsymbol{x}_t, t) + \omega \nabla_{\boldsymbol{x}_t} \log p_\psi(\boldsymbol{c} \mid \boldsymbol{x}_t, t),
->
 > $$
 >
 > where $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t)$ is a separately trained time-dependent classifier on noisy inputs $\boldsymbol{x}_t$. Setting $\omega = 0$ recovers unconditional generation, $\omega = 1$ yields the true conditional score, and $\omega > 1$ sharpens mode concentration at the expense of diversity [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.6.2, p. 920).
@@ -94,7 +88,6 @@ Training a noise-robust classifier $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t
 > $$
 > \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{c} \mid \boldsymbol{x}_t)
 >   = \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t \mid \boldsymbol{c}) - \nabla_{\boldsymbol{x}_t} \log p_t(\boldsymbol{x}_t).
->
 > $$
 >
 > Substituting this identity into `(eq:dsolver:cg_score)` yields the Classifier-Free Guidance score [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 8.3.3, p. 242):
@@ -102,7 +95,6 @@ Training a noise-robust classifier $p_\psi(\boldsymbol{c}\mid\boldsymbol{x}_t, t
 > $$
 > \boldsymbol{s}_{\phi}^{\mathrm{CFG}}(\boldsymbol{x}_t, t, \boldsymbol{c}; \omega)
 >   := \omega \boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \boldsymbol{c}) + (1 - \omega) \boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \emptyset),
->
 > $$
 >
 > where a single neural network $\boldsymbol{s}_\phi$ is trained jointly on paired $(\boldsymbol{x}_0, \boldsymbol{c})$ and unconditional $(\boldsymbol{x}_0, \emptyset)$ by randomly dropping $\boldsymbol{c} \gets \emptyset$ with probability $10\%$–$20\%$ [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 20.4.2, p. 611). Note that [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.6.3, p. 920) writes `(eq:dsolver:cfg_score)` as $(1+w)\boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \boldsymbol{c}) - w\boldsymbol{s}_\phi(\boldsymbol{x}_t, t, \emptyset)$ with $w = \omega - 1$.
@@ -147,7 +139,6 @@ Integrating `(eq:dsolver:semilinear_ode)` from $s$ to $t < s$ using the integrat
 >   &= \frac{\alpha_t}{\alpha_s}\tilde{\boldsymbol{x}}_s - \alpha_t\!\left(\frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}\right)\boldsymbol{\epsilon}_\phi(\tilde{\boldsymbol{x}}_s, s)
 >   = \alpha_t \hat{\boldsymbol{x}}_0(\tilde{\boldsymbol{x}}_s, s) + \sigma_t \boldsymbol{\epsilon}_\phi(\tilde{\boldsymbol{x}}_s, s),
 > \end{aligned}
->
 > $$
 >
 > since $\frac{g^2(\tau)}{2\sigma_\tau \alpha_\tau} = \frac{\mathrm{d}}{\mathrm{d}\tau}\!\left(\frac{\sigma_\tau}{\alpha_\tau}\right)$. Equivalently, [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.5.1, pp. 916–917) derives `(eq:dsolver:ddim)` from a non-Markovian forward process $q(\boldsymbol{x}_{t-1}\mid\boldsymbol{x}_t, \boldsymbol{x}_0)$ with variance $\tilde{\sigma}_t^2 = 0$, preserving training marginals while allowing arbitrary step skipping. Crucially, under $\boldsymbol{v}$-prediction, plain Euler equals DDIM; under $\boldsymbol{\epsilon}$-, $\boldsymbol{x}$-, or $\boldsymbol{s}$-prediction, *exponential Euler* equals DDIM $\ne$ plain Euler [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Obs. 9.2.1, p. 272).
@@ -161,7 +152,6 @@ Because DDIM is first-order (global error $O(h)$), quality degrades below $\sim 
 >
 > $$
 > \tilde{\Psi}_{s\to t}(\boldsymbol{x}_s) = \frac{\alpha_t}{\alpha_s}\boldsymbol{x}_s - \alpha_t \int_{\lambda_s}^{\lambda_t} e^{-\lambda} \hat{\boldsymbol{\epsilon}}_\phi(\hat{\boldsymbol{x}}_\lambda, \lambda) d\lambda.
->
 > $$
 >
 > Expanding $\hat{\boldsymbol{\epsilon}}_\phi$ in an $(n-1)$-th order Taylor series around $\lambda_s$ with step $h = \lambda_t - \lambda_s > 0$ yields DPM-Solver-$n$ with local error $O(h^{n+1})$ and global error $O(h^n)$:
@@ -169,7 +159,6 @@ Because DDIM is first-order (global error $O(h)$), quality degrades below $\sim 
 > $$
 > \tilde{\boldsymbol{x}}_t = \frac{\alpha_t}{\alpha_s}\tilde{\boldsymbol{x}}_s - \alpha_t \sum_{k=0}^{n-1} \hat{\boldsymbol{\epsilon}}_\phi^{(k)}(\hat{\boldsymbol{x}}_{\lambda_s}, \lambda_s)  C_k + O(h^{n+1}),
 >   \qquad C_k := \int_{\lambda_s}^{\lambda_t} e^{-\lambda}\frac{(\lambda - \lambda_s)^k}{k!} d\lambda.
->
 > $$
 >
 > For $n=1$, $C_0 = e^{-\lambda_s}(1 - e^{-h}) = \frac{\sigma_s}{\alpha_s} - \frac{\sigma_t}{\alpha_t}$, recovering DDIM `(eq:dsolver:ddim)` [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 9.4.8, p. 291).
@@ -188,7 +177,7 @@ Whereas DEIS fits a multistep Lagrange polynomial over past anchors, DPM-Solver+
 >   Initialize $\tilde{\boldsymbol{x}}_{t_0} \gets \boldsymbol{x}_T$, compute $\lambda_{t_i} \gets \log(\alpha_{t_i}/\sigma_{t_i})$ for $i=0,\dots,M$
 >   **for** $i \gets 1$ to $M$:
 >
->     $h_i \gets \lambda_{t_i} - \lambda_{t_{i-1}}$; \quad $s_{\mathrm{mid}} \gets t_\lambda\!\left(\tfrac{1}{2}(\lambda_{t_{i-1}} + \lambda_{t_i})\right)$
+>     $h_i \gets \lambda_{t_i} - \lambda_{t_{i-1}}$;   $s_{\mathrm{mid}} \gets t_\lambda\!\left(\tfrac{1}{2}(\lambda_{t_{i-1}} + \lambda_{t_i})\right)$
 >     $\hat{\boldsymbol{x}}_0 \gets \hat{\boldsymbol{x}}_\phi(\tilde{\boldsymbol{x}}_{t_{i-1}}, t_{i-1})$  *// Optionally apply dynamic thresholding*
 >     $\boldsymbol{u}_i \gets \frac{\sigma_{s_{\mathrm{mid}}}}{\sigma_{t_{i-1}}}\tilde{\boldsymbol{x}}_{t_{i-1}} - \alpha_{s_{\mathrm{mid}}}\!\left(e^{-h_i/2} - 1\right)\hat{\boldsymbol{x}}_0$
 >     $\tilde{\boldsymbol{x}}_{t_i} \gets \frac{\sigma_{t_i}}{\sigma_{t_{i-1}}}\tilde{\boldsymbol{x}}_{t_{i-1}} - \alpha_{t_i}\!\left(e^{-h_i} - 1\right)\hat{\boldsymbol{x}}_\phi(\boldsymbol{u}_i, s_{\mathrm{mid}})$
@@ -196,7 +185,7 @@ Whereas DEIS fits a multistep Lagrange polynomial over past anchors, DPM-Solver+
 **Table:** Comparison of PF-ODE / SDE samplers and their classical numerical analogues [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Table 9.1, p. 306).
 
 | **Solver** | **Numerical Analogue** | **Param.** | **Order** | **Typical NFE** | **CFG Stability** |
-| — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- |
 | DDPM | Euler–Maruyama (SDE) | $\boldsymbol{\epsilon}$ | $O(h^{1/2})$ | $500$–$1000$ | High (small steps) |
 | DDIM | Exp. Euler (ODE) | $\boldsymbol{\epsilon}, \boldsymbol{x}, \boldsymbol{v}$ | $O(h)$ | $25$–$100$ | High |
 | DEIS | Exp. Adams–Bashforth | $\boldsymbol{\epsilon}$ | $O(h^r)$ | $10$–$20$ | Moderate |
@@ -217,7 +206,6 @@ Progressive Distillation iteratively halves the required step count by training 
 >
 > $$
 > \tilde{\boldsymbol{x}} = \frac{\sigma_s \tilde{\boldsymbol{x}}_t - \sigma_t \boldsymbol{x}_s}{\alpha_t \sigma_s - \alpha_s \sigma_t}.
->
 > $$
 >
 > Minimizing $\mathbb{E}_{s, \boldsymbol{x}_s}[w(\lambda_s)\lVert \boldsymbol{x}_\theta(\boldsymbol{x}_s, s) - \tilde{\boldsymbol{x}} \rVert_2^2]$ halves $N \to N/2 \to N/4 \to \dots$, and extends to CFG by first distilling $\omega \sim \mathcal{U}[\omega_{\min}, \omega_{\max}]$ into an $\omega$-conditioned teacher [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 10.3.4, p. 344).
@@ -241,7 +229,6 @@ $$
 >
 > $$
 > \mathcal{L}_{\mathrm{CM}}(\theta, \theta^-) = \mathcal{L}_{\mathrm{CT}}(\theta, \theta^-) + O(\Delta s^2).
->
 > $$
 >
 > Taking $\Delta s \to 0$ yields the continuous-time objective [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Prop. 11.3.1, p. 362):
@@ -249,7 +236,6 @@ $$
 > $$
 > \mathcal{L}_{\mathrm{CM}}^\infty(\theta, \theta^-) = \mathbb{E}_{s, \boldsymbol{x}_0, \boldsymbol{\epsilon}}\!\left[\omega(s)  f_\theta(\boldsymbol{x}_s, s)^{\top} \frac{\mathrm{d}}{\mathrm{d}s}f_{\theta^-}(\boldsymbol{x}_s, s)\right],
 >   \quad \frac{\mathrm{d}}{\mathrm{d}s}f_{\theta^-} = \partial_s f_{\theta^-} + \partial_{\boldsymbol{x}} f_{\theta^-} \boldsymbol{v}^*,
->
 > $$
 >
 > stabilized in sCM via the trigonometric schedule $\boldsymbol{x}_s = \cos(s)\boldsymbol{x}_0 + \sin(s)\boldsymbol{z}$ ($\boldsymbol{z} \sim \mathcal{N}(\boldsymbol{0}, \sigma_d^2\boldsymbol{I})$) and $f_\theta(\boldsymbol{x}, s) = \cos(s)\boldsymbol{x} - \sin(s)\sigma_d F_\theta(\boldsymbol{x}/\sigma_d, c_{\mathrm{noise}}(s))$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 11.3.8, p. 365).
@@ -259,14 +245,14 @@ $$
 >   **Output:** Trained consistency model $f_\theta$ and $K$-step sample $\hat{\boldsymbol{x}}_0$
 >    *// Training Step*
 >   Sample $\boldsymbol{x}_0 \sim p_{\mathrm{data}}$, $\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$, and index $i \sim \mathcal{U}\{1, \dots, N-1\}$
->   $\boldsymbol{x}_{s_{i+1}} \gets \alpha_{s_{i+1}}\boldsymbol{x}_0 + \sigma_{s_{i+1}}\boldsymbol{\epsilon}$; \quad $\boldsymbol{x}_{s_i} \gets \alpha_{s_i}\boldsymbol{x}_0 + \sigma_{s_i}\boldsymbol{\epsilon}$
+>   $\boldsymbol{x}_{s_{i+1}} \gets \alpha_{s_{i+1}}\boldsymbol{x}_0 + \sigma_{s_{i+1}}\boldsymbol{\epsilon}$;   $\boldsymbol{x}_{s_i} \gets \alpha_{s_i}\boldsymbol{x}_0 + \sigma_{s_i}\boldsymbol{\epsilon}$
 >   Compute $\mathcal{L} \gets \omega(s_i)  d\!\left(f_\theta(\boldsymbol{x}_{s_{i+1}}, s_{i+1}),  f_{\theta^-}(\boldsymbol{x}_{s_i}, s_i)\right)$ and update $\theta \gets \theta - \eta\nabla_\theta\mathcal{L}$
 >   Update EMA target $\theta^- \gets \mu\theta^- + (1-\mu)\theta$
 >    *// Multi-Step Inference ($K \ge 1$)*
 >   Sample $\hat{\boldsymbol{x}}_T \sim \mathcal{N}(\boldsymbol{0}, \sigma_T^2\boldsymbol{I})$ and set $\hat{\boldsymbol{x}}_0 \gets f_\theta(\hat{\boldsymbol{x}}_T, T)$
 >   **for** $k \gets 1$ to $K-1$:
 >
->     Sample $\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$; \quad $\hat{\boldsymbol{x}}_{\tau_k} \gets \alpha_{\tau_k}\hat{\boldsymbol{x}}_0 + \sigma_{\tau_k}\boldsymbol{\epsilon}$; \quad $\hat{\boldsymbol{x}}_0 \gets f_\theta(\hat{\boldsymbol{x}}_{\tau_k}, \tau_k)$
+>     Sample $\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$;   $\hat{\boldsymbol{x}}_{\tau_k} \gets \alpha_{\tau_k}\hat{\boldsymbol{x}}_0 + \sigma_{\tau_k}\boldsymbol{\epsilon}$;   $\hat{\boldsymbol{x}}_0 \gets f_\theta(\hat{\boldsymbol{x}}_{\tau_k}, \tau_k)$
 
 > [!info] Cross-Book Synthesis: General Flow Maps (CTM, Mean Flow) & Discrete Diffusion
 > While CMs learn only the origin map $\Psi_{s\to 0}$, **Consistency Trajectory Models (CTM)** and **Mean Flow (MF)** parameterize the general two-time flow map $\Psi_{s\to t}(\boldsymbol{x}_s)$ for arbitrary $s \ge t \ge 0$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 11.4–11.5, pp. 370–383):
@@ -275,7 +261,6 @@ $$
 > \Psi_{s\to t}(\boldsymbol{x}_s)
 >   \approx \underbrace{\frac{t}{s}\boldsymbol{x}_s + \frac{s-t}{s} g_\theta(\boldsymbol{x}_s, s, t)}_{\text{CTM}}
 >   = \underbrace{\boldsymbol{x}_s + (t-s) h_\theta(\boldsymbol{x}_s, s, t)}_{\text{Mean Flow}},
->
 > $$
 >
 > where $g_\theta(\boldsymbol{x}_s, s, t) = \boldsymbol{x}_s - s  h_\theta(\boldsymbol{x}_s, s, t)$ and both losses are equivalent up to a $1/s^2$ time weighting. Setting $s=t$ recovers the instantaneous velocity $\boldsymbol{v}^*(\boldsymbol{x}_s, s)$, unifying diffusion/flow-matching training with $1$-step generation. For categorical data (text, segmentation), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.7, pp. 921–924) extends diffusion to discrete state spaces (D3PM) via row-stochastic transition matrices $\boldsymbol{Q}_t$ with tractable marginals $q(\boldsymbol{x}_t\mid\boldsymbol{x}_0) = \mathrm{Cat}(\boldsymbol{x}_t \mid \boldsymbol{x}_0 \bar{\boldsymbol{Q}}_t)$.

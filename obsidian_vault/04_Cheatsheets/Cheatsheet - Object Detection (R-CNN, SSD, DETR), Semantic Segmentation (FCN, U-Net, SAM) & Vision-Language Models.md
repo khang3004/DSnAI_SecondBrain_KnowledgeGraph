@@ -56,7 +56,7 @@ flowchart LR
 
 - **1. BOUNDING BOXES, IoU & GIoU**
   $$
-  \mathrm{IoU}(A,B)=\frac{|A\cap B|}{|A\cup B|},\quad \mathcal{L}_{\mathrm{GIoU}}=1-\mathrm{IoU}+\frac{|C\setminus(A\cup B)|}{|C|}
+  \mathrm{IoU}(A,B)=\frac{|A\cap B|}{|A\cup B|},  \mathcal{L}_{\mathrm{GIoU}}=1-\mathrm{IoU}+\frac{|C\setminus(A\cup B)|}{|C|}
   $$
 - **2. TWO-STAGE vs ONE-STAGE vs DETR**
 - **3. MULTISCALE FPN & RECEPTIVE FIELD**
@@ -66,7 +66,7 @@ flowchart LR
   $$
 - **5. NEURAL STYLE TRANSFER & GRAM MATRICES**
   $$
-  G_{ij}^l = \sum_k F_{ik}^l F_{jk}^l,\qquad \mathcal{L}=\alpha\mathcal{L}_{\mathrm{content}}+\beta\mathcal{L}_{\mathrm{style}}
+  G_{ij}^l = \sum_k F_{ik}^l F_{jk}^l,  \mathcal{L}=\alpha\mathcal{L}_{\mathrm{content}}+\beta\mathcal{L}_{\mathrm{style}}
   $$
 - **6. VISION–LANGUAGE ALIGNMENT (CLIP)**
   $$

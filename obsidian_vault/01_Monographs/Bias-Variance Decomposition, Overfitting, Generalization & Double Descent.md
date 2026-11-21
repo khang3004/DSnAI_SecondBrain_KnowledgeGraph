@@ -76,11 +76,8 @@ Averaging $R(\hat{f}_{\mathcal{D}})$ over random draws of the training set $\mat
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Because statistical, deep learning, and probabilistic texts adopt different symbols for sample count, parameter count, targets, and predictors, the table below establishes a unified notation used throughout this monograph.
 >
-> 
->
->
 > | Concept | Unified | Goodfellow et al. | Bishop / Chan | Prince / Tiep Vu |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Training sample size | $N$ | $m$ | $N$ | $I$ (Prince), $N$ (Tiep Vu) |
 > | Model capacity / params | $P$ | Capacity / $d_{\mathrm{VC}}$ | $M$ (Bishop), $d$ (Chan) | $D$ units / $P$ params |
 > | Ground-truth function | $f(\boldsymbol{x})$ | True $p_{\mathrm{data}}(y\mid\boldsymbol{x})$ | $h(\boldsymbol{x})$ (Bishop), $f(\boldsymbol{x})$ (Chan) | True function $f(x)$ |
@@ -100,7 +97,6 @@ Averaging $R(\hat{f}_{\mathcal{D}})$ over random draws of the training set $\mat
 >   = \underbrace{\big(\bar{f}(\boldsymbol{x}) - f(\boldsymbol{x})\big)^2}_{\mathrm{Bias}^2(\hat{f}_{\mathcal{D}};  \boldsymbol{x})}
 >    +  \underbrace{\mathbb{E}_{\mathcal{D}}\!\Big[\big(\hat{f}_{\mathcal{D}}(\boldsymbol{x}) - \bar{f}(\boldsymbol{x})\big)^2\Big]}_{\mathrm{Var}(\hat{f}_{\mathcal{D}};  \boldsymbol{x})}
 >    +  \underbrace{\sigma_\epsilon^2}_{\text{Irreducible Noise}}.
->
 > $$
 >
 > **Proof.** Fix $\boldsymbol{x}$ and add and subtract $f(\boldsymbol{x})$ inside the square:
@@ -112,16 +108,13 @@ Averaging $R(\hat{f}_{\mathcal{D}})$ over random draws of the training set $\mat
 >    + 2 \mathbb{E}_{\mathcal{D},  \epsilon}\!\Big[\epsilon \big(f(\boldsymbol{x}) - \hat{f}_{\mathcal{D}}(\boldsymbol{x})\big)\Big]
 >    + \mathbb{E}_{\epsilon}[\epsilon^2].
 > \end{aligned}
->
 > $$
 >
 > Because test noise $\epsilon$ is independent of $\mathcal{D}$ and $\mathbb{E}[\epsilon \mid \boldsymbol{x}] = 0$, the cross-term vanishes:
 >
 > $$
->
 >   \mathbb{E}_{\mathcal{D},  \epsilon}\!\Big[\epsilon \big(f(\boldsymbol{x}) - \hat{f}_{\mathcal{D}}(\boldsymbol{x})\big)\Big]
 >   = \mathbb{E}_{\epsilon}[\epsilon] \cdot \mathbb{E}_{\mathcal{D}}\!\big[f(\boldsymbol{x}) - \hat{f}_{\mathcal{D}}(\boldsymbol{x})\big] = 0,
->
 > $$
 >
 > while $\mathbb{E}_{\epsilon}[\epsilon^2] = \sigma_\epsilon^2$. For the first term of `(eq:biasvar:step1)`, add and subtract $\bar{f}(\boldsymbol{x}) = \mathbb{E}_{\mathcal{D}}[\hat{f}_{\mathcal{D}}(\boldsymbol{x})]$:
@@ -134,7 +127,6 @@ Averaging $R(\hat{f}_{\mathcal{D}})$ over random draws of the training set $\mat
 >    + \big(\bar{f}(\boldsymbol{x}) - f(\boldsymbol{x})\big)^2 \\
 >   &\quad + 2\big(\bar{f}(\boldsymbol{x}) - f(\boldsymbol{x})\big)\underbrace{\mathbb{E}_{\mathcal{D}}\!\big[\hat{f}_{\mathcal{D}}(\boldsymbol{x}) - \bar{f}(\boldsymbol{x})\big]}_{= 0}.
 > \end{aligned}
->
 > $$
 >
 > Integrating `(eq:biasvar:pointwise_bv)` against $p_{\mathrm{data}}(\boldsymbol{x})$ yields the global expected test risk $\mathbb{E}_{\mathcal{D}}[R(\hat{f}_{\mathcal{D}})] = \int \mathrm{Bias}^2(\boldsymbol{x}) p_{\mathrm{data}}(\boldsymbol{x}) \mathrm{d}\boldsymbol{x} + \int \mathrm{Var}(\boldsymbol{x}) p_{\mathrm{data}}(\boldsymbol{x}) \mathrm{d}\boldsymbol{x} + \sigma_\epsilon^2$.  $\blacksquare$
@@ -157,7 +149,6 @@ To see both the classical trade-off and the modern interpolation singularity ana
 > \mathbb{E}_{\boldsymbol{\epsilon}}[\hat{R}_N] &= \frac{1}{N}\mathbb{E}\big[\lVert (\boldsymbol{H} - \boldsymbol{I}_N)\boldsymbol{\epsilon} \rVert_2^2\big] = \sigma_\epsilon^2\!\left(1 - \frac{P}{N}\right),  \\
 >   \mathbb{E}_{\boldsymbol{\epsilon}, \boldsymbol{\epsilon}'}[R_{\mathrm{fixed}}] &= \frac{1}{N}\mathbb{E}\big[\lVert \boldsymbol{H}\boldsymbol{\epsilon} - \boldsymbol{\epsilon}' \rVert_2^2\big] = \sigma_\epsilon^2\!\left(1 + \frac{P}{N}\right).
 > \end{aligned}
->
 > $$
 >
 > Here the optimism gap $R_{\mathrm{fixed}} - \hat{R}_N = \frac{2P}{N}\sigma_\epsilon^2$ grows linearly with $P/N$ until $\hat{R}_N \to 0$ at $P = N$.
@@ -167,7 +158,6 @@ To see both the classical trade-off and the modern interpolation singularity ana
 >
 > $$
 > \hat{\boldsymbol{w}}_{\mathrm{min}} = \arg\min_{\boldsymbol{w} : \boldsymbol{\Phi}\boldsymbol{w} = \boldsymbol{y}} \lVert \boldsymbol{w} \rVert_2 = \boldsymbol{\Phi}^{+} \boldsymbol{y} = \boldsymbol{\Phi}^{\top}(\boldsymbol{\Phi}\boldsymbol{\Phi}^{\top})^{-1} \boldsymbol{y}.
->
 > $$
 >
 > Decomposing $\boldsymbol{y} = \boldsymbol{\Phi}\boldsymbol{w}^\star + \boldsymbol{\epsilon}$ and letting $\boldsymbol{P}_{\parallel} = \boldsymbol{\Phi}^{+}\boldsymbol{\Phi}$ be the orthogonal projector onto $\mathrm{row}(\boldsymbol{\Phi})$, the parameter bias and variance for an out-of-sample test covariance $\boldsymbol{\Sigma} = \mathbb{E}[\boldsymbol{\phi}(\boldsymbol{x})\boldsymbol{\phi}(\boldsymbol{x})^{\top}]$ are:
@@ -176,7 +166,6 @@ To see both the classical trade-off and the modern interpolation singularity ana
 > \mathrm{Bias}^2(\hat{\boldsymbol{w}}_{\mathrm{min}}) = \lVert \boldsymbol{\Sigma}^{1/2}(\boldsymbol{I}_P - \boldsymbol{P}_{\parallel})\boldsymbol{w}^\star \rVert_2^2,
 >   \qquad
 >   \mathrm{Var}(\hat{\boldsymbol{w}}_{\mathrm{min}}) = \sigma_\epsilon^2 \mathrm{Tr}\!\big(\boldsymbol{\Sigma} (\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})^{+}\big) = \sigma_\epsilon^2 \sum_{j=1}^N \frac{\boldsymbol{v}_j^{\top} \boldsymbol{\Sigma}\boldsymbol{v}_j}{s_j^2(\boldsymbol{\Phi})},
->
 > $$
 >
 > where $\{s_j(\boldsymbol{\Phi}), \boldsymbol{v}_j\}_{j=1}^N$ are the nonzero singular values and right singular vectors of $\boldsymbol{\Phi}$.
@@ -194,7 +183,6 @@ Statistical learning theory upper-bounds the generalization gap $R(f) - \hat{R}_
 > $$
 > R(f) \le \hat{R}_N(f) + \sqrt{\frac{d_{\mathrm{VC}}\big(\ln(2N/d_{\mathrm{VC}}) + 1\big) + \ln(4/\delta)}{N}},
 >   \qquad \forall f \in \mathcal{F}.
->
 > $$
 >
 > **(2) Rademacher Complexity Bound (Norm-Constrained Predictors).**
@@ -202,7 +190,6 @@ Statistical learning theory upper-bounds the generalization gap $R(f) - \hat{R}_
 >
 > $$
 > R(f) \le \hat{R}_N(f) + 2\hat{\mathfrak{R}}_N(\mathcal{F}) + 3\sqrt{\frac{\ln(2/\delta)}{2N}}.
->
 > $$
 >
 > For linear predictors $\lVert \boldsymbol{w} \rVert_2 \le B$ with $\lVert \boldsymbol{\phi}(\boldsymbol{x}_i) \rVert_2 \le R_\phi$, $\hat{\mathfrak{R}}_N(\mathcal{F}) \le \frac{B R_\phi}{\sqrt{N}}$ *independently of $P$*.
@@ -224,7 +211,7 @@ To empirically locate optimal capacity or regularization $\lambda$ without leaki
 >
 >   **for** $k = 1, \dots, K_{\mathrm{out}}$:
 >
->     $\mathcal{D}_{\mathrm{train}}^{(k)} \leftarrow \mathcal{D} \setminus \mathcal{D}_k$, \quad $\mathcal{D}_{\mathrm{test}}^{(k)} \leftarrow \mathcal{D}_k$
+>     $\mathcal{D}_{\mathrm{train}}^{(k)} \leftarrow \mathcal{D} \setminus \mathcal{D}_k$,   $\mathcal{D}_{\mathrm{test}}^{(k)} \leftarrow \mathcal{D}_k$
 >     Partition $\mathcal{D}_{\mathrm{train}}^{(k)}$ into $K_{\mathrm{in}}$ inner folds $\{\mathcal{I}_1, \dots, \mathcal{I}_{K_{\mathrm{in}}}\}$
 >     **for** $\lambda \in \Lambda$:
 >
@@ -243,7 +230,7 @@ Table `tab:biasvar:regimes` summarizes the statistical and computational trade-o
 **Table:** Statistical Behavior and Computational Complexity Across Generalization Regimes
 
 | Regime | Ratio $P/N$ | $\mathrm{Bias}^2$ | $\mathrm{Var}$ | Complexity & Dominant Mechanism |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Underparameterized | $P \ll N$ | High | Low ($\propto \frac{P}{N}\sigma_\epsilon^2$) | $\mathcal{O}(NP^2 + P^3)$; model lacks capacity to represent $f$. |
 | Classical Sweet Spot | $P < N$ | Moderate | Moderate | $\mathcal{O}(NP^2 + P^3)$; optimal classical bias–variance balance. |
 | Critical Interpolation | $P \approx N$ | Low | Divergent ($\propto \frac{\sigma_\epsilon^2}{\mid 1 - P/N\mid }$) | $\kappa(\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi}) \to \infty$; weights contort to fit $\epsilon$ exactly. |

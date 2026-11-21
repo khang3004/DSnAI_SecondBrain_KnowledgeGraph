@@ -61,16 +61,8 @@ In parametric statistical estimation, we posit a model family $\mathcal{M} = \{p
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The four source texts adopt distinct conventions reflecting probability engineering (Chan), probabilistic machine learning (Murphy PML1/PML2), and algorithmic optimization (Tiep Vu). Table `tab:asymp:notation` establishes a unified correspondence used throughout this monograph.
 >
->
->
->
->
->
->
->
->
 > | **Concept** | **Chan** | **Murphy (PML1/PML2)** | **Tiep Vu** | **Unified Notation** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Likelihood | $L(\theta \mid \boldsymbol{x}) = f_{\boldsymbol{X}}(\boldsymbol{x};\theta)$ (MLE) vs. $f_{\boldsymbol{X}\mid\Theta}(\boldsymbol{x}\mid\theta)$ (MAP) | $p(\mathcal{D} \mid \theta)$ with true generating value $\theta^*$ | $p(\boldsymbol{x}_1,\dots,\boldsymbol{x}_N \mid \theta)$ with parameter $\theta$ or $\lambda$ | $L(\theta) = p(\mathcal{D} \mid \theta)$, log-likelihood $\ell(\theta) = \log p(\mathcal{D}\mid\theta)$ |
 > | Fisher info. matrix | Omitted (uses CRLB-free bias/MSE in Ch. 8) | $\boldsymbol{F}(\theta)$ per sample; $N\boldsymbol{F}(\theta)$ for $N$ i.i.d. points | Omitted (uses direct calculus & KKT conditions) | $\boldsymbol{F}(\theta) = \mathrm{Cov}_{p_\theta}[\nabla \log p(x\mid\theta)]$; total FIM $\boldsymbol{I}_N(\theta) = N\boldsymbol{F}(\theta)$ |
 > | Variance MLE divisor | Contrasts $\frac{1}{N}$ (MLE, biased) vs. $\frac{1}{N-1}$ (unbiased $S^2$) | $\frac{1}{N}$ in MLE; notes bias vanishes as $N\to\infty$ | $\frac{1}{N}$ directly from $\nabla_{\sigma^2}\ell = 0$ | $\hat{\sigma}_{\mathrm{MLE}}^2 = \frac{1}{N}\sum_{n}(x_n - \bar{x})^2$, $S^2 = \frac{N}{N-1}\hat{\sigma}_{\mathrm{MLE}}^2$ |
@@ -88,19 +80,15 @@ Classical concentration inequalities trade progressively stronger moment assumpt
 > Let $X$ be a scalar random variable and $\varepsilon > 0$.
 > - **Markov's inequality** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 339–340): If $X \ge 0$ a.s. and $\mathbb{E}[X] < \infty$, then
 >
->
 > $$
 > \mathbb{P}[X \ge \varepsilon] \le \frac{\mathbb{E}[X]}{\varepsilon}.
->
 > $$
 >
 >   *Proof.* Since $\varepsilon \mathbf{1}_{\{X \ge \varepsilon\}} \le X$ pointwise whenever $X \ge 0$, taking expectations yields $\varepsilon \mathbb{P}[X \ge \varepsilon] \le \mathbb{E}[X]$.
 > - **Chebyshev's inequality** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 341–343): If $\mu = \mathbb{E}[X]$ and $\sigma^2 = \mathrm{Var}[X] < \infty$, applying `(eq:asymp:markov)` to the nonnegative variable $Y = (X - \mu)^2$ at threshold $\varepsilon^2$ gives
 >
->
 > $$
 > \mathbb{P}\bigl[\lvert X - \mu \rvert \ge \varepsilon\bigr] = \mathbb{P}\bigl[(X-\mu)^2 \ge \varepsilon^2\bigr] \le \frac{\mathrm{Var}[X]}{\varepsilon^2}.
->
 > $$
 >
 >   For $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$ with uncorrelated i.i.d. summands of variance $\sigma^2$, $\mathrm{Var}[\bar{X}_N] = \sigma^2/N$, hence $\mathbb{P}[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon] \le \frac{\sigma^2}{N\varepsilon^2}$.
@@ -112,17 +100,15 @@ Although Chebyshev establishes $O(N^{-1}\varepsilon^{-2})$ variance concentratio
 >
 > $$
 > \mathbb{P}[X \ge \varepsilon] = \mathbb{P}\bigl[e^{sX} \ge e^{s\varepsilon}\bigr] \le \inf_{s > 0} e^{-s\varepsilon} M_X(s) = \exp\bigl(-\psi_X^*(\varepsilon)\bigr), \qquad \psi_X^*(\varepsilon) \triangleq \sup_{s > 0}\bigl(s\varepsilon - \psi_X(s)\bigr),
->
 > $$
 >
 > where $\psi_X^*(\varepsilon)$ is the convex conjugate (Fenchel–Legendre dual) of the CGF $\psi_X$. For i.i.d. $X_1,\dots,X_N$, independence factorizes the MGF as $M_{\sum X_n}(s) = [M_X(s)]^N$, yielding the large-deviation rate $\mathbb{P}[\bar{X}_N \ge \varepsilon] \le \exp\bigl(-N \psi_X^*(\varepsilon)\bigr)$.
 > - **Gaussian instantiation**: If $X_n \overset{\mathrm{i.i.d.}}{\sim} \mathcal{N}(\mu, \sigma^2)$, then $M_{X-\mu}(s) = \exp(\tfrac{1}{2}\sigma^2 s^2)$. Setting $\frac{d}{ds}[s\varepsilon - \frac{1}{2}\sigma^2 s^2] = 0$ gives $s^* = \varepsilon/\sigma^2$, hence $\psi_{X-\mu}^*(\varepsilon) = \frac{\varepsilon^2}{2\sigma^2}$ and the two-sided bound [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, p. 345):
 >
->
 > $$
 > \mathbb{P}\bigl[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon\bigr] \le 2\exp\!\left(-\frac{N\varepsilon^2}{2\sigma^2}\right).
->
 > $$
+>
 > - **Sub-Gaussian class**: A random variable $X$ with mean $\mu$ is *$\sigma$-sub-Gaussian* if its centered MGF is dominated by a Gaussian MGF of variance proxy $\sigma^2$, i.e., $\psi_{X-\mu}(s) \le \frac{1}{2}\sigma^2 s^2$ for all $s \in \mathbb{R}$. Independent summation preserves sub-Gaussianity with additive variance proxy: if $X_n - \mu_n$ are independent $\sigma_n$-sub-Gaussian, then $\sum_{n=1}^N (X_n - \mu_n)$ is $\sqrt{\sum_{n=1}^N \sigma_n^2}$-sub-Gaussian, immediately inheriting `(eq:asymp:chernoff-gauss)` with $\sigma^2 = \frac{1}{N}\sum_{n=1}^N \sigma_n^2$.
 
 When distributions are bounded rather than Gaussian, Hoeffding's lemma proves that every bounded random variable is automatically sub-Gaussian with variance proxy determined solely by its support width [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 348–350).
@@ -130,26 +116,21 @@ When distributions are bounded rather than Gaussian, Hoeffding's lemma proves th
 > [!important] Hoeffding's Lemma, Hoeffding's Inequality, and Uniform PAC Convergence
 > - **Hoeffding's Lemma**: Suppose $X \in [a, b]$ a.s. with $\mathbb{E}[X] = \mu$. Define the tilted density $dQ_s(x) = \frac{e^{sx}}{\mathbb{E}[e^{sX}]} dP(x)$ and centered CGF $\psi(s) = \log \mathbb{E}[e^{s(X-\mu)}]$. Differentiating twice yields $\psi(0) = 0$, $\psi'(0) = 0$, and
 >
->
 > $$
 > \psi"(s) = \frac{\mathbb{E}[X^2 e^{sX}]}{\mathbb{E}[e^{sX}]} - \left(\frac{\mathbb{E}[X e^{sX}]}{\mathbb{E}[e^{sX}]}\right)^2 = \mathrm{Var}_{Q_s}[X] \le \frac{(b-a)^2}{4},
->
 > $$
 >
 >   where the variance bound holds for any distribution on $[a, b]$ since $\mathrm{Var}_{Q_s}[X] \le \mathbb{E}_{Q_s}[(X - \frac{a+b}{2})^2] \le (\frac{b-a}{2})^2$. By Taylor's theorem, $\psi(s) = \frac{1}{2}\psi"(\tilde{s}) s^2 \le \frac{1}{8}s^2(b-a)^2$ for all $s \in \mathbb{R}$, proving that $X$ is $\frac{b-a}{2}$-sub-Gaussian [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, p. 348).
 > - **Hoeffding's Inequality**: For independent variables $X_n \in [a_n, b_n]$ with $\bar{X}_N = \frac{1}{N}\sum_{n=1}^N X_n$ and $\mu = \mathbb{E}[\bar{X}_N]$, Chernoff optimization with $s^* = \frac{4N\varepsilon}{\sum_{n=1}^N (b_n - a_n)^2}$ yields [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 349–350):
 >
->
 > $$
 > \mathbb{P}\bigl[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon\bigr] \le 2\exp\!\left(-\frac{2N^2\varepsilon^2}{\sum_{n=1}^N (b_n - a_n)^2}\right) \stackrel{X_n \in [0,1]}{=} 2\exp\bigl(-2N\varepsilon^2\bigr).
->
 > $$
-> - **Finite-Hypothesis Generalization Bound**: Let $\mathcal{H}$ be a finite hypothesis class with bounded loss $\ell(y, h(\boldsymbol{x})) \in [0, 1]$, population risk $R(h) = \mathbb{E}[\ell(Y, h(\boldsymbol{X}))]$, and empirical risk $R(h, \mathcal{D}) = \frac{1}{N}\sum_{n=1}^N \ell(y_n, h(\boldsymbol{x}_n))$. Combining the union bound [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, p. 333) with Hoeffding's inequality `(eq:asymp:hoeffding)` gives [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 5, Thm. 5.4.1, p. 197):
 >
+> - **Finite-Hypothesis Generalization Bound**: Let $\mathcal{H}$ be a finite hypothesis class with bounded loss $\ell(y, h(\boldsymbol{x})) \in [0, 1]$, population risk $R(h) = \mathbb{E}[\ell(Y, h(\boldsymbol{X}))]$, and empirical risk $R(h, \mathcal{D}) = \frac{1}{N}\sum_{n=1}^N \ell(y_n, h(\boldsymbol{x}_n))$. Combining the union bound [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, p. 333) with Hoeffding's inequality `(eq:asymp:hoeffding)` gives [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 5, Thm. 5.4.1, p. 197):
 >
 > $$
 > \mathbb{P}\Bigl(\max_{h \in \mathcal{H}} \lvert R(h) - R(h,\mathcal{D}) \rvert > \varepsilon\Bigr) \le \sum_{h \in \mathcal{H}} \mathbb{P}\bigl(\lvert R(h) - R(h,\mathcal{D}) \rvert > \varepsilon\bigr) \le 2\lvert \mathcal{H} \rvert\exp\bigl(-2N\varepsilon^2\bigr).
->
 > $$
 >
 >   Setting the RHS to $\delta$ guarantees with probability at least $1-\delta$ that the ERM excess risk satisfies $R(\hat{h}_{\mathrm{ERM}}) - \min_{h\in\mathcal{H}} R(h) \le \sqrt{\frac{2\log(2\lvert \mathcal{H} \rvert/\delta)}{N}}$.
@@ -169,10 +150,8 @@ Concentration bounds give explicit $N$-dependent probabilities; passing to $N \t
 > - **Weak Law of Large Numbers (WLLN)** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 354–359): By Theorem 6.16, if $\mathrm{Var}[X_n] = \sigma^2 < \infty$, Chebyshev's inequality `(eq:asymp:chebyshev)` immediately implies $\mathbb{P}[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon] \le \frac{\sigma^2}{N\varepsilon^2} \to 0$ as $N \to \infty$, so $\bar{X}_N \xrightarrow{p} \mu$. (Khinchin's theorem extends WLLN to any i.i.d. sequence with $\mathbb{E}[\lvert X_n \rvert] < \infty$; under sub-Gaussianity, Chernoff/Hoeffding strengthens the rate to $O(e^{-cN\varepsilon^2})$.)
 > - **Strong Law of Large Numbers (SLLN)**: Assuming finite fourth moment $\mathbb{E}[(X_n - \mu)^4] = \mu_4 < \infty$ (Theorems 6.17–6.18) [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, pp. 361–366), let $Y_n = X_n - \mu$. Expanding $\mathbb{E}[(\sum_{n=1}^N Y_n)^4] = N\mu_4 + 3N(N-1)\sigma^4$ (since cross-terms containing an odd power vanish by zero mean and independence), Markov's inequality on $\bar{Y}_N^4$ gives
 >
->
 > $$
 > \sum_{N=1}^\infty \mathbb{P}\bigl[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon\bigr] \le \sum_{N=1}^\infty \frac{N\mu_4 + 3N(N-1)\sigma^4}{N^4 \varepsilon^4} < \infty.
->
 > $$
 >
 >   By the first Borel–Cantelli lemma, $\mathbb{P}[\lvert \bar{X}_N - \mu \rvert \ge \varepsilon \text{ infinitely often}] = 0$ for every rational $\varepsilon > 0$, hence $\bar{X}_N \xrightarrow{a.s.} \mu$. (Kolmogorov's SLLN removes higher moments, requiring only $\mathbb{E}[\lvert X_n \rvert] < \infty$.)
@@ -183,20 +162,17 @@ While the laws of large numbers pin $\bar{X}_N$ to a point mass $\mu$, rescaling
 > Let $X_1, X_2, \dots \overset{\mathrm{i.i.d.}}{\sim} P$ with mean $\mu$ and finite variance $\sigma^2 \in (0, \infty)$, and form the standardized average $Z_N = \frac{\sqrt{N}(\bar{X}_N - \mu)}{\sigma} = \frac{1}{\sqrt{N}}\sum_{n=1}^N \tilde{X}_n$, where $\tilde{X}_n = \frac{X_n - \mu}{\sigma}$ has $\mathbb{E}[\tilde{X}_n] = 0$, $\mathbb{E}[\tilde{X}_n^2] = 1$.
 > - **Lindeberg–Lévy CLT** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, Thm. 6.19, pp. 372–373): The characteristic function $\varphi_{Z_N}(t) = \mathbb{E}[e^{it Z_N}]$ factorizes by independence and admits a second-order Taylor expansion around $t/\sqrt{N} = 0$:
 >
->
 > $$
 > \varphi_{Z_N}(t) = \left[\varphi_{\tilde{X}}\!\left(\frac{t}{\sqrt{N}}\right)\right]^N = \left[1 + \frac{it}{\sqrt{N}}\mathbb{E}[\tilde{X}] - \frac{t^2}{2N}\mathbb{E}[\tilde{X}^2] + o\!\left(\frac{t^2}{N}\right)\right]^N \xrightarrow{N \to \infty} e^{-t^2/2}.
->
 > $$
 >
 >   Because $e^{-t^2/2}$ is the characteristic function of $\mathcal{N}(0,1)$, Lévy's continuity theorem implies $Z_N \xrightarrow{d} \mathcal{N}(0, 1)$, equivalently $\sqrt{N}(\bar{X}_N - \mu) \xrightarrow{d} \mathcal{N}(0, \sigma^2)$.
 > - **Berry–Esseen Error Bound** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 6, p. 375): If the third absolute central moment $\rho = \mathbb{E}[\lvert X_1 - \mu \rvert^3] < \infty$, then uniform CDF approximation accuracy decays at $O(N^{-1/2})$:
 >
->
 > $$
 > \sup_{z \in \mathbb{R}} \lvert F_{Z_N}(z) - \Phi(z) \rvert \le \frac{C \rho}{\sigma^3 \sqrt{N}}, \qquad (C < 0.4748).
->
 > $$
+>
 
 > [!tip] Local Bulk Gaussianity vs. Tail Breakdown
 > The Berry–Esseen bound `(eq:asymp:berry-esseen)` measures *additive* error in CDF probabilities, which is informative only near the bulk $\bar{X}_N = \mu + O(N^{-1/2})$ where $\Phi(z)$ is of order $1$. In the large-deviation tail $z = \Theta(\sqrt{N})$, $\Phi(-z)$ decays as $\exp(-z^2/2)$ and is vastly smaller than the $O(N^{-1/2})$ residual; skewed summands such as exponential lifetimes exhibit large relative errors in their upper tail even at $N = 1000$, as shown in Figure `fig:asymp:clt-tails`.
@@ -212,10 +188,8 @@ We now pass from sample means to general parametric models $p(x \mid \theta)$ (o
 > Given i.i.d. data $\mathcal{D} = \{x_1, \dots, x_N\}$ with empirical distribution $\hat{p}_{\mathcal{D}}$, the maximum likelihood estimator minimizes the negative log-likelihood $\mathrm{NLL}(\theta) = -\sum_{n=1}^N \log p(x_n \mid \theta)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 109–117); [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 4, pp. 53–58):
 > - **KL-Divergence Equivalence**: Adding and subtracting the empirical entropy $H(\hat{p}_{\mathcal{D}})$ yields
 >
->
 > $$
 > \frac{1}{N}\mathrm{NLL}(\theta) = -\mathbb{E}_{\hat{p}_{\mathcal{D}}}[\log p(X \mid \theta)] = H_{\mathrm{ce}}(\hat{p}_{\mathcal{D}}, p_\theta) = H(\hat{p}_{\mathcal{D}}) + D_{\mathrm{KL}}(\hat{p}_{\mathcal{D}} \parallel p_\theta).
->
 > $$
 >
 >   Since $H(\hat{p}_{\mathcal{D}})$ is independent of $\theta$, $\hat{\theta}_{\mathrm{MLE}} = \arg\min_\theta D_{\mathrm{KL}}(\hat{p}_{\mathcal{D}} \parallel p_\theta)$. Moreover, by the WLLN, $-\frac{1}{N}\mathrm{NLL}(\theta) \xrightarrow{p} \mathbb{E}_{p^*}[\log p(X \mid \theta)] = -H(p^*) - D_{\mathrm{KL}}(p^* \parallel p_\theta)$, which is uniquely maximized at $\theta = \theta^*$ whenever the model is identifiable [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 8, pp. 499–500).
@@ -224,11 +198,10 @@ We now pass from sample means to general parametric models $p(x \mid \theta)$ (o
 > - *Multivariate Gaussian* ($\boldsymbol{x}_n \in \mathbb{R}^D$): $\hat{\boldsymbol{\mu}}_{\mathrm{MLE}} = \bar{\boldsymbol{x}} = \frac{1}{N}\sum_{n=1}^N \boldsymbol{x}_n$ and $\hat{\boldsymbol{\Sigma}}_{\mathrm{MLE}} = \frac{1}{N}\sum_{n=1}^N (\boldsymbol{x}_n - \bar{\boldsymbol{x}})(\boldsymbol{x}_n - \bar{\boldsymbol{x}})^\top$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 113–114); [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 4, pp. 57–58).
 > - **Invariance Principle** [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 8, Thm. 8.1, pp. 500–502): For any (even non-invertible) mapping $\phi = h(\theta)$, defining the profile likelihood $\tilde{L}(\phi) \triangleq \sup_{\theta : h(\theta) = \phi} L(\theta)$, the supremum over $\phi$ equals $\sup_\theta L(\theta)$, so
 >
->
 > $$
 > \widehat{h(\theta)}_{\mathrm{MLE}} = h\bigl(\hat{\theta}_{\mathrm{MLE}}\bigr).
->
 > $$
+>
 
 To quantify the uncertainty and optimality of MLE, we analyze the local curvature of the log-likelihood via the Fisher information matrix (FIM) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 154–160); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 3, pp. 75–79).
 
@@ -236,27 +209,21 @@ To quantify the uncertainty and optimality of MLE, we analyze the local curvatur
 > Let $\boldsymbol{s}(\theta; x) \triangleq \nabla_\theta \log p(x \mid \theta) \in \mathbb{R}^D$ be the per-sample score vector, and assume sufficient smoothness to interchange differentiation and integration over $x$.
 > - **Zero Expected Score & Bartlett Curvature Identity**: Differentiating $\int p(x\mid\theta) dx = 1$ gives
 >
->
 > $$
 > \mathbb{E}_{p_\theta}[\boldsymbol{s}(\theta; X)] = \int \nabla_\theta p(x\mid\theta) dx = \nabla_\theta \int p(x\mid\theta) dx = \boldsymbol{0}.
->
 > $$
 >
 >   Differentiating $\int \nabla_\theta \log p(x\mid\theta)  p(x\mid\theta) dx = \boldsymbol{0}^\top$ via the product rule yields
 >
->
 > $$
 > \boldsymbol{F}(\theta) \triangleq \mathrm{Cov}_{p_\theta}[\boldsymbol{s}(\theta; X)] = \mathbb{E}_{p_\theta}\!\bigl[\boldsymbol{s}(\theta; X)\boldsymbol{s}(\theta; X)^\top\bigr] = -\mathbb{E}_{p_\theta}\!\bigl[\nabla^2_\theta \log p(X \mid \theta)\bigr].
->
 > $$
 >
 >   In an exponential family $p(x\mid\eta) = h(x)\exp(\eta^\top T(x) - A(\eta))$, $\nabla^2_\eta \log p = -\nabla^2_\eta A(\eta)$ is independent of $x$, so $\boldsymbol{F}_\eta = \nabla^2_\eta A(\eta) = \mathrm{Cov}_{p_\eta}[T(X)]$ and in mean parameters $m = \nabla_\eta A(\eta)$, $\boldsymbol{F}_m = \boldsymbol{F}_\eta^{-1}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 3, pp. 78–79). Under smooth reparameterization $\beta = g(\alpha)$, the chain rule $\boldsymbol{s}_\alpha = \boldsymbol{J}_g(\alpha)^\top \boldsymbol{s}_\beta$ gives $\boldsymbol{F}_\alpha(\alpha) = \boldsymbol{J}_g(\alpha)^\top \boldsymbol{F}_\beta(g(\alpha)) \boldsymbol{J}_g(\alpha)$.
 > - **Cramér–Rao Lower Bound (CRLB)**: Let $\hat{\theta}_N = \delta(\mathcal{D})$ be any unbiased estimator ($\mathbb{E}_\theta[\hat{\theta}_N] = \theta$) from $N$ i.i.d. samples [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, p. 160), and let $\boldsymbol{s}_N(\theta) = \sum_{n=1}^N \boldsymbol{s}(\theta; x_n)$ satisfy $\mathbb{E}_\theta[\boldsymbol{s}_N] = \boldsymbol{0}$ and $\mathrm{Cov}_\theta[\boldsymbol{s}_N] = N\boldsymbol{F}(\theta)$. Differentiating $\int \hat{\theta}_N(\mathcal{D}) p(\mathcal{D}\mid\theta) d\mathcal{D} = \theta$ yields $\mathrm{Cov}_\theta(\hat{\theta}_N, \boldsymbol{s}_N) = \mathbb{E}_\theta[(\hat{\theta}_N - \theta)\boldsymbol{s}_N^\top] = \boldsymbol{I}_D$. For any $\boldsymbol{u}, \boldsymbol{v} \in \mathbb{R}^D$, Cauchy–Schwarz on $\boldsymbol{u}^\top(\hat{\theta}_N - \theta)$ and $\boldsymbol{v}^\top \boldsymbol{s}_N$ gives $(\boldsymbol{u}^\top \boldsymbol{v})^2 \le (\boldsymbol{u}^\top \mathrm{Cov}_\theta[\hat{\theta}_N]\boldsymbol{u})(\boldsymbol{v}^\top N\boldsymbol{F}(\theta)\boldsymbol{v})$. Choosing $\boldsymbol{v} = (N\boldsymbol{F}(\theta))^{-1}\boldsymbol{u}$ proves the Loewner matrix bound:
 >
->
 > $$
 > \mathrm{Cov}_\theta[\hat{\theta}_N] \succeq \bigl(N\boldsymbol{F}(\theta)\bigr)^{-1}.
->
 > $$
 >
 >   More generally, for a biased scalar estimator with $\mathbb{E}_\theta[\hat{\psi}_N] = \psi(\theta)$, $\mathrm{Var}_\theta[\hat{\psi}_N] \ge \frac{[\psi'(\theta)]^2}{N F(\theta)}$.
@@ -268,21 +235,18 @@ MLE achieves the Cramér–Rao floor in the large-sample limit: under mild regul
 >
 > $$
 > \boldsymbol{0} = \frac{1}{N}\boldsymbol{s}_N(\theta^*) + \left(\frac{1}{N}\nabla^2_\theta \ell(\tilde{\theta}_N)\right)\!(\hat{\theta}_{\mathrm{MLE}} - \theta^*),
->
 > $$
 >
 > for $\tilde{\theta}_N$ on the segment between $\hat{\theta}_{\mathrm{MLE}}$ and $\theta^*$. Multiplying by $\sqrt{N}$ and rearranging:
 >
 > $$
 > \sqrt{N}(\hat{\theta}_{\mathrm{MLE}} - \theta^*) = \left(-\frac{1}{N}\nabla^2_\theta \ell(\tilde{\theta}_N)\right)^{-1} \left(\frac{1}{\sqrt{N}}\sum_{n=1}^N \boldsymbol{s}(\theta^*; X_n)\right).
->
 > $$
 >
 > By the CLT on the i.i.d. zero-mean score vectors, $\frac{1}{\sqrt{N}}\boldsymbol{s}_N(\theta^*) \xrightarrow{d} \mathcal{N}(\boldsymbol{0}, \boldsymbol{F}(\theta^*))$. By the WLLN, $-\frac{1}{N}\nabla^2_\theta\ell(\tilde{\theta}_N) \xrightarrow{p} -\mathbb{E}_{\theta^*}[\nabla^2_\theta \log p(X\mid\theta^*)] = \boldsymbol{F}(\theta^*)$. Applying Slutsky's theorem yields
 >
 > $$
 > \sqrt{N}(\hat{\theta}_{\mathrm{MLE}} - \theta^*) \xrightarrow{d} \mathcal{N}\bigl(\boldsymbol{0}, \boldsymbol{F}(\theta^*)^{-1}\bigr), \qquad \text{or} \qquad \hat{\theta}_{\mathrm{MLE}} \stackrel{\cdot}{\sim} \mathcal{N}\bigl(\theta^*, (N\boldsymbol{F}(\theta^*))^{-1}\bigr).
->
 > $$
 >
 > Thus MLE is asymptotically unbiased and *asymptotically efficient*, saturating the CRLB `(eq:asymp:crlb)`.
@@ -299,25 +263,20 @@ In finite samples, MLE can overfit severely when model capacity approaches or ex
 >
 > $$
 > \hat{\theta}_{\mathrm{MAP}} = \arg\max_{\theta \in \Theta} \bigl[\log p(\mathcal{D} \mid \theta) + \log p(\theta)\bigr] = \arg\min_{\theta \in \Theta} \left[\frac{1}{N}\sum_{n=1}^N \ell_{\mathrm{NLL}}(\theta; x_n) - \frac{1}{N}\log p(\theta)\right].
->
 > $$
 >
 > Thus a Gaussian prior $\mathcal{N}(\theta \mid \boldsymbol{0}, \tau^2 \boldsymbol{I})$ induces $\ell_2$ (ridge) regularization $\frac{1}{2N\tau^2}\|\theta\|_2^2$, while a Laplace prior induces $\ell_1$ (LASSO) regularization [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 8, pp. 518–519); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 121–124). Two canonical conjugate families yield closed-form shrinkage:
 > - **Beta–Binomial**: For $N_1$ heads in $N = N_1 + N_0$ Bernoulli($\theta$) trials with prior $\mathrm{Beta}(\theta \mid \alpha, \beta)$ ($\alpha,\beta \ge 1$), the posterior is $\mathrm{Beta}(\theta \mid N_1 + \alpha, N_0 + \beta)$, giving [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 4, pp. 59–61); [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 130–134):
 >
->
 > $$
 > \hat{\theta}_{\mathrm{MAP}} = \frac{N_1 + \alpha - 1}{N + \alpha + \beta - 2}, \qquad p(y_{\mathrm{new}} = 1 \mid \mathcal{D}) = \mathbb{E}[\theta \mid \mathcal{D}] = \frac{N_1 + \alpha}{N + \alpha + \beta},
->
 > $$
 >
 >   reducing at $\alpha = \beta = 1$ to $\hat{\theta}_{\mathrm{MAP}} = \hat{\theta}_{\mathrm{MLE}} = N_1/N$ while the posterior predictive yields Laplace's rule of succession $\frac{N_1 + 1}{N + 2}$ even under a uniform prior.
 > - **Gaussian–Gaussian Shrinkage**: For $y_1,\dots,y_N \overset{\mathrm{i.i.d.}}{\sim} \mathcal{N}(\mu, \sigma^2)$ with known observation precision $\kappa = 1/\sigma^2$ and prior $\mathcal{N}(\mu \mid \breve{m}, \breve{\lambda}^{-1})$ ($\breve{\lambda} = 1/\breve{\tau}^2$), completing the square in the exponent gives posterior $\mathcal{N}(\mu \mid \hat{m}, \hat{\lambda}^{-1})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 4, pp. 141–143); [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 8, pp. 507–512):
 >
->
 > $$
 > \hat{\lambda} = \breve{\lambda} + N\kappa, \qquad \hat{m} = \frac{N\kappa \bar{y} + \breve{\lambda}\breve{m}}{N\kappa + \breve{\lambda}} = (1 - w)\bar{y} + w\breve{m}, \qquad w = \frac{\breve{\lambda}}{\breve{\lambda} + N\kappa}.
->
 > $$
 >
 >   Here the posterior mean (= MAP mode) smoothly interpolates between the prior mean $\breve{m}$ (dominant for small $N\kappa$) and $\hat{\theta}_{\mathrm{MLE}} = \bar{y}$ (dominant as $N \to \infty$), illustrated in Figure `fig:asymp:gaussian-shrinkage`.
@@ -376,7 +335,7 @@ Notice two computational distinctions in Algorithm `alg:asymp:fisher-bootstrap`:
 **Table:** Computational complexity and statistical properties across estimation paradigms ($N$ samples, $D$ parameters, $T$ optimization steps, $B$ bootstrap draws, $S$ posterior samples).
 
 | **Method** | **Time Complexity** | **Memory** | **Uncertainty Output** | **Small-$N$ & Invariance Behavior** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Conjugate Bayes | $O(ND)$ sufficient stats | $O(D)$ or $O(D^2)$ | Exact posterior & predictive | Exact shrinkage; requires conjugate family |
 | ERM / First-order SGD | $O(T B_{\mathrm{mb}} D)$ ($B_{\mathrm{mb}}\!\ll\! N$) | $O(D)$ | None (point estimate only) | Overfits without explicit regularizer |
 | MLE (Fisher Scoring) | $O(T(ND^2 + D^3))$ | $O(D^2)$ | Asymptotic $\mathcal{N}(\hat{\theta}, (N\boldsymbol{F})^{-1})$ | Bijective invariance; fails if $N < D$ |
@@ -411,7 +370,6 @@ Applying asymptotic theory or MAP point summaries blindly in finite-sample or mi
 >
 > $$
 > p_\phi(\phi \mid \mathcal{D}) = p_\theta\bigl(g^{-1}(\phi) \mid \mathcal{D}\bigr) \lvert \det \boldsymbol{J}_{g^{-1}}(\phi) \rvert.
->
 > $$
 >
 > Because the Jacobian factor shifts stationary points whenever $g$ is nonlinear, $\hat{\phi}_{\mathrm{MAP}} \ne g(\hat{\theta}_{\mathrm{MAP}})$: an estimator that is a mode in rate coordinates $\theta \in (0, 1)$ ceases to be the mode in log-odds coordinates $\phi = \log(\theta/(1-\theta))$.

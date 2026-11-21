@@ -55,9 +55,9 @@ flowchart LR
   $$
   \Pr(\boldsymbol{y}_{\mathrm{ans}}\mid\boldsymbol{x}) = \sum_{\boldsymbol{z}}\Pr(\boldsymbol{y}_{\mathrm{ans}}\mid\boldsymbol{x},\boldsymbol{z})\Pr(\boldsymbol{z}\mid\boldsymbol{x})
   $$
-- **2. DECODING — Temp \tau, Top-k & Nucleus Top-p**
+- **2. DECODING — Temp $\tau$, Top-$k$ & Nucleus Top-$p$**
   $$
-  p_\tau(w_j) = \frac{\exp(u_j/\tau)}{\sum_v \exp(u_v/\tau)},\qquad m^* = \min\Bigl\{m : \sum_{r=1}^m p_\tau(w_{(r)}) \ge p\Bigr\}
+  p_\tau(w_j) = \frac{\exp(u_j/\tau)}{\sum_v \exp(u_v/\tau)},  m^* = \min\Bigl\{m : \sum_{r=1}^m p_\tau(w_{(r)}) \ge p\Bigr\}
   $$
 - **3. KV CACHE — Prefill vs. Decode & PagedAttention**
   $$
@@ -65,10 +65,10 @@ flowchart LR
   $$
 - **4. SPECULATIVE DECODING — Lossless Rejection**
   $$
-  \text{Accept }\hat{y}\sim q\text{ w.p. }\min\!\left(1,\frac{p(\hat{y})}{q(\hat{y})}\right);\quad p_{\mathrm{res}}(y) = \frac{\max(0,p(y)-q(y))}{1-\sum_v\min(p(v),q(v))}
+  \text{Accept }\hat{y}\sim q\text{ w.p. }\min\!\left(1,\frac{p(\hat{y})}{q(\hat{y})}\right);  p_{\mathrm{res}}(y) = \frac{\max(0,p(y)-q(y))}{1-\sum_v\min(p(v),q(v))}
   $$
 - **5. SERVING COMPLEXITY & BOTTLENECKS**
-- **6. TEST-TIME SCALING — Best-of-N, PRM & RLVR**
+- **6. TEST-TIME SCALING — Best-of-$N$, PRM & RLVR**
 
 ## Related Sources
 

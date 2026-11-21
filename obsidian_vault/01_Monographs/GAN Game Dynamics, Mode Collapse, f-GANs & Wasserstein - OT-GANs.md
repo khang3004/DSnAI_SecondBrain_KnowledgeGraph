@@ -60,19 +60,13 @@ where $L_D(\phi, \theta) = \mathbb{E}_{p_{\mathrm{data}}}[g(D_\phi(x))] + \mathb
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The four synthesized sources adopt distinct conventions for generator/discriminator symbols, probability measures, and optimization signs. Table `tab:gan:notation` reconciles these notations into the unified conventions used throughout this monograph.
 >
->
->
-> {
->
 > | **Concept** | **Unified** | **Murphy Adv. (Ch. 26)** | **Prince (Ch. 15)** | **Bishop (Ch. 17) / OT** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Data dist. | $p_{\mathrm{data}}(x)$ | $p^*(x)$ | $\Pr(x)$ | $p_{\mathrm{data}}(x)$ / $P$ |
 > | Model dist. | $q_\theta(x)$ | $q_\theta(x)$ | $\Pr(x^*)$ | $p_G(x)$ / $(T_\phi)_\# p_Z$ |
 > | Generator | $G_\theta(z)$ | $G_\theta(z)$ | $g[z, \theta]$ | $g(z, w)$ / $T_\phi(z)$ |
 > | Disc. / Critic | $D_\phi(x),  f_\phi(x)$ | $D_\phi(x)$ | $\mathrm{sig}[f[x,\phi]],  f[x,\phi]$ | $d(x, \phi)$ / $f_\omega(x)$ |
 > | Objective sign | $\min_\theta \max_\phi V$ | $\min_\theta \max_\phi V$ ($\times \frac{1}{2}$) | $\arg\max_\theta \min_\phi$ (NLL) | $\max_w \min_\phi E_{\mathrm{GAN}}$ |
->
-> }
 
 ## Core Mathematical Derivations & Theorems
 
@@ -83,15 +77,12 @@ where $L_D(\phi, \theta) = \mathbb{E}_{p_{\mathrm{data}}}[g(D_\phi(x))] + \mathb
 >
 > $$
 > D^*_\theta(x) = \frac{p_{\mathrm{data}}(x)}{p_{\mathrm{data}}(x) + q_\theta(x)}.
->
 > $$
 >
 > **Proof.** Writing $V(G_\theta, D)$ as an integral over $\mathcal{X}$:
 >
 > $$
->
 >   V(G_\theta, D) = \int_{\mathcal{X}} \Big[ p_{\mathrm{data}}(x)\log D(x) + q_\theta(x)\log(1 - D(x)) \Big] \mathrm{d}x.
->
 > $$
 >
 > For any $(a, b) \in \mathbb{R}_+^2 \setminus \{(0,0)\}$, the scalar function $y \mapsto a\log y + b\log(1-y)$ on $(0,1)$ has derivative $\frac{a}{y} - \frac{b}{1-y} = 0$ at $y^* = \frac{a}{a+b}$, and second derivative $-\frac{a}{y^2} - \frac{b}{(1-y)^2} < 0$. Setting $a = p_{\mathrm{data}}(x)$ and $b = q_\theta(x)$ yields `(eq:gan:opt_disc)`. Equivalently, in density-ratio form, $D^*_\theta(x)/(1 - D^*_\theta(x)) = p_{\mathrm{data}}(x)/q_\theta(x)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 896).
@@ -106,7 +97,6 @@ where $L_D(\phi, \theta) = \mathbb{E}_{p_{\mathrm{data}}}[g(D_\phi(x))] + \mathb
 >   &= D_{\mathrm{KL}}(p_{\mathrm{data}} \parallel m_\theta) + D_{\mathrm{KL}}(q_\theta \parallel m_\theta) - 2\log 2
 >    = 2 D_{\mathrm{JS}}(p_{\mathrm{data}} \parallel q_\theta) - \log 4.
 > \end{aligned}
->
 > $$
 >
 > Since $D_{\mathrm{JS}}(p_{\mathrm{data}} \parallel q_\theta) \ge 0$ with equality if and only if $q_\theta = p_{\mathrm{data}}$, the global minimax equilibrium is attained at $q_\theta = p_{\mathrm{data}}$ and $D^*_\theta(x) \equiv \frac{1}{2}$, with game value $-\log 4$ (or $-\log 2$ under the $\frac{1}{2}$-weighted objective of [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 897)).  $\square$
@@ -124,23 +114,16 @@ Beyond the Bernoulli log-loss, any proper binary scoring rule corresponds to an 
 > $$
 > D_f(p_{\mathrm{data}} \| q_\theta)
 >   \ge \sup_{T \in \mathcal{T}} \Big\{ \mathbb{E}_{x \sim p_{\mathrm{data}}}[T(x)] - \mathbb{E}_{x \sim q_\theta}[f^\dagger(T(x))] \Big\}.
->
 > $$
 >
 > The bound is tight whenever the optimal critic $T^*(x) = f'\!\left(\frac{p_{\mathrm{data}}(x)}{q_\theta(x)}\right)$ lies in $\mathcal{T}$. Parameterizing $T_\phi(x) = a_f(V_\phi(x))$ with an output activation $a_f : \mathbb{R} \to \mathrm{dom}(f^\dagger)$ gives the $f$-GAN minimax game $\min_\theta \max_\phi \big(\mathbb{E}_{p_{\mathrm{data}}}[T_\phi(x)] - \mathbb{E}_{p_Z}[f^\dagger(T_\phi(G_\theta(z)))]\big)$. Table `tab:gan:fgan` lists standard instantiations.
 >
->
->
-> {
->
 > | **Divergence** | **Generator $f(u)$** | **Conjugate $f^\dagger(t)$** | **Optimal Critic $T^*(x)$ ($r = p_{\mathrm{data}}/q_\theta$)** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Forward KL | $u\log u$ | $\exp(t - 1)$ | $1 + \log r(x)$ |
 > | Reverse KL | $-\log u$ | $-1 - \log(-t)$ | $-1 / r(x)$ |
 > | JSD | $u\log u - (u+1)\log\frac{u+1}{2}$ | $-\log(2 - e^t)$ | $\log\frac{2r(x)}{r(x)+1}$ |
 > | Pearson $\chi^2$ | $(u - 1)^2$ | $\frac{1}{4}t^2 + t$ | $2(r(x) - 1)$ |
->
-> }
 
 ### Disjoint-Support Failure, Continuity Theorem, and Kantorovich–Rubinstein Duality
 
@@ -154,7 +137,6 @@ In high-dimensional spaces $\mathcal{X} = \mathbb{R}^d$, natural data $p_{\mathr
 >   D_{\mathrm{JS}}(P \parallel Q_\theta) = \begin{cases} \log 2 & \text{if } \theta \neq 0, \\ 0 & \text{if } \theta = 0, \end{cases}
 >   \qquad
 >   W_{1}(P, Q_\theta) = \lvert \theta \rvert.
->
 > $$
 >
 > Thus $\mathrm{JSD}$ is discontinuous at $\theta = 0$ and has zero gradient everywhere $\theta \neq 0$, whereas $W_1$ is continuous everywhere and provides a constant unit gradient $\partial_\theta W_1 = \mathrm{sign}(\theta)$ for $\theta \neq 0$.
@@ -165,7 +147,6 @@ In high-dimensional spaces $\mathcal{X} = \mathbb{R}^d$, natural data $p_{\mathr
 > W_{1}(p_{\mathrm{data}}, q_\theta)
 >   = \inf_{\pi \in \Pi(p_{\mathrm{data}}, q_\theta)} \int_{\mathcal{X}\times\mathcal{X}} \lVert x - y \rVert_2 \mathrm{d}\pi(x, y)
 >   = \sup_{\lVert f \rVert_{\mathrm{Lip}} \le 1} \Big\{ \mathbb{E}_{x \sim p_{\mathrm{data}}}[f(x)] - \mathbb{E}_{y \sim q_\theta}[f(y)] \Big\},
->
 > $$
 >
 > where $\Pi(p_{\mathrm{data}}, q_\theta)$ is the set of couplings with marginals $p_{\mathrm{data}}, q_\theta$, and $\lVert f \rVert_{\mathrm{Lip}} \le 1$ means $\lvert f(x) - f(y) \rvert \le \lVert x - y \rVert_2$ for all $x, y \in \mathcal{X}$. This places $W_1$ inside the family of Integral Probability Metrics (IPMs), which measure density *differences* rather than ratios [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, p. 900).
@@ -219,7 +200,7 @@ $$
 >
 >     Sample real minibatch $\{x^{(i)}\}_{i=1}^m \sim p_{\mathrm{data}}$ and latent minibatch $\{z^{(i)}\}_{i=1}^m \sim p_Z$
 >     Sample $\epsilon^{(i)} \sim \mathcal{U}(0, 1)$ for $i = 1, \dots, m$
->     $\tilde{x}^{(i)} \leftarrow G_\theta(z^{(i)})$,\quad $\hat{x}^{(i)} \leftarrow \epsilon^{(i)} x^{(i)} + (1 - \epsilon^{(i)})\tilde{x}^{(i)}$
+>     $\tilde{x}^{(i)} \leftarrow G_\theta(z^{(i)})$,  $\hat{x}^{(i)} \leftarrow \epsilon^{(i)} x^{(i)} + (1 - \epsilon^{(i)})\tilde{x}^{(i)}$
 >     $L_D^{(i)} \leftarrow f_\phi(\tilde{x}^{(i)}) - f_\phi(x^{(i)}) + \eta \left(\lVert \nabla_{\hat{x}^{(i)}} f_\phi(\hat{x}^{(i)}) \rVert_2 - 1\right)^2$
 >     Update $\phi \leftarrow \mathrm{Adam}\!\left(\nabla_\phi \frac{1}{m}\sum_{i=1}^m L_D^{(i)},  \phi,  \alpha, \beta_1, \beta_2\right)$
 >     *(SN-GAN variant: omit $\eta$ term and apply $\boldsymbol{W}_l \leftarrow \boldsymbol{W}_l / \sigma_{\max}(\boldsymbol{W}_l)$ per layer)*
@@ -243,7 +224,7 @@ $$
 **Table:** Comparative synthesis of adversarial and optimal-transport generative objectives [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 26, pp. 897–918) [[Source - Optimal Transport in Large-Scale|optimal_transport]] (pp. 51–88).
 
 | **Method** | **Discrepancy** | **Critic Constraint** | **Step Complexity** | **Disjoint Support** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Minimax GAN | $\mathrm{JSD}$ | $D_\phi \in (0,1)$ | $\mathcal{O}(m)$ | Saturates ($\log 2$) |
 | $f$-GAN | $D_f$ | $T_\phi \in \mathrm{dom}(f^\dagger)$ | $\mathcal{O}(m)$ | Singular / smooth MLP |
 | WGAN-GP | $W_1$ (dual) | Soft $\lVert \nabla_{\hat{x}} f_\phi \rVert_2 \approx 1$ | $\mathcal{O}(n_{\mathrm{critic}} m)$ (2nd-order) | Smooth ($\lVert \cdot \rVert_2$) |

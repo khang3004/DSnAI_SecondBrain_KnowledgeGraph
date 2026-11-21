@@ -30,7 +30,7 @@ def parse_yaml_list_field(text: str, field: str) -> set[str]:
 
 
 def main() -> int:
-    md_files = sorted(VAULT.rglob("*.md"))
+    md_files = [p for p in sorted(VAULT.rglob("*.md")) if p.name != "AGENTS.md"]
     name_to_path: dict[str, Path] = {p.stem: p for p in md_files}
     adj: dict[str, set[str]] = defaultdict(set)
     out_edges = 0
@@ -110,7 +110,7 @@ def main() -> int:
 
     # Obsidian Markdown & MathJax Render Checks
     raw_latex_pat = re.compile(
-        r"(\\vecb\b|\\mat\b|\\bm\b|\\abs\b|\\norm\b|\\KL\b|\\begin\{tabularx?\}|\\begin\{algorithm|\\toprule|\\midrule|\\bottomrule|\\captionof\b|\\monographfig\b|\\csfm\b|\\ForEach\b|\\While\b|\\KwIn\b|\\KwOut\b|\\Return\b|\\begingroup\b|\\endgroup\b|\\sloppy\b|\\texorpdfstring\b)"
+        r"(\\vecb\b|\\mat\b|\\bm\b|\\abs\b|\\norm\b|\\KL\b|\\begin\{tabularx?\}|\\begin\{algorithm|\\begin\{alignat|\\begin\{proof\}|\\bookcite\b|\\toprule|\\midrule|\\bottomrule|\\captionof\b|\\monographfig\b|\\csfm\b|\\ForEach\b|\\While\b|\\KwIn\b|\\KwOut\b|\\Return\b|\\begingroup\b|\\endgroup\b|\\sloppy\b|\\texorpdfstring\b|\\textbf\b|\\emph\b|\\textit\b|\\texttt\b)"
     )
     render_errors: list[str] = []
     for p in md_files:
@@ -121,25 +121,64 @@ def main() -> int:
         body_no_code = re.sub(r"`[^`]+`", "", body_no_code)
         for m in raw_latex_pat.finditer(body_no_code):
             render_errors.append(f"{p.name}: raw LaTeX leak '{m.group(1)}'")
-        # Check balanced $$ blocks
+        # Check balanced $$ blocks and ensure zero internal blank lines or backticks inside $$...$$
         dd_count = len(re.findall(r"(?<!\\)\$\$", body_no_code))
         if dd_count % 2 != 0:
             render_errors.append(f"{p.name}: odd number of $$ delimiters ({dd_count})")
+        for dm in re.finditer(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", body, flags=re.DOTALL):
+            inner = dm.group(1)
+            if "`" in inner:
+                render_errors.append(f"{p.name}: backtick inside $$ block -> {inner.strip()[:50]}")
+            inner_lines = inner.splitlines()
+            if len(inner_lines) > 2:
+                if any(re.sub(r"^>\s*", "", ln).strip() == "" for ln in inner_lines[1:-1]):
+                    render_errors.append(f"{p.name}: blank line inside $$ block -> {inner.strip()[:50]}")
         # Check no raw \[ \] \( \) LaTeX math delimiters remain
         if re.search(r"(?<!\\)(?:\\\[|\\\]|\\\(|\\\))", body_no_code):
             render_errors.append(f"{p.name}: raw \\[ or \\( math delimiter")
-        # Check every Markdown table header has a blank line (or bare '>') before it for Obsidian
+        # Check Obsidian Markdown table validity (separator dashes, blank lines, column count, math pipes)
         all_lines = body_no_code.splitlines()
-        for lno in range(1, len(all_lines)):
-            if re.match(r"^(?:>\s*)?\|[\s\-:|]+\|\s*$", all_lines[lno]):
-                if lno >= 2 and all_lines[lno - 2].strip() not in ("", ">"):
-                    render_errors.append(f"{p.name}:L{lno}: table missing blank line before header -> {all_lines[lno-2][:40]}")
-        # Check inline $ per line (after stripping $$...$$)
+        lno = 0
+        while lno < len(all_lines):
+            stripped = re.sub(r"^>\s*", "", all_lines[lno]).strip()
+            if stripped in ("{", "}"):
+                render_errors.append(f"{p.name}:L{lno+1}: stray brace line {all_lines[lno]!r}")
+            if re.match(r"^\|(\s*[:\-—–]+\s*\|)+$", stripped):
+                if "—" in stripped or "–" in stripped:
+                    render_errors.append(f"{p.name}:L{lno+1}: table separator uses em/en-dash instead of ---: {stripped[:50]}")
+                hdr_idx = lno - 1
+                if hdr_idx >= 1 and all_lines[hdr_idx - 1].strip() not in ("", ">"):
+                    render_errors.append(f"{p.name}:L{hdr_idx}: table missing blank line before header -> {all_lines[hdr_idx-1][:40]}")
+                sep_cols = len(stripped.strip("|").split("|"))
+                j = hdr_idx
+                while j < len(all_lines):
+                    row = re.sub(r"^>\s*", "", all_lines[j]).strip()
+                    if not row.startswith("|"):
+                        break
+                    if re.search(r"\[\[[^\]|\\]+\|[^\]]+\]\]", row):
+                        render_errors.append(f"{p.name}:L{j+1}: unescaped wikilink pipe in table -> {row[:60]}")
+                    for mm in re.finditer(r"(?<!\\)\$(?!\$)([^$]+?)(?<!\\)\$(?!\$)", row):
+                        if "|" in mm.group(1):
+                            render_errors.append(f"{p.name}:L{j+1}: pipe inside table math -> {mm.group(0)[:50]}")
+                    unesc_pipes = len(re.findall(r"(?<!\\)\|", row))
+                    row_cols = unesc_pipes - 1 if row.endswith("|") else unesc_pipes
+                    if row_cols != sep_cols:
+                        render_errors.append(f"{p.name}:L{j+1}: table col mismatch (got {row_cols}, exp {sep_cols}) -> {row[:60]}")
+                    j += 1
+                if j < len(all_lines) and all_lines[j].strip() not in ("", ">"):
+                    render_errors.append(f"{p.name}:L{j+1}: table missing blank line after end -> {all_lines[j][:40]}")
+                lno = j
+                continue
+            lno += 1
+        # Check inline $ per line (after stripping $$...$$) including Obsidian space-next-to-$ rule
         no_disp = re.sub(r"\$\$.*?\$\$", "", body_no_code, flags=re.DOTALL)
         for lno, ln in enumerate(no_disp.splitlines(), 1):
             sc = len(re.findall(r"(?<!\\)\$", ln))
             if sc % 2 != 0:
                 render_errors.append(f"{p.name}:L{lno}: odd inline $ ({sc}) -> {ln[:60]}")
+            for mm in re.finditer(r"(?<!\\)\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)", ln):
+                if mm.group(1).startswith(" ") or mm.group(1).endswith(" "):
+                    render_errors.append(f"{p.name}:L{lno}: space inside $ delimiter -> {mm.group(0)[:50]}")
 
     print(f"Vault notes: {len(md_files)} | Total wikilink edges: {out_edges}")
     print(f"Connected components: {components} | Orphans: {len(orphans)} | Degree<2: {len(low_deg)}")

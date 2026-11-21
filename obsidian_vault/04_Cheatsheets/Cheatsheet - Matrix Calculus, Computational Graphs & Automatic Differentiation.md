@@ -52,7 +52,7 @@ flowchart LR
   $$
   \boldsymbol{f}(\boldsymbol{x}+\boldsymbol{h}) = \boldsymbol{f}(\boldsymbol{x}) + \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x})\boldsymbol{h} + o(\lVert \boldsymbol{h} \rVert_2)
   $$
-- **2. FROBENIUS TRACE TRICK (\mathrm{d}f)**
+- **2. FROBENIUS TRACE TRICK ($\mathrm{d}f$)**
   $$
   \mathrm{d}f(\boldsymbol{X}) = \mathrm{Tr}\!\big((\nabla_{\boldsymbol{X}} f)^{\top} \mathrm{d}\boldsymbol{X}\big) = \langle \nabla_{\boldsymbol{X}} f, \mathrm{d}\boldsymbol{X} \rangle_F
   $$

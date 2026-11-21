@@ -64,12 +64,9 @@ Throughout this monograph, we adopt the natural logarithm $\ln$ (units of *nats*
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The five source texts exhibit deliberate pedagogical divergences in logarithmic base, symbol overloading, and parametric conventions that must be reconciled before chaining derivations across domains:
-> 
->
->
 >
 > | **Concept** | **Unified Monograph** | **Source Variants** | **Reconciliation** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Logarithm & units | $\ln$ (nats) default; $\log_2$ (bits) for coding | $\log_2$ in Murphy Intro; $\ln$ in Murphy Adv., Goodfellow, Prince; mixed in Bishop | Multiply nats by $(\ln 2)^{-1}$ to convert to bits. |
 > | Self-information | $\iota(x) \triangleq -\ln p(x)$ | $h(x)$ in Bishop; $I(x)$ in Goodfellow | Avoids collision with differential entropy $h(X)$ and MI $\mathrm{I}(X;Y)$. |
 > | Discrete vs. diff. entropy | $\mathrm{H}(X)$ discrete; $h(X)$ continuous | $\mathrm{H}(X)$ vs. $h(X)$ in Murphy; $\mathrm{H}[x]$ for both in Bishop | Distinguishes non-negative $\mathrm{H}(X)\ge 0$ from coordinate-dependent $h(X)\in\mathbb{R}$. |
@@ -79,8 +76,6 @@ Throughout this monograph, we adopt the natural logarithm $\ln$ (units of *nats*
 > | Jensen–Shannon scaling | $D_{\mathrm{JS}}(p \parallel q) = \frac{1}{2}D_{\mathrm{KL}}(p \parallel m) + \frac{1}{2}D_{\mathrm{KL}}(q \parallel m)$ | $D_{\mathrm{JS}}$ with $\frac{1}{2}$ in Prince/Murphy; $2D_{\mathrm{JS}}$ in some $f$-GAN tables | Bounded in $[0, \ln 2]$ nats ($[0,1]$ bits) with $m = \frac{p+q}{2}$. |
 > | IB latent variable | $T$ (with $T \equiv Z$ in Murphy Adv.) | $Z$ in Murphy Adv. Sec. 5.6; $T$ in Tishby IB | Markov chain $Y \leftrightarrow X \to T$ for data; $X \to T \to \hat{Y}$ for inference. |
 >
->
-> 
 > *Synthesized Sources:* [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 6.1–6.3, pp. 207–225), [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 2.7.1, 5.1–5.6, 26.2, pp. 55–57, 219–256, 897), [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 2.5, pp. 46–53), [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 3.13, pp. 73–76), and [[Source - Understanding Deep Learning|understandingdl_simonprince]] (App. C.5, pp. 459–461).
 
 ## Core Mathematical Derivations & Theorems
@@ -94,7 +89,6 @@ Information theory formalizes uncertainty through three axioms on the self-infor
 >
 > $$
 > \mathrm{H}(X) = \mathrm{H}(p) \triangleq -\sum_{x \in \mathcal{X}} p(x) \ln p(x) = \mathbb{E}_{X \sim p}[-\ln p(X)].
->
 > $$
 >
 > **1. Statistical-Mechanics Derivation (Multiplicity).** Following [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 2.5.2, pp. 47–48), allocate $N$ distinguishable objects across $K$ bins with counts $\{n_k\}_{k=1}^K$ ($\sum_k n_k = N$). The number of microstates per macrostate is the multinomial multiplicity $W = N! / \prod_{k=1}^K n_k!$. Taking $\frac{1}{N}\ln W$ with $p_k = \lim_{N\to\infty} n_k / N$ fixed and applying Stirling's asymptotic expansion $\ln N! = N\ln N - N + O(\ln N)$ yields
@@ -103,44 +97,37 @@ Information theory formalizes uncertainty through three axioms on the self-infor
 > \lim_{N\to\infty} \frac{1}{N} \ln W
 >   = \lim_{N\to\infty} \frac{1}{N}\left(N\ln N - N - \sum_{k=1}^K (n_k\ln n_k - n_k)\right)
 >   = -\sum_{k=1}^K p_k \ln p_k = \mathrm{H}(p).
->
 > $$
->
 >
 > **2. Continuum Limit & Differential Entropy.** Discretizing a continuous density $p(x)$ on $\mathbb{R}^d$ into hypercubes of volume $\Delta^d$ with cell probabilities $p(x_i)\Delta^d$ (by the mean value theorem) produces a discrete entropy [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 2.90, p. 50):
 >
 > $$
 > \mathrm{H}_\Delta = -\sum_i p(x_i)\Delta^d \ln\bigl(p(x_i)\Delta^d\bigr)
 >   = -\sum_i p(x_i)\Delta^d \ln p(x_i) - d\ln\Delta.
->
 > $$
 >
 > Dropping the divergent quantization offset $-d\ln\Delta$ and taking $\Delta \to 0^+$ defines the **differential entropy** [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 5.95, p. 235):
 >
 > $$
 > h(X) \triangleq -\int_{\mathcal{X}} p(x) \ln p(x)  \mathrm{d}x.
->
 > $$
->
 >
 > **3. Maximum Entropy (MaxEnt) Principle.**
 > - *Discrete ($K$ states):* Maximizing $\mathrm{H}(p) + \lambda\bigl(\sum_{k=1}^K p_k - 1\bigr)$ gives $\partial_{p_k}\mathcal{L} = -\ln p_k - 1 + \lambda = 0 \implies p_k = 1/K$, with strictly negative Hessian $\nabla^2_{p}\mathcal{L} = -\mathrm{diag}(p_1^{-1}, \dots, p_K^{-1}) \prec \boldsymbol{0}$. Hence $\mathrm{H}(X) \le \ln K$ [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 2.87–2.88, pp. 48–49).
 > - *Continuous (fixed mean $\boldsymbol{\mu} \in \mathbb{R}^d$ and covariance $\boldsymbol{\Sigma} \succ \boldsymbol{0}$):* Applying Euler–Lagrange calculus of variations to $-\int p \ln p \mathrm{d}x$ subject to normalization, $\mathbb{E}_p[\boldsymbol{x}] = \boldsymbol{\mu}$, and $\mathbb{E}_p[(\boldsymbol{x}-\boldsymbol{\mu})(\boldsymbol{x}-\boldsymbol{\mu})^{\top}] = \boldsymbol{\Sigma}$ forces $p^\star(\boldsymbol{x}) = \exp\bigl(\lambda_0 + \boldsymbol{\lambda}_1^{\top} \boldsymbol{x} + \boldsymbol{x}^{\top} \boldsymbol{\Lambda}_2 \boldsymbol{x}\bigr) = \mathcal{N}(\boldsymbol{x} \mid \boldsymbol{\mu}, \boldsymbol{\Sigma})$, yielding [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 6.26, p. 212) [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 2.5.4, pp. 50–51):
 >
->
 > $$
 > h\bigl(\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})\bigr)
 >     = \frac{1}{2}\ln\det(2\pi e \boldsymbol{\Sigma})
 >     = \frac{d}{2}\bigl(1 + \ln(2\pi)\bigr) + \frac{1}{2}\ln\det(\boldsymbol{\Sigma}).
->
 > $$
+>
 
 > [!tip] Typical Sets, Source Coding & Quantized Differential Entropy
 > Shannon's noiseless source coding theorem establishes that any uniquely decodable prefix code for symbols drawn i.i.d. from $p$ requires expected length at least $\mathrm{H}_2(p) = \mathrm{H}(p)/\ln 2$ bits per symbol [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 2.5.1, p. 47) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.4.1, p. 247). Equivalently, by the Asymptotic Equipartition Property (AEP), almost all probability mass of $N$ i.i.d. draws concentrates on the $\epsilon$-typical set
 >
 > $$
 > A_\epsilon^{(N)} \triangleq \left\{ \boldsymbol{x}_{1:N} \in \mathcal{X}^N : \mathrm{H}(p) - \epsilon \le -\frac{1}{N}\ln p(\boldsymbol{x}_{1:N}) \le \mathrm{H}(p) + \epsilon \right\},
->
 > $$
 >
 > which contains approximately $e^{N \mathrm{H}(p)}$ nearly equiprobable sequences, each occurring with asymptotic empirical probability $\approx e^{-N \mathrm{H}(p)}$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.2.3, pp. 236–237). For continuous $X$ quantized to $n$-bit precision ($\Delta = 2^{-n}$), Eq. `(eq:infotheory:quantized_entropy)` implies $\mathrm{H}_{2^{-n}} \approx h_2(X) + n$ bits; thus $h_2(X) < 0$ simply indicates that $X$ is localized within a sub-unit interval where leading fractional bits are deterministic (e.g., $X \sim \mathcal{U}(0, 1/8)$ saves $3$ bits, giving $h_2(X) = -3$ bits) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 6.1.6, p. 212).
@@ -166,7 +153,6 @@ When encoding data from true distribution $p$ using a code optimized for model $
 >   &= \ln\left(\int_A q(x) \mathrm{d}\mu(x)\right)
 >    \le \ln 1 = 0.
 > \end{aligned}
->
 > $$
 >
 > (Alternatively, via the tangent bound $-\ln u \ge 1 - u$ [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Eq. C.29, p. 460), $D_{\mathrm{KL}}(p \parallel q) \ge \int_A p(1 - q/p) \mathrm{d}\mu = 1 - \int_A q \mathrm{d}\mu \ge 0$.) Equality requires both $q(x)/p(x) = c$ $\mu$-a.e. on $A$ and $\int_A q \mathrm{d}\mu = 1$, forcing $c = 1$ and $p = q$ $\mu$-a.e.
@@ -175,7 +161,6 @@ When encoding data from true distribution $p$ using a code optimized for model $
 >
 > $$
 > D_{\mathrm{KL}}(p(x, y) \parallel q(x, y)) = D_{\mathrm{KL}}(p(x) \parallel q(x)) + \mathbb{E}_{p(x)}\bigl[D_{\mathrm{KL}}(p(y|x) \parallel q(y|x))\bigr].
->
 > $$
 >
 > Under any smooth bijection $y = g(x)$, Jacobians cancel in the density ratio $\frac{p_Y(y)}{q_Y(y)} = \frac{p_X(x)\lvert \det \boldsymbol{J}_g(x) \rvert^{-1}}{q_X(x)\lvert \det \boldsymbol{J}_g(x) \rvert^{-1}} = \frac{p_X(x)}{q_X(x)}$, making $D_{\mathrm{KL}}(p \parallel q)$ strictly invariant to invertible coordinate changes [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 5.16, p. 223).
@@ -188,17 +173,13 @@ When encoding data from true distribution $p$ using a code optimized for model $
 >     + (\boldsymbol{\mu}_2 - \boldsymbol{\mu}_1)^{\top} \boldsymbol{\Sigma}_2^{-1} (\boldsymbol{\mu}_2 - \boldsymbol{\mu}_1)
 >     - d + \ln\frac{\det \boldsymbol{\Sigma}_2}{\det \boldsymbol{\Sigma}_1}
 >   \right].
->
 > $$
->
 >
 > **4. Forward KL (M-Projection) vs. Reverse KL (I-Projection).** Approximating a target $p$ within a parametric family $\mathcal{Q}$ reveals fundamental asymmetry [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.1.4, pp. 225–227):
 > - *Forward (Inclusive) KL / Moment Projection:* $q_M^\star = \arg\min_{q \in \mathcal{Q}} D_{\mathrm{KL}}(p \parallel q)$. When $p = p_{\mathcal{D}} = \frac{1}{N}\sum_{n=1}^N \delta_{x_n}$, $D_{\mathrm{KL}}(p_{\mathcal{D}} \parallel q_\theta) = -\frac{1}{N}\sum_{n=1}^N \ln q_\theta(x_n) + \text{const}$, recovering Maximum Likelihood Estimation (MLE) [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 2.106, p. 53) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 3.13, p. 75). For an exponential family $q_\eta(x) = h(x)\exp(\eta^{\top} \boldsymbol{\phi}(x) - A(\eta))$, first-order optimality yields
 >
->
 > $$
 > \nabla_\eta D_{\mathrm{KL}}(p \parallel q_\eta) = \nabla_\eta A(\eta) - \mathbb{E}_p[\boldsymbol{\phi}(X)] = \mathbb{E}_{q_\eta}[\boldsymbol{\phi}(X)] - \mathbb{E}_p[\boldsymbol{\phi}(X)] = \boldsymbol{0},
->
 > $$
 >
 >   enforcing *moment matching*. Because $p(x) > 0, q(x) = 0 \implies D_{\mathrm{KL}}(p \parallel q) = +\infty$, $q_M^\star$ is **zero-avoiding** (mode-covering).
@@ -211,7 +192,6 @@ When encoding data from true distribution $p$ using a code optimized for model $
 > \text{M-projection: } m_i^\star = \mu_i,   v_i^\star = \Sigma_{ii},
 >   \qquad
 >   \text{I-projection: } m_i^\star = \mu_i,   v_i^\star = (\Lambda_{ii})^{-1} \le \Sigma_{ii}.
->
 > $$
 >
 > By the Schur complement identity $(\Lambda_{11})^{-1} = \Sigma_{11} - \Sigma_{12}\Sigma_{22}^{-1}\Sigma_{21} \le \Sigma_{11}$, forward KL matches marginal variances (covering support, underconfident) whereas reverse KL matches conditional precisions (hugging the high-density ridge, overconfident). On multimodal $p$, M-projection bridges across modes while I-projection locks onto a single high-mass mode (Figure `fig:infotheory:fwd_rev_kl`).
@@ -238,7 +218,6 @@ with equality iff $X \perp\!\!\!\perp Y$. Via the product rule $p(x, y) = p(x)p(
 >   = \mathrm{I}(X; Y, Z)
 >   = \mathrm{I}(X; Z) + \underbrace{\mathrm{I}(X; Y \mid Z)}_{\ge 0}
 >   \implies \mathrm{I}(X; Y) \ge \mathrm{I}(X; Z).
->
 > $$
 >
 > Equality holds iff $\mathrm{I}(X; Y \mid Z) = 0$, i.e., $X \to Z \to Y$ is also a Markov chain ($Z$ is a *sufficient statistic* for $X$ given $Y$) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.3.4, p. 240).
@@ -254,7 +233,6 @@ with equality iff $X \perp\!\!\!\perp Y$. Via the product rule $p(x, y) = p(x)p(
 >   &= \int q(y)  f\!\left(\frac{p(y)}{q(y)}\right) \mathrm{d}y
 >   = D_f\bigl(p(y)  \|  q(y)\bigr).
 > \end{aligned}
->
 > $$
 >
 > Setting $f(u) = u\ln u$ gives $D_{\mathrm{KL}}(p(x) \parallel q(x)) \ge D_{\mathrm{KL}}(p(y) \parallel q(y))$; setting $t(y|x)$ to coordinate projection gives monotonicity $D_{\mathrm{KL}}(p(x,y) \parallel q(x,y)) \ge D_{\mathrm{KL}}(p(x) \parallel q(x))$.
@@ -266,8 +244,8 @@ with equality iff $X \perp\!\!\!\perp Y$. Via the product rule $p(x, y) = p(x)p(
 >   \implies
 >   P_e \ge \frac{\mathrm{H}(Y \mid X) - \ln 2}{\ln\lvert \mathcal{Y} \rvert}
 >   = \frac{\mathrm{H}(Y) - \mathrm{I}(X; Y) - \ln 2}{\ln\lvert \mathcal{Y} \rvert}.
->
 > $$
+>
 
 ### Csiszár $f$-Divergences, Jensen–Shannon, and Pinsker's Inequality
 
@@ -285,7 +263,6 @@ where non-negativity follows directly from Jensen's inequality. Notice an affine
 > $$
 > D_{\mathrm{KL}}(p \parallel q) \ge D_{\mathrm{KL}}(\mathrm{Bern}(\alpha) \parallel \mathrm{Bern}(\beta))
 >   = \alpha \ln\frac{\alpha}{\beta} + (1 - \alpha)\ln\frac{1 - \alpha}{1 - \beta}.
->
 > $$
 >
 > Fix $\alpha \in (0, 1)$ (boundary $\alpha\in\{0,1\}$ is immediate) and define $h(\beta) \triangleq \alpha\ln\frac{\alpha}{\beta} + (1-\alpha)\ln\frac{1-\alpha}{1-\beta} - 2(\alpha-\beta)^2$ on $\beta \in (0, \alpha]$. Clearly $h(\alpha) = 0$, and differentiating with respect to $\beta$ gives
@@ -294,7 +271,6 @@ where non-negativity follows directly from Jensen's inequality. Notice an affine
 > h'(\beta)
 >   = -\frac{\alpha}{\beta} + \frac{1-\alpha}{1-\beta} + 4(\alpha - \beta)
 >   = (\alpha - \beta)\left(4 - \frac{1}{\beta(1 - \beta)}\right) \le 0,
->
 > $$
 >
 > since $\beta(1-\beta) \le \frac{1}{4}$ for all $\beta \in (0, 1)$ by AM–GM. Hence $h(\beta) \ge h(\alpha) = 0$ for all $\beta \le \alpha$, proving **Pinsker's inequality**:
@@ -303,9 +279,7 @@ where non-negativity follows directly from Jensen's inequality. Notice an affine
 > D_{\mathrm{TV}}(p, q) \le \sqrt{\frac{1}{2}D_{\mathrm{KL}}(p \parallel q)}
 >   \qquad\Longleftrightarrow\qquad
 >   D_{\mathrm{KL}}(p \parallel q) \ge 2 D_{\mathrm{TV}}(p, q)^2 = \frac{1}{2}\|p - q\|_1^2.
->
 > $$
->
 >
 > **2. Fenchel–Legendre Variational Bound for $f$-Divergences.** Expressing convex $f$ via its biconjugate $f(u) = \sup_{t \in \mathrm{dom}(f^\dagger)} [ut - f^\dagger(t)]$, where $f^\dagger(t) \triangleq \sup_{u \in \mathbb{R}_+} [ut - f(u)]$, yields the lower bound used in $f$-GANs and neural divergence estimation [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. 26.22–26.25, p. 899):
 >
@@ -313,7 +287,6 @@ where non-negativity follows directly from Jensen's inequality. Notice an affine
 > D_f(p  \|  q)
 >   = \sup_{t:\mathcal{X} \to \mathrm{dom}(f^\dagger)} \Bigl(\mathbb{E}_{p}[t(X)] - \mathbb{E}_{q}[f^\dagger(t(X))]\Bigr)
 >   \ge \sup_{t \in \mathcal{T}} \Bigl(\mathbb{E}_{p}[t(X)] - \mathbb{E}_{q}[f^\dagger(t(X))]\Bigr),
->
 > $$
 >
 > achieved with equality at $t^\star(x) = f'(p(x)/q(x))$. Specializing to KL with a shift $\phi = t - 1$ gives the **Donsker–Varadhan variational representation** $D_{\mathrm{KL}}(p \parallel q) = \sup_{\phi} \mathbb{E}_p[\phi(X)] - \ln \mathbb{E}_q[e^{\phi(X)}]$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 5.45, p. 228).
@@ -327,7 +300,6 @@ where non-negativity follows directly from Jensen's inequality. Notice an affine
 >      - \frac{1}{2}\delta^{\top} \mathbb{E}_{p_\theta}\bigl[\nabla_\theta^2 \ln p_\theta(x)\bigr]\delta + O(\|\delta\|^3) \\
 >   &= \frac{1}{2}\delta^{\top} F(\theta)\delta + O(\|\delta\|^3).
 > \end{aligned}
->
 > $$
 >
 > More generally, any twice-differentiable $f$-divergence satisfies $D_f(p_\theta \| p_{\theta+\delta}) = \frac{f"(1)}{2}\delta^{\top} F(\theta)\delta + O(\|\delta\|^3)$ (matching the $\chi^2$ local limit $D_{\mathrm{KL}}(p\|q) \approx \frac{1}{2}\chi^2(p, q)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ex. 6.2, p. 226)). Furthermore, for exponential family $p_\eta(x) = h(x)\exp(\eta^{\top} \boldsymbol{\phi}(x) - A(\eta))$, $D_{\mathrm{KL}}(p_{\eta_1} \parallel p_{\eta_2}) = A(\eta_2) - A(\eta_1) - (\eta_2 - \eta_1)^{\top} \nabla A(\eta_1) = B_A(\eta_2 \| \eta_1)$ equals the Bregman divergence generated by $A(\eta)$—and KL is the *unique* divergence that belongs simultaneously to both the $f$-divergence and Bregman families [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.1.10.1, p. 234).
@@ -344,23 +316,15 @@ $$
 > **1. Exact Blahut–Arimoto Fixed-Point Equations (Discrete $X, Y, T$).** Introducing Lagrange multipliers $\tilde{\lambda}(x)\bigl(\sum_t e(t|x) - 1\bigr)$ for encoder normalization and differentiating $\mathcal{L}_{\mathrm{IB}}[e]$ with respect to $e(t|x)$:
 > - For the rate term $\mathrm{I}(X; T) = \sum_{x,t} p(x)e(t|x)\ln\frac{e(t|x)}{p(t)}$ with $p(t) = \sum_{x'} p(x')e(t|x')$:
 >
->
 > $$
->
 >     \frac{\partial \mathrm{I}(X; T)}{\partial e(t|x)} = p(x)\ln\frac{e(t|x)}{p(t)} + p(x) - \sum_{x'} p(x')e(t|x')\frac{p(x)}{p(t)} = p(x)\ln\frac{e(t|x)}{p(t)}.
->
->
 > $$
+>
 > - For the relevance term $\mathrm{I}(T; Y) = \sum_{t,y} p(t,y)\ln\frac{p(y|t)}{p(y)}$ with $p(t,y) = \sum_x p(x,y)e(t|x)$ and $p(y|t) = p(t,y)/p(t)$:
 >
->
 > $$
->
 >     \frac{\partial \mathrm{I}(T; Y)}{\partial e(t|x)} = p(x)\sum_{y} p(y|x)\ln\frac{p(y|t)}{p(y)} = -p(x)D_{\mathrm{KL}}(p(y|x) \parallel p(y|t)) + p(x)\sum_y p(y|x)\ln\frac{p(y|x)}{p(y)}.
->
->
 > $$
->
 >
 > Setting $\beta\partial\mathrm{I}(X;T)/\partial e(t|x) - \partial\mathrm{I}(T;Y)/\partial e(t|x) + \tilde{\lambda}(x) = 0$ and normalizing yields the coupled fixed-point system:
 >
@@ -370,9 +334,7 @@ $$
 >   p(t) &= \sum_x p(x)e(t|x),\qquad
 >   p(y|t) = \sum_x \frac{p(x)e(t|x)}{p(t)}p(y|x).
 > \end{aligned}
->
 > $$
->
 >
 > **2. Variational Information Bottleneck (VIB).** When $(X, T, Y)$ are high-dimensional or continuous, exact computation of $p(t)$ and $p(y|t)$ is intractable. Introducing a variational decoder $d_\phi(y|t) \approx p(y|t)$ and variational prior marginal $m(t) \approx p(t)$, non-negativity of KL ($D_{\mathrm{KL}}(p(y|t) \parallel d_\phi(y|t)) \ge 0$ and $D_{\mathrm{KL}}(p(t) \parallel m(t)) \ge 0$) furnishes a tractable lower bound on $\mathrm{I}(T;Y)$ and upper bound on $\mathrm{I}(X;T)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.6.2, Eqs. 5.168–5.181, pp. 253–254):
 >
@@ -381,23 +343,20 @@ $$
 > \mathrm{I}(T; Y) &= \mathbb{E}_{p(t,y)}\!\left[\ln\frac{p(y|t)}{p(y)}\right] \ge \mathbb{E}_{p(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)] + \mathrm{H}(Y), \\
 >   \mathrm{I}(X; T) &= \mathbb{E}_{p(x,t)}\!\left[\ln\frac{e_\theta(t|x)}{p(t)}\right] \le \mathbb{E}_{p(x)}\!\left[D_{\mathrm{KL}}(e_\theta(t|x) \parallel m(t))\right].
 > \end{aligned}
->
 > $$
 >
 > Dropping the constant $\mathrm{H}(Y)$ yields the differentiable **VIB upper bound** optimized by reparameterized SGD:
 >
 > $$
 > \mathcal{L}_{\mathrm{VIB}}(\theta, \phi) = -\mathbb{E}_{p_{\mathcal{D}}(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)] + \beta \mathbb{E}_{p_{\mathcal{D}}(x)}\bigl[D_{\mathrm{KL}}(e_\theta(t|x) \parallel m(t))\bigr].
->
 > $$
->
 >
 > **3. Conditional Entropy Bottleneck (CEB).** Observing that $\mathrm{I}(X; T)$ penalizes predictive information $\mathrm{I}(T; Y)$ inside $X$, CEB instead minimizes the residual nuisance $\mathrm{I}(X; T \mid Y) = \mathrm{I}(X; T) - \mathrm{I}(T; Y)$ via a conditional backward encoder $b_\psi(t|y) \approx p(t|y)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.6.3, Eqs. 5.183–5.190, pp. 255–256):
 >
 > $$
 > \min  \beta\Bigl(\mathbb{E}_{p(x)e_\theta(t|x)}[\ln e_\theta(t|x)] - \mathbb{E}_{p(x,y)e_\theta(t|x)}[\ln b_\psi(t|y)]\Bigr) - \mathbb{E}_{p(x,y)e_\theta(t|x)}[\ln d_\phi(y|t)].
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -429,7 +388,6 @@ For finite discrete spaces $(\mathcal{X}, \mathcal{Y}, \mathcal{T})$, Algorithm 
 >
 >     **break**
 >
->
 > **return** $e^{(k+1)}(t|x), p^{(k+1)}(t), p^{(k+1)}(y|t)$
 
 Each iteration of Algorithm `alg:infotheory:ba_ib` requires $O(\lvert \mathcal{X} \rvert\lvert \mathcal{T} \rvert\lvert \mathcal{Y} \rvert)$ floating-point operations and $O(\lvert \mathcal{X} \rvert\lvert \mathcal{T} \rvert + \lvert \mathcal{T} \rvert\lvert \mathcal{Y} \rvert)$ memory. When $\lvert \mathcal{X} \rvert$ is exponential or continuous, VIB replaces exact enumeration with minibatch stochastic gradient descent on Eq. `(eq:infotheory:vib_loss)` at $O(B \cdot d_T)$ cost per step (batch size $B$, bottleneck dimension $d_T$). Table `tab:infotheory:divergences` compares the major $f$-divergences, their Fenchel conjugates for neural critic estimation, and their support-mismatch geometry.
@@ -437,7 +395,7 @@ Each iteration of Algorithm `alg:infotheory:ba_ib` requires $O(\lvert \mathcal{X
 **Table:** Canonical $f$-divergences $D_f(p  \|  q)$, Fenchel conjugates $f^\dagger(t)$ for variational lower bounds (Eq. `(eq:infotheory:fenchel_fdiv)`), and structural properties [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 2.7.1 & Table 26.2, pp. 55–57, 899) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (App. C.5, p. 460).
 
 | **Divergence** | **Canonical $\tilde{f}(u)$** | **Conjugate $f^\dagger(t)$ & Optimal $t^\star$** | **Sym.** | **Metric** | **Range** | **Support Behavior** |
-| — | — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- | --- |
 | Forward KL $D_{\mathrm{KL}}(p \parallel q)$ | $u\ln u - u + 1$ | $e^t - 1$  $t^\star = \ln(p/q)$ | No | No | $[0,\infty]$ | Zero-avoiding |
 | Reverse KL $D_{\mathrm{KL}}(q \parallel p)$ | $-\ln u + u - 1$ | $-\ln(1-t)$ ($t<1$)  $t^\star = 1 - q/p$ | No | No | $[0,\infty]$ | Zero-forcing |
 | Jensen–Shannon $D_{\mathrm{JS}}(p \parallel q)$ | $\frac{1}{2}[u\ln u - (u+1)\ln\frac{u+1}{2}]$ | $-\frac{1}{2}\ln(2 - e^{2t})$  $t^\star = \frac{1}{2}\ln\frac{2p}{p+q}$ | Yes | $\sqrt{D_{\mathrm{JS}}}$ | $[0,\ln 2]$ | Smooth under disjoint supports |
@@ -484,7 +442,6 @@ Complementing the theoretical geometry, Figure `fig:infotheory:vib_mnist` illust
 >
 > $$
 > h(Y) = h(X) + \mathbb{E}_{p_X}\!\bigl[\ln\lvert \det \boldsymbol{J}_g(X) \rvert\bigr],
->
 > $$
 >
 > so merely rescaling adult human heights from feet to centimeters adds $\log_2 30.48 \approx 4.93$ bits [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 5.2.2 & Fig. 5.5, pp. 236–237).

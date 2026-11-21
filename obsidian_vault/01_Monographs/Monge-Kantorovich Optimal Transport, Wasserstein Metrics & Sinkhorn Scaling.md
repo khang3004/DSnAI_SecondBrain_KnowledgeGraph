@@ -67,12 +67,9 @@ When $n = m$ and $\boldsymbol{a} = \boldsymbol{b} = \frac{1}{n}\boldsymbol{1}_n$
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The three synthesized sources originate in statistical optimization, scalable ML systems, and continuous-time diffusion theory; the table below reconciles their distinct symbol sets into a single consistent monograph notation.
-> 
->
->
 >
 > | **Concept** | **Unified Monograph** | **Source Variants** | **Reconciliation** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Source / target measures | $\mu, \nu \in \mathcal{P}(\mathcal{X})$; weights $\boldsymbol{a}, \boldsymbol{b}$ | $\mu, \nu$ ($\boldsymbol{a}, \boldsymbol{b}$) in Murphy; $P, Q$ ($\boldsymbol{p}, \boldsymbol{q}$) in Ho; $p_{\mathrm{src}}, p_{\mathrm{tgt}}$ in Diffusion Models | Continuous $\mu, \nu$ generalize both densities $p_{\mathrm{src}}, p_{\mathrm{tgt}}$ and discrete $\sum a_i \delta_{\boldsymbol{x}_i}$. |
 > | Support atoms | $\boldsymbol{x}_i, \boldsymbol{y}_j \in \mathbb{R}^d$ | $\boldsymbol{x}_i, \boldsymbol{y}_j$ in Murphy; $\eta_i, \theta_j$ (or $B_i, R_j$) in Ho; $\boldsymbol{x}^{(i)}, \boldsymbol{y}^{(j)}$ in Diffusion Models | Subscripts index support elements; boldface denotes vectors in $\mathbb{R}^d$. |
 > | Coupling & feasible set | $\pi \in \Pi(\mu, \nu)$ (discrete $\boldsymbol{\pi} \in \Pi(\boldsymbol{a}, \boldsymbol{b})$) | $P \in \mathbb{R}_+^{n\times m}$ / $\pi \in \Pi(\mu,\nu)$ in Murphy; $\pi \in \mathcal{P}(\boldsymbol{p},\boldsymbol{q})$ in Ho; $\gamma \in \Gamma(p_{\mathrm{src}},p_{\mathrm{tgt}})$ in Diffusion Models | Avoids collision with probability densities $p, q$ and Euler–Maruyama steps $\gamma$. |
@@ -81,8 +78,6 @@ When $n = m$ and $\boldsymbol{a} = \boldsymbol{b} = \frac{1}{n}\boldsymbol{1}_n$
 > | Dual potentials | $(\boldsymbol{f}, \boldsymbol{g}) \in \mathbb{R}^n \times \mathbb{R}^m$; scaled $(u, v) = (e^{f/\varepsilon}, e^{g/\varepsilon})$ | $(f, g)$ with $\mathrm{diag}(e^{f/\gamma})\boldsymbol{K}\mathrm{diag}(e^{g/\gamma})$ in Murphy; dimensionless $(u, v) = (f/\eta, g/\eta)$ in Ho; $(\Psi, \widehat{\Psi})$ in Diffusion Models | Log-potentials $(f,g)$ carry cost units; dimensionless $(u,v) = (f/\varepsilon, g/\varepsilon)$ are log-scalings. |
 > | Quadratic cost factor | $c(\boldsymbol{x}, \boldsymbol{y}) = \lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$ (for $W_2^2$); $\frac{1}{2}\lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$ in Brenier | Both forms in Murphy; $\lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$ in Ho; $\lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$ and $\frac{\lVert \boldsymbol{y}-\boldsymbol{x} \rVert^2}{2T}$ in Diffusion Models | Factor $\frac{1}{2}$ cancels the $2$ in $\nabla(\frac{1}{2}\lVert \cdot \rVert^2) = \mathrm{Id}$, yielding $T^\star = \nabla u$. |
 >
->
-> 
 > *Synthesized Sources:* [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 2.7.2, 6.8, 26.2.4, pp. 57–58, 314–322, 900–901), [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Slides 16–39, 46–97), and [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Ch. 7, Sec. 7.1–7.5, pp. 191–223).
 
 ## Core Mathematical Derivations & Theorems
@@ -102,7 +97,6 @@ where $\boldsymbol{J}_T(\boldsymbol{x}) = \nabla T(\boldsymbol{x}) \in \mathbb{R
 >
 > $$
 > \mathrm{Monge}_c(\mu, \nu) \triangleq \inf_{T : T_\sharp \mu = \nu} \int_{\mathcal{X}} c\bigl(\boldsymbol{x}, T(\boldsymbol{x})\bigr) \mathrm{d}\mu(\boldsymbol{x}).
->
 > $$
 >
 > Two structural obstructions limit Eq. `(eq:ot:monge)`: (i) *non-existence*—because $T$ cannot split mass at a single point, mapping $\mu = \delta_{\boldsymbol{x}_0}$ to $\nu = \frac{1}{2}\delta_{\boldsymbol{y}_1} + \frac{1}{2}\delta_{\boldsymbol{y}_2}$ ($\boldsymbol{y}_1 \ne \boldsymbol{y}_2$) yields an empty feasible set since $\mu(T^{-1}(\{\boldsymbol{y}_1\})) \in \{0, 1\} \ne \frac{1}{2}$ [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Slide 22); and (ii) *non-convexity*—even when $T_\sharp \mu = \nu$ and $T'_\sharp \mu = \nu$, the convex combination $(\frac{1}{2}T + \frac{1}{2}T')_\sharp \mu \ne \nu$ in general [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.8.2.2, p. 317).
@@ -111,7 +105,6 @@ where $\boldsymbol{J}_T(\boldsymbol{x}) = \nabla T(\boldsymbol{x}) \in \mathbb{R
 >
 > $$
 > \mathrm{OT}_c(\mu, \nu) \triangleq \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} c(\boldsymbol{x}, \boldsymbol{y}) \mathrm{d}\pi(\boldsymbol{x}, \boldsymbol{y}).
->
 > $$
 >
 > Unlike Monge's feasible set, $\Pi(\mu, \nu)$ is always non-empty (containing $\mu \otimes \nu$), convex, and weakly compact on Polish spaces when $c$ is lower semicontinuous and bounded below, guaranteeing attainment of an optimal coupling $\pi^\star$. Every Monge map $T$ induces a deterministic coupling $\pi_T = (\mathrm{Id}, T)_\sharp \mu \in \Pi(\mu, \nu)$ with identical cost, so $\mathrm{OT}_c(\mu, \nu) \le \mathrm{Monge}_c(\mu, \nu)$.
@@ -120,7 +113,6 @@ where $\boldsymbol{J}_T(\boldsymbol{x}) = \nabla T(\boldsymbol{x}) \in \mathbb{R
 >
 > $$
 > \mathrm{OT}_{\boldsymbol{C}}(\boldsymbol{a}, \boldsymbol{b}) = \min_{\boldsymbol{\pi} \in \Pi(\boldsymbol{a}, \boldsymbol{b})} \langle \boldsymbol{C}, \boldsymbol{\pi} \rangle \triangleq \sum_{i=1}^n \sum_{j=1}^m C_{ij}\pi_{ij}.
->
 > $$
 >
 > When $n = m$ and $\boldsymbol{a} = \boldsymbol{b} = \frac{1}{n}\boldsymbol{1}_n$, the Birkhoff–von Neumann theorem characterizes the extreme points of $\Pi(\frac{1}{n}\boldsymbol{1}_n, \frac{1}{n}\boldsymbol{1}_n)$ as the scaled permutation matrices $\{\frac{1}{n}\boldsymbol{P}_\sigma : \sigma \in S_n\}$. Because a linear program attains its minimum at an extreme point of its feasible polytope, Eq. `(eq:ot:discrete_lp)` admits an optimal permutation vertex, proving exact equivalence between Monge assignment and Kantorovich relaxation in the balanced uniform discrete case.
@@ -135,7 +127,6 @@ Because Eq. `(eq:ot:kantorovich)` is an infinite-dimensional linear program, str
 > $$
 > \min_{\boldsymbol{\pi} \ge \boldsymbol{0}} \sup_{\boldsymbol{f} \in \mathbb{R}^n,  \boldsymbol{g} \in \mathbb{R}^m}
 >   \boldsymbol{f}^{\top}\boldsymbol{a} + \boldsymbol{g}^{\top}\boldsymbol{b} + \sum_{i=1}^n \sum_{j=1}^m \bigl(C_{ij} - f_i - g_j\bigr)\pi_{ij}.
->
 > $$
 >
 > By Slater's condition ($\boldsymbol{\pi} = \boldsymbol{a}\boldsymbol{b}^{\top} > \boldsymbol{0}$ lies in the relative interior of the non-negative orthant), strong duality permits swapping $\min$ and $\sup$. Minimizing over $\pi_{ij} \ge 0$ yields $-\infty$ unless $f_i + g_j \le C_{ij}$ for all $(i,j)$, in which case the infimum occurs at $(C_{ij} - f_i - g_j)\pi_{ij} = 0$. Passing to continuous measures $(\mu, \nu)$ gives the **Kantorovich dual** [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eqs. 6.198–6.199, p. 318):
@@ -143,7 +134,6 @@ Because Eq. `(eq:ot:kantorovich)` is an infinite-dimensional linear program, str
 > $$
 > \mathrm{OT}_c(\mu, \nu) = \sup_{\substack{f \in L^1(\mu),  g \in L^1(\nu) \\ f(\boldsymbol{x}) + g(\boldsymbol{y}) \le c(\boldsymbol{x},\boldsymbol{y})}}
 >   \int_{\mathcal{X}} f(\boldsymbol{x}) \mathrm{d}\mu(\boldsymbol{x}) + \int_{\mathcal{X}} g(\boldsymbol{y}) \mathrm{d}\nu(\boldsymbol{y}),
->
 > $$
 >
 > with complementary slackness $f^\star(\boldsymbol{x}) + g^\star(\boldsymbol{y}) = c(\boldsymbol{x}, \boldsymbol{y})$ holding $\pi^\star$-almost everywhere on $\mathrm{supp}(\pi^\star)$.
@@ -153,22 +143,18 @@ Because Eq. `(eq:ot:kantorovich)` is an infinite-dimensional linear program, str
 > $$
 > f^c(\boldsymbol{y}) \triangleq \inf_{\boldsymbol{x} \in \mathcal{X}} \bigl[ c(\boldsymbol{x}, \boldsymbol{y}) - f(\boldsymbol{x}) \bigr], \qquad
 >   g^{\bar{c}}(\boldsymbol{x}) \triangleq \inf_{\boldsymbol{y} \in \mathcal{X}} \bigl[ c(\boldsymbol{x}, \boldsymbol{y}) - g(\boldsymbol{y}) \bigr].
->
 > $$
 >
 > By definition, $f(\boldsymbol{x}) + f^c(\boldsymbol{y}) \le c(\boldsymbol{x},\boldsymbol{y}) \implies f(\boldsymbol{x}) \le (f^c)^{\bar{c}}(\boldsymbol{x})$. Taking the $c$-transform again flips order, giving $(f^{c\bar{c}})^c(\boldsymbol{y}) \le f^c(\boldsymbol{y})$, while substituting $g = f^c$ gives $(f^c)^{\bar{c}}(\boldsymbol{x}) + f^c(\boldsymbol{y}) \le c(\boldsymbol{x},\boldsymbol{y}) \implies f^c(\boldsymbol{y}) \le (f^{c\bar{c}})^c(\boldsymbol{y})$. Hence $f^{c\bar{c}c} = f^c$ identically: double conjugation is idempotent. Restricting to the class of **$c$-concave functions** $\mathcal{F}_c \triangleq \{ f : f = (f^c)^{\bar{c}} \}$ eliminates $g$ and yields the semi-dual problem:
 >
 > $$
 > \mathrm{OT}_c(\mu, \nu) = \sup_{f \in \mathcal{F}_c} \int_{\mathcal{X}} f(\boldsymbol{x}) \mathrm{d}\mu(\boldsymbol{x}) + \int_{\mathcal{X}} f^c(\boldsymbol{y}) \mathrm{d}\nu(\boldsymbol{y}).
->
 > $$
->
 >
 > **3. Wasserstein-$p$ Distance & Kantorovich–Rubinstein Duality ($p = 1$).** For any $p \in [1, \infty)$ and metric $d$, the **Wasserstein-$p$ distance** on $\mathcal{P}_p(\mathcal{X})$ is [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 6.197, p. 317):
 >
 > $$
 > W_{p}(\mu, \nu) \triangleq \left( \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} d(\boldsymbol{x}, \boldsymbol{y})^p \mathrm{d}\pi(\boldsymbol{x}, \boldsymbol{y}) \right)^{1/p}.
->
 > $$
 >
 > Symmetry and definiteness ($W_{p}(\mu, \nu) = 0 \iff \mu = \nu$) follow directly from metric axioms of $d$, while the triangle inequality $W_{p}(\mu, \rho) \le W_{p}(\mu, \nu) + W_{p}(\nu, \rho)$ follows by gluing optimal plans $(\pi_{12}, \pi_{23})$ over the intermediate marginal $\nu$ (the *gluing lemma*) and applying Minkowski's inequality in $L^p$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.8.2.4, p. 317).
@@ -177,7 +163,6 @@ Because Eq. `(eq:ot:kantorovich)` is an infinite-dimensional linear program, str
 >
 > $$
 > W_{1}(\mu, \nu) = \sup_{\lVert f \rVert_{\mathrm{Lip}} \le 1} \left( \int_{\mathcal{X}} f(\boldsymbol{x}) \mathrm{d}\mu(\boldsymbol{x}) - \int_{\mathcal{X}} f(\boldsymbol{y}) \mathrm{d}\nu(\boldsymbol{y}) \right),
->
 > $$
 >
 > identifying $W_{1}(\cdot, \cdot)$ as an Integral Probability Metric (IPM) over the unit Lipschitz ball.
@@ -207,16 +192,13 @@ When the ground cost is quadratic $c(\boldsymbol{x}, \boldsymbol{y}) = \frac{1}{
 > \boldsymbol{y}_0 - \boldsymbol{x}_0 - \nabla f^\star(\boldsymbol{x}_0) = \boldsymbol{0} \implies
 >   \boldsymbol{y}_0 = T^\star(\boldsymbol{x}_0) = \nabla u(\boldsymbol{x}_0), \qquad
 >   u(\boldsymbol{x}) \triangleq \frac{1}{2}\lVert \boldsymbol{x} \rVert_2^2 - f^\star(\boldsymbol{x}).
->
 > $$
 >
 > Unfolding the $c$-transform shows $u^\ast(\boldsymbol{y}) = \sup_{\boldsymbol{x}} \{\langle \boldsymbol{x}, \boldsymbol{y} \rangle - u(\boldsymbol{x})\} = \frac{1}{2}\lVert \boldsymbol{y} \rVert_2^2 - (f^\star)^c(\boldsymbol{y})$, so $u = u^{\ast\ast}$ is convex iff $f^\star$ is $c$-concave. Hence the unique optimal coupling is deterministic, $\pi^\star = (\mathrm{Id}, \nabla u)_\sharp \mu$, and combining $\nabla T^\star = \nabla^2 u \succeq \boldsymbol{0}$ with Eq. `(eq:ot:pushforward_jacobian)` yields the nonlinear **Monge–Ampère PDE** [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 7.2.4, p. 197):
 >
 > $$
 > p_{\mathrm{tgt}}\bigl(\nabla u(\boldsymbol{x})\bigr) \det\nabla^2 u(\boldsymbol{x}) = p_{\mathrm{src}}(\boldsymbol{x}).
->
 > $$
->
 >
 > **2. McCann Displacement Interpolation & Benamou–Brenier Action.** Along $t \in [0, 1]$, particles following $T^\star$ trace constant-velocity straight lines $T_t^\star(\boldsymbol{x}) = (1 - t)\boldsymbol{x} + t T^\star(\boldsymbol{x})$, defining **McCann's displacement interpolation** $p_t^{\mathrm{OT}} = (T_t^\star)_\sharp p_{\mathrm{src}}$—the constant-speed geodesic in $(\mathcal{P}_2(\mathbb{R}^d), W_2)$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (p. 197). Benamou and Brenier (2000) proved that this geodesic minimizes kinetic energy over all Eulerian density–velocity paths $(p_t, \boldsymbol{v}_t)$ solving the continuity equation [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 7.2.3, p. 197):
 >
@@ -226,7 +208,6 @@ When the ground cost is quadratic $c(\boldsymbol{x}, \boldsymbol{y}) = \frac{1}{
 >   &= \inf_{(p_t, \boldsymbol{v}_t)} \int_0^1 \int_{\mathbb{R}^d} \lVert \boldsymbol{v}_t(\boldsymbol{x}) \rVert_2^2  p_t(\boldsymbol{x}) \mathrm{d}\boldsymbol{x} \mathrm{d}t \\
 >   &\quad \text{s.t.} \quad \partial_t p_t + \nabla \cdot (p_t \boldsymbol{v}_t) = 0,   p_0 = p_{\mathrm{src}},   p_1 = p_{\mathrm{tgt}}.
 > \end{aligned}
->
 > $$
 >
 > Optimal pairs satisfy $\boldsymbol{v}_t(\boldsymbol{x}) = \nabla \varphi_t(\boldsymbol{x})$ where $\varphi_t$ solves the Hamilton–Jacobi equation $\partial_t \varphi_t + \frac{1}{2}\lVert \nabla\varphi_t \rVert_2^2 = 0$, guaranteeing zero vorticity and non-crossing trajectories.
@@ -237,7 +218,6 @@ When the ground cost is quadratic $c(\boldsymbol{x}, \boldsymbol{y}) = \frac{1}{
 > W_{2}(p_{\mathrm{src}}, p_{\mathrm{tgt}})^2
 >   \le \mathbb{E}_{(\boldsymbol{X}_0, \boldsymbol{X}_1)\sim \pi}\!\left[\int_0^1 \lVert \Psi'_t(\boldsymbol{X}_0, \boldsymbol{X}_1) \rVert_2^2 \mathrm{d}t\right]
 >   \ge \mathbb{E}_{(\boldsymbol{X}_0, \boldsymbol{X}_1)\sim \pi}\!\left[\lVert \boldsymbol{X}_1 - \boldsymbol{X}_0 \rVert_2^2\right].
->
 > $$
 >
 > However, equality holds only when $\pi$ itself is optimal and trajectories induce a potential flow: in general, neither variance-preserving diffusion PF-ODEs (violating the Lavenant–Santambrogio commutation condition between $\nabla^2\ln p_0$ and $\nabla^2 u$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Eq. 7.5.1, p. 219)) nor iterative potential rectification $\mathrm{Rectify}^\perp$ (Hertrich et al. counterexamples [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (pp. 222–223)) guarantee recovery of the exact $W_2$ Brenier map.
@@ -251,7 +231,6 @@ Solving the unregularized LP `(eq:ot:discrete_lp)` on $n$ points via network sim
 >
 > $$
 > \mathrm{EOT}_\varepsilon(\mu, \nu) \triangleq \inf_{\pi \in \Pi(\mu, \nu)} \int_{\mathcal{X} \times \mathcal{X}} c(\boldsymbol{x}, \boldsymbol{y}) \mathrm{d}\pi(\boldsymbol{x}, \boldsymbol{y}) + \varepsilon D_{\mathrm{KL}}(\pi \parallel \mu \otimes \nu).
->
 > $$
 >
 > On discrete measures `(eq:ot:discrete_measures)`, $D_{\mathrm{KL}}(\boldsymbol{\pi} \parallel \boldsymbol{a}\boldsymbol{b}^{\top}) = -H(\boldsymbol{\pi}) + H(\boldsymbol{a}) + H(\boldsymbol{b})$ where $H(\boldsymbol{\pi}) = -\sum_{i,j} \pi_{ij}\ln \pi_{ij}$ (with $0\ln 0 \triangleq 0$), matching Ho's entropy-penalized form $\min_{\boldsymbol{\pi} \in \Pi(\boldsymbol{a},\boldsymbol{b})} \langle \boldsymbol{C}, \boldsymbol{\pi} \rangle - \varepsilon H(\boldsymbol{\pi})$ up to the constant $\varepsilon(H(\boldsymbol{a}) + H(\boldsymbol{b}))$ [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Eq. (6), Slide 30). Because $-H(\boldsymbol{\pi})$ is $1$-strongly convex in the $L^1$ norm on $\Pi(\boldsymbol{a},\boldsymbol{b})$ (by Pinsker's inequality), $\mathrm{EOT}_\varepsilon(\boldsymbol{a},\boldsymbol{b})$ is $\varepsilon$-strongly convex and admits a *unique* optimizer $\boldsymbol{\pi}_\varepsilon^\star$.
@@ -262,7 +241,6 @@ Solving the unregularized LP `(eq:ot:discrete_lp)` on $n$ points via network sim
 > \mathcal{L}_\varepsilon(\boldsymbol{\pi}, \tilde{\boldsymbol{f}}, \tilde{\boldsymbol{g}})
 >   = \sum_{i,j} C_{ij}\pi_{ij} + \varepsilon \sum_{i,j}\pi_{ij}\!\left(\ln\frac{\pi_{ij}}{a_i b_j} - 1\right) + \varepsilon
 >   + \tilde{\boldsymbol{f}}^{\top}(\boldsymbol{a} - \boldsymbol{\pi}\boldsymbol{1}_m) + \tilde{\boldsymbol{g}}^{\top}(\boldsymbol{b} - \boldsymbol{\pi}^{\top}\boldsymbol{1}_n).
->
 > $$
 >
 > Setting $\partial_{\pi_{ij}}\mathcal{L}_\varepsilon = C_{ij} + \varepsilon\ln\frac{\pi_{ij}}{a_i b_j} - \tilde{f}_i - \tilde{g}_j = 0$ yields the strictly positive Gibbs-scaled coupling
@@ -271,7 +249,6 @@ Solving the unregularized LP `(eq:ot:discrete_lp)` on $n$ points via network sim
 > \pi_{\varepsilon, ij}^\star = a_i b_j \exp\!\left(\frac{\tilde{f}_i^\star + \tilde{g}_j^\star - C_{ij}}{\varepsilon}\right)
 >   = \exp\!\left(\frac{f_i^\star}{\varepsilon}\right) K_{ij} \exp\!\left(\frac{g_j^\star}{\varepsilon}\right), \qquad
 >   K_{ij} \triangleq \exp\!\left(-\frac{C_{ij}}{\varepsilon}\right),
->
 > $$
 >
 > where absorbing marginal logs via $f_i \triangleq \tilde{f}_i + \varepsilon\ln a_i$ and $g_j \triangleq \tilde{g}_j + \varepsilon\ln b_j$ recovers Murphy's matrix-scaling form $\boldsymbol{\pi}_\varepsilon^\star = \mathrm{diag}(e^{\boldsymbol{f}^\star/\varepsilon})\boldsymbol{K}\mathrm{diag}(e^{\boldsymbol{g}^\star/\varepsilon})$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 6.216, p. 322). Substituting Eq. `(eq:ot:gibbs_factorization)` back into Eq. `(eq:ot:eot_lagrangian)` yields the smooth unconstrained concave dual [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 6.215, p. 322) [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Eq. (7), Slide 33):
@@ -280,7 +257,6 @@ Solving the unregularized LP `(eq:ot:discrete_lp)` on $n$ points via network sim
 > \mathrm{EOT}_\varepsilon(\boldsymbol{a}, \boldsymbol{b})
 >   = \max_{\boldsymbol{f} \in \mathbb{R}^n,  \boldsymbol{g} \in \mathbb{R}^m}
 >   \boldsymbol{f}^{\top}\boldsymbol{a} + \boldsymbol{g}^{\top}\boldsymbol{b} - \varepsilon \bigl(e^{\boldsymbol{f}/\varepsilon}\bigr)^{\top} \boldsymbol{K} e^{\boldsymbol{g}/\varepsilon} + \varepsilon\bigl(1 + H(\boldsymbol{a}) + H(\boldsymbol{b})\bigr).
->
 > $$
 >
 > Holding $\boldsymbol{g}$ fixed and setting $\nabla_{\boldsymbol{f}}(\cdot) = \boldsymbol{0}$ (and symmetrically for $\boldsymbol{g}$) yields block-coordinate ascent (**Sinkhorn updates**) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 6.217, p. 322) [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Slide 34):
@@ -288,21 +264,17 @@ Solving the unregularized LP `(eq:ot:discrete_lp)` on $n$ points via network sim
 > $$
 > f_i \leftarrow \varepsilon\ln a_i - \varepsilon\ln\sum_{j=1}^m \exp\!\left(\frac{g_j - C_{ij}}{\varepsilon}\right), \qquad
 >   g_j \leftarrow \varepsilon\ln b_j - \varepsilon\ln\sum_{i=1}^n \exp\!\left(\frac{f_i - C_{ij}}{\varepsilon}\right).
->
 > $$
->
 >
 > **3. Asymptotic Limits ($\varepsilon \to 0^+$ and $\varepsilon \to \infty$) & Dynamic Schrödinger Bridge Equivalence.**
 > - *Zero-temperature limit ($\varepsilon \to 0^+$):* Because $D_{\mathrm{KL}}(\pi \parallel \mu \otimes \nu) \ge 0$, $\mathrm{EOT}_\varepsilon(\mu,\nu) \ge \mathrm{OT}_c(\mu,\nu)$; conversely, comparing against any optimal $\pi^\star$ with finite KL gives $\mathrm{EOT}_\varepsilon(\mu,\nu) \le \mathrm{OT}_c(\mu,\nu) + \varepsilon D_{\mathrm{KL}}(\pi^\star \parallel \mu\otimes\nu)$, establishing $\lim_{\varepsilon\to 0^+}\mathrm{EOT}_\varepsilon(\mu,\nu) = \mathrm{OT}_c(\mu,\nu)$ and weak convergence $\pi_\varepsilon^\star \rightharpoonup \arg\max_{\pi \in \Pi^\star(\mu,\nu)} H(\pi)$ [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Thm. 2(a), Slide 32) [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Thm. 7.3.1, pp. 209–210).
 > - *High-temperature limit ($\varepsilon \to \infty$):* As $\varepsilon \to \infty$, the KL penalty dominates, forcing $\pi_\varepsilon^\star \to \mu \otimes \nu$ and $\mathrm{EOT}_\varepsilon(\mu,\nu) \to \int c \mathrm{d}(\mu \otimes \nu)$ [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Thm. 2(b), Slide 32).
 > - *Schrödinger Bridge (SB) duality:* Minimizing path-space KL $\mathrm{SB}_\varepsilon(\mu, \nu) \triangleq \min_{P : P_0 = \mu,  P_T = \nu} D_{\mathrm{KL}}(P \parallel R^\varepsilon)$ against a Brownian reference $R^\varepsilon$ ($\mathrm{d}\boldsymbol{x}_t = \sqrt{\varepsilon} \mathrm{d}\boldsymbol{w}_t$, transition kernel $-\varepsilon\ln p_T(\boldsymbol{y}|\boldsymbol{x}) = \frac{\lVert \boldsymbol{y}-\boldsymbol{x} \rVert_2^2}{2T} + \text{const}$) is affinely equivalent to $\mathrm{EOT}_\varepsilon(\mu,\nu)$ for $c(\boldsymbol{x},\boldsymbol{y}) = \frac{1}{2T}\lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$, with endpoint law $(X_0, X_T) \sim \pi_\varepsilon^\star$ and controlled drift $\boldsymbol{v}_t^\star(\boldsymbol{x}) = \varepsilon \nabla \ln \Psi(\boldsymbol{x}, t)$ solving the Benamou–Brenier problem via $\Gamma$-convergence as $\varepsilon \to 0^+$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 7.2.3 & 7.3, Eqs. 7.2.9–7.3.1, Thm. 7.3.2, pp. 202–211).
 >
->
 > **4. Debiased Sinkhorn Divergence.** Because entropic smoothing diffuses self-transport mass away from the diagonal $\boldsymbol{x}=\boldsymbol{y}$, $\mathrm{EOT}_\varepsilon(\mu, \mu) > 0$ whenever $\mu$ is non-atomic (in fact $\arg\min_\mu \mathrm{EOT}_\varepsilon(\mu, \nu)$ collapses $\mu$ toward a shrunk mean of $\nu$). Subtracting the symmetric self-transport biases defines the **Sinkhorn divergence** (Genevay et al., 2018; cited in [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (p. 205)):
 >
 > $$
 > S_\varepsilon(\mu, \nu) \triangleq \mathrm{EOT}_\varepsilon(\mu, \nu) - \frac{1}{2}\mathrm{EOT}_\varepsilon(\mu, \mu) - \frac{1}{2}\mathrm{EOT}_\varepsilon(\nu, \nu).
->
 > $$
 >
 > Debiasing restores $S_\varepsilon(\mu, \mu) = 0$, $S_\varepsilon(\mu, \nu) \ge 0$, and convexity/metrization properties for positive-definite Gibbs kernels $K = e^{-C/\varepsilon}$, while smoothly interpolating between $\mathrm{OT}_c(\mu, \nu)$ as $\varepsilon \to 0^+$ and squared MMD ($\frac{1}{2}\lVert \mu - \nu \rVert_{-c}^2$ for quadratic $c(\boldsymbol{x},\boldsymbol{y}) = \lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2$, equal to $\lVert \mathbb{E}_\mu[X] - \mathbb{E}_\nu[Y] \rVert_2^2$) as $\varepsilon \to \infty$, achieving dimension-free $O(n^{-1/2}\varepsilon^{-d/2})$ empirical sample complexity [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.8.3.6, p. 322).
@@ -348,7 +320,7 @@ Under the regularization choice $\varepsilon = \frac{\epsilon}{4\ln(\max\{n,m\})
 **Table:** Computational complexity, statistical sample rates ($N$ i.i.d. samples in $\mathbb{R}^d$), and structural trade-offs across optimal transport solvers [[Source - Optimal Transport in Large-Scale|optimal_transport]] (Slides 18, 28, 37–39, 62, 70, 84) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 6.8.3.5–6.8.3.6, pp. 321–322).
 
 | **Solver / Variant** | **Time Complexity** | **Sample Rate** | **Characteristics & Failure Regimes** |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | 1D Quantile Sort ($d=1$) | $O(n \log n)$ | $O(N^{-1/2})$ | Exact $W_p$ and Monge map $Q_\nu \circ F_\mu$; limited to univariate measures. |
 | Hungarian Assignment | $O(n^3)$ | $O(N^{-1/d})$ | Exact bijection; restricted to $n = m$ with uniform weights. |
 | Network Simplex LP | $O((n+m)nm\ln(n+m)\cdot$   $\ln((n+m)\lVert \boldsymbol{C} \rVert_\infty))$ | $O(N^{-1/d})$ | Exact vertex of $\Pi(\boldsymbol{a},\boldsymbol{b})$ ($O(n^3\ln n)$ for $n=m$); non-parallelizable and non-differentiable. |

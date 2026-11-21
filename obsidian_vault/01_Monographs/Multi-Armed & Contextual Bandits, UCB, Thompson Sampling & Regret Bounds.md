@@ -50,7 +50,6 @@ Unlike supervised learning, which receives *instructive feedback* specifying the
 > \ell_t \triangleq \mathbb{E}_{\boldsymbol{s}_t}\!\left[R(\boldsymbol{s}_t, \pi^*(\boldsymbol{s}_t))\right] - \mathbb{E}_{\boldsymbol{s}_t, a_t \sim \pi_t}\!\left[R(\boldsymbol{s}_t, a_t)\right],
 >   \qquad
 >   L_T \triangleq \mathbb{E}\!\left[\sum_{t=1}^T \ell_t\right] = \sum_{a \in \mathcal{A}} \mathbb{E}[N_{T+1}(a)] \Delta_a,
->
 > $$
 >
 > where the second equality holds in the context-free case with suboptimality gap $\Delta_a \triangleq R^* - R(a)$ and pull count $N_t(a) \triangleq \sum_{\tau=1}^{t-1} \mathbb{I}(a_\tau = a)$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 34.4.7, Eq. 34.70–34.72, pp. 1127–1128).
@@ -61,10 +60,8 @@ Unlike supervised learning, which receives *instructive feedback* specifying the
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > The three source texts adopt distinct symbols and framing conventions for the same underlying decision process. Table `tab:bandit:notation` establishes a unified correspondence.
 >
->
->
 > | **Concept** | **Sutton & Barto** | **Murphy RL** | **Murphy Adv.** | **Unified Monograph Notation** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Number of arms | $k$ | $K$ or $n$ | $K$ | $K$ discrete actions $a \in \{1,\dots,K\}$ |
 > | Action & reward | $A_t, R_t$ | $a_t, r_t$ | $a_t, r_t$ | $a_t \in \mathcal{A}$, $r_t \in \mathbb{R}$ at step $t$ |
 > | True arm value | $q_*(a)$ | $R(a), \mu(a)$ | $R(\boldsymbol{s},a), \mu_a$ | $R(\boldsymbol{s},a) = \mathbb{E}[r_t \mid \boldsymbol{s}, a]$; gap $\Delta_a$ |
@@ -100,14 +97,12 @@ Random $\epsilon$-greedy exploration wastes pulls on clearly inferior arms. The 
 >
 > $$
 > \mathbb{P}\!\left(\mu_a - \hat{\mu}_t(a) \ge \delta\right) \le \exp\!\left(-2n\delta^2\right).
->
 > $$
 >
 > Setting the failure probability to $t^{-4}$ (so that $\sum_{t=1}^\infty t^{-4} < \infty$ via a union bound over $t$) and solving $\exp(-2n\delta^2) = t^{-4}$ gives $\delta_t(a) = \sqrt{\frac{2\ln t}{N_t(a)}}$, yielding the **UCB1** rule (generalized with exploration scale $c > 0$ in [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Eq. 2.10, p. 35) and [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Eq. 34.64, p. 1125)):
 >
 > $$
 > a_t = \arg\max_{a \in \mathcal{A}} \left[ \hat{\mu}_t(a) + c\sqrt{\frac{\ln t}{N_t(a)}} \right], \qquad \text{(pulling any arm with } N_t(a)=0 \text{ first)}.
->
 > $$
 >
 > For any suboptimal arm ($\Delta_a > 0$), UCB1 can pull $a$ more than $\ell = \lceil 8 \ln T / \Delta_a^2 \rceil$ times only if either the optimal arm's UCB underestimates $\mu^*$ or arm $a$'s empirical mean overestimates $\mu_a + \Delta_a/2$, yielding logarithmic problem-dependent regret $L_T \le \sum_{a:\Delta_a>0} \frac{8 \ln T}{\Delta_a} + O(K)$ and minimax regret $O(\sqrt{KT\ln T})$.
@@ -116,7 +111,6 @@ Random $\epsilon$-greedy exploration wastes pulls on clearly inferior arms. The 
 >
 > $$
 > \liminf_{T \to \infty} \frac{L_T}{\ln T} \ge \sum_{a: \Delta_a > 0} \frac{\Delta_a}{D_{\mathrm{KL}}(p_R(a) \parallel p_R(a^*))}.
->
 > $$
 >
 > In the Bayesian UCB variant, one replaces the Hoeffding radius with $c\hat{\sigma}_t(a)$, where $\hat{\sigma}_t(a)$ is the posterior standard deviation (e.g., $\sqrt{\hat{\mu}_t(a)(1-\hat{\mu}_t(a))/N_t(a)}$ for Beta-Bernoulli) [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 7.2.3.3, Eq. 7.27–7.28, p. 179).
@@ -158,14 +152,12 @@ When contexts $\boldsymbol{s}_t$ carry predictive structure across actions via f
 >   \boldsymbol{b}_a = \sum_{\tau < t:  a_\tau = a} r_\tau \boldsymbol{x}_{\tau,a},
 >   \qquad
 >   \hat{\boldsymbol{\theta}}_a = \boldsymbol{A}_a^{-1} \boldsymbol{b}_a.
->
 > $$
 >
 > Under a Gaussian prior $\boldsymbol{\theta}_a \sim \mathcal{N}(\boldsymbol{0}, \lambda^{-1} \boldsymbol{I}_d)$ and noise variance $\sigma^2$, the posterior covariance is $\sigma^2 \boldsymbol{A}_a^{-1}$, so the predictive standard deviation along $\boldsymbol{x}_{t,a}$ is proportional to $\sqrt{\boldsymbol{x}_{t,a}^{\top} \boldsymbol{A}_a^{-1} \boldsymbol{x}_{t,a}}$. **LinUCB** selects
 >
 > $$
 > a_t = \arg\max_{a \in \mathcal{A}} \left[ \hat{\boldsymbol{\theta}}_a^{\top} \boldsymbol{x}_{t,a} + \alpha \sqrt{\boldsymbol{x}_{t,a}^{\top} \boldsymbol{A}_a^{-1} \boldsymbol{x}_{t,a}} \right],
->
 > $$
 >
 > achieving regret $\tilde{O}(d\sqrt{T})$ independent of $K$ when parameters are shared across arms. Conversely, to evaluate a target policy $\pi$ offline from logged data $\{(\boldsymbol{s}_i, a_i, r_i)\}_{i=1}^n$ collected under a stochastic logging policy $\pi_0(a_i \mid \boldsymbol{s}_i) > 0$, one uses **Inverse Propensity Weighting (IPW)** or its variance-reduced **Doubly Robust (DR)** extension:
@@ -175,7 +167,6 @@ When contexts $\boldsymbol{s}_t$ carry predictive structure across actions via f
 >   \hat{V}_{\mathrm{IPW}}(\pi) &= \frac{1}{n}\sum_{i=1}^n \frac{\mathbb{I}(\pi(\boldsymbol{s}_i) = a_i)}{\pi_0(a_i \mid \boldsymbol{s}_i)}  r_i, \\
 >   \hat{V}_{\mathrm{DR}}(\pi) &= \frac{1}{n}\sum_{i=1}^n \left[ \hat{R}(\boldsymbol{s}_i, \pi(\boldsymbol{s}_i)) + \frac{\mathbb{I}(\pi(\boldsymbol{s}_i) = a_i)}{\pi_0(a_i \mid \boldsymbol{s}_i)}\bigl(r_i - \hat{R}(\boldsymbol{s}_i, a_i)\bigr) \right],
 > \end{aligned}
->
 > $$
 >
 > where $\hat{V}_{\mathrm{DR}}$ is unbiased if *either* the reward model $\hat{R}$ or the logging propensity $\pi_0$ is accurately specified.
@@ -195,14 +186,12 @@ $$
 > \frac{\partial \mathbb{E}[r_t]}{\partial H_t(a)}
 >   = \sum_{x \in \mathcal{A}} \bigl(q_*(x) - B_t\bigr) \frac{\partial \pi_t(x)}{\partial H_t(a)}
 >   = \sum_{x \in \mathcal{A}} \pi_t(x) \bigl(q_*(x) - B_t\bigr) \frac{\partial \pi_t(x)/\partial H_t(a)}{\pi_t(x)}.
->
 > $$
 >
 > By the quotient rule on `(eq:bandit:softmax_policy)`, $\frac{\partial \pi_t(x)}{\partial H_t(a)} = \pi_t(x)\bigl(\mathbb{I}_{a=x} - \pi_t(a)\bigr)$. Substituting $B_t = \bar{r}_t$ (running average reward) and replacing $q_*(a_t)$ with $r_t$ (unbiased since $\mathbb{E}[r_t \mid a_t] = q_*(a_t)$) gives
 >
 > $$
 > \frac{\partial \mathbb{E}[r_t]}{\partial H_t(a)} = \mathbb{E}\!\left[(r_t - \bar{r}_t)\bigl(\mathbb{I}_{a=a_t} - \pi_t(a)\bigr)\right],
->
 > $$
 >
 > yielding the stochastic gradient ascent (REINFORCE) update $H_{t+1}(a) = H_t(a) + \alpha(r_t - \bar{r}_t)(\mathbb{I}_{a=a_t} - \pi_t(a))$ for all $a \in \mathcal{A}$.
@@ -236,12 +225,12 @@ Algorithm `alg:bandit:unified` unifies frequentist UCB1, Bayesian Beta-Bernoulli
 >     $a_t \leftarrow \arg\max_{a \in \mathcal{A}} u_{t,a}$
 >
 >   Execute $a_t$ and observe reward $r_t \sim p_R(\cdot \mid \boldsymbol{s}_t, a_t)$
->   $N(a_t) \leftarrow N(a_t) + 1$; \quad $\hat{\mu}(a_t) \leftarrow \hat{\mu}(a_t) + \frac{1}{N(a_t)}\bigl(r_t - \hat{\mu}(a_t)\bigr)$
->   $\alpha_{a_t} \leftarrow \alpha_{a_t} + r_t$, \quad $\beta_{a_t} \leftarrow \beta_{a_t} + (1 - r_t)$
->   $\boldsymbol{A}_{a_t} \leftarrow \boldsymbol{A}_{a_t} + \boldsymbol{x}_{t,a_t}\boldsymbol{x}_{t,a_t}^{\top}$, \quad $\boldsymbol{b}_{a_t} \leftarrow \boldsymbol{b}_{a_t} + r_t \boldsymbol{x}_{t,a_t}$
+>   $N(a_t) \leftarrow N(a_t) + 1$;   $\hat{\mu}(a_t) \leftarrow \hat{\mu}(a_t) + \frac{1}{N(a_t)}\bigl(r_t - \hat{\mu}(a_t)\bigr)$
+>   $\alpha_{a_t} \leftarrow \alpha_{a_t} + r_t$,   $\beta_{a_t} \leftarrow \beta_{a_t} + (1 - r_t)$
+>   $\boldsymbol{A}_{a_t} \leftarrow \boldsymbol{A}_{a_t} + \boldsymbol{x}_{t,a_t}\boldsymbol{x}_{t,a_t}^{\top}$,   $\boldsymbol{b}_{a_t} \leftarrow \boldsymbol{b}_{a_t} + r_t \boldsymbol{x}_{t,a_t}$
 
 | **Algorithm** | **Per-Step Time** | **Memory** | **Regret Bound** | **Context?** | **Key Mechanism** |
-| — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- |
 | $\epsilon$-Greedy (const. $\epsilon$) | $O(K)$ | $O(K)$ | $\Omega(\epsilon T)$ (linear) | No | Uniform random exploration |
 | Optimistic Init. | $O(K)$ | $O(K)$ | $O(1)$ transient | No | High $Q_1(a)$ forces early trials |
 | UCB1 | $O(K)$ | $O(K)$ | $O\!\left(\sum \frac{\ln T}{\Delta_a}\right)$ | No | Frequentist Hoeffding bonus |

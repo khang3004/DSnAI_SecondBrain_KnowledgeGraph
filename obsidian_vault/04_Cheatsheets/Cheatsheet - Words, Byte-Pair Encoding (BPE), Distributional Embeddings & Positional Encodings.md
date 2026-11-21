@@ -48,7 +48,7 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. WHAT — discrete text to \mathbb{R}^{N\times d}**
+- **1. WHAT — discrete text to $\mathbb{R}^{N\times d}$**
   $$
   \boldsymbol{X}_0 = \boldsymbol{E}_{\boldsymbol{w}} + \boldsymbol{P}_{1:N} \in \mathbb{R}^{N\times d}
   $$

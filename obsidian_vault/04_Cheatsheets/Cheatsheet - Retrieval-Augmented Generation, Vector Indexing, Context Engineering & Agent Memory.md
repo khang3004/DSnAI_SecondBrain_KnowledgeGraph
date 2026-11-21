@@ -53,7 +53,7 @@ flowchart LR
 
 - **1. WHAT — token-budgeted context assembly**
   $$
-  C_t=\mathcal{A}(I_{\mathrm{sys}},\mathcal{T},\mathcal{R}_{\mathrm{mem}},\mathcal{K}_{\mathrm{comp}},\mathcal{R}_{\mathrm{rag}},q_t),\quad \lvert C_t \rvert_{\mathrm{tok}}\le B_{\max}-B_{\mathrm{out}}
+  C_t=\mathcal{A}(I_{\mathrm{sys}},\mathcal{T},\mathcal{R}_{\mathrm{mem}},\mathcal{K}_{\mathrm{comp}},\mathcal{R}_{\mathrm{rag}},q_t),  \lvert C_t \rvert_{\mathrm{tok}}\le B_{\max}-B_{\mathrm{out}}
   $$
 - **2. HOW — Sparse vs Dense vs Late Interaction**
 - **3. ANN INDEXING — HNSW vs IVF-PQ**

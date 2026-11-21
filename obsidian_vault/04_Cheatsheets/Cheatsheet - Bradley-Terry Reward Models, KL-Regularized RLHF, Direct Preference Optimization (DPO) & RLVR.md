@@ -56,7 +56,7 @@ flowchart LR
 
 - **1. BRADLEY–TERRY RM, ORM & PRM — scoring completions**
   $$
-  P(y_w\succ y_l\mid x)=\sigma\big(r^*(x,y_w)-r^*(x,y_l)\big),\quad \mathcal{L}_{\mathrm{RM}}(\phi)=-\mathbb{E}\Big[\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)-m\big)\Big]
+  P(y_w\succ y_l\mid x)=\sigma\big(r^*(x,y_w)-r^*(x,y_l)\big),  \mathcal{L}_{\mathrm{RM}}(\phi)=-\mathbb{E}\Big[\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)-m\big)\Big]
   $$
 - **2. KL-REGULARIZED RLHF — closed-form Gibbs optimum**
   $$
@@ -68,7 +68,7 @@ flowchart LR
   $$
 - **4. RLVR, GRPO, RLOO & GSPO — verifiable reasoning**
   $$
-  A_i^{\mathrm{GRPO}}=\frac{r_i-\mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G})},\qquad \rho_i^{\mathrm{GSPO}}(\theta)=\left(\frac{\pi_\theta(y_i\mid x)}{\pi_{\theta_{\mathrm{old}}}(y_i\mid x)}\right)^{1/|y_i|}
+  A_i^{\mathrm{GRPO}}=\frac{r_i-\mathrm{mean}(r_{1:G})}{\mathrm{std}(r_{1:G})},  \rho_i^{\mathrm{GSPO}}(\theta)=\left(\frac{\pi_\theta(y_i\mid x)}{\pi_{\theta_{\mathrm{old}}}(y_i\mid x)}\right)^{1/|y_i|}
   $$
 - **5. KL GEOMETRY & MONTE CARLO ESTIMATORS**
 - **6. PIPELINE COMPARISON — memory vs. exploration**

@@ -45,12 +45,9 @@ $$
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks—Bishop & Bishop [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 13), Prince [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 13), and Murphy [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 23)—adopt different matrix orientations and symbol conventions for node features, neighborhoods, and adjacency operators. Table `tab:gnn:notation` reconciles these into a unified row-major monograph standard.
-> 
->
->
 >
 > | **Concept** | **Bishop & Bishop** | **Prince** | **Murphy / Unified** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Node features | $\boldsymbol{X} \in \mathbb{R}^{N \times D}$ (rows) | $\boldsymbol{X} \in \mathbb{R}^{D \times N}$ (columns) | $\boldsymbol{X} \in \mathbb{R}^{N \times D}$ (row $i$ is $\boldsymbol{x}_i^{\top}$) |
 > | Hidden states | $\boldsymbol{H}^{(l)} \in \mathbb{R}^{N \times d_l}$ | $\boldsymbol{H}_k \in \mathbb{R}^{d_k \times N}$ | $\boldsymbol{H}^{(\ell)} \in \mathbb{R}^{N \times d_\ell}$ (row $i$ is $(\boldsymbol{h}_i^{(\ell)})^{\top}$) |
 > | Adjacency / Affinity | $\boldsymbol{A} \in \{0,1\}^{N \times N}$ | $\boldsymbol{A} \in \{0,1\}^{N \times N}$ | $\boldsymbol{W}$ (Murphy) / $\boldsymbol{A}$ (Unified); $\tilde{\boldsymbol{A}} = \boldsymbol{A} + \boldsymbol{I}_N$ |
@@ -69,15 +66,14 @@ On a regular grid, convolution is diagonalized by the Discrete Fourier Transform
 >
 > $$
 > \boldsymbol{L} = \boldsymbol{D} - \boldsymbol{A}, \qquad \boldsymbol{L}_{\mathrm{sym}} = \boldsymbol{D}^{-1/2}\boldsymbol{L}\boldsymbol{D}^{-1/2} = \boldsymbol{I}_N - \boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2}.
->
 > $$
 >
 > For any signal $\boldsymbol{x} \in \mathbb{R}^N$, the quadratic form (Dirichlet energy) satisfies $\boldsymbol{x}^{\top}\boldsymbol{L}\boldsymbol{x} = \frac{1}{2}\sum_{i,j} A_{ij}(x_i - x_j)^2 \ge 0$, proving $\boldsymbol{L} \succeq 0$ and $\boldsymbol{L}_{\mathrm{sym}} \succeq 0$. Moreover, $\boldsymbol{L}_{\mathrm{sym}}$ admits an orthonormal eigendecomposition $\boldsymbol{L}_{\mathrm{sym}} = \boldsymbol{U}\boldsymbol{\Lambda}\boldsymbol{U}^{\top}$ with eigenvalues $0 = \lambda_1 \le \lambda_2 \le \dots \le \lambda_N \le 2$. Defining the Graph Fourier Transform $\hat{\boldsymbol{x}} = \boldsymbol{U}^{\top}\boldsymbol{x}$ and its inverse $\boldsymbol{x} = \boldsymbol{U}\hat{\boldsymbol{x}}$, a spectral convolution with filter $g_\theta(\boldsymbol{\Lambda}) = \mathrm{diag}(\theta_1,\dots,\theta_N)$ is
 >
 > $$
 > g_\theta \star_G \boldsymbol{x} = \boldsymbol{U}  g_\theta(\boldsymbol{\Lambda})  \boldsymbol{U}^{\top} \boldsymbol{x}.
->
 > $$
+>
 
 Direct evaluation of `(eq:gnn:spectral_conv)` suffers from three bottlenecks: (i) $O(N^3)$ eigendecomposition of $\boldsymbol{L}_{\mathrm{sym}}$, (ii) $O(N^2)$ dense multiplication by $\boldsymbol{U}$, and (iii) non-localized filters that depend on the fixed eigenbasis $\boldsymbol{U}$ and cannot transfer across graphs [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 23, p. 763). ChebNet and the Kipf–Welling Graph Convolutional Network (GCN) resolve all three via polynomial approximation.
 
@@ -86,21 +82,18 @@ Direct evaluation of `(eq:gnn:spectral_conv)` suffers from three bottlenecks: (i
 >
 > $$
 > g_\theta \star_G \boldsymbol{x} \approx \sum_{k=0}^K \theta_k T_k(\tilde{\boldsymbol{L}})\boldsymbol{x}, \qquad \tilde{\boldsymbol{L}} = \frac{2}{\lambda_{\max}}\boldsymbol{L}_{\mathrm{sym}} - \boldsymbol{I}_N.
->
 > $$
 >
 > Setting $K=1$ and $\lambda_{\max} \approx 2$ gives $\tilde{\boldsymbol{L}} = \boldsymbol{L}_{\mathrm{sym}} - \boldsymbol{I}_N = -\boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2}$, so
 >
 > $$
 > g_\theta \star_G \boldsymbol{x} \approx \theta_0 \boldsymbol{x} - \theta_1 \boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2}\boldsymbol{x}.
->
 > $$
 >
 > Constraining $\theta = \theta_0 = -\theta_1$ to prevent overfitting reduces this to $\theta(\boldsymbol{I}_N + \boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2})\boldsymbol{x}$. Because $\boldsymbol{I}_N + \boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2}$ has eigenvalues in $[0, 2]$, repeated application causes numerical instability. Applying the *renormalization trick* $\boldsymbol{I}_N + \boldsymbol{D}^{-1/2}\boldsymbol{A}\boldsymbol{D}^{-1/2} \mapsto \tilde{\boldsymbol{D}}^{-1/2}\tilde{\boldsymbol{A}}\tilde{\boldsymbol{D}}^{-1/2}$ (with $\tilde{\boldsymbol{A}} = \boldsymbol{A} + \boldsymbol{I}_N$ and $\tilde{D}_{ii} = d_i + 1$) and generalizing to $d_\ell$ input channels and $d_{\ell+1}$ output channels yields the Kipf–Welling GCN layer [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 13, p. 416), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 13, p. 258):
 >
 > $$
 > \boldsymbol{H}^{(\ell+1)} = \sigma\!\left(\hat{\boldsymbol{A}}\boldsymbol{H}^{(\ell)}\boldsymbol{W}^{(\ell)}\right), \qquad \hat{\boldsymbol{A}} := \tilde{\boldsymbol{D}}^{-1/2}\tilde{\boldsymbol{A}}\tilde{\boldsymbol{D}}^{-1/2},
->
 > $$
 >
 > where $\boldsymbol{W}^{(\ell)} \in \mathbb{R}^{d_\ell \times d_{\ell+1}}$ is a shared linear projection and $\sigma(\cdot)$ is an element-wise nonlinearity.
@@ -117,7 +110,6 @@ Spatial methods generalize GCNs by defining local neighborhood aggregation direc
 >
 > $$
 > \boldsymbol{m}_i^{(\ell+1)} = \bigoplus_{j \in \mathcal{N}(i)} \psi_{\mathrm{msg}}^{(\ell)}\!\left(\boldsymbol{h}_i^{(\ell)}, \boldsymbol{h}_j^{(\ell)}, \boldsymbol{e}_{ij}\right), \qquad \boldsymbol{h}_i^{(\ell+1)} = \psi_{\mathrm{upd}}^{(\ell)}\!\left(\boldsymbol{h}_i^{(\ell)}, \boldsymbol{m}_i^{(\ell+1)}\right),
->
 > $$
 >
 > where $\bigoplus$ is any differentiable, permutation-invariant multiset operator (e.g., $\sum$, $\mathrm{mean}$, $\max$), and $\psi_{\mathrm{msg}}^{(\ell)}, \psi_{\mathrm{upd}}^{(\ell)}$ are shared learnable functions (typically MLPs or linear maps). For graph-level tasks, a permutation-invariant readout maps $\boldsymbol{H}^{(L)}$ to $\boldsymbol{h}_G = \mathrm{READOUT}(\{\!\!\{\boldsymbol{h}_i^{(L)} : i \in \mathcal{V}\}\!\!\})$.
@@ -142,8 +134,7 @@ $$
 
 ### Expressive Power: 1-Weisfeiler–Lehman (1-WL) Test & GIN Injectivity
 
-{ A fundamental question is which non-isomorphic graphs an MPNN can distinguish [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 13, p. 262). The 1-Weisfeiler–Lehman (1-WL) color-refinement test [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 13, p. 416) iteratively updates discrete node colors via $c_i^{(\ell+1)} = \mathrm{HASH}\big(c_i^{(\ell)}, \{\!\!\{c_j^{(\ell)} : j \in \mathcal{N}(i)\}\!\!\}\big)$.
-}
+ A fundamental question is which non-isomorphic graphs an MPNN can distinguish [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 13, p. 262). The 1-Weisfeiler–Lehman (1-WL) color-refinement test [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 13, p. 416) iteratively updates discrete node colors via $c_i^{(\ell+1)} = \mathrm{HASH}\big(c_i^{(\ell)}, \{\!\!\{c_j^{(\ell)} : j \in \mathcal{N}(i)\}\!\!\}\big)$.
 
 > [!important] 1-WL Expressivity Bound & Graph Isomorphism Network (GIN)
 > **Theorem (Xu et al., 2019; Morris et al., 2019):** Any standard MPNN of the form `(eq:gnn:mpnn)` is at most as powerful as the 1-WL test in distinguishing non-isomorphic graphs: if 1-WL assigns identical color multisets to $G_1$ and $G_2$, then any MPNN produces identical graph representations $\boldsymbol{h}_{G_1} = \boldsymbol{h}_{G_2}$. An MPNN achieves exact 1-WL expressive power if and only if its aggregation, update, and graph-level readout maps are *injective* over countable multisets.
@@ -152,7 +143,6 @@ $$
 >
 > $$
 > \boldsymbol{h}_i^{(\ell+1)} = \mathrm{MLP}^{(\ell)}\!\left((1 + \epsilon^{(\ell)})\boldsymbol{h}_i^{(\ell)} + \sum_{j \in \mathcal{N}(i)} \boldsymbol{h}_j^{(\ell)}\right),
->
 > $$
 >
 > where $\epsilon^{(\ell)}$ is a learnable scalar (or fixed to $0$). Crucially, *mean* and *max* aggregators are strictly less expressive than *sum* aggregation: mean aggregation fails to distinguish multisets with identical proportions but different cardinalities (e.g., $\{\!\!\{a, b\}\!\!\}$ vs. $\{\!\!\{a, a, b, b\}\!\!\}$), while max aggregation collapses multiplicities entirely ($\{\!\!\{a, b\}\!\!\}$ vs. $\{\!\!\{a, a, b\}\!\!\}$) [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 13, p. 416).
@@ -173,7 +163,6 @@ Full-batch GCNs require storing intermediate activations for all $N$ nodes acros
 >     Sample $\mathcal{N}_S^{(\ell)}(i) \leftarrow \mathrm{Sample}(\mathcal{N}(i), q_\ell)$ without replacement
 >     $\mathcal{B}^{(\ell-1)} \leftarrow \mathcal{B}^{(\ell-1)} \cup \mathcal{N}_S^{(\ell)}(i)$
 >
->
 > Initialize $\boldsymbol{h}_i^{(0)} \leftarrow \boldsymbol{x}_i$ for all $i \in \mathcal{B}^{(0)}$
 > **for** $\ell = 0, 1, \dots, L-1$:
 >
@@ -183,7 +172,6 @@ Full-batch GCNs require storing intermediate activations for all $N$ nodes acros
 >     $\boldsymbol{h}_i^{(\ell+1)} \leftarrow \sigma\!\left(\boldsymbol{W}_1^{(\ell)}\boldsymbol{h}_i^{(\ell)} + \boldsymbol{W}_2^{(\ell)}\boldsymbol{m}_i^{(\ell+1)}\right)$
 >     $\boldsymbol{h}_i^{(\ell+1)} \leftarrow \boldsymbol{h}_i^{(\ell+1)} / \max(\lVert \boldsymbol{h}_i^{(\ell+1)} \rVert_2, \varepsilon)$
 >
->
 > **return** $\{\boldsymbol{h}_i^{(L)} : i \in \mathcal{B}\}$
 
 Table `tab:gnn:complexity` summarizes the asymptotic complexity and structural trade-offs across canonical GNN families, assuming $L$ layers, hidden dimension $d$, average degree $\bar{d}$, and $K$-hop or $H$-head parameters.
@@ -191,7 +179,7 @@ Table `tab:gnn:complexity` summarizes the asymptotic complexity and structural t
 **Table:** Complexity and expressive power comparison across graph neural network architectures ($N=|\mathcal{V}|$, $M=|\mathcal{E}|$, $B=|\mathcal{B}|$ batch size, $q$ sample fanout, $H$ attention heads).
 
 | **Architecture** | **Time / Layer** | **Memory** | **Inductive?** | **Edge Weights** | **1-WL Expressivity** |
-| — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- |
 | Spectral CNN | $O(N^3 + N^2 d)$ | $O(N^2 + LNd)$ | No | Fixed eigenbasis | $\le$ 1-WL (fixed graph) |
 | ChebNet ($K$-hop) | $O(K M d + N d^2)$ | $O(L N d + M)$ | Partial | Isotropic $T_k(\tilde{\boldsymbol{L}})$ | $\le$ 1-WL |
 | GCN (Kipf–Welling) | $O(M d + N d^2)$ | $O(L N d + M)$ | Full-graph | Fixed $1/\sqrt{\tilde{d}_i\tilde{d}_j}$ | $<$ 1-WL (mean-like) |

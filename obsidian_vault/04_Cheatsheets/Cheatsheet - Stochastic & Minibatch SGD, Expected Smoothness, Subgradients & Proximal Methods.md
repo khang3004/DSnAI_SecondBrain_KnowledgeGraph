@@ -59,15 +59,15 @@ flowchart LR
   $$
   \mathbb{E}\lVert \boldsymbol{\theta}_t-\boldsymbol{\theta}^* \rVert^2\le(1-\eta\mu)^t D_0^2+\frac{2\eta\sigma_f^*}{\mu}
   $$
-- **3. MINIBATCH SCALING & CRITICAL BATCH b_{\mathrm{crit}}**
+- **3. MINIBATCH SCALING & CRITICAL BATCH $b_{\mathrm{crit}}$**
   $$
-  L_b=\frac{n(b-1)}{b(n-1)}L_f+\frac{n-b}{b(n-1)}L_{\max},\qquad \sigma_b^*=\frac{n-b}{b(n-1)}\sigma_f^*
+  L_b=\frac{n(b-1)}{b(n-1)}L_f+\frac{n-b}{b(n-1)}L_{\max},  \sigma_b^*=\frac{n-b}{b(n-1)}\sigma_f^*
   $$
 - **4. VARIANCE REDUCTION — SVRG & SAGA**
   $$
   \boldsymbol{g}_t^{\mathrm{SVRG}}=\nabla f_{i_t}(\boldsymbol{\theta}_t)-\nabla f_{i_t}(\tilde{\boldsymbol{\theta}})+\nabla f(\tilde{\boldsymbol{\theta}})
   $$
-- **5. SUBGRADIENTS vs. PROXIMAL SPLITTING (f+g)**
+- **5. SUBGRADIENTS vs. PROXIMAL SPLITTING ($f+g$)**
   $$
   \operatorname{prox}_{\eta g}(\boldsymbol{v})=\arg\min_{\boldsymbol{z}}\bigl\{g(\boldsymbol{z})+\tfrac{1}{2\eta}\lVert \boldsymbol{z}-\boldsymbol{v} \rVert_2^2\bigr\}
   $$

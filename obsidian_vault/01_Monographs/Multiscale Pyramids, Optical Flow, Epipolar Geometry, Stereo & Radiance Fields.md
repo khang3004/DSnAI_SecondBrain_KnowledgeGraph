@@ -56,8 +56,9 @@ tags:
 Recovering 3D structure and motion from 2D images requires analyzing visual signals across spatial scales, tracking pixel displacement across time, and inverting projective multi-view geometry [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 23, 39–40, 48). We unify multiscale image pyramids, differential optical flow $(u, v)^{\top}$, homogeneous camera projection $\boldsymbol{P} = \boldsymbol{K}[\boldsymbol{R} \mid \boldsymbol{t}]$, epipolar constraints $(\boldsymbol{x}')^{\top} \boldsymbol{F} \boldsymbol{x} = 0$, and continuous volumetric rendering (NeRF) [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 39–45, pp. 777–935).
 
 > [!info] Cross-Book Notation: Pyramids, Camera Matrices & Epipolar Geometry
+>
 > | **Concept** | **MIT Vision Book** | **Unified Monograph** |
-> | — | — | — |
+> | --- | --- | --- |
 > | Homogeneous 3D/2D Point | $\tilde{\boldsymbol{X}} = [X,Y,Z,1]^{\top}$, $\tilde{\boldsymbol{x}} = [x,y,1]^{\top}$ | $\tilde{\boldsymbol{X}} \in \mathbb{R}^4$, $\tilde{\boldsymbol{x}} \in \mathbb{R}^3$ |
 > | Intrinsics & Extrinsics | $\boldsymbol{K}$ (3x3), $[\boldsymbol{R} \mid \boldsymbol{t}]$ (3x4) | $\boldsymbol{P} = \boldsymbol{K}[\boldsymbol{R} \mid \boldsymbol{t}]$ |
 > | Epipolar Matrices | Essential $\boldsymbol{E}$, Fundamental $\boldsymbol{F}$ | $\boldsymbol{E} = [\boldsymbol{t}]_\times \boldsymbol{R}$, $\boldsymbol{F} = (\boldsymbol{K}')^{-\top}\boldsymbol{E}\boldsymbol{K}^{-1}$ |
@@ -74,7 +75,6 @@ Recovering 3D structure and motion from 2D images requires analyzing visual sign
 >
 > $$
 > I_x u + I_y v + I_t = \nabla I^{\top} \boldsymbol{u} + I_t = 0.
->
 > $$
 >
 > Because one scalar equation cannot determine two unknowns (the *aperture problem*, recovering only motion normal to edges), *Lucas–Kanade* assumes constant flow in a local window $W$ and solves the $2\times 2$ structure-tensor system $(\sum_W \nabla I \nabla I^{\top})\boldsymbol{u} = -\sum_W \nabla I  I_t$, while *Horn–Schunck* minimizes a global smoothness functional $\int [(\nabla I^{\top}\boldsymbol{u}+I_t)^2 + \alpha(\lVert \nabla u \rVert_2^2 + \lVert \nabla v \rVert_2^2)] \mathrm{d}\boldsymbol{x}$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 48, pp. 964–972).
@@ -88,15 +88,14 @@ Recovering 3D structure and motion from 2D images requires analyzing visual sign
 >
 > $$
 > (\hat{\boldsymbol{x}}')^{\top} \boldsymbol{E} \hat{\boldsymbol{x}} = 0 \quad (\boldsymbol{E} = [\boldsymbol{t}]_\times \boldsymbol{R}), \qquad (\tilde{\boldsymbol{x}}')^{\top} \boldsymbol{F} \tilde{\boldsymbol{x}} = 0 \quad (\boldsymbol{F} = (\boldsymbol{K}')^{-\top}\boldsymbol{E}\boldsymbol{K}^{-1}).
->
 > $$
 >
 > In rectified parallel stereo with baseline $B$ and focal length $f$, horizontal disparity $d = x_L - x_R$ yields depth via triangulation: $Z = \frac{f B}{d}$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 40, pp. 804–820). Moving from discrete point clouds to continuous 3D representations, *Neural Radiance Fields (NeRF)* parameterize volume density $\sigma(\boldsymbol{x})$ and view-dependent color $\boldsymbol{c}(\boldsymbol{x}, \boldsymbol{d})$ with an MLP, rendering pixel color along ray $\boldsymbol{r}(t)=\boldsymbol{o}+t\boldsymbol{d}$ via differentiable quadrature [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 45, pp. 921–935):
 >
 > $$
 > \hat{\boldsymbol{C}}(\boldsymbol{r}) = \int_{t_n}^{t_f} T(t) \sigma(\boldsymbol{r}(t)) \boldsymbol{c}(\boldsymbol{r}(t),\boldsymbol{d}) \mathrm{d}t, \qquad T(t) = \exp\!\left(-\int_{t_n}^{t} \sigma(\boldsymbol{r}(s)) \mathrm{d}s\right).
->
 > $$
+>
 
 > [!tip] Why Epipolar Geometry Collapses 2D Search to 1D and Why Pyramids Solve Large Motion
 > In uncalibrated stereo, matching a pixel in image 1 would require searching all $H\times W$ pixels in image 2. The fundamental matrix $\boldsymbol{F}$ restricts the match to the 1D *epipolar line* $\boldsymbol{l}' = \boldsymbol{F}\tilde{\boldsymbol{x}}$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 44, pp. 892–898). Similarly, Taylor-based optical flow fails for displacements larger than  1 pixel; coarse-to-fine Gaussian pyramids shrink large motions into sub-pixel steps at coarse levels before refining at fine levels [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 48, pp. 968–971).

@@ -63,13 +63,13 @@ flowchart LR
   $$
 - **2. KL & CROSS-ENTROPY — M- vs. I-projection**
   $$
-  H_{\mathrm{ce}}(p,q)=\mathrm{H}(p)+D_{\mathrm{KL}}(p \parallel q),\quad D_{\mathrm{KL}}(p \parallel q)\ge 0
+  H_{\mathrm{ce}}(p,q)=\mathrm{H}(p)+D_{\mathrm{KL}}(p \parallel q),  D_{\mathrm{KL}}(p \parallel q)\ge 0
   $$
 - **3. MUTUAL INFO, DPI & FANO — channel limits**
   $$
   \mathrm{I}(X;Y)=D_{\mathrm{KL}}(p(x,y) \parallel p(x)p(y))=\mathrm{H}(X)-\mathrm{H}(X|Y)\ge 0
   $$
-- **4. f-DIVERGENCES & PINSKER — ratio geometry**
+- **4. $f$-DIVERGENCES & PINSKER — ratio geometry**
 - **5. INFORMATION BOTTLENECK — IB, VIB & CEB**
   $$
   \min_{e(t|x)} \mathcal L_{\mathrm{IB}}=\beta \mathrm{I}(X;T)-\mathrm{I}(T;Y)

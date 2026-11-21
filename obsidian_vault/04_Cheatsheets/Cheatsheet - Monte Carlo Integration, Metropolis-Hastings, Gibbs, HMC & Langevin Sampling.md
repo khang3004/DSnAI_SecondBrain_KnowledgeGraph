@@ -45,13 +45,13 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. MONTE CARLO & DIAGNOSTICS (\hat{R}, ESS)**
+- **1. MONTE CARLO & DIAGNOSTICS ($\hat{R}$, ESS)**
   $$
-  \hat\mu_S = \frac{1}{S}\sum_{s=1}^S f(\boldsymbol{\theta}^{(s)}),\qquad \mathrm{Var}[\hat\mu_S] = \frac{\sigma^2}{S} \tau_{\mathrm{int}}
+  \hat\mu_S = \frac{1}{S}\sum_{s=1}^S f(\boldsymbol{\theta}^{(s)}),  \mathrm{Var}[\hat\mu_S] = \frac{\sigma^2}{S} \tau_{\mathrm{int}}
   $$
-- **2. IMPORTANCE SAMPLING & \chi^2 COLLAPSE**
+- **2. IMPORTANCE SAMPLING & $\chi^2$ COLLAPSE**
   $$
-  \hat\mu_{\mathrm{SNIS}}=\sum_{s=1}^S W_s f(\boldsymbol{\theta}^{(s)}),\quad \tilde w_s=\frac{\tilde\pi(\boldsymbol{\theta}^{(s)})}{q(\boldsymbol{\theta}^{(s)})}
+  \hat\mu_{\mathrm{SNIS}}=\sum_{s=1}^S W_s f(\boldsymbol{\theta}^{(s)}),  \tilde w_s=\frac{\tilde\pi(\boldsymbol{\theta}^{(s)})}{q(\boldsymbol{\theta}^{(s)})}
   $$
 - **3. METROPOLIS–HASTINGS & GIBBS**
   $$
@@ -59,11 +59,11 @@ flowchart LR
   $$
 - **4. HMC, SYMPLECTIC LEAPFROG & NUTS**
   $$
-  H(\boldsymbol{\theta},\boldsymbol{r}) = E(\boldsymbol{\theta}) + \tfrac{1}{2}\boldsymbol{r}^{\top}\boldsymbol{M}^{-1}\boldsymbol{r},\qquad E(\boldsymbol{\theta})=-\log\tilde\pi(\boldsymbol{\theta})
+  H(\boldsymbol{\theta},\boldsymbol{r}) = E(\boldsymbol{\theta}) + \tfrac{1}{2}\boldsymbol{r}^{\top}\boldsymbol{M}^{-1}\boldsymbol{r},  E(\boldsymbol{\theta})=-\log\tilde\pi(\boldsymbol{\theta})
   $$
 - **5. LANGEVIN DYNAMICS (ULA, MALA, SGLD)**
   $$
-  \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t + \epsilon \nabla_{\boldsymbol{\theta}}\log\tilde\pi(\boldsymbol{\theta}_t) + \sqrt{2\epsilon} \boldsymbol{\xi}_t,\quad \boldsymbol{\xi}_t\sim\mathcal{N}(\boldsymbol{0},\boldsymbol{I}_d)
+  \boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t + \epsilon \nabla_{\boldsymbol{\theta}}\log\tilde\pi(\boldsymbol{\theta}_t) + \sqrt{2\epsilon} \boldsymbol{\xi}_t,  \boldsymbol{\xi}_t\sim\mathcal{N}(\boldsymbol{0},\boldsymbol{I}_d)
   $$
 - **6. SAMPLER SCALING COMPARISON**
 

@@ -51,7 +51,7 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. FACTORIZATION MACHINES (O(kd))**
+- **1. FACTORIZATION MACHINES ($O(kd)$)**
   $$
   \hat y_{\mathrm{FM}}=w_0+\sum_i w_i x_i + \frac{1}{2}\sum_{f=1}^k\Big[\big(\sum_i v_{i,f}x_i\big)^2-\sum_i v_{i,f}^2 x_i^2\Big]
   $$
@@ -61,13 +61,13 @@ flowchart LR
   $$
 - **3. TWO-TOWER RETRIEVAL & LOG-Q CORRECTION**
   $$
-  s(u,i)=\frac{\langle u(\boldsymbol{x}_u), v(\boldsymbol{x}_i) \rangle}{\tau},\quad s_{\mathrm{corr}}(u,j)=s(u,j)-\log Q(j)
+  s(u,i)=\frac{\langle u(\boldsymbol{x}_u), v(\boldsymbol{x}_i) \rangle}{\tau},  s_{\mathrm{corr}}(u,j)=s(u,j)-\log Q(j)
   $$
 - **4. MULTI-STAGE PRODUCTION FUNNEL**
 - **5. SEQUENTIAL RS & COLD-START**
 - **6. RANKING METRICS — NDCG@K & CALIBRATION**
   $$
-  \mathrm{DCG}@K=\sum_{r=1}^K \frac{2^{\mathrm{rel}_r}-1}{\log_2(r+1)},\qquad \mathrm{NDCG}@K=\frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K}
+  \mathrm{DCG}@K=\sum_{r=1}^K \frac{2^{\mathrm{rel}_r}-1}{\log_2(r+1)},  \mathrm{NDCG}@K=\frac{\mathrm{DCG}@K}{\mathrm{IDCG}@K}
   $$
 
 ## Related Sources

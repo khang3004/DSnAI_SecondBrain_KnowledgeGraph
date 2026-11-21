@@ -51,7 +51,7 @@ flowchart LR
   $$
 - **2. HORIZON DECAY — `pass@k` vs. `pass^ k`**
   $$
-  \mathrm{pass@}k=1-(1-p_\tau)^k,\quad \mathrm{pass^}k=p_\tau^k=p_{\mathrm{step}}^{kH}
+  \mathrm{pass@}k=1-(1-p_\tau)^k,  \mathrm{pass^}k=p_\tau^k=p_{\mathrm{step}}^{kH}
   $$
 - **3. LLM-AS-A-JUDGE & HITL ALIGNMENT**
   $$
@@ -59,7 +59,7 @@ flowchart LR
   $$
 - **4. SLICING, SIMPSON'S PARADOX & DEFERRAL**
   $$
-  \tau_{\mathrm{conf}}(r_a)=1-\frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}(r_a)}\quad\bigl(C_{\mathrm{err}}\gg C_{\mathrm{HITL}}\Rightarrow\tau_{\mathrm{conf}}\to 1\bigr)
+  \tau_{\mathrm{conf}}(r_a)=1-\frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}(r_a)} \bigl(C_{\mathrm{err}}\gg C_{\mathrm{HITL}}\Rightarrow\tau_{\mathrm{conf}}\to 1\bigr)
   $$
 - **5. EVALUATOR & GUARDRAIL STACK**
 - **6. OPENTELEMETRY & AGENTOPS FLYWHEEL**

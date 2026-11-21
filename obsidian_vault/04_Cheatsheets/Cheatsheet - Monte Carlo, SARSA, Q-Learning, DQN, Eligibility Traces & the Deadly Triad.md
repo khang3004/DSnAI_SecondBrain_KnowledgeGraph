@@ -56,7 +56,7 @@ flowchart LR
   \delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)
   $$
 - **2. CONTROL — SARSA, Q-Learning & Double Q**
-- **3. N-STEP & TD(\lambda) — eligibility traces**
+- **3. N-STEP & TD($\lambda$) — eligibility traces**
   $$
   G_t^\lambda = (1-\lambda)\sum_{n=1}^\infty \lambda^{n-1} G_{t:t+n}
   $$

@@ -78,8 +78,9 @@ Here we also invoke the Law of Total Probability for any countable measurable pa
 Because the five primary references adopt distinct conventions for $\sigma$-algebras, densities, precision forms, exponential-family symbols, and Jacobian transforms, Table `tab:probdist:notation` establishes a unified notation used throughout this monograph.
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | **Concept** | **Unified Symbol** | **Source-Book Conventions Reconciled** |
-> | — | — | — |
+> | --- | --- | --- |
 > | Probability space & CDF | $(\Omega,\mathcal{F},P)$, $p(\boldsymbol{x})$, $F_{\boldsymbol{X}}(\boldsymbol{x})$ | Chan [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE]] (pp. 58–76, 180) uses $(\Omega,\mathcal{F},P)$, $f_X(x)$, and $F_X(x)$; MML [[Source - Mathematics for Machine Learning]] (pp. 172–175) writes $(\Omega,\mathcal{A},\mathcal{P})$; Murphy [[Source - Probabilistic Machine Learning]] (pp. 2–7) writes $(\Omega,\mathcal{F},P)$ with uppercase $P_X(x)$ for CDF; Bishop [[Source - Foundations]] (pp. 25–41) omits $(\Omega,\mathcal{F},P)$ and denotes PDF/CDF by $p(x)/P(x)$. |
 > | [3pt]   MVN moment vs. precision form | $\mathcal{N}(\boldsymbol{\mu},\boldsymbol{\Sigma})$, $\boldsymbol{\Lambda}=\boldsymbol{\Sigma}^{-1}$, $(\boldsymbol{h},\boldsymbol{K})$ | Bishop [[Source - Foundations]] (pp. 71–83) uses block $(\boldsymbol{x}_a,\boldsymbol{x}_b)$ and precision $\boldsymbol{\Lambda}=\boldsymbol{\Sigma}^{-1}$; MML [[Source - Mathematics for Machine Learning]] (pp. 197–204) partitions $(\boldsymbol{x},\boldsymbol{y})$; Chan [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE]] (pp. 290–294) writes $\mathrm{Gaussian}(\boldsymbol{\mu},\boldsymbol{\Sigma})$; Murphy [[Source - Probabilistic Machine Learning]] (pp. 22–32) partitions $(\boldsymbol{x}_1,\boldsymbol{x}_2)$ and introduces the canonical potential $(g,\boldsymbol{h},\boldsymbol{K})$ with $\boldsymbol{K}=\boldsymbol{\Sigma}^{-1}$ and $\boldsymbol{h}=\boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}$. |
 > | [3pt]   Canonical exponential family | $h(\boldsymbol{x})\exp\bigl(\langle \boldsymbol{\eta}, \boldsymbol{T}(\boldsymbol{x}) \rangle$ $\qquad - A(\boldsymbol{\eta})\bigr)$ | Murphy [[Source - Probabilistic Machine Learning]] (pp. 93–97) [[Source - Probabilistic Machine Learning]] (pp. 34–41) uses $(\boldsymbol{\eta}, \boldsymbol{T}(\boldsymbol{x}), A(\boldsymbol{\eta}))$ with mean parameters $\boldsymbol{m}=\nabla A(\boldsymbol{\eta})$; MML [[Source - Mathematics for Machine Learning]] (pp. 210–213) uses $(\boldsymbol{\theta},\boldsymbol{\phi}(\boldsymbol{x}),A(\boldsymbol{\theta}))$ and prior hyperparameters $\boldsymbol{\gamma}$; Bishop [[Source - Foundations]] (pp. 94–97) writes $h(\boldsymbol{x})g(\boldsymbol{\eta})\exp(\boldsymbol{\eta}^{\top}\boldsymbol{u}(\boldsymbol{x}))$ with $g(\boldsymbol{\eta}) = \exp(-A(\boldsymbol{\eta}))$. |
@@ -98,7 +99,6 @@ Because the five primary references adopt distinct conventions for $\sigma$-alge
 >   = P(\boldsymbol{X} \in B)
 >   = P(\boldsymbol{Y} \in \boldsymbol{f}(B))
 >   = \int_{\boldsymbol{f}(B)} p_{\boldsymbol{y}}(\boldsymbol{y}) \mathrm{d}\boldsymbol{y}.
->
 > $$
 >
 > Applying the multivariable change-of-variables formula $\mathrm{d}\boldsymbol{x} = \lvert \det \boldsymbol{J}_{\boldsymbol{f}^{-1}}(\boldsymbol{y}) \rvert \mathrm{d}\boldsymbol{y}$, where $(\boldsymbol{J}_{\boldsymbol{f}^{-1}}(\boldsymbol{y}))_{ij} = \frac{\partial x_i}{\partial y_j}$, and shrinking $B$ to a neighborhood around $\boldsymbol{x}$ yields the pushforward density [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 2.4, pp. 42–45) [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 6.7, pp. 214–220) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 2.6, pp. 43–45):
@@ -107,7 +107,6 @@ Because the five primary references adopt distinct conventions for $\sigma$-alge
 > p_{\boldsymbol{y}}(\boldsymbol{y})
 >   = p_{\boldsymbol{x}}\!\left(\boldsymbol{f}^{-1}(\boldsymbol{y})\right) \lvert \det \boldsymbol{J}_{\boldsymbol{f}^{-1}}(\boldsymbol{y}) \rvert
 >   = p_{\boldsymbol{x}}(\boldsymbol{x}) \lvert \det \boldsymbol{J}_{\boldsymbol{f}}(\boldsymbol{x}) \rvert^{-1}.
->
 > $$
 >
 > In one dimension ($D=1$), if $X$ has strictly increasing continuous CDF $F_X$, choosing $y = F_X(x)$ gives $\frac{\mathrm{d}x}{\mathrm{d}y} = \bigl(F_X'(x)\bigr)^{-1} = p_X(x)^{-1}$, hence $p_Y(y) = p_X(x)\cdot p_X(x)^{-1} = 1$ on $[0,1]$: the *probability integral transform (PIT)* $F_X(X) \sim \mathcal{U}(0,1)$, and conversely $F_X^{-1}(U) \sim p_X$ for $U \sim \mathcal{U}(0,1)$.
@@ -121,7 +120,6 @@ Because the five primary references adopt distinct conventions for $\sigma$-alge
 > $$
 > M_{\boldsymbol{X}}(\boldsymbol{s}) = \mathbb{E}\!\left[e^{\langle \boldsymbol{s}, \boldsymbol{X} \rangle}\right], \qquad
 >   K_{\boldsymbol{X}}(\boldsymbol{s}) = \log M_{\boldsymbol{X}}(\boldsymbol{s}), \qquad \boldsymbol{s} \in \mathcal{U}.
->
 > $$
 >
 > Differentiating under the integral sign (justified by dominated convergence on $\mathcal{U}^{\circ}$) yields raw moments from $M_X$ and cumulants $\kappa_k$ from $K_X$:
@@ -133,14 +131,12 @@ Because the five primary references adopt distinct conventions for $\sigma$-alge
 >   \kappa_2 &= K_X"(0) = \mathrm{Var}[X], &
 >   \kappa_4 &= K_X^{(4)}(0) = \mathbb{E}[(X-\mu)^4] - 3\sigma^4.
 > \end{aligned}
->
 > $$
 >
 > If $X_1, \dots, X_N$ are independent and $Z = \sum_{n=1}^N X_n$, factorization of $\mathbb{E}[e^{s\sum_n X_n}]$ converts convolution of densities into algebraic multiplication of MGFs and *addition* of CGFs [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Thm. 6.2–6.6, pp. 327–329):
 >
 > $$
 > M_Z(s) = \prod_{n=1}^N M_{X_n}(s) \implies K_Z(s) = \sum_{n=1}^N K_{X_n}(s).
->
 > $$
 >
 > For $\boldsymbol{X} \sim \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$, completing the square in $\mathbb{E}[e^{\langle \boldsymbol{s}, \boldsymbol{X} \rangle}]$ gives $M_{\boldsymbol{X}}(\boldsymbol{s}) = \exp\!\bigl(\langle \boldsymbol{s}, \boldsymbol{\mu} \rangle + \tfrac{1}{2}\boldsymbol{s}^{\top}\boldsymbol{\Sigma}\boldsymbol{s}\bigr)$ and $K_{\boldsymbol{X}}(\boldsymbol{s}) = \langle \boldsymbol{s}, \boldsymbol{\mu} \rangle + \tfrac{1}{2}\boldsymbol{s}^{\top}\boldsymbol{\Sigma}\boldsymbol{s}$; every cumulant of order $k \ge 3$ vanishes identically, proving closure of Gaussians under independent summation and affine maps.
@@ -166,7 +162,6 @@ as also analyzed via Mahalanobis geometry in [[Source - Probabilistic Machine Le
 > \boldsymbol{\mu} = \begin{bmatrix}\boldsymbol{\mu}_a \\ \boldsymbol{\mu}_b\end{bmatrix}, \qquad
 >   \boldsymbol{\Sigma} = \begin{bmatrix}\boldsymbol{\Sigma}_{aa} & \boldsymbol{\Sigma}_{ab} \\ \boldsymbol{\Sigma}_{ba} & \boldsymbol{\Sigma}_{bb}\end{bmatrix}, \qquad
 >   \boldsymbol{\Lambda} = \boldsymbol{\Sigma}^{-1} = \begin{bmatrix}\boldsymbol{\Lambda}_{aa} & \boldsymbol{\Lambda}_{ab} \\ \boldsymbol{\Lambda}_{ba} & \boldsymbol{\Lambda}_{bb}\end{bmatrix}.
->
 > $$
 >
 > Block-LDU factorization of $\boldsymbol{\Sigma}$ isolates the Schur complement $\boldsymbol{\Sigma}/\boldsymbol{\Sigma}_{bb} := \boldsymbol{\Sigma}_{aa} - \boldsymbol{\Sigma}_{ab}\boldsymbol{\Sigma}_{bb}^{-1}\boldsymbol{\Sigma}_{ba} \succ \boldsymbol{0}$:
@@ -176,7 +171,6 @@ as also analyzed via Mahalanobis geometry in [[Source - Probabilistic Machine Le
 >   = \begin{bmatrix}\boldsymbol{I} & \boldsymbol{\Sigma}_{ab}\boldsymbol{\Sigma}_{bb}^{-1} \\ \boldsymbol{0} & \boldsymbol{I}\end{bmatrix}
 >     \begin{bmatrix}\boldsymbol{\Sigma}/\boldsymbol{\Sigma}_{bb} & \boldsymbol{0} \\ \boldsymbol{0} & \boldsymbol{\Sigma}_{bb}\end{bmatrix}
 >     \begin{bmatrix}\boldsymbol{I} & \boldsymbol{0} \\ \boldsymbol{\Sigma}_{bb}^{-1}\boldsymbol{\Sigma}_{ba} & \boldsymbol{I}\end{bmatrix}.
->
 > $$
 >
 > Taking inverses and determinants immediately establishes $\lvert \boldsymbol{\Sigma} \rvert = \lvert \boldsymbol{\Sigma}_{bb} \rvert\lvert \boldsymbol{\Sigma}/\boldsymbol{\Sigma}_{bb} \rvert$ and the block-precision identities:
@@ -191,7 +185,6 @@ as also analyzed via Mahalanobis geometry in [[Source - Probabilistic Machine Le
 >   &= (\boldsymbol{\Sigma}_{aa} - \boldsymbol{\Sigma}_{ab}\boldsymbol{\Sigma}_{bb}^{-1}\boldsymbol{\Sigma}_{ba})^{-1}, \qquad
 >   \boldsymbol{\Lambda}_{ab} = -\boldsymbol{\Lambda}_{aa}\boldsymbol{\Sigma}_{ab}\boldsymbol{\Sigma}_{bb}^{-1}.
 > \end{aligned}
->
 > $$
 >
 > Substituting `(eq:probdist:precision_blocks)` into the Mahalanobis quadratic form decomposes the joint exponent cleanly into a conditional quadratic term in $\boldsymbol{x}_a$ and a marginal quadratic term in $\boldsymbol{x}_b$:
@@ -208,7 +201,6 @@ as also analyzed via Mahalanobis geometry in [[Source - Probabilistic Machine Le
 >   &= \boldsymbol{\Lambda}_{aa}^{-1}
 >    = \boldsymbol{\Sigma}_{aa} - \boldsymbol{\Sigma}_{ab}\boldsymbol{\Sigma}_{bb}^{-1}\boldsymbol{\Sigma}_{ba}.
 > \end{aligned}
->
 > $$
 >
 > Consequently, $p(\boldsymbol{x}_a \mid \boldsymbol{x}_b) = \mathcal{N}(\boldsymbol{x}_a \mid \boldsymbol{\mu}_{a\mid b}, \boldsymbol{\Sigma}_{a\mid b})$ (with precision $\boldsymbol{\Lambda}_{a\mid b} = \boldsymbol{\Lambda}_{aa}$) and integrating out $\boldsymbol{x}_a$ yields the marginal $p(\boldsymbol{x}_b) = \mathcal{N}(\boldsymbol{x}_b \mid \boldsymbol{\mu}_b, \boldsymbol{\Sigma}_{bb})$ (by symmetry, $p(\boldsymbol{x}_a) = \mathcal{N}(\boldsymbol{x}_a \mid \boldsymbol{\mu}_a, \boldsymbol{\Sigma}_{aa})$). Furthermore, for a linear-Gaussian system $p(\boldsymbol{z}) = \mathcal{N}(\boldsymbol{\mu}_z, \boldsymbol{\Sigma}_z)$ and $p(\boldsymbol{y}\mid\boldsymbol{z}) = \mathcal{N}(\boldsymbol{W}\boldsymbol{z}+\boldsymbol{b}, \boldsymbol{\Sigma}_y)$, completing the square in $\boldsymbol{z}$ (equivalently applying `(eq:probdist:schur_cond)` to the joint vector $[\boldsymbol{z}^{\top}, \boldsymbol{y}^{\top}]^{\top}$) yields the exact Gaussian Bayes posterior $p(\boldsymbol{z}\mid\boldsymbol{y}) = \mathcal{N}(\boldsymbol{\mu}_{z\mid y}, \boldsymbol{\Sigma}_{z\mid y})$:
@@ -216,8 +208,8 @@ as also analyzed via Mahalanobis geometry in [[Source - Probabilistic Machine Le
 > $$
 > \boldsymbol{\Sigma}_{z\mid y}^{-1} = \boldsymbol{\Sigma}_z^{-1} + \boldsymbol{W}^{\top} \boldsymbol{\Sigma}_y^{-1} \boldsymbol{W}, \qquad
 >   \boldsymbol{\mu}_{z\mid y} = \boldsymbol{\Sigma}_{z\mid y}\bigl(\boldsymbol{W}^{\top} \boldsymbol{\Sigma}_y^{-1}(\boldsymbol{y}-\boldsymbol{b}) + \boldsymbol{\Sigma}_z^{-1} \boldsymbol{\mu}_z\bigr).
->
 > $$
+>
 
 > [!note] Source Figure
 > *Figure:* Geometric comparison of MVN marginalization and Schur-complement conditioning [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 3.2, Fig. 3.5, p. 82). (a) Joint density contours $p(x_a, x_b)$ sliced along $x_b = 0.7$. (b) Conditional density $p(x_a \mid x_b = 0.7)$ has a shifted mean $\mu_{a\mid b}$ and strictly smaller variance $\Sigma_{a\mid b} = \Sigma_{aa} - \Sigma_{ab}^2/\Sigma_{bb} \le \Sigma_{aa}$ than the marginal $p(x_a)$. (`deep_learning_foundations_concepts_p101_fig1.png`)
@@ -250,7 +242,6 @@ as developed in [[Source - Mathematics for Machine Learning|mathematics_machine_
 >    = \mathrm{Cov}_{p(\cdot\mid\boldsymbol{\eta})}[\boldsymbol{T}(\boldsymbol{x})]
 >    = \boldsymbol{I}_F(\boldsymbol{\eta}) \succeq \boldsymbol{0},
 > \end{aligned}
->
 > $$
 >
 > where $\boldsymbol{I}_F(\boldsymbol{\eta}) = \mathbb{E}[-\nabla^2_{\boldsymbol{\eta}}\log p(\boldsymbol{x}\mid\boldsymbol{\eta})]$ is the Fisher information matrix (strictly positive definite $\nabla^2 A \succ \boldsymbol{0}$ whenever the representation is minimal). Moreover, the CGF of $\boldsymbol{T}(\boldsymbol{x})$ is simply $K_{\boldsymbol{T}}(\boldsymbol{s}) = \log \mathbb{E}[\exp(\langle \boldsymbol{s}, \boldsymbol{T}(\boldsymbol{x}) \rangle)] = A(\boldsymbol{\eta}+\boldsymbol{s}) - A(\boldsymbol{\eta})$. Thus $\boldsymbol{m} = \nabla A(\boldsymbol{\eta})$ maps $\Omega_\eta^\circ$ bijectively onto the interior $\mathcal{M}^\circ$ of the realizable mean-parameter set, with inverse $\boldsymbol{\eta} = \nabla A^*(\boldsymbol{m})$ given by the Fenchel–Legendre conjugate $A^*(\boldsymbol{m}) = \sup_{\boldsymbol{\eta}\in\Omega_\eta}\bigl(\langle \boldsymbol{\eta}, \boldsymbol{m} \rangle - A(\boldsymbol{\eta})\bigr) = -\mathrm{H}(p_{\boldsymbol{\eta}(\boldsymbol{m})}) + \mathbb{E}[\log h(\boldsymbol{x})]$.
@@ -281,7 +272,6 @@ Applying `(eq:probdist:grad_A)` via matrix calculus ($\frac{\partial \log\lvert 
 > \nabla_{\boldsymbol{\eta}} A(\hat{\boldsymbol{\eta}}_{\mathrm{MLE}})
 >   = \mathbb{E}_{p(\cdot\mid\hat{\boldsymbol{\eta}}_{\mathrm{MLE}})}[\boldsymbol{T}(\boldsymbol{x})]
 >   = \frac{1}{N}\sum_{n=1}^N \boldsymbol{T}(\boldsymbol{x}_n) =: \bar{\boldsymbol{t}}_{\mathcal{D}}.
->
 > $$
 >
 > Under fixed-support regularity, the Pitman–Koopman–Darmois theorem states that only exponential families admit a fixed-dimension sufficient statistic $\sum_{n=1}^N \boldsymbol{T}(\boldsymbol{x}_n)$ independent of $N$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 6.6.2, pp. 209–210); dually, maximizing differential entropy $-\int p\log p \mathrm{d}\nu$ subject to $\mathbb{E}_p[\boldsymbol{T}(\boldsymbol{x})] = \bar{\boldsymbol{t}}$ uniquely yields `(eq:probdist:exp_family)` (with $h(\boldsymbol{x})=1$) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 3.4.4, p. 97). Finally, for any exponential-family likelihood `(eq:probdist:exp_family)`, the canonical *conjugate prior* parameterized by $(\boldsymbol{\tau}_0, \nu_0)$ is [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Ch. 3.2.5, pp. 96–98) [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 6.6.1, pp. 205–208):
@@ -289,7 +279,6 @@ Applying `(eq:probdist:grad_A)` via matrix calculus ($\frac{\partial \log\lvert 
 > $$
 > p(\boldsymbol{\eta} \mid \boldsymbol{\tau}_0, \nu_0)
 >   = \exp\!\bigl(\langle \boldsymbol{\eta}, \boldsymbol{\tau}_0 \rangle - \nu_0 A(\boldsymbol{\eta}) - \psi(\boldsymbol{\tau}_0, \nu_0)\bigr),
->
 > $$
 >
 > where $\exp(\psi(\boldsymbol{\tau}_0, \nu_0)) = \int_{\Omega_\eta} \exp(\langle \boldsymbol{\eta}, \boldsymbol{\tau}_0 \rangle - \nu_0 A(\boldsymbol{\eta})) \mathrm{d}\boldsymbol{\eta}$. Multiplying by $p(\mathcal{D}\mid\boldsymbol{\eta}) = \bigl(\prod_{n=1}^N h(\boldsymbol{x}_n)\bigr)\exp(\langle \boldsymbol{\eta}, N\bar{\boldsymbol{t}}_{\mathcal{D}} \rangle - N A(\boldsymbol{\eta}))$ yields a posterior in the exact same family and a closed-form log marginal likelihood:
@@ -301,7 +290,6 @@ Applying `(eq:probdist:grad_A)` via matrix calculus ($\frac{\partial \log\lvert 
 >   \nu_N &= \nu_0 + N, \\
 >   \log p(\mathcal{D}) &= \sum_{n=1}^N \log h(\boldsymbol{x}_n) + \psi(\boldsymbol{\tau}_N, \nu_N) - \psi(\boldsymbol{\tau}_0, \nu_0).
 > \end{aligned}
->
 > $$
 >
 > Canonical instances include Beta–Bernoulli ($T(x)=x$), Dirichlet–Categorical ($T(\boldsymbol{x})=\boldsymbol{x}$ one-hot), Gamma–Poisson/Exponential, and Normal–Inverse-Wishart (NIW)–MVN.
@@ -321,13 +309,13 @@ In practice, computing Schur-complement Gaussian conditionals or conjugate expon
 >   $\boldsymbol{\Sigma}_{a\mid b} \gets \tfrac{1}{2}\!\left((\boldsymbol{\Sigma}_{aa} - \boldsymbol{K}\boldsymbol{K}^{\top}) + (\boldsymbol{\Sigma}_{aa} - \boldsymbol{K}\boldsymbol{K}^{\top})^{\top}\right)$  *// Symmetrized Schur complement*
 >   $\boldsymbol{L}_{a\mid b} \gets \mathrm{Cholesky}\!\left(\boldsymbol{\Sigma}_{a\mid b} + \epsilon \boldsymbol{I}_{D_a}\right)$
 >    *// Branch 2: Recursive exponential-family conjugate Bayesian update*
->   $\boldsymbol{S}_{\mathcal{D}} \gets \boldsymbol{0}$;\quad $\ell_h \gets 0$
+>   $\boldsymbol{S}_{\mathcal{D}} \gets \boldsymbol{0}$;  $\ell_h \gets 0$
 >   **for** $n \gets 1$ to $N$:
 >
->     $\boldsymbol{S}_{\mathcal{D}} \gets \boldsymbol{S}_{\mathcal{D}} + \boldsymbol{T}(\boldsymbol{x}_n)$;\quad
+>     $\boldsymbol{S}_{\mathcal{D}} \gets \boldsymbol{S}_{\mathcal{D}} + \boldsymbol{T}(\boldsymbol{x}_n)$; 
 >     $\ell_h \gets \ell_h + \log h(\boldsymbol{x}_n)$
 >
->   $\boldsymbol{\tau}_N \gets \boldsymbol{\tau}_0 + \boldsymbol{S}_{\mathcal{D}}$;\quad $\nu_N \gets \nu_0 + N$
+>   $\boldsymbol{\tau}_N \gets \boldsymbol{\tau}_0 + \boldsymbol{S}_{\mathcal{D}}$;  $\nu_N \gets \nu_0 + N$
 >   $\log p(\mathcal{D}) \gets \ell_h + \psi(\boldsymbol{\tau}_N, \nu_N) - \psi(\boldsymbol{\tau}_0, \nu_0)$
 >   **return** $(\boldsymbol{\mu}_{a\mid b}, \boldsymbol{L}_{a\mid b})$ or $(\boldsymbol{\tau}_N, \nu_N, \log p(\mathcal{D}))$
 
@@ -336,7 +324,7 @@ Table `tab:probdist:complexity` contrasts the memory, inference, and statistical
 **Table:** Asymptotic storage and operational complexity across MVN coordinate representations and conjugate exponential families ($D = D_a + D_b$, sufficient-statistic dimension $K$).
 
 | **Parameterization** | **Parameters** | **Conditioning** | **Marginal** | **Primary Strength / Bottleneck** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Full Moment MVN $(\boldsymbol{\mu}, \boldsymbol{\Sigma})$ | $D + \frac{D(D+1)}{2}$ | $\mathcal{O}(D_b^3 + D_a D_b^2)$ | $\mathcal{O}(1)$ slice | Expressive correlation; covariance MLE singular when $N \le D$. |
 | Information MVN $(\boldsymbol{h}, \boldsymbol{K})$ | $D + \frac{D(D+1)}{2}$ | $\mathcal{O}(1)$ slice | $\mathcal{O}(D_b^3 + D_a D_b^2)$ | Additive Bayesian fusion & sparse Markov structure ($K_{ij}=0$). |
 | Diagonal MVN $(\boldsymbol{\mu}, \mathrm{diag}(\boldsymbol{\sigma}^2))$ | $2D$ | $\mathcal{O}(1)$ | $\mathcal{O}(1)$ | Linear scaling in $D$, but assumes conditional & marginal independence. |

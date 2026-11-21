@@ -57,13 +57,13 @@ flowchart LR
   $$
 - **2. FENCHEL CONJUGATE — slope-to-intercept dual**
   $$
-  f^*(\boldsymbol{y})=\sup_{\boldsymbol{x}\in\operatorname{dom}f}\bigl(\langle \boldsymbol{y}, \boldsymbol{x} \rangle-f(\boldsymbol{x})\bigr)\quad\text{(always convex!)}
+  f^*(\boldsymbol{y})=\sup_{\boldsymbol{x}\in\operatorname{dom}f}\bigl(\langle \boldsymbol{y}, \boldsymbol{x} \rangle-f(\boldsymbol{x})\bigr) \text{(always convex!)}
   $$
 - **3. LAGRANGIAN DUALITY & SLATER'S THEOREM**
   $$
   L(\boldsymbol{x},\boldsymbol{\lambda},\boldsymbol{\nu})=f_0(\boldsymbol{x})+\boldsymbol{\lambda}^{\top}\boldsymbol{f}(\boldsymbol{x})+\boldsymbol{\nu}^{\top}\boldsymbol{h}(\boldsymbol{x}),  \boldsymbol{\lambda}\succeq\boldsymbol{0}
   $$
-- **4. KKT OPTIMALITY — the 4 laws at (\boldsymbol{x}^*,\boldsymbol{\lambda}^*,\boldsymbol{\nu}^*)**
+- **4. KKT OPTIMALITY — the 4 laws at $(\boldsymbol{x}^*,\boldsymbol{\lambda}^*,\boldsymbol{\nu}^*)$**
   $$
   -\nabla f_0(\boldsymbol{x}^*)=\sum_{i=1}^m\lambda_i^*\nabla f_i(\boldsymbol{x}^*)+\sum_{j=1}^p\nu_j^*\nabla h_j(\boldsymbol{x}^*)
   $$

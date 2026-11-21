@@ -62,9 +62,9 @@ flowchart LR
   $$
 - **4. GAUSSIAN PROCESSES — prior over functions**
   $$
-  p(\boldsymbol{f}_*\mid\boldsymbol{X}_*,\mathcal D) = \mathcal{N}(\boldsymbol{\mu}_*,\boldsymbol{\Sigma}_*),\quad \boldsymbol{K}_y=\boldsymbol{K}_{X,X}+\sigma_y^2\boldsymbol{I}_N
+  p(\boldsymbol{f}_*\mid\boldsymbol{X}_*,\mathcal D) = \mathcal{N}(\boldsymbol{\mu}_*,\boldsymbol{\Sigma}_*),  \boldsymbol{K}_y=\boldsymbol{K}_{X,X}+\sigma_y^2\boldsymbol{I}_N
   $$
-- **5. OCCAM'S RAZOR & SPARSE GP (\mathcal O(NM^2))**
+- **5. OCCAM'S RAZOR & SPARSE GP ($\mathcal O(NM^2)$)**
   $$
   \log p(\boldsymbol{y}\mid\boldsymbol{X},\boldsymbol{\theta}) = \underbrace{-\tfrac{1}{2}\boldsymbol{y}^{\top}\boldsymbol{K}_y^{-1}\boldsymbol{y}}_{\text{data fit}} \underbrace{-\tfrac{1}{2}\log\det\boldsymbol{K}_y}_{\text{complexity}} - \tfrac{N}{2}\log(2\pi)
   $$

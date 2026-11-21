@@ -55,14 +55,14 @@ To anchor technical metrics in business value, agent quality is evaluated across
 The *Outside-In* evaluation hierarchy operationalizes these pillars in two stages [[Source - Agent Quality|agent_quality]] (pp. 17–20): first scoring the black-box final outcome $y$ against task intent, and only then opening the "glass box" to diagnose intermediate trajectory failures in planning ($z_t$), tool selection/parameterization ($a_t$), tool-response interpretation ($o_t$), or retrieval-augmented generation (RAG) grounding.
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | **Concept** | **Agent Quality / Ops** | **RLHF / ML Systems** | **Unified Notation** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Execution unit | Trajectory (Thought $\to$ Action $\to$ Obs) | Rollout / Harness + Sandbox run | $\tau = (s_0, \{z_t, a_t, o_t\}_{t=1}^H, y)$ |
 > | Telemetry record | OpenTelemetry Trace & Spans | Evaluation Harness Log | Trace $\mathcal{G}_\tau = (\mathcal{V}_{\mathrm{span}}, \mathcal{E})$ |
 > | Automated scorer | LLM-as-a-Judge / Agent-as-a-Judge | Grader / Reward Model | $J_\phi(\tau) \in [0,1]$ or $J_\phi(\tau_A, \tau_B)$ |
 > | Runtime defense | Layered Guardrail Plugin | Confidence Threshold / Deferral | Gate $G(\cdot) \to \{\mathrm{allow}, \mathrm{block}, \mathrm{HITL}\}$ |
 > | Subgroup audit | Quality Slice Dashboard | Slice-Based Eval & Model Card | Slice risk $R_g(\pi)$ over $g \in \mathcal{G}_{\mathrm{slice}}$ |
->
 >
 > **Source Mapping:** Agent Quality & Ops terminology from [[Source - Agent Quality|agent_quality]] (pp. 12, 23–29, 37, 41) and [[Source - A practical|practical_guide_building_agents]] (p. 25); RLHF & ML Systems terminology from [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 16, pp. 197–198) and [[Source - Designing Machine Learning Systems|chip_huyen_designing_machine_learning_systems]] (pp. 205, 371).
 
@@ -77,7 +77,6 @@ In single-turn classification, error rates are additive across samples. In multi
 >
 > $$
 > p_\tau = \prod_{t=1}^{H} p_t \approx p_{\mathrm{step}}^{H}.
->
 > $$
 >
 > To characterize non-deterministic capability versus production reliability across $k$ independent rollouts $\tau^{(1)},\dots,\tau^{(k)} \sim \pi_\theta(\cdot \mid s_0)$, we distinguish two estimators:
@@ -87,7 +86,6 @@ In single-turn classification, error rates are additive across samples. In multi
 > \mathrm{pass@}k &= \mathbb{P}\bigl(\exists  i \in \{1,\dots,k\} : \mathrm{Success}(\tau^{(i)}) = 1\bigr) = 1 - (1 - p_\tau)^k,  \\
 >   \mathrm{pass^}k &= \mathbb{P}\bigl(\forall  i \in \{1,\dots,k\} : \mathrm{Success}(\tau^{(i)}) = 1\bigr) = p_\tau^k = p_{\mathrm{step}}^{k H}.
 > \end{aligned}
->
 > $$
 >
 > For $p_{\mathrm{step}} = 0.95$ and $H = 10$ steps, $p_\tau = 0.95^{10} \approx 0.599$. Over $k=5$ trials, $\mathrm{pass@}5 \approx 0.990$ (looks production-ready in a demo), whereas $\mathrm{pass^}5 \approx 0.077$ (fails $>92\%$ of 5-run SLA streaks).
@@ -103,21 +101,18 @@ Automated metrics (ROUGE, BLEU, BERTScore) act as fast, low-cost regression tren
 >
 > $$
 > \hat{w}_{A \succ B}(x) = \frac{1}{2}\Bigl[J_\phi(y_A, y_B \mid x) + \bigl(1 - J_\phi(y_B, y_A \mid x)\bigr)\Bigr].
->
 > $$
 >
 > To validate that the automated judge aligns with Human-in-the-Loop (HITL) domain experts on a calibrated Golden Set $\mathcal{D}_{\mathrm{gold}}$ of size $N$, compute chance-corrected inter-rater agreement via Cohen's $\kappa$:
 >
 > $$
 > \kappa = \frac{p_o - p_e}{1 - p_e}, \qquad p_o = \frac{1}{N}\sum_{i=1}^{N}\mathbb{I}[c_{\mathrm{LLM}}^{(i)} = c_{\mathrm{HITL}}^{(i)}], \quad p_e = \sum_{c \in \mathcal{C}} \hat{p}_{\mathrm{LLM}}(c) \hat{p}_{\mathrm{HITL}}(c).
->
 > $$
 >
 > When comparing a candidate agent $\pi_{\mathrm{cand}}$ against production $\pi_{\mathrm{prod}}$ over $N$ i.i.d. Golden Set tasks with observed win-rate difference $\Delta \hat{w} = \hat{w} - 0.5$ and per-prompt variance $\sigma_w^2$, a two-sided CI/CD promotion gate at significance level $\alpha$ and power $1-\beta$ requires sample size
 >
 > $$
 > N \ge \frac{(z_{1-\alpha/2} + z_{1-\beta})^2 \sigma_w^2}{(\Delta w_{\min})^2},
->
 > $$
 >
 > where $\Delta w_{\min}$ is the minimum detectable improvement above the 0.25–1.5 percentage-point evaluation noise floor observed in reasoning-era benchmarks [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 16, p. 198).
@@ -136,10 +131,9 @@ Aggregate pass rates routinely conceal catastrophic failures on minority user co
 >
 > $$
 > \tau_{\mathrm{conf}}(r_a) = 1 - \frac{C_{\mathrm{HITL}}}{C_{\mathrm{err}}(r_a)}.
->
 > $$
 >
-> High-risk irreversible tools ($C_{\mathrm{err}} \gg C_{\mathrm{HITL}}$, e.g., `execute\_payment` or `delete\_database\_entry`) drive $\tau_{\mathrm{conf}} \to 1$, mandating unconditional HITL approval [[Source - Agent Quality|agent_quality]] (p. 27); [[Source - A practical|practical_guide_building_agents]] (p. 31).
+> High-risk irreversible tools ($C_{\mathrm{err}} \gg C_{\mathrm{HITL}}$, e.g., `execute_payment` or `delete_database_entry`) drive $\tau_{\mathrm{conf}} \to 1$, mandating unconditional HITL approval [[Source - Agent Quality|agent_quality]] (p. 27); [[Source - A practical|practical_guide_building_agents]] (p. 31).
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -167,7 +161,7 @@ Production AgentOps unifies offline CI/CD gating [[Source - Prototype to|prototy
 >   **return** Block (Insufficient slice quality or judge calibration)
 >
 >  *// Phase 2–3: Canary Rollout (1\% $\to$ 10\% $\to$ 100\%) with Guardrails & OTel*
-> Route $1\%$ live traffic to $\pi_{\mathrm{cand}}$ with concurrent optimistic `@input\_guardrail` and tool-risk gates
+> Route $1\%$ live traffic to $\pi_{\mathrm{cand}}$ with concurrent optimistic `@input_guardrail` and tool-risk gates
 > Monitor P99 latency, error rate $e_{\mathrm{can}}$, and guardrail tripwire rate over window $\Delta t$
 > **if** $e_{\mathrm{can}} > \tau_{\mathrm{err}}$ **or** prompt-injection tripwire spike **or** high-risk tool anomaly:
 >
@@ -186,7 +180,7 @@ No single evaluator or guardrail suffices in isolation. Table `tab:ops:evaluator
 **Table:** Comparative synthesis of agent evaluation and runtime guardrail mechanisms across latency, cost, and diagnostic scope [[Source - Agent Quality|agent_quality]] (pp. 21–29); [[Source - A practical|practical_guide_building_agents]] (pp. 25–31); [[Source - Designing Machine Learning Systems|chip_huyen_designing_machine_learning_systems]] (pp. 201–207).
 
 | **Mechanism** | **Latency** | **Unit Cost** | **Failure Mode Caught** | **Primary Lifecycle Stage** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Rules / Regex / Schema | $<1$ ms | Negligible | SQL injection, PII patterns, malformed JSON args | Runtime input/output + Pre-merge CI |
 | Automated Metrics (ROUGE, BERTScore) | $5$–$50$ ms | Very Low | Surface regression vs. Golden Set | Pre-merge CI trend filter |
 | Perturbation & Slicing Tests | Offline batch | Low–Med | Noise sensitivity, Simpson's paradox, subgroup bias | Offline CI + Staging CD |
@@ -202,14 +196,14 @@ No single evaluator or guardrail suffices in isolation. Table `tab:ops:evaluator
 
 Just as a gourmet chef cannot be judged solely by a temperature checklist ("Line Cook" monitoring), an autonomous agent requires *true observability* built on three OpenTelemetry pillars [[Source - Agent Quality|agent_quality]] (pp. 31–40):
 - **Logs (The Agent's Diary):** Structured JSON events capturing prompts, tool arguments, intermediate reasoning, and errors, scrubbed for PII.
-- **Traces (Following the Footsteps):** Causal Directed Acyclic Graphs of nested spans (`invocation` $\to$ `agent\_run` $\to$ `call\_llm` $\to$ `execute\_tool`) linking every step to a single `trace\_id`.
+- **Traces (Following the Footsteps):** Causal Directed Acyclic Graphs of nested spans (`invocation` $\to$ `agent_run` $\to$ `call_llm` $\to$ `execute_tool`) linking every step to a single `trace_id`.
 - **Metrics (The Health Report):** Split into *System Metrics* (P50/P99 latency, error rate, tokens/task, API cost) for SRE operational dashboards, and second-order *Quality Metrics* (correctness, trajectory adherence, safety) for AgentOps dashboards [[Source - Agent Quality|agent_quality]] (pp. 38–41).
 
 > [!note] Source Figure
 > *Figure:* Holistic Outside-In evaluation hierarchy separating Output Evaluation (black-box task success, CSAT) from Process Evaluation (glass-box planning, tool use, memory), paired with hybrid judgment methods and a mandatory Responsible AI gate [[Source - Agent Quality|agent_quality]] (Ch. 2, p. 18). (`agent_quality_p18_fig1.png`)
 
 > [!note] Source Figure
-> *Figure:* OpenTelemetry agent trace waterfall showing causal span nesting (`invocation` $\to$ `agent\_run` $\to$ `call\_llm` $\to$ `execute\_tool get\_weather`), token counts, and sub-millisecond vs. LLM latency attribution [[Source - Agent Quality|agent_quality]] (Ch. 3, p. 37). (`agent_quality_p37_fig1.png`)
+> *Figure:* OpenTelemetry agent trace waterfall showing causal span nesting (`invocation` $\to$ `agent_run` $\to$ `call_llm` $\to$ `execute_tool get_weather`), token counts, and sub-millisecond vs. LLM latency attribution [[Source - Agent Quality|agent_quality]] (Ch. 3, p. 37). (`agent_quality_p37_fig1.png`)
 
 ### Closed-Loop AgentOps Flywheel & Multi-Environment Governance
 
@@ -240,7 +234,7 @@ Figure `fig:ops:pass_k_variance` plots the analytical divergence derived in Eqs.
 > A candidate agent can improve overall task success rate while severely degrading a minority demographic, mobile traffic, or paid-user slice [[Source - Designing Machine Learning Systems|chip_huyen_designing_machine_learning_systems]] (pp. 205–207). Because error costs escalate by roughly an order of magnitude per lifecycle stage [[Source - Designing Machine Learning Systems|chip_huyen_designing_machine_learning_systems]] (p. 371), shipping an un-sliced regression is costly. **Remedy:** Enforce per-slice minimum thresholds ($\min_g S_g$) in CI/CD (Algorithm `alg:ops:outside_in_gate`) and publish updated Model Cards documenting unitary and intersectional results [[Source - Designing Machine Learning Systems|chip_huyen_designing_machine_learning_systems]] (pp. 371–372).
 
 > [!warning] Non-Idempotent Tool Retries & Guardrail Latency Spikes
-> Retrying a failed network call on a non-idempotent tool (e.g., `initiate\_refund`) causes duplicate financial transactions [[Source - Prototype to|prototype_production]] (p. 21), while running sequential LLM guardrails on every turn inflates P99 latency. **Remedy:** Enforce idempotency keys on all write tools with exponential backoff, execute `@input\_guardrail` checks concurrently via optimistic execution [[Source - A practical|practical_guide_building_agents]] (p. 31), and pair high-risk tools with circuit-breaker feature flags and HITL approval pauses [[Source - Prototype to|prototype_production]] (p. 22); [[Source - Agent Quality|agent_quality]] (p. 27).
+> Retrying a failed network call on a non-idempotent tool (e.g., `initiate_refund`) causes duplicate financial transactions [[Source - Prototype to|prototype_production]] (p. 21), while running sequential LLM guardrails on every turn inflates P99 latency. **Remedy:** Enforce idempotency keys on all write tools with exponential backoff, execute `@input_guardrail` checks concurrently via optimistic execution [[Source - A practical|practical_guide_building_agents]] (p. 31), and pair high-risk tools with circuit-breaker feature flags and HITL approval pauses [[Source - Prototype to|prototype_production]] (p. 22); [[Source - Agent Quality|agent_quality]] (p. 27).
 
 ---
 

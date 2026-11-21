@@ -50,11 +50,11 @@ flowchart LR
 
 - **1. PRETRAINING — CLM, MLM & Perplexity**
   $$
-  \mathcal{L}_{\mathrm{CE}}(\theta;\boldsymbol{x}) = -\frac{1}{m}\sum_{i=0}^{m-1}\log\mathbb{P}_\theta(x_{i+1}\mid x_{\le i}),\quad \mathrm{PPL} = \exp(\mathcal{L}_{\mathrm{CE}})
+  \mathcal{L}_{\mathrm{CE}}(\theta;\boldsymbol{x}) = -\frac{1}{m}\sum_{i=0}^{m-1}\log\mathbb{P}_\theta(x_{i+1}\mid x_{\le i}),  \mathrm{PPL} = \exp(\mathcal{L}_{\mathrm{CE}})
   $$
 - **2. SCALING LAWS — Chinchilla vs. Kaplan**
   $$
-  L(N,D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},\quad C \approx 6ND
+  L(N,D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta},  C \approx 6ND
   $$
 - **3. INSTRUCTION SFT — Masking & Packing**
   $$
@@ -62,7 +62,7 @@ flowchart LR
   $$
 - **4. LoRA — Low-Rank Adaptation Math**
   $$
-  \boldsymbol{h} = \boldsymbol{W}_0\boldsymbol{x} + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}\boldsymbol{x},\qquad \boldsymbol{A}\in\mathbb{R}^{r\times d_{\mathrm{in}}}, \boldsymbol{B}\in\mathbb{R}^{d_{\mathrm{out}}\times r}
+  \boldsymbol{h} = \boldsymbol{W}_0\boldsymbol{x} + \frac{\alpha}{r}\boldsymbol{B}\boldsymbol{A}\boldsymbol{x},  \boldsymbol{A}\in\mathbb{R}^{r\times d_{\mathrm{in}}}, \boldsymbol{B}\in\mathbb{R}^{d_{\mathrm{out}}\times r}
   $$
 - **5. QLoRA & DISTRIBUTED MEMORY TABLE**
 - **6. SYSTEMS RECIPE — Checkpointing & Parallelism**

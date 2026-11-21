@@ -42,8 +42,9 @@ tags:
 Computer vision inverts the physical *forward image formation* process: a 3D scene illuminated by light sources reflects radiance onto a sensor through optics, producing a discrete 2D array $I[n_y, n_x, c]$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 5, pp. 99–113). Classical and neural vision pipelines analyze and transform this signal via linear shift-invariant (LSI) filtering, spectral frequency decomposition, and sampling theory [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 15–16, pp. 267–328), [[Source - Dive into Deep Learning|dive_into_deep_learning_d2l]] (Ch. 7, pp. 273–285).
 
 > [!info] Cross-Book Notation: Optics, Convolution vs. Cross-Correlation
+>
 > | **Concept** | **MIT Vision Book** | **D2L (Zhang et al.)** | **Unified Monograph** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | 2D Image | $f[n,m]$ or $\ell(x,y)$ | $\boldsymbol{X} \in \mathbb{R}^{n_h \times n_w}$ | $I[y,x]$ or $I(\boldsymbol{x})$ |
 > | Linear Filtering | Convolution $f \circ h$ vs. correlation | Cross-correlation $\boldsymbol{X} \star \boldsymbol{K}$ | $(I * K)[y,x]$ (flipped), $(I \star K)$ (corr.) |
 > | 2D DFT Frequency | $(u, v)$ or $(\omega_x, \omega_y)$ | Spatial kernel size $k_h \times k_w$ | $\hat{I}(u,v) = \mathcal{F}\{I\}(u,v)$ |
@@ -57,14 +58,12 @@ Computer vision inverts the physical *forward image formation* process: a 3D sce
 >
 > $$
 > x = f \frac{X}{Z}, \qquad y = f \frac{Y}{Z}.
->
 > $$
 >
 > To gather finite photon flux without blurring, a thin convex lens of focal length $f$ focuses rays from object depth $z_o$ onto sensor distance $z_i$ via the *Gaussian thin-lens equation* [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 6, pp. 114–126):
 >
 > $$
 > \frac{1}{z_o} + \frac{1}{z_i} = \frac{1}{f}.
->
 > $$
 >
 > Out-of-focus points produce a circle of confusion of diameter $c \propto \frac{A}{z_o}|z_o - z_{\mathrm{focus}}|$ where $A = f / N$ is aperture diameter ($N$: f-number). For a Lambertian surface with albedo $\rho(\boldsymbol{x})$ and normal $\boldsymbol{n}$ under directional light $\boldsymbol{l}$, reflected radiance is $L_o = \rho(\boldsymbol{x})\max(0, \boldsymbol{n}^{\top}\boldsymbol{l}) E_0$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 5, pp. 100–102). Trichromatic sensors integrate spectral power $S(\lambda)$ against cone/filter curves $c_k(\lambda)$, giving linear camera responses $r_k = \int S(\lambda) c_k(\lambda) \mathrm{d}\lambda$ before nonlinear gamma encoding ($I_{\mathrm{sRGB}} \approx I_{\mathrm{lin}}^{1/2.2}$) [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 7–8, pp. 147–178).
@@ -76,7 +75,6 @@ Computer vision inverts the physical *forward image formation* process: a 3D sce
 >
 > $$
 > \hat{I}[u,v] = \sum_{y=0}^{H-1}\sum_{x=0}^{W-1} I[y,x] e^{-i 2\pi\left(\frac{ux}{W} + \frac{vy}{H}\right)}, \qquad \mathcal{F}\{I * h\} = \hat{I} \odot \hat{h}.
->
 > $$
 >
 > Gaussian smoothing $G_\sigma(x,y) = \frac{1}{2\pi\sigma^2}e^{-(x^2+y^2)/(2\sigma^2)}$ has a Gaussian spectrum $\hat{G}_\sigma(u,v) = e^{-2\pi^2\sigma^2(u^2+v^2)}$, acting as an isotropic low-pass filter [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 17, pp. 331–348). Image gradients $\nabla I = (\partial_x I, \partial_y I)^{\top}$ and edges (zero-crossings of Laplacian $\Delta I = \partial_{xx} I + \partial_{yy} I$) are regularized via Derivative-of-Gaussian ($\nabla G_\sigma * I$) and Sobel kernels [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 18, pp. 352–380). By the *Nyquist–Shannon sampling theorem*, sampling with spacing $\Delta x$ aliases frequencies $|u| > \frac{1}{2\Delta x}$; anti-aliasing low-pass prefiltering is therefore mandatory before downsampling [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 20, pp. 409–428).

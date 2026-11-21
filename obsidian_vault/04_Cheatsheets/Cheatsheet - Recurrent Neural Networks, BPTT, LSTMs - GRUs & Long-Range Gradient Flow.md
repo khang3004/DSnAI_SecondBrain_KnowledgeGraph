@@ -55,7 +55,7 @@ flowchart LR
   $$
 - **3. KEY MECHANISM — LSTM & CEC highway**
   $$
-  \boldsymbol{c}_t = \boldsymbol{f}_t \odot \boldsymbol{c}_{t-1} + \boldsymbol{i}_t \odot \tilde{\boldsymbol{c}}_t,\qquad \boldsymbol{h}_t = \boldsymbol{o}_t \odot \tanh(\boldsymbol{c}_t)
+  \boldsymbol{c}_t = \boldsymbol{f}_t \odot \boldsymbol{c}_{t-1} + \boldsymbol{i}_t \odot \tilde{\boldsymbol{c}}_t,  \boldsymbol{h}_t = \boldsymbol{o}_t \odot \tanh(\boldsymbol{c}_t)
   $$
 - **4. CONNECTIONS — GRU, ESNs & leaky units**
 - **5. COST — SRN vs LSTM vs GRU vs TBPTT**

@@ -50,7 +50,7 @@ flowchart LR
 
 - **1. WHAT — Hard/Soft Margin & Hinge Loss**
   $$
-  \min_{\boldsymbol{w},b,\boldsymbol{\xi}} \frac{1}{2}\lVert \boldsymbol{w} \rVert_2^2+C\sum_{i=1}^N\xi_i\quad\text{s.t.}  y_i(\langle \boldsymbol{w}, \boldsymbol{x}_i \rangle+b)\ge 1-\xi_i, \xi_i\ge 0
+  \min_{\boldsymbol{w},b,\boldsymbol{\xi}} \frac{1}{2}\lVert \boldsymbol{w} \rVert_2^2+C\sum_{i=1}^N\xi_i \text{s.t.}  y_i(\langle \boldsymbol{w}, \boldsymbol{x}_i \rangle+b)\ge 1-\xi_i, \xi_i\ge 0
   $$
 - **2. WOLFE DUAL QP & KKT 3-REGIME PARTITION**
   $$
@@ -62,7 +62,7 @@ flowchart LR
   $$
 - **4. CONNECTIONS — Hulls, KRR & Surrogate Losses**
 - **5. COST — SMO vs Primal vs Interior-Point**
-- **6. USE-CASES — Tuning (C,\gamma) Geometry**
+- **6. USE-CASES — Tuning $(C,\gamma)$ Geometry**
 
 ## Related Sources
 

@@ -74,14 +74,11 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks differ in matrix orientation (row-major vs. column-major), bias conventions, and LayerNorm placement. Table `tab:attn:notation` establishes a canonical translation across all five synthesized references.
 >
->
->
->
 > | **Concept** | **Canonical Here** | **Raschka / J&M** | **Bishop (Ch. 12)** | **Prince / Murphy** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Input $\boldsymbol{X}$ | $\boldsymbol{X} \in \mathbb{R}^{N \times d_{\mathrm{model}}}$ (row-major) | $\mathcal{X} \in \mathbb{R}^{B \times T \times d_{\mathrm{in}}}$ (Raschka); $\boldsymbol{X} \in \mathbb{R}^{N \times d}$ (J&M) | $\boldsymbol{X} \in \mathbb{R}^{N \times D}$ (row $\boldsymbol{x}_n^{\top}$, Fig. 12.3) | $\boldsymbol{X} \in \mathbb{R}^{D \times N}$ col-major (Prince); $\boldsymbol{x}_{1:n}$ (Murphy) |
-> | QKV weights | $\boldsymbol{W}_Q, \boldsymbol{W}_K, \boldsymbol{W}_V$ | `W\_query`, `W\_key`, `W\_value`; $\boldsymbol{W}^{Q,K,V}$ | $\boldsymbol{W}^{(q)}, \boldsymbol{W}^{(k)}, \boldsymbol{W}^{(v)}$ (bias absorbed) | $\boldsymbol{\Omega}_{q,k,v}$ + $\boldsymbol{\beta}$ (Prince); $\boldsymbol{W}_i^{(q,k,v)}$ (Murphy) |
-> | Head dims | $H$ heads; $d_k = d_v = d_{\mathrm{model}}/H$ | `num\_heads`, `head\_dim` ($d_{\mathrm{out}}/H$) | $H$ heads; $D_k, D_v = D/H$ | $H$ heads, $D_q = D/H$ (Prince); $h, p_k, p_v$ (Murphy) |
+> | QKV weights | $\boldsymbol{W}_Q, \boldsymbol{W}_K, \boldsymbol{W}_V$ | `W_query`, `W_key`, `W_value`; $\boldsymbol{W}^{Q,K,V}$ | $\boldsymbol{W}^{(q)}, \boldsymbol{W}^{(k)}, \boldsymbol{W}^{(v)}$ (bias absorbed) | $\boldsymbol{\Omega}_{q,k,v}$ + $\boldsymbol{\beta}$ (Prince); $\boldsymbol{W}_i^{(q,k,v)}$ (Murphy) |
+> | Head dims | $H$ heads; $d_k = d_v = d_{\mathrm{model}}/H$ | `num_heads`, `head_dim` ($d_{\mathrm{out}}/H$) | $H$ heads; $D_k, D_v = D/H$ | $H$ heads, $D_q = D/H$ (Prince); $h, p_k, p_v$ (Murphy) |
 > | Softmax | Row $\mathrm{softmax}(\boldsymbol{Q}\boldsymbol{K}^{\top}/\sqrt{d_k})\boldsymbol{V}$ | Row-wise softmax over keys | Row $\mathrm{softmax}(\boldsymbol{Q}\boldsymbol{K}^{\top}/\sqrt{D_k})\boldsymbol{V}$ | Col $\boldsymbol{V}\cdot\mathrm{softmax}(\boldsymbol{K}^{\top}\boldsymbol{Q}/\sqrt{D_q})$ (Prince) |
 > | Norm | Pre-LN: $\boldsymbol{X} + F(\mathrm{LN}(\boldsymbol{X}))$ | Pre-LN in GPT block (Raschka L4.6; J&M Fig. 7.7) | Post-LN (Eq. 12.20) & Pre-LN (Eq. 12.21) | Post-LN $\boldsymbol{X} \leftarrow \mathrm{LN}(\boldsymbol{X} + F(\boldsymbol{X}))$ (Prince Eq. 12.13) |
 
@@ -95,7 +92,6 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 > $$
 > \mathbb{E}[s] = \sum_{r=1}^{d_k} \mathbb{E}[q_r]\mathbb{E}[k_r] = 0, \qquad
 >   \mathrm{Var}(s) = \sum_{r=1}^{d_k} \mathrm{Var}(q_r k_r) = \sum_{r=1}^{d_k} \Big(\mathbb{E}[q_r^2]\mathbb{E}[k_r^2] - (\mathbb{E}[q_r]\mathbb{E}[k_r])^2\Big) = d_k.
->
 > $$
 >
 > Scaling the logits by $1/\sqrt{d_k}$ restores unit variance independent of head width: $\mathrm{Var}(\boldsymbol{q}^{\top} \boldsymbol{k} / \sqrt{d_k}) = d_k / d_k = 1$.
@@ -104,7 +100,6 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 >
 > $$
 > \frac{\partial p_i}{\partial s_j} = p_i (\delta_{ij} - p_j),
->
 > $$
 >
 > where $\delta_{ij}$ is the Kronecker delta. As $\mathrm{Var}(s)$ grows with $d_k$, the maximum logit dominates ($p_{i^*} \to 1$, $p_{j \neq i^*} \to 0$), driving $\frac{\partial p_i}{\partial s_j} \to 0$ exponentially and stalling gradient flow [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 12, Eq. 12.14, p. 382) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Ch. 12, Sec. 12.3.2, p. 228).
@@ -113,7 +108,6 @@ Separating $\boldsymbol{W}_Q$ and $\boldsymbol{W}_K$ breaks the symmetry of $\bo
 >
 > $$
 > \mathrm{Attention}(\boldsymbol{Q}, \boldsymbol{K}, \boldsymbol{V}) = \mathrm{softmax}\!\left(\frac{\boldsymbol{Q}\boldsymbol{K}^{\top}}{\sqrt{d_k}}\right)\boldsymbol{V} \in \mathbb{R}^{N \times d_v},
->
 > $$
 >
 > where $\mathrm{softmax}$ is applied row-wise so each output row $\boldsymbol{y}_i^{\top} = \sum_{j=1}^N A_{ij} \boldsymbol{v}_j^{\top}$ is a convex combination of value vectors ($A_{ij} \ge 0$, $\sum_{j=1}^N A_{ij} = 1$).
@@ -130,14 +124,12 @@ Autoregressive language models factorize the joint sequence likelihood as $\math
 >
 > $$
 > \boldsymbol{A}_{\mathrm{causal}} = \mathrm{softmax}\!\left(\frac{\boldsymbol{Q}\boldsymbol{K}^{\top}}{\sqrt{d_k}} + \boldsymbol{M}\right).
->
 > $$
 >
 > For any future position $j > i$, $\lim_{M_{ij} \to -\infty} \exp(S_{ij} + M_{ij}) = 0$, so $(\boldsymbol{A}_{\mathrm{causal}})_{ij} = 0$ and the softmax denominator sums exclusively over past and current tokens $m \in \{1, \dots, i\}$:
 >
 > $$
 > (\boldsymbol{A}_{\mathrm{causal}})_{ij} = \frac{\exp(S_{ij}) \mathbb{I}[j \le i]}{\sum_{m=1}^{i} \exp(S_{im})}.
->
 > $$
 >
 > Raschka [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Ch. 3, Sec. 3.5.1, pp. 200–205) demonstrates that post-softmax zeroing ($\boldsymbol{A} \odot \boldsymbol{L}_{\mathrm{tril}}$) followed by row-wise renormalization is mathematically identical to Eq. `(eq:attn:causal_denom)` because masked terms cancel from the ratio, but pre-softmax $-\infty$ masking achieves this in a single fused pass with zero future-token influence on the normalization constant.
@@ -157,7 +149,6 @@ A single attention head averages over all token relationships with one similarit
 > \boldsymbol{H}_h &= \mathrm{Attention}\!\left(\boldsymbol{X}\boldsymbol{W}_{Q,h},  \boldsymbol{X}\boldsymbol{W}_{K,h},  \boldsymbol{X}\boldsymbol{W}_{V,h}\right) \in \mathbb{R}^{N \times d_v},  \\
 >   \mathrm{MHA}(\boldsymbol{X}) &= \mathrm{Concat}(\boldsymbol{H}_1, \dots, \boldsymbol{H}_H) \boldsymbol{W}_O \in \mathbb{R}^{N \times d_{\mathrm{model}}},
 > \end{aligned}
->
 > $$
 >
 > where $\boldsymbol{W}_O \in \mathbb{R}^{(H d_v) \times d_{\mathrm{model}}}$ mixes subspaces across heads [[Source - Foundations|deep_learning_foundations_concepts]] (Eq. 12.15–12.19, p. 383) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Eq. 15.55–15.56, p. 557). In practice [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Listing 3.5, pp. 227–232), all $H$ projections are fused into single dense layers $\boldsymbol{W}_Q, \boldsymbol{W}_K, \boldsymbol{W}_V \in \mathbb{R}^{d_{\mathrm{model}} \times (H d_k)}$ and reshaped via $[B, T, d_{\mathrm{model}}] \to [B, T, H, d_k] \xrightarrow{\mathrm{transpose}} [B, H, T, d_k]$.
@@ -207,7 +198,7 @@ Standard self-attention incurs $O(N^2 d_{\mathrm{model}} + N d_{\mathrm{model}}^
 **Table:** Complexity comparison of exact and sub-quadratic attention mechanisms ($d = d_{\mathrm{model}}$, $M$ = random feature dimension) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 15.5.5, 15.6, pp. 561–566).
 
 | **Attention Variant** | **Time (FLOPs)** | **HBM Memory** | **Seq. Path** | **Mechanism & Trade-off** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | Dense Scaled MHA | $O(N^2 d + N d^2)$ | $O(H N^2 + N d)$ | $O(1)$ | Exact global routing; HBM-bound for large $N$. |
 | FlashAttention (Tiled) | $O(N^2 d + N d^2)$ | $O(N d)$ | $O(1)$ | Exact; fuses QK^T–softmax–V in SRAM via online softmax rescaling. |
 | Local / Strided Sparse | $O(N w d + N d^2)$ | $O(H N w + N d)$ | $O(N/w)$ | Window size $w \ll N$; loses arbitrary-range single-hop mixing. |
@@ -215,14 +206,10 @@ Standard self-attention incurs $O(N^2 d_{\mathrm{model}} + N d_{\mathrm{model}}^
 | Kernel / Random Feat. (Performer) | $O(N M d)$ | $O(N M + M d)$ | $O(1)$ | Positive random features $\phi(\boldsymbol{q})^{\top}\phi(\boldsymbol{k})$ (Murphy Eq. 15.66–15.68); approximate. |
 
 > [!info] Cross-Book Synthesis: GPT (Decoder) vs. BERT (Encoder) vs. Seq2Seq & ViT
-> { Across [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 12.3–12.4), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 12.6–12.10), and [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 7 & 9), the same Transformer block specializes into four canonical macro-architectures:
-> }
->
->
->
+> Across [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 12.3–12.4), [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 12.6–12.10), and [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 7 & 9), the same Transformer block specializes into four canonical macro-architectures:
 >
 > | **Family** | **Canonical Model** | **Attention Mask** | **Pretraining Obj.** | **Primary Strength & Caveat** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Decoder-only | GPT-2 / GPT-3 / LLaMA | Causal ($j \le i$) | Next-token prediction (NTP) | Uses 100\% of tokens per step; supports KV-cache generation; unidirectional context only. |
 > | Encoder-only | BERT / RoBERTa | Bidirectional (full) | Masked LM (15\% tokens) | Rich bidirectional representations for classification/NER; cannot autoregressively generate. |
 > | Encoder–Decoder | Original Transformer / T5 | Enc: full; Dec: causal + cross | Span corruption / Seq2Seq MLE | Decouples source encoding from target generation via cross-attention. |

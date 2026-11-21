@@ -50,9 +50,9 @@ flowchart LR
 
 - **1. WHAT — Gibbs density & MLE phases**
   $$
-  p_\theta(\boldsymbol{x})=\frac{\exp(-E_\theta(\boldsymbol{x}))}{Z_\theta},\qquad Z_\theta=\int_{\mathbb{R}^D}\exp(-E_\theta(\boldsymbol{x})) \mathrm{d}\boldsymbol{x}
+  p_\theta(\boldsymbol{x})=\frac{\exp(-E_\theta(\boldsymbol{x}))}{Z_\theta},  Z_\theta=\int_{\mathbb{R}^D}\exp(-E_\theta(\boldsymbol{x})) \mathrm{d}\boldsymbol{x}
   $$
-- **2. HOW — Langevin MCMC, \mathrm{CD}_k & PCD**
+- **2. HOW — Langevin MCMC, $\mathrm{CD}_k$ & PCD**
   $$
   \boldsymbol{x}_{k+1}=\boldsymbol{x}_k-\frac{\epsilon^2}{2}\nabla_{\boldsymbol{x}}E_\theta(\boldsymbol{x}_k)+\epsilon\boldsymbol{z}_k
   $$

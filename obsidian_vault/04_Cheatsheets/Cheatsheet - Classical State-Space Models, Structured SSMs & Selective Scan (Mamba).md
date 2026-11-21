@@ -50,12 +50,12 @@ flowchart LR
 
 - **1. WHAT — three views of a state space**
   $$
-  \dot{\boldsymbol{h}}(t)=\boldsymbol{A}\boldsymbol{h}(t)+\boldsymbol{B}x(t),\quad y(t)=\boldsymbol{C}\boldsymbol{h}(t)+Dx(t)
+  \dot{\boldsymbol{h}}(t)=\boldsymbol{A}\boldsymbol{h}(t)+\boldsymbol{B}x(t),  y(t)=\boldsymbol{C}\boldsymbol{h}(t)+Dx(t)
   $$
 - **2. KALMAN & RTS — exact Bayesian state inference**
-- **3. KEY ADVANCES — ZOH, HiPPO/S4 & Selective S6**
+- **3. KEY ADVANCES — ZOH, HiPPO/S4 & Selective $S6$**
   $$
-  \bar{\boldsymbol{A}}_t = \exp(\Delta_t\boldsymbol{A}),\qquad \bar{\boldsymbol{B}}_t = (\Delta_t\boldsymbol{A})^{-1}\bigl(\exp(\Delta_t\boldsymbol{A})-\boldsymbol{I}\bigr)\Delta_t\boldsymbol{B}_t
+  \bar{\boldsymbol{A}}_t = \exp(\Delta_t\boldsymbol{A}),  \bar{\boldsymbol{B}}_t = (\Delta_t\boldsymbol{A})^{-1}\bigl(\exp(\Delta_t\boldsymbol{A})-\boldsymbol{I}\bigr)\Delta_t\boldsymbol{B}_t
   $$
 - **4. CONNECTIONS — Parallel Scan, SRAM & Gating**
   $$

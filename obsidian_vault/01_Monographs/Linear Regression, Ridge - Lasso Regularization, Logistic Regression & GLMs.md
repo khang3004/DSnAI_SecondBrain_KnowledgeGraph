@@ -60,11 +60,8 @@ where $\boldsymbol{w} \in \mathbb{R}^D$ is the parameter vector. In ordinary lea
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks adopt distinct conventions for design matrices, parameter vectors, targets, and link/activation functions. Table `tab:glm:notation` establishes a unified mapping used throughout this monograph, reconciling [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 10–12), [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 9), [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 7), [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 4), [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 7, 14–15), and [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 4–5).
 >
->
->
->
 > | **Concept** | **Unified** | **Source Variants** | **Reconciliation Notes** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Design matrix | $\boldsymbol{\Phi} \in \mathbb{R}^{N \times D}$ | $\boldsymbol{X}$ (Murphy, IPDS, Tiep Vu); $\boldsymbol{\Phi}$ (MML, Bishop) | Rows are feature vectors $\boldsymbol{\phi}(\boldsymbol{x}_n)^{\top}$; $D=d$ when $\boldsymbol{\phi}(\boldsymbol{x})=\boldsymbol{x}$. |
 > | Weight vector | $\boldsymbol{w} \in \mathbb{R}^D$ | $\boldsymbol{w}$ (Murphy, Bishop, Tiep Vu); $\boldsymbol{\theta}$ (MML, IPDS, SLP) | Bias $w_0$ is absorbed via $\phi_0(\boldsymbol{x})=1$, but excluded from $\ell_1/\ell_2$ penalties. |
 > | Target / observation | $y_n \in \mathcal{Y}$ | $y_n$ (Murphy, MML, IPDS, SLP); $t_n$ (Bishop) | Bishop reserves $y(\boldsymbol{x},\boldsymbol{w})$ for the model prediction $\hat{y}_n = \mu_n$. |
@@ -80,21 +77,18 @@ where $\boldsymbol{w} \in \mathbb{R}^D$ is the parameter vector. In ordinary lea
 >
 > $$
 > -\log p(\boldsymbol{y} \mid \boldsymbol{\Phi}, \boldsymbol{w}, \sigma^2) = \frac{N}{2}\log(2\pi\sigma^2) + \frac{1}{2\sigma^2}\lVert \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w} \rVert_2^2.
->
 > $$
 >
 > Because $\sigma^2 > 0$ is independent of $\boldsymbol{w}$, maximizing the Gaussian likelihood is equivalent to minimizing the residual sum of squares $\mathcal{L}_{\mathrm{OLS}}(\boldsymbol{w}) = \frac{1}{2}\lVert \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w} \rVert_2^2$ [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 7, PDF p. 97). Setting $\nabla_{\boldsymbol{w}}\mathcal{L}_{\mathrm{OLS}}(\boldsymbol{w}) = \boldsymbol{\Phi}^{\top}(\boldsymbol{\Phi}\boldsymbol{w} - \boldsymbol{y}) = \boldsymbol{0}$ yields the normal equations:
 >
 > $$
 > (\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})\hat{\boldsymbol{w}}_{\mathrm{MLE}} = \boldsymbol{\Phi}^{\top}\boldsymbol{y} \implies \hat{\boldsymbol{w}}_{\mathrm{MLE}} = (\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})^{-1} \boldsymbol{\Phi}^{\top} \boldsymbol{y} \quad (\text{if }\mathrm{rank}(\boldsymbol{\Phi}) = D).
->
 > $$
 >
 > The predicted target vector $\hat{\boldsymbol{y}} = \boldsymbol{\Phi}\hat{\boldsymbol{w}}_{\mathrm{MLE}} = \boldsymbol{P}_{\mathcal{S}}\boldsymbol{y}$ is the orthogonal projection of $\boldsymbol{y} \in \mathbb{R}^N$ onto the $D$-dimensional column space $\mathcal{S} = \mathrm{col}(\boldsymbol{\Phi}) \subset \mathbb{R}^N$, where
 >
 > $$
 > \boldsymbol{P}_{\mathcal{S}} = \boldsymbol{\Phi}(\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})^{-1}\boldsymbol{\Phi}^{\top}
->
 > $$
 >
 > is symmetric ($\boldsymbol{P}_{\mathcal{S}}^{\top} = \boldsymbol{P}_{\mathcal{S}}$) and idempotent ($\boldsymbol{P}_{\mathcal{S}}^2 = \boldsymbol{P}_{\mathcal{S}}$), and the residual $\boldsymbol{r} = \boldsymbol{y} - \hat{\boldsymbol{y}} = (\boldsymbol{I}_N - \boldsymbol{P}_{\mathcal{S}})\boldsymbol{y}$ is orthogonal to $\mathcal{S}$, i.e., $\boldsymbol{\Phi}^{\top}\boldsymbol{r} = \boldsymbol{0}$ [[Source - Mathematics for Machine Learning|mathematics_machine_learning_orienly]] (Ch. 9, PDF p. 320).
@@ -113,7 +107,6 @@ where $\boldsymbol{w} \in \mathbb{R}^D$ is the parameter vector. In ordinary lea
 > $$
 > \boldsymbol{S}_N^{-1} = \boldsymbol{S}_0^{-1} + \frac{1}{\sigma^2}\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi}, \qquad
 > \boldsymbol{m}_N = \boldsymbol{S}_N\!\left(\boldsymbol{S}_0^{-1}\boldsymbol{m}_0 + \frac{1}{\sigma^2}\boldsymbol{\Phi}^{\top}\boldsymbol{y}\right).
->
 > $$
 >
 > Integrating out $\boldsymbol{w}$ yields the Gaussian posterior predictive distribution at a test input $\boldsymbol{\phi}_* = \boldsymbol{\phi}(\boldsymbol{x}_*)$:
@@ -121,15 +114,14 @@ where $\boldsymbol{w} \in \mathbb{R}^D$ is the parameter vector. In ordinary lea
 > $$
 > p(y_* \mid \boldsymbol{x}_*, \mathcal{D}) = \int \mathcal{N}(y_* \mid \boldsymbol{w}^{\top}\boldsymbol{\phi}_*, \sigma^2)\mathcal{N}(\boldsymbol{w} \mid \boldsymbol{m}_N, \boldsymbol{S}_N) \mathrm{d}\boldsymbol{w}
 > = \mathcal{N}\!\left(y_*  \middle|  \boldsymbol{m}_N^{\top}\boldsymbol{\phi}_*,  \sigma^2 + \boldsymbol{\phi}_*^{\top}\boldsymbol{S}_N\boldsymbol{\phi}_*\right),
->
 > $$
 >
 > where $\boldsymbol{\phi}_*^{\top}\boldsymbol{S}_N\boldsymbol{\phi}_*$ captures epistemic parameter uncertainty [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, PDF p. 437). Choosing an isotropic zero-mean prior $\boldsymbol{m}_0 = \boldsymbol{0}$, $\boldsymbol{S}_0 = \tau^2\boldsymbol{I}_D$ reduces the negative log-posterior to the Tikhonov/Ridge objective [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, PDF p. 412):
 >
 > $$
 > \hat{\boldsymbol{w}}_{\mathrm{Ridge}} = \arg\min_{\boldsymbol{w}\in\mathbb{R}^D} \left\{\lVert \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w} \rVert_2^2 + \lambda\lVert \boldsymbol{w} \rVert_2^2\right\} = (\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi} + \lambda\boldsymbol{I}_D)^{-1}\boldsymbol{\Phi}^{\top}\boldsymbol{y}, \quad \lambda = \frac{\sigma^2}{\tau^2}.
->
 > $$
+>
 
 Taking the eigendecomposition $\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi} = \boldsymbol{V}\boldsymbol{\Sigma}^2\boldsymbol{V}^{\top}$ (from the thin SVD $\boldsymbol{\Phi} = \boldsymbol{U}\boldsymbol{\Sigma}\boldsymbol{V}^{\top}$ with singular values $\sigma_j \ge 0$), Ridge shifts every eigenvalue of $\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi}$ from $\sigma_j^2$ to $\sigma_j^2 + \lambda > 0$, guaranteeing invertibility even when $D > N$ or $\boldsymbol{\Phi}$ is rank-deficient [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 7, PDF p. 458). On the training data, the Ridge fit acts as a smooth spectral filter [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, PDF p. 413):
 
@@ -147,7 +139,6 @@ Directions with small singular values $\sigma_j^2 \ll \lambda$ (high-variance no
 >
 > $$
 > \hat{\boldsymbol{w}}_{\mathrm{Lasso}} = \arg\min_{\boldsymbol{w}\in\mathbb{R}^D} \left\{\frac{1}{2}\lVert \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w} \rVert_2^2 + \lambda\lVert \boldsymbol{w} \rVert_1\right\}, \qquad \lVert \boldsymbol{w} \rVert_1 = \sum_{j=1}^D \lvert w_j \rvert.
->
 > $$
 >
 > Because $\lvert w_j \rvert$ is non-differentiable at $w_j = 0$, first-order optimality requires $\boldsymbol{0} \in \boldsymbol{\Phi}^{\top}(\boldsymbol{\Phi}\boldsymbol{w} - \boldsymbol{y}) + \lambda\partial\lVert \boldsymbol{w} \rVert_1$, where the coordinate-wise subdifferential is $\partial\lvert w_j \rvert = \{\mathrm{sign}(w_j)\}$ for $w_j \neq 0$ and $[-1, 1]$ for $w_j = 0$. Consequently, for each coordinate $j$:
@@ -155,15 +146,14 @@ Directions with small singular values $\sigma_j^2 \ll \lambda$ (high-variance no
 > $$
 > \boldsymbol{\varphi}_j^{\top}(\boldsymbol{\Phi}\hat{\boldsymbol{w}} - \boldsymbol{y}) = -\lambda\mathrm{sign}(\hat{w}_j)    (\hat{w}_j \neq 0), \qquad
 > \lvert \boldsymbol{\varphi}_j^{\top}(\boldsymbol{\Phi}\hat{\boldsymbol{w}} - \boldsymbol{y}) \rvert \le \lambda    (\hat{w}_j = 0).
->
 > $$
 >
 > When columns of $\boldsymbol{\Phi}$ are orthonormal ($\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi} = \boldsymbol{I}_D$) with $c_j = \boldsymbol{\varphi}_j^{\top}\boldsymbol{y}$, the coordinates decouple and yield the exact closed-form soft-thresholding operator:
 >
 > $$
 > \hat{w}_j^{\mathrm{Lasso}} = \mathcal{S}_\lambda(c_j) \triangleq \mathrm{sign}(c_j)\max(0, \lvert c_j \rvert - \lambda).
->
 > $$
+>
 
 By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1}{2}\lVert \boldsymbol{y}-\boldsymbol{\Phi}\boldsymbol{w} \rVert_2^2$ subject to $\lVert \boldsymbol{w} \rVert_1 \le B$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, PDF p. 416). As shown in Figure `fig:glm:l1_l2_geom`, the $\ell_1$ ball is a cross-polytope (diamond in 2D) whose sharp vertices lie on the coordinate axes; expanding elliptical MSE level sets generically intersect a vertex first, forcing $\hat{w}_j = 0$ exactly. By contrast, the smooth $\ell_2$ ball has no corners, shrinking coefficients toward zero without inducing exact sparsity [[Source - Introduction-PROBABILITY-for-DATA-SCIENCE|introduction_probability_data_science]] (Ch. 7, PDF p. 466). Combining both penalties yields Elastic-Net, $\lambda_1\lVert \boldsymbol{w} \rVert_1 + \frac{\lambda_2}{2}\lVert \boldsymbol{w} \rVert_2^2$, which preserves sparsity while stabilizing correlated feature groups.
 
@@ -177,7 +167,6 @@ By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1
 >
 > $$
 > \mathrm{NLL}(\boldsymbol{w}) = -\sum_{n=1}^N \Big[y_n\log\mu_n + (1-y_n)\log(1-\mu_n)\Big].
->
 > $$
 >
 > Using the sigmoid identity $\sigma'(\eta_n) = \mu_n(1-\mu_n)$, the gradient and Hessian with respect to $\boldsymbol{w}$ are [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 10, PDF p. 374):
@@ -185,7 +174,6 @@ By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1
 > $$
 > \nabla_{\boldsymbol{w}}\mathrm{NLL}(\boldsymbol{w}) = \boldsymbol{\Phi}^{\top}(\boldsymbol{\mu} - \boldsymbol{y}), \qquad
 > \boldsymbol{H}(\boldsymbol{w}) = \nabla^2_{\boldsymbol{w}}\mathrm{NLL}(\boldsymbol{w}) = \boldsymbol{\Phi}^{\top}\boldsymbol{W}\boldsymbol{\Phi},
->
 > $$
 >
 > where $\boldsymbol{W} = \mathrm{diag}(\mu_1(1-\mu_1), \dots, \mu_N(1-\mu_N))$. Since $\mu_n(1-\mu_n) > 0$, for any $\boldsymbol{v} \in \mathbb{R}^D$, $\boldsymbol{v}^{\top}\boldsymbol{H}(\boldsymbol{w})\boldsymbol{v} = \lVert \boldsymbol{W}^{1/2}\boldsymbol{\Phi}\boldsymbol{v} \rVert_2^2 \ge 0$, proving $\mathrm{NLL}(\boldsymbol{w})$ is convex (Figure `fig:glm:logreg_surface`). Applying Newton–Raphson $\boldsymbol{w}^{(t+1)} = \boldsymbol{w}^{(t)} - \boldsymbol{H}(\boldsymbol{w}^{(t)})^{-1} \nabla\mathrm{NLL}(\boldsymbol{w}^{(t)})$ yields Iteratively Reweighted Least Squares (IRLS):
@@ -193,14 +181,12 @@ By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1
 > $$
 > \boldsymbol{w}^{(t+1)} = (\boldsymbol{\Phi}^{\top}\boldsymbol{W}^{(t)}\boldsymbol{\Phi})^{-1} \boldsymbol{\Phi}^{\top}\boldsymbol{W}^{(t)}\boldsymbol{z}^{(t)}, \qquad
 > \boldsymbol{z}^{(t)} = \boldsymbol{\Phi}\boldsymbol{w}^{(t)} + (\boldsymbol{W}^{(t)})^{-1}(\boldsymbol{y} - \boldsymbol{\mu}^{(t)}).
->
 > $$
 >
 > For $C$-class multinomial logistic (softmax) regression with weights $\boldsymbol{W}_{\mathrm{cls}} = [\boldsymbol{w}_1,\dots,\boldsymbol{w}_C] \in \mathbb{R}^{D \times C}$, class probabilities are $\mu_{nc} = \frac{\exp(\boldsymbol{w}_c^{\top}\boldsymbol{\phi}_n)}{\sum_{k=1}^C\exp(\boldsymbol{w}_k^{\top}\boldsymbol{\phi}_n)}$ [[Source - Machine Learning co ban|machine_learning_co_ban_tiep_vu]] (Ch. 15, PDF p. 198). With one-hot targets $\boldsymbol{y}_n \in \{0,1\}^C$, the cross-entropy gradient for class $c$ is $\nabla_{\boldsymbol{w}_c}\mathrm{NLL} = \sum_{n=1}^N (\mu_{nc} - y_{nc})\boldsymbol{\phi}_n$, and the block Hessian is [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 10, PDF p. 385)
 >
 > $$
 > \boldsymbol{H}(\boldsymbol{w}) = \sum_{n=1}^N \Big(\mathrm{diag}(\boldsymbol{\mu}_n) - \boldsymbol{\mu}_n\boldsymbol{\mu}_n^{\top}\Big) \otimes (\boldsymbol{\phi}_n\boldsymbol{\phi}_n^{\top}) \succeq \boldsymbol{0}.
->
 > $$
 >
 > Note that unregularized softmax is shift-invariant ($\boldsymbol{w}_c \mapsto \boldsymbol{w}_c + \boldsymbol{c}$ leaves $\mu_{nc}$ unchanged); adding $\ell_2$ regularization $\frac{\lambda}{2}\sum_{c=1}^C\lVert \boldsymbol{w}_c \rVert_2^2$ enforces the unique sum-to-zero constraint $\sum_{c=1}^C \hat{w}_{cj} = 0$ for every feature $j$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 10, PDF p. 386).
@@ -211,18 +197,16 @@ By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1
 ### Unified Canonical Exponential-Family GLMs
 
 > [!important] Exponential Dispersion Family & Canonical Link Gradient
-> A Generalized Linear Model assumes the target $y_n$ follows an exponential dispersion family distribution conditional on $\boldsymbol{x}_n$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 12, PDF p. 445; \bookcite{deep_learning_foundations_concepts}{Ch. 5, PDF p. 183}):
+> A Generalized Linear Model assumes the target $y_n$ follows an exponential dispersion family distribution conditional on $\boldsymbol{x}_n$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 12, PDF p. 445; [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 5, PDF p. 183)):
 >
 > $$
 > p(y_n \mid \theta_n, \phi) = h(y_n, \phi)\exp\!\left(\frac{y_n\theta_n - A(\theta_n)}{\phi}\right),
->
 > $$
 >
 > where $\theta_n$ is the natural (canonical) parameter, $A(\theta_n)$ is the log-partition (cumulant) function, and $\phi > 0$ is the dispersion parameter. Differentiating the normalization identity $\int p(y\mid\theta,\phi) \mathrm{d}y = 1$ twice with respect to $\theta$ gives the exact mean and variance:
 >
 > $$
 > \mu_n = \mathbb{E}[y_n \mid \theta_n] = A'(\theta_n), \qquad \mathrm{Var}(y_n \mid \theta_n) = \phi A"(\theta_n) = \phi  V(\mu_n).
->
 > $$
 >
 > A *canonical link function* chooses $g = (A')^{-1}$ so that the natural parameter equals the linear predictor directly: $\theta_n = g(\mu_n) = \eta_n = \boldsymbol{w}^{\top}\boldsymbol{\phi}_n$ [[Source - Foundations|deep_learning_foundations_concepts]] (Ch. 5, PDF p. 184). Under this canonical pairing, the log-likelihood $\ell(\boldsymbol{w}) = \sum_{n=1}^N \frac{y_n\eta_n - A(\eta_n)}{\phi} + \mathrm{const}$ has score and Fisher Information:
@@ -231,13 +215,12 @@ By Lagrangian duality, `(eq:glm:lasso_obj)` is equivalent to minimizing $\frac{1
 > \frac{\partial \ell_n}{\partial \eta_n} = \frac{y_n - A'(\eta_n)}{\phi} = \frac{y_n - \mu_n}{\phi}, \qquad
 > \nabla_{\boldsymbol{w}}\mathrm{NLL}(\boldsymbol{w}) = \frac{1}{\phi}\boldsymbol{\Phi}^{\top}(\boldsymbol{\mu} - \boldsymbol{y}), \qquad
 > \mathcal{I}(\boldsymbol{w}) = \frac{1}{\phi}\boldsymbol{\Phi}^{\top}\boldsymbol{W}\boldsymbol{\Phi},
->
 > $$
 >
 > where $W_{nn} = A"(\eta_n) = \frac{\mathrm{d}\mu_n}{\mathrm{d}\eta_n}$. Thus, OLS, logistic regression, and Poisson regression share the identical residual-weighted gradient structure $\boldsymbol{\Phi}^{\top}(\boldsymbol{\mu} - \boldsymbol{y})$ and positive semi-definite Hessian $\boldsymbol{\Phi}^{\top}\boldsymbol{W}\boldsymbol{\Phi}$.
 
 | **Distribution** | **Support $\mathcal{Y}$** | **Cumulant $A(\eta)$** | **$\phi$** | **Canonical Link $g(\mu)$** | **Mean $\mu = A'(\eta)$** |
-| — | — | — | — | — | — |
+| --- | --- | --- | --- | --- | --- |
 | Gaussian $\mathcal{N}(\mu,\sigma^2)$ | $\mathbb{R}$ | $\frac{1}{2}\eta^2$ | $\sigma^2$ | $\mu$ (Identity) | $\eta$ |
 | Bernoulli $\mathrm{Bern}(\mu)$ | $\{0,1\}$ | $\log(1+e^\eta)$ | $1$ | $\log\frac{\mu}{1-\mu}$ (Logit) | $\sigma(\eta)$ |
 | Poisson $\mathrm{Poi}(\mu)$ | $\mathbb{N}_0$ | $e^\eta$ | $1$ | $\log\mu$ (Log) | $\exp(\eta)$ |
@@ -255,7 +238,7 @@ We present two core production solvers: Algorithm `alg:glm:irls` (IRLS for any c
 > **for** $t = 0, 1, \dots, T_{\max}$:
 >
 >   $\boldsymbol{\eta} \leftarrow \boldsymbol{\Phi}\boldsymbol{w}^{(t)}$  *// Linear predictor*
->   $\boldsymbol{\mu} \leftarrow A'(\boldsymbol{\eta})$,\quad $\boldsymbol{W} \leftarrow \mathrm{diag}\!\big(A"(\boldsymbol{\eta})\big)$  *// Mean and variance weights*
+>   $\boldsymbol{\mu} \leftarrow A'(\boldsymbol{\eta})$,  $\boldsymbol{W} \leftarrow \mathrm{diag}\!\big(A"(\boldsymbol{\eta})\big)$  *// Mean and variance weights*
 >   $\boldsymbol{z} \leftarrow \boldsymbol{\eta} + \boldsymbol{W}^{-1}(\boldsymbol{y} - \boldsymbol{\mu})$  *// Working response*
 >   Solve $(\boldsymbol{\Phi}^{\top}\boldsymbol{W}\boldsymbol{\Phi} + \lambda\boldsymbol{I}_D)\boldsymbol{w}^{(t+1)} = \boldsymbol{\Phi}^{\top}\boldsymbol{W}\boldsymbol{z}$ via Cholesky / QR
 >   **if** $\lVert \boldsymbol{w}^{(t+1)} - \boldsymbol{w}^{(t)} \rVert_2 < \varepsilon$:
@@ -266,7 +249,7 @@ We present two core production solvers: Algorithm `alg:glm:irls` (IRLS for any c
 > [!example] Algorithm: Coordinate Descent with Soft-Thresholding for Lasso ($\ell_1$)
 > **Input:** Standardized $\boldsymbol{\Phi} \in \mathbb{R}^{N \times D}$ ($\lVert \boldsymbol{\varphi}_j \rVert_2^2 = N$), centered $\boldsymbol{y}$, penalty $\lambda > 0$, tol $\varepsilon$
 > **Output:** Sparse parameter vector $\hat{\boldsymbol{w}} \in \mathbb{R}^D$
-> Initialize $\boldsymbol{w} \leftarrow \boldsymbol{0}$,\quad $\boldsymbol{r} \leftarrow \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w}$
+> Initialize $\boldsymbol{w} \leftarrow \boldsymbol{0}$,  $\boldsymbol{r} \leftarrow \boldsymbol{y} - \boldsymbol{\Phi}\boldsymbol{w}$
 > **while** $\lVert \boldsymbol{w} - \boldsymbol{w}_{\mathrm{prev}} \rVert_\infty > \varepsilon$:
 >
 >   $\boldsymbol{w}_{\mathrm{prev}} \leftarrow \boldsymbol{w}$
@@ -274,13 +257,12 @@ We present two core production solvers: Algorithm `alg:glm:irls` (IRLS for any c
 >
 >     $\rho_j \leftarrow \boldsymbol{\varphi}_j^{\top}(\boldsymbol{r} + w_j\boldsymbol{\varphi}_j)$  *// Partial residual correlation*
 >     $w_j^{\mathrm{new}} \leftarrow \frac{1}{N}\mathrm{sign}(\rho_j)\max(0,  \lvert \rho_j \rvert - \lambda)$  *// Soft-thresholding*
->     $\boldsymbol{r} \leftarrow \boldsymbol{r} - (w_j^{\mathrm{new}} - w_j)\boldsymbol{\varphi}_j$,\quad $w_j \leftarrow w_j^{\mathrm{new}}$
->
+>     $\boldsymbol{r} \leftarrow \boldsymbol{r} - (w_j^{\mathrm{new}} - w_j)\boldsymbol{\varphi}_j$,  $w_j \leftarrow w_j^{\mathrm{new}}$
 >
 > **return** $\boldsymbol{w}$
 
 | **Model / Solver** | **Time Complexity** | **Memory** | **Regime & Numerical Trade-off** |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | OLS / Ridge (QR) | $\mathcal{O}(ND^2)$ | $\mathcal{O}(ND)$ | Preferred for $N \ge D$; avoids squaring condition number $\kappa(\boldsymbol{\Phi})$. |
 | Ridge (Dual SVD) | $\mathcal{O}(DN^2)$ | $\mathcal{O}(ND)$ | Optimal when $D \gg N$; operates in $N\times N$ Gram space. |
 | Lasso (Coord. Desc.) | $\mathcal{O}(K_{\mathrm{sweep}} ND)$ | $\mathcal{O}(ND)$ | Exact sparsity via active-set updates; no matrix inversion. |
@@ -311,8 +293,8 @@ Figure `fig:glm:tikz_pipeline` maps the canonical GLM architecture from input fe
 > $$
 > \log\sum_{k=1}^C e^{\eta_k} = m + \log\sum_{k=1}^C e^{\eta_k - m}, \qquad
 > \mathrm{softplus}(\eta) = \max(\eta, 0) + \log\!\left(1 + e^{-\lvert \eta \rvert}\right).
->
 > $$
+>
 
 > [!warning] Collinearity, Unscaled Features & Normal-Equation Conditioning
 > Forming $(\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})^{-1}$ explicitly squares the condition number, $\kappa(\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi}) = \kappa(\boldsymbol{\Phi})^2$, losing double precision digits when features are collinear [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Ch. 11, PDF p. 412). Furthermore, Ridge and Lasso penalties $\lVert \boldsymbol{w} \rVert_2^2, \lVert \boldsymbol{w} \rVert_1$ are not scale-invariant: multiplying feature $j$ by $10^{-3}$ scales $w_j$ by $10^3$, disproportionately penalizing small-scale features. **Remedy:** Standardize features to zero mean and unit variance before regularization (keeping the intercept $w_0$ unpenalized), and solve OLS/Ridge via QR or SVD rather than normal equations.

@@ -77,16 +77,15 @@ The discounted return from step $t$ is $G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+
 In autoregressive Large Language Model (LLM) post-training (RLHF and RL with Verifiable Rewards), a prompt $x \sim \mathcal{D}$ serves as the initial state $s_0$, and the completion $y = (a_0, \dots, a_{T-1})$ is a sequence of tokens where state $s_t = (x, a_{<t})$ evolves deterministically by concatenation, $\gamma = 1$, and a scalar reward $R(x, y)$ is typically observed only at the terminal token $T$ [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Sec. 6.2, p. 52–53).
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | Concept | Sutton & Barto | Murphy (RL / Adv.) | Prince (UDL) | Lambert (RLHF) |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Policy | $\pi(a \mid s, \boldsymbol{\theta})$ | $\pi_{\boldsymbol{\theta}}(a \mid s)$ | $\pi[a_t \mid s_t, \theta]$ | $\pi_\theta(a \mid s)$ or $\pi_\theta(y \mid x)$ |
 > | Critic / Value | $\hat{v}(s, \mathbf{w})$ | $V_{\mathbf{w}}(s)$ / $V_\phi(s)$ | $v[s, \phi]$ | $V_\phi(s_t)$ |
 > | State Visitation | $\mu(s)$ (steady/on-policy) | $p_\pi^\gamma(s)$ (discounted) | Implicit in $\mathbb{E}_\tau[\cdot]$ | Rollout batch $s \sim \mathcal{D}$ |
 > | Return | $G_t = \sum_{k=t+1}^T \gamma^{k-t-1} R_k$ | $G_t = \sum_{k=0}^\infty \gamma^k r_{t+k}$ | $r[\tau] = \sum_{t} r_t$ | $G_t = \sum_{k=0}^\infty \gamma^k r_{t+k}$ |
 > | IS Policy Ratio | N/A (on-policy) | $\rho_t = \frac{\pi_{\boldsymbol{\theta}}(a_t \mid s_t)}{\pi_{\boldsymbol{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$ | N/A | $\rho(\theta) = \frac{\pi_\theta(a \mid s)}{\pi_{\theta_{\mathrm{old}}}(a \mid s)}$ |
 > | KL Reg. | N/A | Trust-region constraint | N/A | Reward shaping or loss |
->
->
 >
 > **Unified Convention:** Throughout this leaf, we adopt $\pi_{\boldsymbol{\theta}}(a \mid s)$ for the actor, $V_{\boldsymbol{\phi}}(s)$ for the critic, $d^{\pi}_{\gamma}(s) = (1-\gamma)\sum_{t=0}^\infty \gamma^t \mathbb{P}(S_t = s \mid \pi)$ for the normalized discounted state visitation distribution, and $r_t(\boldsymbol{\theta}) = \frac{\pi_{\boldsymbol{\theta}}(a_t \mid s_t)}{\pi_{\boldsymbol{\theta}_{\mathrm{old}}}(a_t \mid s_t)}$ for the importance-sampling (IS) ratio.
 
@@ -102,11 +101,9 @@ A central difficulty in differentiating $J(\boldsymbol{\theta}) = \mathbb{E}_{s_
 > $$
 > \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) \propto \sum_{s \in \mathcal{S}} \mu(s) \sum_{a \in \mathcal{A}}  Q^{\pi_{\boldsymbol{\theta}}}(s, a)  \nabla_{\boldsymbol{\theta}} \pi_{\boldsymbol{\theta}}(a \mid s)
 >   = \mathbb{E}_{s \sim \mu,  a \sim \pi_{\boldsymbol{\theta}}}\!\left[  Q^{\pi_{\boldsymbol{\theta}}}(s, a)  \nabla_{\boldsymbol{\theta}} \log \pi_{\boldsymbol{\theta}}(a \mid s) \right],
->
 > $$
 >
 > where $\mu(s)$ is the discounted state-visitation measure $\sum_{t=0}^\infty \gamma^t \mathbb{P}(s_0 \to s, t, \pi_{\boldsymbol{\theta}})$ (or normalized $d^{\pi_{\boldsymbol{\theta}}}_\gamma(s)$ with proportionality constant $(1-\gamma)^{-1}$) in the episodic case, and the stationary distribution $\mu^{\pi_{\boldsymbol{\theta}}}(s)$ in the continuing case.
->
 >
 > **Proof (Episodic Case via Unrolling):** Writing $\nabla$ for $\nabla_{\boldsymbol{\theta}}$ and omitting the subscript $\boldsymbol{\theta}$ on $\pi$ for brevity [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (p. 325) [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 35.3.1, p. 1157):
 >
@@ -117,18 +114,15 @@ A central difficulty in differentiating $J(\boldsymbol{\theta}) = \mathbb{E}_{s_
 >   &= \sum_{a} \nabla\pi(a \mid s)   Q^\pi(s, a) + \sum_{a} \pi(a \mid s) \nabla \left[ R(s,a) + \gamma \sum_{s'} \mathcal{P}(s' \mid s, a)   V^\pi(s') \right]  \\
 >   &= \sum_{a} \nabla\pi(a \mid s)   Q^\pi(s, a) + \gamma \sum_{a} \pi(a \mid s) \sum_{s'} \mathcal{P}(s' \mid s, a)  \nabla  V^\pi(s').
 > \end{aligned}
->
 > $$
 >
 > Notice that $\nabla  V^\pi(s')$ on the right-hand side has the exact same form as $\nabla  V^\pi(s)$. Repeatedly unrolling `(eq:pg:unroll_step)` yields
 >
 > $$
 > \nabla  V^\pi(s) = \sum_{x \in \mathcal{S}} \sum_{k=0}^\infty \gamma^k \mathbb{P}(s \to x, k, \pi) \sum_{a} \nabla \pi(a \mid x)   Q^\pi(x, a).
->
 > $$
 >
 > Taking expectation over $s_0 \sim d_0$ and applying the log-derivative trick $\nabla \pi(a \mid x) = \pi(a \mid x)  \nabla \log \pi(a \mid x)$ gives `(eq:pg:pg_theorem)`.
->
 >
 > **Continuing Case:** With $J(\boldsymbol{\theta}) = r(\pi) = \sum_s \mu(s) \sum_a \pi(a \mid s) R(s, a)$ and differential value $V^\pi(s) = \sum_a \pi(a \mid s)\big(R(s,a) - r(\pi) + \sum_{s'} \mathcal{P}(s'\mid s,a) V^\pi(s')\big)$, differentiating $V^\pi(s)$ and summing weighted by $\mu(s)$ cancels $\sum_s \mu(s)\nabla  V^\pi(s)$ against $\sum_{s'} \mu(s')\nabla  V^\pi(s')$ via stationarity $\sum_s \mu(s)\sum_a \pi(a\mid s)\mathcal{P}(s'\mid s,a) = \mu(s')$, leaving $\nabla r(\pi) = \sum_s \mu(s)\sum_a \nabla \pi(a \mid s)   Q^\pi(s, a)$ [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Sec. 13.6, p. 334–335).
 
@@ -155,14 +149,12 @@ because $\nabla_{\boldsymbol{\theta}} \log d_0(s_0) = \boldsymbol{0}$ and $\nabl
 >   &= b(s) \sum_{a \in \mathcal{A}} \pi_{\boldsymbol{\theta}}(a \mid s) \frac{\nabla_{\boldsymbol{\theta}} \pi_{\boldsymbol{\theta}}(a \mid s)}{\pi_{\boldsymbol{\theta}}(a \mid s)}  \\
 >   &= b(s)  \nabla_{\boldsymbol{\theta}} \sum_{a \in \mathcal{A}} \pi_{\boldsymbol{\theta}}(a \mid s) = b(s)  \nabla_{\boldsymbol{\theta}}(1) = \boldsymbol{0}.
 > \end{aligned}
->
 > $$
 >
 > Minimizing $\mathrm{Var}\!\left[(G_t - b(s_t))\nabla_{\boldsymbol{\theta}}\log \pi_{\boldsymbol{\theta}}(a_t \mid s_t)\right]$ with respect to $b(s_t)$ yields the variance-optimal baseline [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Eq. 19.36, p. 392):
 >
 > $$
 > b^*(s_t) = \frac{\mathbb{E}_{a_t \sim \pi_{\boldsymbol{\theta}}}\!\left[ G_t  \lVert \nabla_{\boldsymbol{\theta}} \log \pi_{\boldsymbol{\theta}}(a_t \mid s_t) \rVert_2^2 \right]}{\mathbb{E}_{a_t \sim \pi_{\boldsymbol{\theta}}}\!\left[ \lVert \nabla_{\boldsymbol{\theta}} \log \pi_{\boldsymbol{\theta}}(a_t \mid s_t) \rVert_2^2 \right]}.
->
 > $$
 >
 > In practice, $b(s_t) \approx  V_{\boldsymbol{\phi}}(s_t)$ is used, turning the weight into an estimate of the **advantage function** $A^\pi(s, a) =  Q^\pi(s, a) -  V^\pi(s)$.
@@ -181,7 +173,6 @@ Using the full Monte Carlo return $G_t -  V_{\boldsymbol{\phi}}(s_t)$ is unbiase
 >   &= (1 - \lambda) \sum_{l=0}^\infty \gamma^l \delta_{t+l}^V \sum_{k=l+1}^\infty \lambda^{k-1}
 >   = \sum_{l=0}^\infty (\gamma \lambda)^l \delta_{t+l}^V.
 > \end{aligned}
->
 > $$
 >
 > Setting $\lambda = 0$ recovers the one-step TD advantage $\delta_t^V$ (low variance, higher bias); setting $\lambda = 1$ recovers the Monte Carlo advantage $\sum_{l=0}^\infty \gamma^l \delta_{t+l}^V = G_t -  V_{\boldsymbol{\phi}}(s_t)$ (unbiased, higher variance). Over a finite horizon $T$, `(eq:pg:gae)` is computed via the backward recursion $\hat{A}_t = \delta_t^V + \gamma \lambda \hat{A}_{t+1}$ with $\hat{A}_T = 0$.
@@ -207,14 +198,12 @@ $\mathbb{E}_s[D_{\mathrm{KL}}(\pi_{\boldsymbol{\theta}}(\cdot \mid s) \parallel 
 > J(\pi) - J(\pi_k) &\ge \underbrace{\frac{1}{1-\gamma} \mathbb{E}_{s \sim d^{\pi_k}_\gamma,  a \sim \pi_k}\!\left[ \frac{\pi(a \mid s)}{\pi_k(a \mid s)} A^{\pi_k}(s, a) \right]}_{L(\pi, \pi_k)}  \\
 >   &\quad - \frac{2\gamma C_{\pi,\pi_k}}{(1-\gamma)^2} \mathbb{E}_{s \sim d^{\pi_k}_\gamma}\!\left[ D_{\mathrm{TV}}\!\left(\pi(\cdot \mid s), \pi_k(\cdot \mid s)\right) \right],
 > \end{aligned}
->
 > $$
 >
 > where $C_{\pi,\pi_k} = \max_s \lvert \mathbb{E}_{a \sim \pi}[A^{\pi_k}(s, a)] \rvert$. Applying Pinsker's inequality $D_{\mathrm{TV}}(p, q) \le \sqrt{\frac{1}{2}D_{\mathrm{KL}}(q \parallel p)}$, **TRPO** replaces the penalty with a hard trust-region constraint:
 >
 > $$
 > \boldsymbol{\theta}_{k+1} = \arg\max_{\boldsymbol{\theta}} L(\pi_{\boldsymbol{\theta}}, \pi_k) \quad \text{s.t.} \quad \mathbb{E}_{s \sim d^{\pi_k}_\gamma}\!\left[D_{\mathrm{KL}}(\pi_k(\cdot \mid s) \parallel \pi_{\boldsymbol{\theta}}(\cdot \mid s))\right] \le \delta,
->
 > $$
 >
 > solved via conjugate gradients on $F_k \mathbf{v} = \mathbf{g}_k$ followed by backtracking line search [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 3.3.2, p. 65).
@@ -223,7 +212,6 @@ $\mathbb{E}_s[D_{\mathrm{KL}}(\pi_{\boldsymbol{\theta}}(\cdot \mid s) \parallel 
 >
 > $$
 > L^{\mathrm{CLIP}}(\boldsymbol{\theta}) = \mathbb{E}_t\!\left[ \min\!\Big( r_t(\boldsymbol{\theta})\hat{A}_t,  \mathrm{clip}\big(r_t(\boldsymbol{\theta}),  1-\varepsilon,  1+\varepsilon\big)\hat{A}_t \Big) \right].
->
 > $$
 >
 > Equivalently, $L^{\mathrm{CLIP}}(\boldsymbol{\theta}) = \mathbb{E}_t[\min(r_t(\boldsymbol{\theta})\hat{A}_t, g(\varepsilon, \hat{A}_t))]$, where $g(\varepsilon, A) = (1+\varepsilon)A$ for $A \ge 0$ and $(1-\varepsilon)A$ for $A < 0$. The $\min$ operator acts as a pessimistic lower bound that zeroes out the gradient $\nabla_{\boldsymbol{\theta}} L^{\mathrm{CLIP}}$ whenever the policy moves too far in the direction encouraged by $\hat{A}_t$ ($r_t > 1+\varepsilon$ for $\hat{A}_t > 0$, or $r_t < 1-\varepsilon$ for $\hat{A}_t < 0$).
@@ -238,15 +226,14 @@ Policy optimization can alternatively be formulated as **variational Bayesian in
 > $$
 > -D_{\mathrm{KL}}(q_{\boldsymbol{\theta}}(\tau) \parallel p(\tau \mid o_{1:T}=1)) + \text{const}
 >   = \mathbb{E}_{\tau \sim q_{\boldsymbol{\theta}}}\!\left[ \sum_{t=0}^{T-1} \left( \frac{1}{\alpha} r(s_t, a_t) + \mathrm{H}\!\big(\pi_{\boldsymbol{\theta}}(\cdot \mid s_t)\big) \right) \right].
->
 > $$
 >
 > Multiplying by $\alpha$ recovers the **Maximum-Entropy RL** objective. In **Soft Actor-Critic (SAC)** [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Sec. 3.6.8, p. 78–80), two soft Q-networks $Q_{\mathbf{w}_1},  Q_{\mathbf{w}_2}$ are trained off-policy against a clipped twin target $y_t = r_t + \gamma \big(\min_{i=1,2}  Q_{\bar{\mathbf{w}}_i}(s_{t+1}, \tilde{a}_{t+1}) - \alpha \log \pi_{\boldsymbol{\theta}}(\tilde{a}_{t+1} \mid s_{t+1})\big)$ with $\tilde{a}_{t+1} \sim \pi_{\boldsymbol{\theta}}(\cdot \mid s_{t+1})$, and the actor minimizes the KL projection onto the Boltzmann soft-Q policy via the **reparameterization trick** $a_t = f_{\boldsymbol{\theta}}(s_t, \boldsymbol{\xi}_t)$, $\boldsymbol{\xi}_t \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$:
 >
 > $$
 > J_\pi(\boldsymbol{\theta}) = \mathbb{E}_{s_t \sim \mathcal{D},  \boldsymbol{\xi}_t \sim \mathcal{N}}\!\left[ \alpha \log \pi_{\boldsymbol{\theta}}(f_{\boldsymbol{\theta}}(s_t, \boldsymbol{\xi}_t) \mid s_t) - \min_{i=1,2}  Q_{\mathbf{w}_i}(s_t, f_{\boldsymbol{\theta}}(s_t, \boldsymbol{\xi}_t)) \right].
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -261,7 +248,7 @@ Modern policy-gradient systems branch into two dominant paradigms: **critic-base
 >   **for** $t = T-1, T-2, \dots, 0$:
 >
 >     $\delta_t \leftarrow r_t + \gamma (1 - \mathrm{done}_t) V_{\boldsymbol{\phi}}(s_{t+1}) - v_t$
->     $\hat{A}_t \leftarrow \delta_t + \gamma \lambda (1 - \mathrm{done}_t) \hat{A}_{t+1}$; \quad $y_t \leftarrow \hat{A}_t + v_t$
+>     $\hat{A}_t \leftarrow \delta_t + \gamma \lambda (1 - \mathrm{done}_t) \hat{A}_{t+1}$;   $y_t \leftarrow \hat{A}_t + v_t$
 >
 >   Normalize $\hat{A}_t \leftarrow (\hat{A}_t - \mathrm{mean}(\hat{A})) / (\mathrm{std}(\hat{A}) + 10^{-8})$
 >   **for** epoch $m = 1, \dots, M$:
@@ -286,7 +273,7 @@ Modern policy-gradient systems branch into two dominant paradigms: **critic-base
 **Table:** Comparative synthesis of policy gradient, actor-critic, trust-region, and LLM alignment algorithms [[Source - Reinforcement Learning - An Overview|reinforement_learning_kevin_murphy]] (Ch. 3) [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Table 3, p. 72).
 
 | Method | On/Off | Critic / Baseline | Trust-Region / IS | Primary Regime & Trade-off |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | REINFORCE | On-policy | None / MC $V(s)$ | None | High variance; simple, unbiased MC baseline |
 | RLOO | On-policy | Leave-one-out mean | None | Critic-free multi-sample LLM baseline |
 | A2C + GAE | On-policy | Learned $V_{\boldsymbol{\phi}}(s)$ | None (1-step/$\lambda$) | Online updates; $\lambda$ tunes bias–variance |

@@ -59,8 +59,9 @@ $$
   where each $\phi_{\ell,q,p}$ is parameterized as a residual SiLU term plus a degree-$k$ B-spline on $G$ grid intervals [[Source - Math behind KAN|math_behind_kan]] (PDF p. 6).
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | **Concept** | **Unified Monograph** | **Prince / Bishop / Goodfellow** | **Murphy / KAN Monograph** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Input / Output dim. | $D_i = n_0,  D_o = n_L$ | Prince: $D_i, D_o$; Goodfellow: $d$ inputs; Bishop: $D$ inputs | Murphy: $D$ inputs; KAN: $n_0, n_L$ |
 > | Layer weights | $\boldsymbol{W}^{(\ell)} \in \mathbb{R}^{n_\ell \times n_{\ell-1}}$ | Prince: $\boldsymbol{\Omega}_{k-1}$; Bishop/Goodfellow: $\boldsymbol{W}^{(\ell)}$ | Murphy: $\boldsymbol{W}_l$; KAN: $c_m$ (spline coeffs) |
 > | Layer bias | $\boldsymbol{b}^{(\ell)} \in \mathbb{R}^{n_\ell}$ | Prince: $\boldsymbol{\beta}_{k-1}$; Goodfellow: $\boldsymbol{c}, \boldsymbol{b}$ | Murphy: $\boldsymbol{b}_l$; KAN: absorbed in $\phi_{\ell,q,p}$ |
@@ -79,8 +80,8 @@ As established in [[Source - Deep Learning|deep_learning_goodfellow_bengio_courv
 >
 > $$
 > \sup_{\boldsymbol{x} \in K} \lvert f(\boldsymbol{x}) - \sum_{j=1}^N \alpha_j \sigma\!\left(\boldsymbol{w}_j^{\top} \boldsymbol{x} + \theta_j\right) \rvert < \epsilon.
->
 > $$
+>
 
 > [!tip] Geometric Partitioning vs. the Width Curse
 > In 1D with $\mathrm{ReLU}(z) = \max(0, z)$, each hidden unit $h_j(x) = \mathrm{ReLU}(\theta_{j0} + \theta_{j1}x)$ introduces a single "joint" (hinge) at $x = -\theta_{j0}/\theta_{j1}$, so $D$ hidden units partition $\mathbb{R}$ into at most $D + 1$ linear segments [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 3.2, p. 29). Adding units refines the piecewise-linear interpolant to arbitrary precision. In $D_i$ dimensions, however, approximating a generic Lipschitz function to accuracy $\epsilon$ with a shallow network can require $N = \Omega(\epsilon^{-D_i})$ hidden units—an exponential bottleneck unless the target exhibits compositional structure.
@@ -92,19 +93,15 @@ A ReLU network composes continuous piecewise-linear (CPWL) maps, so the full net
 > [!important] Linear Region Counting & Depth Separation
 > - **1D Shallow vs. Deep Exact Bounds [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 4.5.2, p. 50):** A scalar-input ($D_i = 1$) shallow ReLU network with $D > 2$ hidden units has $3D + 1$ parameters and creates at most $D + 1$ linear regions. A deep ReLU network with $K$ hidden layers of width $D > 2$ has $3D + 1 + (K-1)D(D+1)$ parameters and can create up to
 >
->
 > $$
 > R_{\max}(1, K, D) = (D + 1)^K \quad \text{linear regions.}
->
 > $$
 >
 >   For example, $K=5, D=10$ uses only $471$ parameters yet produces up to $11^5 = 161{,}051$ linear regions.
 > - **Multivariate Depth Separation (Mont\'ufar et al.) [[Source - Deep Learning|deep_learning_goodfellow_bengio_courville_2017]] (Sec. 6.4.1, Eq. 6.42, p. 200):** For a ReLU network with $d$ inputs, depth $l$, and $n \ge d$ units per hidden layer, the maximum number of linear regions scales as
 >
->
 > $$
 > R_{\max}(d, l, n) = \Omega\!\left(\left(\frac{n}{d}\right)^{(l-1)d} n^d\right),
->
 > $$
 >
 >   growing exponentially in depth $l$, whereas a shallow ($l=1$) network is bounded by Zaslavsky's hyperplane arrangement count $\sum_{j=0}^{d} \binom{n}{j} = O(n^d)$.
@@ -138,7 +135,6 @@ Rather than approximating functions via sums of ridge functions $\sigma(\boldsym
 >
 > $$
 > f(x_1, \dots, x_n) = \sum_{q=0}^{2n} \Phi_q\!\left(\sum_{p=1}^n \phi_{q,p}(x_p)\right),
->
 > $$
 >
 > where $\phi_{q,p} : [0,1] \to \mathbb{R}$ and $\Phi_q : \mathbb{R} \to \mathbb{R}$ are continuous univariate functions.
@@ -179,7 +175,6 @@ Unlike MLPs—which require retraining from scratch when increasing hidden width
 >
 >       Compute $B_{m,r}(x)$ via Cox–de Boor recursion in Eq. `(eq:mlpkan:cdbr)`
 >
->
 >   $b_p \leftarrow x / (1 + e^{-x})$  *// SiLU residual basis*
 >
 > **for** $q \leftarrow 1$ to $n_\ell$:
@@ -191,7 +186,7 @@ Unlike MLPs—which require retraining from scratch when increasing hidden width
 **Table:** Per-layer parameter and computational complexity comparison between Shallow MLPs, Deep MLPs, and B-spline KANs ($N = n_{\ell-1} = n_\ell$, spline degree $k$, grid intervals $G$).
 
 | **Architecture** | **Params / Layer** | **FLOPs / Sample** | **Hardware & Inductive Trade-off** |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | Shallow MLP ($L=2$) | $N(D_i + D_o + 1)$ | $O(N(D_i + D_o))$ | Dense GEMM; $O(\epsilon^{-D_i})$ width curse |
 | Deep MLP ($L$ layers) | $N^2 + N$ | $O(N^2)$ | Dense GEMM; $O((N/D_i)^{L D_i})$ regions |
 | KAN ($L$ layers, $G, k$) | $N^2(G + k + 2)$ | $O(N^2 k^2)$ (local) | Symbolic interpretability & grid extension; non-GEMM overhead |
@@ -233,7 +228,7 @@ Empirical and theoretical region-counting behavior is captured directly in the s
 
 > [!warning] KAN Boundary Extrapolation & GPU Throughput Overhead
 > Because B-spline basis functions $B_{m,k}(x)$ vanish identically outside the knot support $[t_k, t_{G+k}]$, any out-of-distribution activation collapses $\mathrm{spline}(x) = 0$, leaving only the residual branch $w_b \mathrm{SiLU}(x)$ [[Source - Math behind KAN|math_behind_kan]] (PDF pp. 4–6).
-> **Remedy:** Periodically execute adaptive grid updates (`update\_grid`) aligned to empirical activation quantiles during training, and reserve KANs for low-dimensional scientific/symbolic tasks where their $5\times$–$10\times$ non-GEMM wall-clock overhead per parameter is offset by compact node counts.
+> **Remedy:** Periodically execute adaptive grid updates (`update_grid`) aligned to empirical activation quantiles during training, and reserve KANs for low-dimensional scientific/symbolic tasks where their $5\times$–$10\times$ non-GEMM wall-clock overhead per parameter is offset by compact node counts.
 
 ---
 

@@ -26,7 +26,8 @@ Add `ConceptSpec` entries for new concepts, theorems, algorithms, objects, archi
 - Balanced-brace macro expansion (`read_balanced`) with `(?![A-Za-z])` word boundaries.
 - `\[...\]` / `\(...\)` $\to$ `$$...$$` / `$...$` (excluding `\\[4pt]` line breaks).
 - `algorithm2e` $\to$ `[!example] Algorithm` callouts (3-pass nested loop/if + `\Return`).
-- `tabular`/`tabularx` $\to$ Markdown tables with a mandatory blank line (or `>`) above every header, `|` inside math converted to `\mid` / `\parallel`, and `|alias` stripped from table wikilinks.
+- `tabular`/`tabularx` $\to$ Markdown tables with ASCII `| --- |` separators (protected from `---` $\to$ `—` dash normalization), mandatory blank lines (`>` in callouts) before/after every table, `|`/`\|` inside math converted to `\mid`/`\parallel`, `|alias` stripped, table rows excluded from concept auto-linking, and `{\small ...}`/`\resizebox` unwrapped.
+- Inline `$...$` trimmed (no leading/trailing spaces) and `\texttt` expanded to `\mathtt` inside math rather than backticks.
 - LaTeX accents converted to Unicode (`è`, `é`, `ô`, `ö`, `ü`, `ä`, `Ł`).
 - Mermaid diagrams rendered via sanitized `flowchart LR`.
 

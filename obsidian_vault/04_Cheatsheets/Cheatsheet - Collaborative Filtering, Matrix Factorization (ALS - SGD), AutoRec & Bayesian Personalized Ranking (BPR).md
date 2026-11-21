@@ -61,7 +61,7 @@ flowchart LR
   $$
 - **3. BIASED MATRIX FACTORIZATION (SVD++)**
   $$
-  \hat y_{ui}=\mu+b_u+b_i+\boldsymbol{p}_u^{\top}\boldsymbol{q}_i,\quad \min_{\boldsymbol{P},\boldsymbol{Q}}\sum_{\Omega}(y_{ui}-\hat y_{ui})^2+\lambda(\lVert \boldsymbol{P} \rVert_F^2+\lVert \boldsymbol{Q} \rVert_F^2)
+  \hat y_{ui}=\mu+b_u+b_i+\boldsymbol{p}_u^{\top}\boldsymbol{q}_i,  \min_{\boldsymbol{P},\boldsymbol{Q}}\sum_{\Omega}(y_{ui}-\hat y_{ui})^2+\lambda(\lVert \boldsymbol{P} \rVert_F^2+\lVert \boldsymbol{Q} \rVert_F^2)
   $$
 - **4. ALS vs SGD OPTIMIZATION**
   $$

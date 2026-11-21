@@ -63,7 +63,7 @@ flowchart LR
 - **4. DISTILLATION — Progressive Distillation & Consistency**
 - **5. GENERAL FLOW MAPS — Semigroup, CTM & Mean Flow**
   $$
-  \Psi_{u\to t}\circ\Psi_{s\to u}=\Psi_{s\to t},\qquad \Psi_{s\to s}=\mathrm{Id}\qquad(\forall  s\ge u\ge t\ge 0)
+  \Psi_{u\to t}\circ\Psi_{s\to u}=\Psi_{s\to t},  \Psi_{s\to s}=\mathrm{Id} (\forall  s\ge u\ge t\ge 0)
   $$
 - **6. COST & TAXONOMY — From 1000 NFEs to 1 NFE**
 

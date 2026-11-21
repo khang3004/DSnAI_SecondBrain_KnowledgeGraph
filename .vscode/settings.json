@@ -1,0 +1,6 @@
+{
+    "jupyter.showVariableViewWhenDebugging": true,
+    "jupyter.themeMatplotlibPlots": true,
+    "jupyter.exportWithOutputEnabled": true,
+    "jupyter.excludeUserSitePackages": false
+}

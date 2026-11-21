@@ -67,9 +67,9 @@ flowchart LR
   $$
 - **3. ORTHOGONAL PROJECTOR ALGEBRA**
   $$
-  \boldsymbol{P}_W = \boldsymbol{B}(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top} = \boldsymbol{Q}\boldsymbol{Q}^{\top} \quad (\boldsymbol{Q}^{\top}\boldsymbol{Q}=\boldsymbol{I}_r)
+  \boldsymbol{P}_W = \boldsymbol{B}(\boldsymbol{B}^{\top}\boldsymbol{B})^{-1}\boldsymbol{B}^{\top} = \boldsymbol{Q}\boldsymbol{Q}^{\top}   (\boldsymbol{Q}^{\top}\boldsymbol{Q}=\boldsymbol{I}_r)
   $$
-- **4. LEAST SQUARES, MIN-NORM & \boldsymbol{A}^{+}**
+- **4. LEAST SQUARES, MIN-NORM & $\boldsymbol{A}^{+}$**
 - **5. SOLVERS & ORTHOGONALIZATION COST**
 - **6. ML USE-CASES — where you meet it**
 

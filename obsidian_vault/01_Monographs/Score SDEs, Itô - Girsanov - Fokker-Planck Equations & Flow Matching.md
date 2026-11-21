@@ -70,8 +70,9 @@ $$
 whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mathrm{src}}$ to a target distribution $p_{\mathrm{tgt}}$ along a prescribed probability path $\{p_t\}_{t \in [0, 1]}$.
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | **Concept** | **Diffusion Principles (Ch. 4–5, App. B–C)** | **Chan (Sec. 4)** | **Murphy Adv. (Sec. 25.4)** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | **Time Direction** | $t=0$ (data) $\to T$ (noise) in Score SDE; $t=0$ ($p_{\mathrm{src}}$) $\to 1$ ($p_{\mathrm{tgt}}$) in FM. | $t=0$ (data) $\to t=1$ (noise) with $\Delta t = 1/N$. | $t=0$ (data) $\to t=1$ (noise), $t \in [0, 1]$. |
 > | **Marginal Density** | $p_t(\boldsymbol{x}_t)$ (with $p_{\mathrm{prior}} \approx p_T$); conditional $p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0)$. | $p_t(\boldsymbol{x})$ in continuous limit; $p_i(\boldsymbol{x}_i)$ at step $i$. | $q_t(\boldsymbol{x}_t)$ for forward marginals; $p_t(\boldsymbol{x})$ in PF-ODE. |
 > | **Score Network** | $\boldsymbol{s}_\phi(\boldsymbol{x}, t) \approx \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x})$. | $\boldsymbol{s}_\theta(\boldsymbol{x}_i, i)$ or $\boldsymbol{\epsilon}_\theta(\boldsymbol{x}(t), t)$. | $\boldsymbol{s}_\theta(\boldsymbol{x}_t, t) = -\boldsymbol{\epsilon}_\theta(\boldsymbol{x}_t, t)/\sigma_t$. |
@@ -89,23 +90,18 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 > \boldsymbol{x}_{t+\Delta t} - \boldsymbol{x}_t = -\frac{1}{2}\beta(t)\boldsymbol{x}_t \Delta t + \sqrt{\beta(t)} \sqrt{\Delta t} \boldsymbol{\epsilon}_t + \mathcal{O}(\Delta t^2)
 >    \xrightarrow{\Delta t \to 0} 
 >   \mathrm{d}\boldsymbol{x}_t = -\frac{1}{2}\beta(t)\boldsymbol{x}_t \mathrm{d}t + \sqrt{\beta(t)} \mathrm{d}\boldsymbol{w}_t.
->
 > $$
->
 >
 > **2. SMLD / NCSN $\to$ Variance Exploding (VE) SDE.** Discretizing a strictly increasing noise scale $\sigma(t)$ gives the Markov chain $\boldsymbol{x}_{t+\Delta t} = \boldsymbol{x}_t + \sqrt{\sigma^2(t+\Delta t) - \sigma^2(t)} \boldsymbol{\epsilon}_t$ [[Source - Tutorial on Diffusion Models for Imaging and Vision|diffusionmodels_stanleychan]] (Sec. 4.4, p. 45) [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.3.1, p. 110). Letting $\Delta t \to 0$ produces zero drift and diffusion $g(t) = \sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}}$:
 >
 > $$
 > \mathrm{d}\boldsymbol{x}_t = \sqrt{\frac{\mathrm{d}[\sigma^2(t)]}{\mathrm{d}t}} \mathrm{d}\boldsymbol{w}_t.
->
 > $$
->
 >
 > **3. Closed-Form Transition Kernels for Linear SDEs.** Whenever $\boldsymbol{f}(\boldsymbol{x}, t) = f(t)\boldsymbol{x}$ is linear in $\boldsymbol{x}$, the conditional distribution $p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}(\boldsymbol{x}_t;  \boldsymbol{m}(t), P(t)\boldsymbol{I})$ remains Gaussian even for non-Gaussian $p_{\mathrm{data}}$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.3.3, pp. 112–114). Its moments satisfy the linear ODEs
 >
 > $$
 > \frac{\mathrm{d}\boldsymbol{m}(t)}{\mathrm{d}t} = f(t)\boldsymbol{m}(t), \qquad \frac{\mathrm{d}P(t)}{\mathrm{d}t} = 2f(t)P(t) + g^2(t),
->
 > $$
 >
 > with $\boldsymbol{m}(0) = \boldsymbol{x}_0$ and $P(0) = 0$. Solving via the integrating factor $E(s \to t) = \exp\!\left(\int_s^t f(u) \mathrm{d}u\right)$ gives:
@@ -115,8 +111,8 @@ whose flow map $\Psi_{0 \to t}$ pushes an arbitrary source distribution $p_{\mat
 > \text{VP-SDE:}\quad & p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_t;  e^{-\frac{1}{2}B(t)}\boldsymbol{x}_0,  \bigl(1 - e^{-B(t)}\bigr)\boldsymbol{I}\right), \qquad B(t) := \int_0^t \beta(s) \mathrm{d}s,  \\
 >   \text{VE-SDE:}\quad & p_t(\boldsymbol{x}_t \mid \boldsymbol{x}_0) = \mathcal{N}\!\left(\boldsymbol{x}_t;  \boldsymbol{x}_0,  \bigl(\sigma^2(t) - \sigma^2(0)\bigr)\boldsymbol{I}\right).
 > \end{aligned}
->
 > $$
+>
 
 ### Itô's Lemma & Derivation of the Fokker-Planck Equation
 
@@ -127,29 +123,26 @@ Because sample paths of a Wiener process are almost surely continuous yet nowher
 >
 > $$
 > \mathrm{d}\varphi(\boldsymbol{x}_t, t) = \left( \frac{\partial \varphi}{\partial t} + (\nabla_{\boldsymbol{x}}\varphi)^\top \boldsymbol{f}(\boldsymbol{x}_t, t) + \frac{1}{2}g^2(t) \mathrm{Tr}\!\left(\nabla_{\boldsymbol{x}}^2 \varphi\right) \right)\mathrm{d}t + g(t)(\nabla_{\boldsymbol{x}}\varphi)^\top \mathrm{d}\boldsymbol{w}_t.
->
 > $$
 >
 > **Derivation of the Fokker-Planck Equation** [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.1.4, pp. 417–418): Take expectations under $\boldsymbol{x}_t \sim p_t$ for a compactly supported test function $\varphi(\boldsymbol{x})$ independent of $t$. Since $\mathbb{E}[(\nabla_{\boldsymbol{x}}\varphi)^\top \mathrm{d}\boldsymbol{w}_t] = 0$,
 >
 > $$
 > \frac{\mathrm{d}}{\mathrm{d}t}\mathbb{E}_{p_t}[\varphi(\boldsymbol{x}_t)] = \int_{\mathbb{R}^D} \varphi(\boldsymbol{x}) \frac{\partial p_t(\boldsymbol{x})}{\partial t} \mathrm{d}\boldsymbol{x} = \int_{\mathbb{R}^D} \left( (\nabla_{\boldsymbol{x}}\varphi)^\top \boldsymbol{f}(\boldsymbol{x}, t) + \frac{1}{2}g^2(t) \Delta \varphi(\boldsymbol{x}) \right) p_t(\boldsymbol{x}) \mathrm{d}\boldsymbol{x},
->
 > $$
 >
 > where $\Delta = \mathrm{Tr}(\nabla_{\boldsymbol{x}}^2)$ is the Laplacian. Applying the divergence theorem (integration by parts) with vanishing boundary terms gives
 >
 > $$
 > \int_{\mathbb{R}^D} \varphi(\boldsymbol{x}) \left[ \frac{\partial p_t(\boldsymbol{x})}{\partial t} + \nabla_{\boldsymbol{x}} \cdot \bigl(\boldsymbol{f}(\boldsymbol{x}, t) p_t(\boldsymbol{x})\bigr) - \frac{1}{2}g^2(t) \Delta p_t(\boldsymbol{x}) \right] \mathrm{d}\boldsymbol{x} = 0.
->
 > $$
 >
 > Since $\varphi$ is arbitrary, the integrand vanishes pointwise, yielding the **Fokker-Planck Equation**:
 >
 > $$
 > \frac{\partial p_t(\boldsymbol{x})}{\partial t} = -\nabla_{\boldsymbol{x}} \cdot \bigl(\boldsymbol{f}(\boldsymbol{x}, t) p_t(\boldsymbol{x})\bigr) + \frac{1}{2}g^2(t) \Delta p_t(\boldsymbol{x}).
->
 > $$
+>
 
 ### Anderson's Reverse-Time SDE & the Probability Flow ODE
 
@@ -163,8 +156,8 @@ Comparing `(eq:sde:fp_as_continuity)` with the deterministic continuity equation
 
 $$
 \begin{aligned}
-**Probability Flow ODE (PF-ODE):**\quad & \mathrm{d}\tilde{\boldsymbol{x}}_t = \left[\boldsymbol{f}(\tilde{\boldsymbol{x}}_t, t) - \frac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\tilde{\boldsymbol{x}}_t)\right]\mathrm{d}t,  \\
-  **Anderson Reverse-Time SDE:**\quad & \mathrm{d}\bar{\boldsymbol{x}}_t = \left[\boldsymbol{f}(\bar{\boldsymbol{x}}_t, t) - g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t)\right]\mathrm{d}t + g(t) \mathrm{d}\bar{\boldsymbol{w}}_t,
+\mathbf{Probability Flow ODE (PF-ODE):}\quad & \mathrm{d}\tilde{\boldsymbol{x}}_t = \left[\boldsymbol{f}(\tilde{\boldsymbol{x}}_t, t) - \frac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\tilde{\boldsymbol{x}}_t)\right]\mathrm{d}t,  \\
+  \mathbf{Anderson Reverse-Time SDE:}\quad & \mathrm{d}\bar{\boldsymbol{x}}_t = \left[\boldsymbol{f}(\bar{\boldsymbol{x}}_t, t) - g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t)\right]\mathrm{d}t + g(t) \mathrm{d}\bar{\boldsymbol{w}}_t,
 \end{aligned}
 $$
 
@@ -174,17 +167,15 @@ where $\bar{\boldsymbol{w}}_t$ is a standard Wiener process in reverse time ($t$
 > Rewriting the reverse SDE `(eq:sde:reverse_sde)` as
 >
 > $$
->
 >   \mathrm{d}\bar{\boldsymbol{x}}_t = \underbrace{\left[\boldsymbol{f}(\bar{\boldsymbol{x}}_t, t) - \tfrac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t)\right]\mathrm{d}t}_{\text{Deterministic PF-ODE}}  -  \underbrace{\tfrac{1}{2}g^2(t)\nabla_{\boldsymbol{x}}\log p_t(\bar{\boldsymbol{x}}_t) \mathrm{d}t + g(t) \mathrm{d}\bar{\boldsymbol{w}}_t}_{\text{Time-Varying Langevin Corrector}}
->
 > $$
 >
 > shows that the extra $-\frac{1}{2}g^2 \nabla \log p_t$ drift exactly counterbalances the diffusive spreading of $g(t) \mathrm{d}\bar{\boldsymbol{w}}_t$ [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.5, Eq. (25.57), p. 881) [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 4.1.3, p. 94). In practice, the continuous noise injection in the SDE acts as an error-correcting Langevin step that compensates for discretization errors and imperfect score estimates, whereas the PF-ODE is deterministic, invertible, uniquely identifiable across architectures, and enables exact log-likelihood evaluation via the instantaneous change-of-variables formula [[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_advancedtopics]] (Sec. 25.4.4, p. 880):
 >
 > $$
 > \log p_0(\boldsymbol{x}_0) = \log p_T(\boldsymbol{x}_T) + \int_0^T \nabla_{\boldsymbol{x}} \cdot \tilde{\boldsymbol{v}}_t(\boldsymbol{x}_t) \mathrm{d}t, \qquad \tilde{\boldsymbol{v}}_t(\boldsymbol{x}) = \boldsymbol{f}(\boldsymbol{x}, t) - \frac{1}{2}g^2(t)\boldsymbol{s}_\phi(\boldsymbol{x}, t).
->
 > $$
+>
 
 ### Girsanov's Theorem & Path-Measure Likelihood
 
@@ -195,14 +186,12 @@ While the Fokker-Planck equation guarantees *marginal* alignment $q_t(\boldsymbo
 >
 > $$
 > \frac{\mathrm{d}\mathbb{P}_{\boldsymbol{f}}}{\mathrm{d}\mathbb{P}_{\tilde{\boldsymbol{f}}}}(\boldsymbol{x}_{0:T}) = \exp\!\left( \int_0^T \frac{\boldsymbol{\delta}_t^\top}{g(t)} \mathrm{d}\boldsymbol{w}_t - \frac{1}{2}\int_0^T \frac{\|\boldsymbol{\delta}_t\|_2^2}{g^2(t)} \mathrm{d}t \right).
->
 > $$
 >
 > Taking $\mathbb{P}$ as the true reverse-time SDE (drift $\boldsymbol{f} - g^2\nabla_{\boldsymbol{x}}\log p_t$) and $\mathbb{P}_\phi$ as the learned reverse SDE (drift $\boldsymbol{f} - g^2\boldsymbol{s}_\phi$), we have $\boldsymbol{\delta}_t = g^2(t)(\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) - \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x}_t))$. Since the Itô integral has zero expectation under $\mathbb{P}$, the KL divergence between the full path measures simplifies to [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. C.2.1, Eq. (C.2.1), p. 425):
 >
 > $$
 > D_{\mathrm{KL}}(\mathbb{P}  \|  \mathbb{P}_\phi) = \frac{1}{2} \mathbb{E}_{\mathbb{P}}\!\left[ \int_0^T g^2(t) \bigl\|\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) - \nabla_{\boldsymbol{x}}\log p_t(\boldsymbol{x}_t)\bigr\|_2^2 \mathrm{d}t \right] + \mathrm{Const.}
->
 > $$
 >
 > By the data-processing inequality, $D_{\mathrm{KL}}(p_{\mathrm{data}}  \|  p_\phi(\boldsymbol{x}_0)) \le D_{\mathrm{KL}}(\mathbb{P}  \|  \mathbb{P}_\phi)$. Consequently, weighting score matching by $\lambda(t) = g^2(t)$ (the likelihood-weighting schedule) directly minimizes an upper bound on the negative data log-likelihood $-\mathbb{E}_{p_{\mathrm{data}}}[\log p_\phi(\boldsymbol{x}_0)]$.
@@ -216,14 +205,12 @@ Flow Matching (FM) bypasses stochastic forward SDEs by learning a deterministic 
 >
 > $$
 > \boldsymbol{v}_t(\boldsymbol{x}) := \mathbb{E}_{\boldsymbol{z} \sim p_t(\boldsymbol{z} \mid \boldsymbol{x})}\!\left[\boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z})\right] = \int \boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z}) \frac{p_t(\boldsymbol{x} \mid \boldsymbol{z}) \pi(\boldsymbol{z})}{p_t(\boldsymbol{x})} \mathrm{d}\boldsymbol{z}.
->
 > $$
 >
 > Then $(p_t, \boldsymbol{v}_t)$ satisfies the marginal continuity equation $\partial_t p_t + \nabla_{\boldsymbol{x}}\cdot(p_t \boldsymbol{v}_t) = 0$. Moreover, the intractable Marginal FM objective $\mathcal{L}_{\mathrm{FM}}(\phi) = \mathbb{E}_{t, \boldsymbol{x}_t \sim p_t}[\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - \boldsymbol{v}_t(\boldsymbol{x}_t)\|_2^2]$ and the simulation-free **Conditional Flow Matching (CFM)** objective
 >
 > $$
 > \mathcal{L}_{\mathrm{CFM}}(\phi) := \mathbb{E}_{t \sim \mathcal{U}[0,1],  \boldsymbol{z} \sim \pi,  \boldsymbol{x}_t \sim p_t(\cdot \mid \boldsymbol{z})}\!\left[ \bigl\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - \boldsymbol{v}_t(\boldsymbol{x}_t \mid \boldsymbol{z})\bigr\|_2^2 \right]
->
 > $$
 >
 > have identical gradients: $\nabla_\phi \mathcal{L}_{\mathrm{FM}}(\phi) = \nabla_\phi \mathcal{L}_{\mathrm{CFM}}(\phi)$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.2.2, pp. 141–147).
@@ -232,15 +219,14 @@ Flow Matching (FM) bypasses stochastic forward SDEs by learning a deterministic 
 >
 > $$
 > \boldsymbol{v}_t(\boldsymbol{x} \mid \boldsymbol{z}) = \frac{\sigma_t'(\boldsymbol{z})}{\sigma_t(\boldsymbol{z})}\bigl(\boldsymbol{x} - \boldsymbol{\mu}_t(\boldsymbol{z})\bigr) + \boldsymbol{\mu}_t'(\boldsymbol{z}).
->
 > $$
 >
 > Setting $\boldsymbol{z} = (\boldsymbol{x}_0, \boldsymbol{x}_1) \sim p_{\mathrm{src}} \times p_{\mathrm{tgt}}$ with the canonical linear interpolant $\boldsymbol{x}_t = (1-t)\boldsymbol{x}_0 + t\boldsymbol{x}_1$ ($\sigma_t \to 0$) reduces `(eq:sde:cfm_loss)` to the **Rectified Flow** objective [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.4, p. 159):
 >
 > $$
 > \mathcal{L}_{\mathrm{RF}}(\phi) = \mathbb{E}_{t \sim \mathcal{U}[0,1],  (\boldsymbol{x}_0, \boldsymbol{x}_1) \sim \pi}\!\left[ \bigl\|\boldsymbol{v}_\phi(\boldsymbol{x}_t, t) - (\boldsymbol{x}_1 - \boldsymbol{x}_0)\bigr\|_2^2 \right].
->
 > $$
+>
 
 Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \otimes p_{\mathrm{tgt}}$ with the deterministic flow coupling $\pi^{(k+1)}(\boldsymbol{x}_0, \boldsymbol{x}_1) = p_{\mathrm{src}}(\boldsymbol{x}_0)\delta(\boldsymbol{x}_1 - \Phi_{0 \to 1}^{(k)}(\boldsymbol{x}_0))$ (**Reflow**) preserves marginals, never increases convex transport cost $\mathbb{E}[c(\hat{\boldsymbol{z}}_1 - \boldsymbol{z}_0)] \le \mathbb{E}[c(\boldsymbol{x}_1 - \boldsymbol{x}_0)]$, and drives path curvature toward zero: $\min_{k \le K}\mathcal{S}(\boldsymbol{Z}^{(k)}) \le \frac{1}{K}\mathbb{E}[\|\boldsymbol{x}_1 - \boldsymbol{x}_0\|_2^2]$ [[Source - The Principles of Diffusion Models|theprinciple_diffusion_models]] (Sec. 5.4.2–5.4.3, pp. 161–163).
 
@@ -260,12 +246,11 @@ Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \ot
 >
 > **else**:
 >
->     Sample $\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$;\quad $\boldsymbol{x}_t \leftarrow \alpha_t \boldsymbol{x}_0 + \sigma_t \boldsymbol{\epsilon}$
+>     Sample $\boldsymbol{\epsilon} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$;  $\boldsymbol{x}_t \leftarrow \alpha_t \boldsymbol{x}_0 + \sigma_t \boldsymbol{\epsilon}$
 >     Update $\phi$ with $\nabla_\phi \lambda(t)\|\boldsymbol{s}_\phi(\boldsymbol{x}_t, t) + \boldsymbol{\epsilon}/\sigma_t\|_2^2$
 >
->
 >  *// 2. Generation ($N$ Euler / Euler-Maruyama Steps)*
-> Draw $\boldsymbol{x} \sim p_{\mathrm{prior}}$;\quad $\Delta t \leftarrow 1/N$
+> Draw $\boldsymbol{x} \sim p_{\mathrm{prior}}$;  $\Delta t \leftarrow 1/N$
 > **for** $k = N, N-1, \dots, 1$:
 >
 >   $t \leftarrow k \Delta t$
@@ -278,13 +263,12 @@ Iteratively replacing the independent coupling $\pi^{(0)} = p_{\mathrm{src}} \ot
 >     Sample $\boldsymbol{z} \sim \mathcal{N}(\boldsymbol{0}, \boldsymbol{I})$
 >     $\boldsymbol{x} \leftarrow \boldsymbol{x} - \bigl[\boldsymbol{f}(\boldsymbol{x}, t) - g^2(t)\boldsymbol{s}_\phi(\boldsymbol{x}, t)\bigr]\Delta t + g(t)\sqrt{\Delta t} \boldsymbol{z}$
 >
->
 > **return** $\boldsymbol{x}_{\mathrm{gen}} \leftarrow \boldsymbol{x}$
 
 **Table:** Comparative synthesis of continuous-time generative differential equation paradigms.
 
 | **Paradigm** | **Dynamics** | **Perturbation Kernel** | **Training Target** | **Sampling / Likelihood** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | **VE-SDE** (SMLD) | $\mathrm{d}\boldsymbol{x}_t = \sqrt{\frac{\mathrm{d}\sigma^2}{\mathrm{d}t}} \mathrm{d}\boldsymbol{w}_t$ | $\mathcal{N}(\boldsymbol{x}_0, (\sigma_t^2 - \sigma_0^2)\boldsymbol{I})$ | $\boldsymbol{s}_\phi \approx -\boldsymbol{\epsilon}/\sqrt{\sigma_t^2-\sigma_0^2}$ | Stochastic SDE / Predictor-Corrector; ELBO via Girsanov. |
 | **VP-SDE** (DDPM) | $\mathrm{d}\boldsymbol{x}_t = -\frac{1}{2}\beta_t\boldsymbol{x}_t \mathrm{d}t + \sqrt{\beta_t} \mathrm{d}\boldsymbol{w}_t$ | $\mathcal{N}(e^{-\frac{1}{2}B_t}\boldsymbol{x}_0, (1-e^{-B_t})\boldsymbol{I})$ | $\boldsymbol{s}_\phi \approx -\boldsymbol{\epsilon}/\sqrt{1-e^{-B_t}}$ | Stochastic SDE or semi-linear ODE; ELBO via Girsanov. |
 | **PF-ODE** | $\mathrm{d}\boldsymbol{x}_t = [\boldsymbol{f} - \frac{1}{2}g^2 \boldsymbol{s}_\phi] \mathrm{d}t$ | Shares $p_t(\boldsymbol{x}_t)$ with forward SDE | Trained via DSM ($\boldsymbol{s}_\phi$) | Deterministic RK4/Heun; exact $\log p_0$ via trace. |

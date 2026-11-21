@@ -57,13 +57,13 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. POLICY GRADIENT THEOREM — no \nabla\mathcal{P} needed**
+- **1. POLICY GRADIENT THEOREM — no $\nabla\mathcal{P}$ needed**
   $$
   \nabla_{\boldsymbol{\theta}} J(\boldsymbol{\theta}) = \mathbb{E}_{s\sim\mu, a\sim\pi_{\boldsymbol{\theta}}}\!\Big[ A^{\pi_{\boldsymbol{\theta}}}(s,a) \nabla_{\boldsymbol{\theta}}\log\pi_{\boldsymbol{\theta}}(a\mid s)\Big]
   $$
-- **2. ACTOR–CRITIC & \mathrm{GAE}(\gamma,\lambda) — bias vs. variance**
+- **2. ACTOR–CRITIC & $\mathrm{GAE}(\gamma,\lambda)$ — bias vs. variance**
   $$
-  \hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)} = \sum_{l=0}^{\infty}(\gamma\lambda)^l \delta_{t+l}^V,\quad \delta_t^V = r_t + \gamma V_{\boldsymbol{\phi}}(s_{t+1})- V_{\boldsymbol{\phi}}(s_t)
+  \hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)} = \sum_{l=0}^{\infty}(\gamma\lambda)^l \delta_{t+l}^V,  \delta_t^V = r_t + \gamma V_{\boldsymbol{\phi}}(s_{t+1})- V_{\boldsymbol{\phi}}(s_t)
   $$
 - **3. NPG, TRPO & PPO — monotonic trust regions**
   $$

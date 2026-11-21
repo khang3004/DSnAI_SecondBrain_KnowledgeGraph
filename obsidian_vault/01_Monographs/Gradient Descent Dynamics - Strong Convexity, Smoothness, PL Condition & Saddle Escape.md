@@ -68,7 +68,7 @@ starting from $\boldsymbol{x}_0 \in \mathbb{R}^d$ with step size (learning rate)
 **Table:** Unified Notation and Cross-Book Convention Reconciliation.
 
 | **Concept** | **Unified Symbol** | **Source Textbook Conventions & Reconciliation** |
-| — | — | — |
+| --- | --- | --- |
 | Parameter vector | $\boldsymbol{x}_t \in \mathbb{R}^d$, $\boldsymbol{x}^*$ | $\boldsymbol{x}_t \in \mathbb{R}^d$ in [[Source - Handbook of Convergence Theorems]] (Sec. 3) and [[Source - Mathematics for Machine Learning]] (Sec. 7.1); $\boldsymbol{\theta}_t \in \mathbb{R}^d$ in [[Source - Fall 2022]] (Slide 10) and [[Source - Probabilistic Machine Learning]] (Sec. 8.1); $\boldsymbol{w}^{(\tau)} \in \mathbb{R}^W$ in [[Source - Foundations]] (Sec. 7.2). |
 | Objective function | $f(\boldsymbol{x})$, $f^* = \inf f$ | $f(\boldsymbol{x})$ in [[Source - Handbook of Convergence Theorems]] (Sec. 2) and [[Source - Mathematics for Machine Learning]] (Eq. (7.4)); $f(\boldsymbol{\theta})$ or $\mathcal{L}_n(\boldsymbol{\theta})$ in [[Source - Fall 2022]] (Slides 5, 9); $\mathcal{L}(\boldsymbol{\theta})$ in [[Source - Probabilistic Machine Learning]] (Eq. (8.1)); $E(\boldsymbol{w})$ in [[Source - Foundations]] (Sec. 7.1). |
 | Gradient vector | $\nabla f(\boldsymbol{x}) \in \mathbb{R}^{d \times 1}$ (column) | Column vector in [[Source - Handbook of Convergence Theorems]] (Rem. 2.2), [[Source - Fall 2022]] (Slide 10), [[Source - Probabilistic Machine Learning]] (Sec. 8.1.1.1), and [[Source - Foundations]] (Eq. (7.1)); row vector $(\nabla f)(\boldsymbol{x}) \in \mathbb{R}^{1\times d}$ requiring explicit transpose in [[Source - Mathematics for Machine Learning]] (Eq. (7.5)). |
@@ -94,22 +94,20 @@ When $f \in C^2(\mathbb{R}^d)$, the Mean-Value Inequality applied to $\nabla f$ 
 >
 > $$
 > f(\boldsymbol{y}) \le f(\boldsymbol{x}) + \langle \nabla f(\boldsymbol{x}), \boldsymbol{y} - \boldsymbol{x} \rangle + \frac{L}{2}\lVert \boldsymbol{y} - \boldsymbol{x} \rVert_2^2.
->
 > $$
 >
 > Consequently, a gradient step $\boldsymbol{x}_{t+1} = \boldsymbol{x}_t - \eta \nabla f(\boldsymbol{x}_t)$ with $\eta > 0$ satisfies
 >
 > $$
 > f(\boldsymbol{x}_{t+1}) - f(\boldsymbol{x}_t) \le -\eta\left(1 - \frac{\eta L}{2}\right)\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2.
->
 > $$
 >
 > In particular, for $0 < \eta < \frac{2}{L}$, the objective decreases strictly whenever $\nabla f(\boldsymbol{x}_t) \neq \boldsymbol{0}$; minimizing the coefficient $-\eta(1 - \eta L/2)$ gives the optimal greedy step $\eta = \frac{1}{L}$, yielding $f(\boldsymbol{x}_{t+1}) - f(\boldsymbol{x}_t) \le -\frac{1}{2L}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2$ and the global gradient bound
 >
 > $$
 > \frac{1}{2L}\lVert \nabla f(\boldsymbol{x}) \rVert_2^2 \le f(\boldsymbol{x}) - f^*, \qquad \forall \boldsymbol{x} \in \mathbb{R}^d.
->
 > $$
+>
 
 **Proof.**
 Fix $\boldsymbol{x}, \boldsymbol{y} \in \mathbb{R}^d$ and define $\phi(s) \triangleq f(\boldsymbol{x} + s(\boldsymbol{y}-\boldsymbol{x}))$ for $s \in [0, 1]$. By the Fundamental Theorem of Calculus and Cauchy–Schwarz [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lem. 2.25, p. 11),
@@ -126,9 +124,7 @@ $$
 proving `(eq:gdconv:quad_upper)`. Setting $\boldsymbol{y} = \boldsymbol{x}_{t+1} = \boldsymbol{x}_t - \eta\nabla f(\boldsymbol{x}_t)$ directly yields
 
 $$
-
   f(\boldsymbol{x}_{t+1}) - f(\boldsymbol{x}_t) \le -\eta\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 + \frac{L\eta^2}{2}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 = -\eta\left(1 - \frac{\eta L}{2}\right)\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2.
-
 $$
 
 Finally, evaluating `(eq:gdconv:sufficient_decrease)` at any $\boldsymbol{x}_t = \boldsymbol{x} \in \mathbb{R}^d$ with $\eta = 1/L$ and invoking $f^* \le f(\boldsymbol{x} - \frac{1}{L}\nabla f(\boldsymbol{x}))$ yields `(eq:gdconv:grad_upper)` ([[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lem. 2.28, p. 12)). 
@@ -136,9 +132,7 @@ Finally, evaluating `(eq:gdconv:sufficient_decrease)` at any $\boldsymbol{x}_t =
 General non-convex minimization is NP-hard ([[Source - Probabilistic Machine Learning|probabilisticml_kevinmurphy_introduction]] (Sec. 8.1.1, p. 275)), so for $L$-smooth objectives first-order guarantees target $\epsilon$-first-order stationary points ($\epsilon$-FOSP) satisfying $\lVert \nabla f(\boldsymbol{x}) \rVert_2 \le \epsilon$. Telescoping `(eq:gdconv:sufficient_decrease)` for $0 < \eta \le 1/L$ (or generally $0 < \eta < 2/L$ with constant $c(\eta) = \eta(1 - \eta L/2) > 0$) gives
 
 $$
-
   \sum_{t=0}^{T-1} \lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 \le \frac{f(\boldsymbol{x}_0) - f(\boldsymbol{x}_T)}{\eta(1 - \eta L/2)} \le \frac{f(\boldsymbol{x}_0) - f^*}{\eta(1 - \eta L/2)}.
-
 $$
 
 Thus, at $\eta = 1/L$, $\min_{0 \le t < T} \lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \le \sqrt{\frac{2L(f(\boldsymbol{x}_0) - f^*)}{T}}$, guaranteeing an $\epsilon$-FOSP within $T \ge \frac{2L(f(\boldsymbol{x}_0)-f^*)}{\epsilon^2} = O(\epsilon^{-2})$ iterations [[Source - Fall 2022|gradient_descent_unconstrained]] (Thm. 6, Slides 82–84).
@@ -153,17 +147,15 @@ When $f$ is simultaneously convex and $L$-smooth, smoothness combines with the f
 > \frac{1}{2L}\lVert \nabla f(\boldsymbol{y}) - \nabla f(\boldsymbol{x}) \rVert_2^2 &\le f(\boldsymbol{y}) - f(\boldsymbol{x}) - \langle \nabla f(\boldsymbol{x}), \boldsymbol{y}-\boldsymbol{x} \rangle,  \\
 >   \frac{1}{L}\lVert \nabla f(\boldsymbol{y}) - \nabla f(\boldsymbol{x}) \rVert_2^2 &\le \langle \nabla f(\boldsymbol{y}) - \nabla f(\boldsymbol{x}), \boldsymbol{y}-\boldsymbol{x} \rangle.
 > \end{aligned}
->
 > $$
+>
 
 **Proof.**
 Fix $\boldsymbol{x}, \boldsymbol{y} \in \mathbb{R}^d$. For any auxiliary point $\boldsymbol{z} \in \mathbb{R}^d$, combine convexity between $(\boldsymbol{x}, \boldsymbol{z})$ with `(eq:gdconv:quad_upper)` between $(\boldsymbol{y}, \boldsymbol{z})$:
 
 $$
-
   f(\boldsymbol{x}) - f(\boldsymbol{y}) = \big(f(\boldsymbol{x}) - f(\boldsymbol{z})\big) + \big(f(\boldsymbol{z}) - f(\boldsymbol{y})\big)
   \le \langle \nabla f(\boldsymbol{x}), \boldsymbol{x}-\boldsymbol{z} \rangle + \langle \nabla f(\boldsymbol{y}), \boldsymbol{z}-\boldsymbol{y} \rangle + \frac{L}{2}\lVert \boldsymbol{z}-\boldsymbol{y} \rVert_2^2.
-
 $$
 
 Minimizing the right-hand side over $\boldsymbol{z}$ yields $\boldsymbol{z} = \boldsymbol{y} - \frac{1}{L}(\nabla f(\boldsymbol{y}) - \nabla f(\boldsymbol{x}))$. Substituting this optimal $\boldsymbol{z}$ gives $f(\boldsymbol{x}) - f(\boldsymbol{y}) \le \langle \nabla f(\boldsymbol{x}), \boldsymbol{x}-\boldsymbol{y} \rangle - \frac{1}{2L}\lVert \nabla f(\boldsymbol{y})-\nabla f(\boldsymbol{x}) \rVert_2^2$, which rearranges to `(eq:gdconv:bregman_lb)`. Swapping $\boldsymbol{x}$ and $\boldsymbol{y}$ in `(eq:gdconv:bregman_lb)` and adding the two inequalities eliminates the function-value terms and yields `(eq:gdconv:cocoercive)`. 
@@ -177,20 +169,17 @@ Without positive curvature lower bounds, convex $L$-smooth objectives can contai
 > - **Fejér Monotonicity:** $\lVert \boldsymbol{x}_{t+1} - \boldsymbol{x}^* \rVert_2 \le \lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2 \le \lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2$ for all $t \ge 0$.
 > - **Objective Suboptimality ($O(1/T)$):**
 >
->
 > $$
 > f(\boldsymbol{x}_T) - f^* \le \frac{\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2}{2\eta T}.
->
 > $$
+>
 > - **Improved Stationarity ($O(1/\epsilon)$):** For $\eta = \frac{1}{L}$, $\min_{0 \le t < T}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \le \frac{2L\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2}{T}$ (so $T = O(L\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2/\epsilon)$ suffices for $\lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \le \epsilon$).
 
 **Proof.**
 Following [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thm. 3.4, pp. 13–15), apply co-coercivity `(eq:gdconv:cocoercive)` at $(\boldsymbol{x}_t, \boldsymbol{x}^*)$ with $\nabla f(\boldsymbol{x}^*) = \boldsymbol{0}$ to obtain
 
 $$
-
   \lVert \boldsymbol{x}_{t+1} - \boldsymbol{x}^* \rVert_2^2 = \lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2^2 - 2\eta\langle \nabla f(\boldsymbol{x}_t), \boldsymbol{x}_t-\boldsymbol{x}^* \rangle + \eta^2\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 \le \lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2^2 - \eta\left(\frac{2}{L} - \eta\right)\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2,
-
 $$
 
 proving Fejér monotonicity for $0 < \eta \le \frac{2}{L}$ [[Source - Fall 2022|gradient_descent_unconstrained]] (Lem. 2, Slides 63–64). Next, writing $-\nabla f(\boldsymbol{x}_t) = \frac{1}{\eta}(\boldsymbol{x}_{t+1}-\boldsymbol{x}_t)$ and expanding $\lVert \boldsymbol{x}_{t+1}-\boldsymbol{x}^* \rVert_2^2 - \lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2^2$:
@@ -207,17 +196,13 @@ $$
 where the first inequality combines `(eq:gdconv:quad_upper)` at $(\boldsymbol{x}_t, \boldsymbol{x}_{t+1})$ with convexity $f^* - f(\boldsymbol{x}_t) \ge \langle \nabla f(\boldsymbol{x}_t), \boldsymbol{x}^*-\boldsymbol{x}_t \rangle$, and the second uses $\eta \le 1/L$. Now define the discrete Lyapunov energy $E_t \triangleq \frac{1}{2\eta}\lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2^2 + t(f(\boldsymbol{x}_t)-f^*)$. Using monotonicity $f(\boldsymbol{x}_{t+1}) \le f(\boldsymbol{x}_t)$ from `(eq:gdconv:sufficient_decrease)`,
 
 $$
-
   E_{t+1} - E_t = \big(f(\boldsymbol{x}_{t+1}) - f^*\big) + t\big(f(\boldsymbol{x}_{t+1}) - f(\boldsymbol{x}_t)\big) + \frac{1}{2\eta}\left(\lVert \boldsymbol{x}_{t+1}-\boldsymbol{x}^* \rVert_2^2 - \lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2^2\right) \le 0.
-
 $$
 
 Hence $T(f(\boldsymbol{x}_T)-f^*) \le E_T \le E_0 = \frac{1}{2\eta}\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2^2$, giving `(eq:gdconv:convex_rate)`. For claim (3) with $\eta = 1/L$ and even $T=2m$ (analogous for odd $T$), telescoping `(eq:gdconv:sufficient_decrease)` over the second half $t \in \{m, \dots, 2m-1\}$ and applying `(eq:gdconv:convex_rate)` at $t=m$ yields
 
 $$
-
   \frac{m}{2L}\min_{m \le t < 2m}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 \le \frac{1}{2L}\sum_{t=m}^{2m-1}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2 \le f(\boldsymbol{x}_m) - f^* \le \frac{L\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2^2}{2m},
-
 $$
 
 so $\min_{0 \le t < T}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \le \frac{L\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2}{m} = \frac{2L\lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2}{T}$ [[Source - Fall 2022|gradient_descent_unconstrained]] (Thm. 7, Slides 85–87). 
@@ -241,26 +226,21 @@ These three formulations are mutually equivalent ([[Source - Fall 2022|gradient_
 > Let $f : \mathbb{R}^d \to \mathbb{R}$ be $\mu$-strongly convex and $L$-smooth ($0 < \mu \le L$) with unique minimizer $\boldsymbol{x}^*$ and condition number $\kappa \triangleq L/\mu \ge 1$. Then:
 > - **Refined Co-Coercivity (Nesterov's Inequality):** For all $\boldsymbol{x}, \boldsymbol{y} \in \mathbb{R}^d$,
 >
->
 > $$
 > \langle \nabla f(\boldsymbol{x}) - \nabla f(\boldsymbol{y}), \boldsymbol{x}-\boldsymbol{y} \rangle \ge \frac{\mu L}{\mu + L}\lVert \boldsymbol{x}-\boldsymbol{y} \rVert_2^2 + \frac{1}{\mu + L}\lVert \nabla f(\boldsymbol{x}) - \nabla f(\boldsymbol{y}) \rVert_2^2.
->
 > $$
+>
 > - **Standard Regime ($0 < \eta \le \frac{1}{L}$):** $\lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2^2 \le (1 - \eta\mu)^t \lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2$; at $\eta = \frac{1}{L}$, $\lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2^2 \le (1 - \kappa^{-1})^t \lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2$ and $f(\boldsymbol{x}_t) - f^* \le \frac{L}{2}(1 - \kappa^{-1})^t \lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2^2$.
 > - **Tight Optimal Rate ($0 < \eta < \frac{2}{L}$):** For all $t \ge 0$,
 >
->
 > $$
 > \lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2 \le \rho(\eta)^t \lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2, \qquad \rho(\eta) \triangleq \max\{\lvert 1 - \eta\mu \rvert,  \lvert 1 - \eta L \rvert\} < 1.
->
 > $$
 >
 >   At the optimal fixed step size $\eta^* = \frac{2}{\mu + L}$, the contraction factor is minimized to
 >
->
 > $$
 > \rho(\eta^*) = \frac{L - \mu}{L + \mu} = \frac{\kappa - 1}{\kappa + 1}, \qquad \lVert \boldsymbol{x}_t - \boldsymbol{x}^* \rVert_2^2 \le \left(\frac{\kappa - 1}{\kappa + 1}\right)^{2t}\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2^2,
->
 > $$
 >
 >   requiring $T \ge \frac{\kappa + 1}{2}\log(1/\epsilon)$ iterations (vs. $\kappa \log(1/\epsilon)$ at $\eta = 1/L$) to achieve $\lVert \boldsymbol{x}_T - \boldsymbol{x}^* \rVert_2 \le \epsilon\lVert \boldsymbol{x}_0 - \boldsymbol{x}^* \rVert_2$.
@@ -269,9 +249,7 @@ These three formulations are mutually equivalent ([[Source - Fall 2022|gradient_
 *Step 1 (Refined co-coercivity):* When $L = \mu$, `(eq:gdconv:sc_quad)` and `(eq:gdconv:quad_upper)` force $f$ to take the isotropic form $f(\boldsymbol{x}) = f^* + (\mu/2)\lVert \boldsymbol{x}-\boldsymbol{x}^* \rVert_2^2$, where `(eq:gdconv:nesterov_ineq)` holds with equality. Assume $L > \mu$. By [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lem. 2.12, p. 7), $g(\boldsymbol{x}) = f(\boldsymbol{x}) - \frac{\mu}{2}\lVert \boldsymbol{x} \rVert_2^2$ is convex and $(L-\mu)$-smooth. Applying co-coercivity `(eq:gdconv:cocoercive)` to $g$ with smoothness constant $L - \mu$ yields
 
 $$
-
   \langle \nabla f(\boldsymbol{x})-\nabla f(\boldsymbol{y}) - \mu(\boldsymbol{x}-\boldsymbol{y}), \boldsymbol{x}-\boldsymbol{y} \rangle \ge \frac{1}{L-\mu}\lVert \nabla f(\boldsymbol{x})-\nabla f(\boldsymbol{y}) - \mu(\boldsymbol{x}-\boldsymbol{y}) \rVert_2^2.
-
 $$
 
 Multiplying through by $(L - \mu)$, expanding the squared norm, and collecting the inner-product terms on the left immediately produces `(eq:gdconv:nesterov_ineq)`.
@@ -285,9 +263,7 @@ $$
 For $0 < \eta \le \frac{2}{\mu + L}$, the last coefficient is non-positive, and since $\lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \ge \mu\lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2$ (by Cauchy–Schwarz on `(eq:gdconv:sc_quad)`), we obtain
 
 $$
-
   \lVert \boldsymbol{x}_{t+1}-\boldsymbol{x}^* \rVert_2^2 \le \left(1 - \frac{2\eta\mu L}{\mu+L} + \eta\mu^2\left(\eta - \frac{2}{\mu+L}\right)\right)\lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2^2 = (1 - \eta\mu)^2\lVert \boldsymbol{x}_t-\boldsymbol{x}^* \rVert_2^2.
-
 $$
 
 For $0 < \eta \le \frac{1}{L}$, $(1-\eta\mu)^2 \le 1 - \eta\mu$ recovers the bound of [[Source - Fall 2022|gradient_descent_unconstrained]] (Thm. 1, Slides 15–18) and [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thm. 3.6, p. 16). Applying `(eq:gdconv:quad_upper)` at $\boldsymbol{x}^*$ then converts this distance contraction into the objective gap bound
@@ -299,9 +275,7 @@ $f(\boldsymbol{x}_t) - f^* \le \frac{L}{2}\lVert \boldsymbol{x}_t-\boldsymbol{x}
 > Expanding a local quadratic approximation $f(\boldsymbol{x}) \approx f^* + \frac{1}{2}(\boldsymbol{x}-\boldsymbol{x}^*)^{\top} \boldsymbol{H} (\boldsymbol{x}-\boldsymbol{x}^*)$ in the orthonormal eigenbasis $\{\boldsymbol{u}_i\}_{i=1}^d$ of $\boldsymbol{H} = \nabla^2 f(\boldsymbol{x}^*)$ with $\boldsymbol{x}_t - \boldsymbol{x}^* = \sum_{i=1}^d \alpha_i^{(t)} \boldsymbol{u}_i$ decouples `(eq:gdconv:gd_update)` into $d$ independent scalar recursions [[Source - Foundations|deep_learning_foundations_concepts]] (Sec. 7.3, Eqs. (7.24)–(7.30), pp. 218–220):
 >
 > $$
->
 >   \alpha_i^{(t)} = (1 - \eta \lambda_i)^t \alpha_i^{(0)}, \qquad i = 1, \dots, d.
->
 > $$
 >
 > Stability requires $\lvert 1 - \eta\lambda_{\max} \rvert < 1 \iff \eta < 2/\lambda_{\max}$. When $\eta \approx 2/\lambda_{\max}$, the steepest mode ($\lambda_{\max}$) oscillates with multiplier $\approx -1$ while the flattest valley mode ($\lambda_{\min}$) contracts sluggishly by $1 - 2\lambda_{\min}/\lambda_{\max} = 1 - 2/\kappa$. At $\eta^* = 2/(\lambda_{\min}+\lambda_{\max})$, the two extreme modes balance symmetrically at $\pm\frac{\kappa - 1}{\kappa + 1}$, cutting iteration complexity roughly in half relative to $\eta = 1/L$ without changing the $O(\kappa \log(1/\epsilon))$ scaling.
@@ -323,10 +297,8 @@ for some constant $\mu > 0$. The PL condition does *not* imply convexity or uniq
 > - **Hierarchy:** Every $\mu$-strongly convex function is $\mu$-PL. Conversely, every $C^1$ $\mu$-PL function satisfies the *Quadratic Growth (QG)* condition $f(\boldsymbol{x}) - f^* \ge \frac{\mu}{2}\mathrm{dist}(\boldsymbol{x}, \mathcal{X}^*)^2$ whenever $\mathcal{X}^* \neq \emptyset$ (and when $f$ is $L$-smooth, $\mu \le L$ via `(eq:gdconv:grad_upper)`).
 > - **Global Linear Convergence:** For any step size $0 < \eta < \frac{2}{L}$ and arbitrary initialization $\boldsymbol{x}_0 \in \mathbb{R}^d$, gradient descent `(eq:gdconv:gd_update)` satisfies
 >
->
 > $$
 > f(\boldsymbol{x}_T) - f^* \le \big(1 - 2\eta\mu(1 - \tfrac{\eta L}{2})\big)^T \big(f(\boldsymbol{x}_0) - f^*\big).
->
 > $$
 >
 >   In particular, for $0 < \eta \le \frac{1}{L}$, $f(\boldsymbol{x}_T) - f^* \le (1 - \eta\mu)^T (f(\boldsymbol{x}_0) - f^*)$; at the optimal step $\eta = \frac{1}{L}$, $f(\boldsymbol{x}_T) - f^* \le (1 - \frac{\mu}{L})^T(f(\boldsymbol{x}_0) - f^*)$, attaining $f(\boldsymbol{x}_T) - f^* \le \epsilon(f(\boldsymbol{x}_0) - f^*)$ in $T \ge \frac{L}{\mu}\log(1/\epsilon)$ iterations.
@@ -346,10 +318,8 @@ $$
 *Global Linear Rate:* Following [[Source - Fall 2022|gradient_descent_unconstrained]] (Thm. 3, Slides 44–46) (and [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Thm. 3.9, pp. 17–18) for the general step-size proof), substituting `(eq:gdconv:pl_def)` into `(eq:gdconv:sufficient_decrease)` yields:
 
 $$
-
   f(\boldsymbol{x}_{t+1}) - f^* \le f(\boldsymbol{x}_t) - f^* - \eta\left(1 - \frac{\eta L}{2}\right)\lVert \nabla f(\boldsymbol{x}_t) \rVert_2^2
   \le \Big(1 - 2\eta\mu\big(1 - \tfrac{\eta L}{2}\big)\Big)\big(f(\boldsymbol{x}_t) - f^*\big).
-
 $$
 
 Notice that for $0 < \eta \le \frac{1}{L}$, $1 - \frac{\eta L}{2} \ge \frac{1}{2}$ gives the factor $1 - \eta\mu$, and maximizing $2\eta\mu(1 - \eta L/2)$ over $\eta$ uniquely selects $\eta = \frac{1}{L}$ with factor $1 - \mu/L$. Unrolling to $T$ yields `(eq:gdconv:pl_contraction)`, and applying $\log(1/\rho) \ge 1 - \rho$ for $\rho = 1 - \mu/L$ [[Source - Handbook of Convergence Theorems|stochastic_gradient_decent_algorithm_explain]] (Lem. A.1, p. 66) gives the complexity $T \ge \frac{L}{\mu}\log(1/\epsilon)$. 
@@ -380,7 +350,6 @@ In general non-convex landscapes, $\epsilon$-FOSP convergence guarantees only $\
 >
 > $$
 > \mathbb{P}_{\boldsymbol{x}_0 \sim \mu_0}\!\left(\lim_{t\to\infty} \boldsymbol{x}_t = \bar{\boldsymbol{x}}\right) = 0 \qquad \forall \bar{\boldsymbol{x}} \in \mathcal{S}_{\mathrm{strict}}
->
 > $$
 >
 > [[Source - Fall 2022|gradient_descent_unconstrained]] (Thm. 8, Slides 90–92).
@@ -441,7 +410,7 @@ holds automatically whenever $1 - \frac{\eta L}{2} \ge c_1 \iff \eta \le \frac{2
 >
 >   $\boldsymbol{x}_{t+1} \gets \boldsymbol{x}_t - \eta \boldsymbol{g}_t$
 >   $\boldsymbol{g}_{t+1} \gets \nabla f(\boldsymbol{x}_{t+1})$
->   $\boldsymbol{s}_t \gets \boldsymbol{x}_{t+1} - \boldsymbol{x}_t$; \quad $\boldsymbol{y}_t \gets \boldsymbol{g}_{t+1} - \boldsymbol{g}_t$
+>   $\boldsymbol{s}_t \gets \boldsymbol{x}_{t+1} - \boldsymbol{x}_t$;   $\boldsymbol{y}_t \gets \boldsymbol{g}_{t+1} - \boldsymbol{g}_t$
 >
 > **return** $\boldsymbol{x}_{T_{\max}}$
 
@@ -454,7 +423,7 @@ holds automatically whenever $1 - \frac{\eta L}{2} \ge c_1 \iff \eta \le \frac{2
 >   $\boldsymbol{g}_t \gets \nabla f(\boldsymbol{x}_t)$
 >   **if** $\lVert \boldsymbol{g}_t \rVert_2 \le g_{\mathrm{thresh}}$ **and** $t - t_{\mathrm{noise}} > t_{\mathrm{thresh}}$:
 >
->     $\tilde{\boldsymbol{x}}_t \gets \boldsymbol{x}_t$; \quad $t_{\mathrm{noise}} \gets t$
+>     $\tilde{\boldsymbol{x}}_t \gets \boldsymbol{x}_t$;   $t_{\mathrm{noise}} \gets t$
 >     Sample $\boldsymbol{\xi}_t \sim \mathrm{Unif}(\mathbb{B}_0(r))$ and set $\boldsymbol{x}_t \gets \tilde{\boldsymbol{x}}_t + \boldsymbol{\xi}_t$  *// Perturb off stable manifold*
 >
 >   **if** $t - t_{\mathrm{noise}} = t_{\mathrm{thresh}}$ **and** $f(\boldsymbol{x}_t) - f(\tilde{\boldsymbol{x}}_{t_{\mathrm{noise}}}) > -f_{\mathrm{thresh}}$:
@@ -473,7 +442,7 @@ holds automatically whenever $1 - \frac{\eta L}{2} \ge c_1 \iff \eta \le \frac{2
 **Table:** Deterministic First-Order Convergence Rates, Step-Size Regimes, and Iteration Complexity.
 
 | **Function Class** | **Step Size** | **Convergence Metric** | **Complexity $T(\epsilon)$** | **Primary Source & Notes** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | $L$-Smooth Non-Convex | $0 < \eta \le \frac{1}{L}$ | $\min_{t < T}\lVert \nabla f(\boldsymbol{x}_t) \rVert_2 \le \epsilon$ | $O\!\left(\frac{L\Delta_0}{\epsilon^2}\right)$ | [[Source - Fall 2022]] (Thm. 6); $\Delta_0 = f(\boldsymbol{x}_0)-f^*$; may stall at saddles. |
 | $L$-Smooth + $\rho$-Hessian-Lip. (PGD) | $\eta \le \frac{1}{L}$, $\boldsymbol{\xi}_t \in \mathbb{B}_0(r)$ | $(\epsilon,\sqrt{\rho\epsilon})$-SOSP | $\tilde{O}\!\left(\frac{L\Delta_0}{\epsilon^2}\right)$ | [[Source - Fall 2022]] (Slide 89); escapes strict saddles in polylog$(d)$. |
 | Convex + $L$-Smooth | $0 < \eta \le \frac{1}{L}$ | $f(\boldsymbol{x}_T) - f^* \le \epsilon$ | $O\!\left(\frac{L R_0^2}{\epsilon}\right)$ | [[Source - Handbook of Convergence Theorems]] (Thm. 3.4); $R_0 = \lVert \boldsymbol{x}_0-\boldsymbol{x}^* \rVert_2$; $O(\frac{LR_0}{\epsilon})$ for $\lVert \nabla f \rVert_2 \le \epsilon$. |

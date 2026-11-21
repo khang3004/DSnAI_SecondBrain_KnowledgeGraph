@@ -60,7 +60,7 @@ flowchart LR
   $$
   \boldsymbol{z}=g_\phi(\boldsymbol{\epsilon},\boldsymbol{x})=\boldsymbol{\mu}_\phi(\boldsymbol{x})+\boldsymbol{\sigma}_\phi(\boldsymbol{x})\odot\boldsymbol{\epsilon}
   $$
-- **4. \beta-VAE & VQ-VAE — rate vs. discrete codes**
+- **4. $\beta$-VAE & VQ-VAE — rate vs. discrete codes**
 - **5. COMPARISON — model taxonomy**
 - **6. CONNECTIONS — EM, information & diffusion**
 

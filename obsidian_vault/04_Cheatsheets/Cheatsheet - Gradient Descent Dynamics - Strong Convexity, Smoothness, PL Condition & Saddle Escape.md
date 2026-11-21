@@ -48,21 +48,21 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. L-SMOOTHNESS & DESCENT LEMMA**
+- **1. $L$-SMOOTHNESS & DESCENT LEMMA**
   $$
   \lVert \nabla f(\boldsymbol{y})-\nabla f(\boldsymbol{x}) \rVert_2\le L\lVert \boldsymbol{y}-\boldsymbol{x} \rVert_2
   $$
-- **2. CONVEX L-SMOOTH — co-coercivity & O(1/T)**
+- **2. CONVEX $L$-SMOOTH — co-coercivity & $O(1/T)$**
   $$
   \langle \nabla f(\boldsymbol{y})-\nabla f(\boldsymbol{x}), \boldsymbol{y}-\boldsymbol{x} \rangle\ge\frac{1}{L}\lVert \nabla f(\boldsymbol{y})-\nabla f(\boldsymbol{x}) \rVert_2^2
   $$
-- **3. \mu-STRONG CONVEXITY — linear contraction**
+- **3. $\mu$-STRONG CONVEXITY — linear contraction**
   $$
-  \mu\boldsymbol{I}_d\preceq\nabla^2 f(\boldsymbol{x})\preceq L\boldsymbol{I}_d,\qquad \kappa=\frac{L}{\mu}\ge 1
+  \mu\boldsymbol{I}_d\preceq\nabla^2 f(\boldsymbol{x})\preceq L\boldsymbol{I}_d,  \kappa=\frac{L}{\mu}\ge 1
   $$
 - **4. POLYAK–ŁOJASIEWICZ (PL) & KL LANDSCAPES**
   $$
-  \tfrac{1}{2}\lVert \nabla f(\boldsymbol{x}) \rVert_2^2\ge\mu\bigl(f(\boldsymbol{x})-f^*\bigr)\quad(\text{no convexity needed!})
+  \tfrac{1}{2}\lVert \nabla f(\boldsymbol{x}) \rVert_2^2\ge\mu\bigl(f(\boldsymbol{x})-f^*\bigr) (\text{no convexity needed!})
   $$
 - **5. SADDLE ESCAPE — Stable Manifold & Perturbed GD**
 - **6. ADAPTIVE DETERMINISTIC STEPS — Armijo & BB**

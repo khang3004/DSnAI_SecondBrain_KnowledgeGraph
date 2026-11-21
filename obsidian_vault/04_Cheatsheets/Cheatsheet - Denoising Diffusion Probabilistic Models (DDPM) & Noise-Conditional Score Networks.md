@@ -58,7 +58,7 @@ flowchart LR
   \nabla_{\boldsymbol{x}_t}\log q_t(\boldsymbol{x}_t)=-\frac{\mathbb{E}[\boldsymbol\epsilon\mid\boldsymbol{x}_t]}{\sqrt{1-\bar\alpha_t}}=\frac{\sqrt{\bar\alpha_t}\mathbb{E}[\boldsymbol{x}_0\mid\boldsymbol{x}_t]-\boldsymbol{x}_t}{1-\bar\alpha_t}
   $$
 - **4. CONNECTIONS — DDPM (VP) vs. NCSN (VE)**
-- **5. COST & SCHEDULES — Linear vs. Cosine \bar\alpha_t**
+- **5. COST & SCHEDULES — Linear vs. Cosine $\bar\alpha_t$**
 - **6. USE-CASES — Why Multi-Scale Noise Bridges Work**
 
 ## Related Sources

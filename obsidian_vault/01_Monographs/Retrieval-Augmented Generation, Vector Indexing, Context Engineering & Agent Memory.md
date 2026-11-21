@@ -66,8 +66,9 @@ which grounds factual claims in $\mathcal{R}_{\mathrm{rag}}(q_t, \mathcal{C})$ a
 > *Figure:* Unified information flow between the Session Store (raw turn events), Memory Manager (proactive/reactive read and asynchronous extraction/consolidation), External Knowledge Bases (RAG vector databases), and the Agent execution loop [[Source - Engineering -|context_engineering_sessions_memory]] (p. 30, Fig. 5). (`context_engineering_sessions_memory_p30_fig1.png`)
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
+>
 > | Concept | Source-Specific Terminology | Unified Monograph Notation |
-> | — | — | — |
+> | --- | --- | --- |
 > | Retrieval Unit | Document $d \in \mathcal{C}$ [[Source - Speech and Language Processing]] (Ch. 11, PDF p. 264); cleaned/chunked text + metadata [[Source - LLM Engineer’s Handbook]] (Ch. 4, PDF p. 148) | Indexed chunk $d \in \mathcal{C}$ with embedding $\boldsymbol{z}_d \in \mathbb{R}^m$ and metadata $\mu_d$. |
 > | Short-Term State | "Session" (verbatim/compacted turn events) [[Source - Engineering -]] (pp. 12, 27); "short-term memory" in agent frameworks | Session history $\mathcal{S}_t$ with compacted representation $\mathcal{K}_{\mathrm{comp}}(\mathcal{S}_t)$. |
 > | Long-Term Memory | Extracted, consolidated facts/playbooks across sessions [[Source - Engineering -]] (pp. 27, 35) | Persistent store $\mathcal{M}_t = \mathcal{M}_t^{\mathrm{decl}} \cup \mathcal{M}_t^{\mathrm{proc}}$. |
@@ -85,14 +86,12 @@ Classic lexical retrieval represents queries and documents as high-dimensional s
 > $$
 > \mathrm{tf}_{t,d} = \begin{cases} 1 + \log_{10} \mathrm{count}(t,d) & \text{if } \mathrm{count}(t,d) > 0, \\ 0 & \text{otherwise,} \end{cases}
 >   \qquad \mathrm{idf}_t = \log_{10}\!\left(\frac{N}{\mathrm{df}_t}\right).
->
 > $$
 >
 > Okapi BM25 replaces linear cosine normalization with bounded term-frequency saturation ($k \in [1.2, 2.0]$) and length normalization ($b \in [0, 1]$, typically $b = 0.75$):
 >
 > $$
 > \mathrm{score}_{\mathrm{BM25}}(q, d) = \sum_{t \in q} \underbrace{\log\!\left(\frac{N}{\mathrm{df}_t}\right)}_{\text{IDF weight}} \cdot \underbrace{\frac{\mathrm{tf}_{t,d} (k + 1)}{\mathrm{tf}_{t,d} + k\!\left(1 - b + b \frac{\lvert d \rvert}{\lvert d_{\mathrm{avg}} \rvert}\right)}}_{\text{length-normalized saturated TF}},
->
 > $$
 >
 > or equivalently without the $(k+1)$ constant factor in the simplified form of [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF p. 268, Eq. (11.12)). Setting $k = 0$ collapses BM25 to binary term presence weighted by IDF, whereas $b = 0$ disables document-length normalization.
@@ -108,22 +107,20 @@ Sparse lexical matching fails when query and document use synonymous phrasing (v
 >
 > $$
 > s_{\mathrm{bi}}(q, d) = \langle \boldsymbol{z}_q, \boldsymbol{z}_d \rangle = \frac{E_Q(q)^{\top} E_D(d)}{\lVert E_Q(q) \rVert_2 \lVert E_D(d) \rVert_2}.
->
 > $$
 >
-> Because $E_D(d)$ is independent of $q$, all $N$ document vectors are precomputed offline and indexed for sub-linear Approximate Nearest Neighbor (ANN) search. Conversely, a *cross-encoder* concatenates $q$ and $d$ into a single sequence $[q; `[SEP]`; d]$ and applies full self-attention across all $L_q + L_d$ tokens [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF p. 154):
+> Because $E_D(d)$ is independent of $q$, all $N$ document vectors are precomputed offline and indexed for sub-linear Approximate Nearest Neighbor (ANN) search. Conversely, a *cross-encoder* concatenates $q$ and $d$ into a single sequence $[q; \mathtt{[SEP]}; d]$ and applies full self-attention across all $L_q + L_d$ tokens [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF p. 154):
 >
 > $$
-> s_{\mathrm{cross}}(q, d) = \sigma\!\left(\boldsymbol{w}^{\top} \mathrm{BERT}\!\big([q; `[SEP]`; d]\big)_{`[CLS]`}\right).
->
+> s_{\mathrm{cross}}(q, d) = \sigma\!\left(\boldsymbol{w}^{\top} \mathrm{BERT}\!\big([q; \mathtt{[SEP]}; d]\big)_{\mathtt{[CLS]}}\right).
 > $$
 >
 > Bridging both regimes, *ColBERT* late interaction precomputes per-token normalized document embeddings $\boldsymbol{E}_{d} = (\boldsymbol{E}_{d,1}, \dots, \boldsymbol{E}_{d,m_d})$ and computes a sum of maximum token similarities (*MaxSim*) at query time [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF p. 274, Eq. (11.20)):
 >
 > $$
 > s_{\mathrm{ColBERT}}(q, d) = \sum_{i=1}^{N_q} \max_{j=1,\dots,m_d} \langle \boldsymbol{E}_{q,i}, \boldsymbol{E}_{d,j} \rangle.
->
 > $$
+>
 
 > [!note] Source Figure
 > *Figure:* Architectural contrast between a Bi-Encoder (independent encoding and cosine similarity in $[-1, 1]$ enabling offline vector indexing) and a Cross-Encoder (joint BERT attention and classification head outputting $[0, 1]$ relevance scores for top-$K$ reranking) [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF p. 154, Fig. 4.7). (`llm_engineer_s_handbook_p154_fig1.png`)
@@ -137,7 +134,6 @@ Because BM25 excels at exact entity/code matching while dense bi-encoders captur
 >
 > $$
 > \mathrm{RRF}(d; q) = \sum_{r \in \mathcal{R}} \frac{1}{\kappa + \mathrm{rank}_r(d)}, \qquad \kappa = 60.
->
 > $$
 >
 > To evaluate ranked lists against ground-truth relevance judgments $\mathrm{rel}_i \in \{0, 1, \dots\}$ over a query set $Q$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 11, PDF pp. 269–272, Eqs. (11.14)–(11.17)), let $R_r(q)$ be the set of relevant documents for query $q$ up to cutoff $r$:
@@ -149,7 +145,6 @@ Because BM25 excels at exact entity/code matching while dense bi-encoders captur
 >   \mathrm{MAP} &= \frac{1}{\lvert Q \rvert} \sum_{q \in Q} \frac{1}{\lvert R_r(q) \rvert} \sum_{d \in R_r(q)} \mathrm{Precision}_{\mathrm{rank}(d)}, &
 >   \mathrm{nDCG}@k &= \frac{1}{\mathrm{IDCG}@k} \sum_{i=1}^{k} \frac{2^{\mathrm{rel}_i} - 1}{\log_2(i + 1)},
 > \end{aligned}
->
 > $$
 >
 > where $\mathrm{IDCG}@k$ is the ideal discounted cumulative gain of the oracle ranking.
@@ -177,8 +172,8 @@ In multi-turn agentic workflows, unbounded session histories $\mathcal{S}_t$ exh
 >
 > $$
 > \mathcal{M}_t = \mathcal{U}_{\mathrm{cons}}\!\big(\mathcal{M}_{t-1},  \mathcal{E}_\theta(\mathcal{S}_t)\big) \in \{\mathrm{Create}(m_{\mathrm{new}}),  \mathrm{Merge}(m_{\mathrm{old}}, m_{\mathrm{new}}),  \mathrm{Delete}(m_{\mathrm{invalid}})\}.
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -227,7 +222,7 @@ Production RAG pipelines decouple offline ingestion (ETL $\to$ cleaning $\to$ sl
 **Table:** Computational complexity and systems trade-offs across retrieval and reranking stages for $N$ chunks of dimension $m$, average postings length $L_p$, HNSW degree $M$, and candidate set $K$.
 
 | Method | Query Time | Memory Footprint | Recall@10 | Operational Role |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | BM25 (Inverted Index) | $O(\lvert q \rvert \cdot L_p)$ | Sparse postings | Moderate (exact) | Lexical anchor; entities, IDs, code |
 | Flat Exact Search | $O(N \cdot m)$ | $O(N \cdot m)$ | $100\%$ (exact) | Small corpora ($N < 10^4$) or ground truth |
 | IVF-PQ | $O(\frac{N}{C_{\mathrm{list}}} S + C_{\mathrm{list}} m)$ | $O(N \cdot S \cdot b_{\mathrm{bits}})$ | $80\%$–$92\%$ | Billion-scale RAM-constrained indices |
@@ -237,7 +232,7 @@ Production RAG pipelines decouple offline ingestion (ETL $\to$ cleaning $\to$ sl
 > [!info] Cross-Book Synthesis: Declarative vs. Procedural Memory & Agentic Routing
 > Synthesizing [[Source - Engineering -|context_engineering_sessions_memory]] (pp. 35–38, 58–65), [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF pp. 149–153), and [[Source - Agents Book|ai_agents_2025_illustrated_guidebook]] (pp. 36–41) reveals three orthogonal axes of agentic retrieval and memory design:
 > - **Declarative vs. Procedural Memory**: Declarative memory stores "knowing what"—either *semantic* world/user facts (e.g., structured user profile) or *episodic* interaction logs (collections pattern). Procedural memory stores "knowing how"—reusable tool-call playbooks distilled from successful trajectories, providing fast online adaptation via in-context learning rather than slow offline RLHF/fine-tuning [[Source - Engineering -|context_engineering_sessions_memory]] (pp. 35, 64–65).
-> - **Proactive vs. Reactive Retrieval**: Proactive retrieval (e.g., ADK `PreloadMemoryTool` callbacks) injects memories before every turn, guaranteeing availability at the cost of per-turn latency. Reactive retrieval (`Memory-as-a-Tool`) lets the LLM decide when to invoke `load\_memory(query)`, saving unnecessary lookups on chitchat turns at the expense of an extra tool-call round trip [[Source - Engineering -|context_engineering_sessions_memory]] (pp. 58–60).
+> - **Proactive vs. Reactive Retrieval**: Proactive retrieval (e.g., ADK `PreloadMemoryTool` callbacks) injects memories before every turn, guaranteeing availability at the cost of per-turn latency. Reactive retrieval (`Memory-as-a-Tool`) lets the LLM decide when to invoke `load_memory(query)`, saving unnecessary lookups on chitchat turns at the expense of an extra tool-call round trip [[Source - Engineering -|context_engineering_sessions_memory]] (pp. 58–60).
 > - **Agentic RAG Routing**: Rather than unconditionally querying a single vector store, an agentic router dispatches queries across heterogeneous sources—vector DBs for internal docs, SQL databases for structured records, or live web crawlers (e.g., Firecrawl) for real-time events [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF p. 149); [[Source - Agents Book|ai_agents_2025_illustrated_guidebook]] (pp. 36–38).
 
 ## Visual Diagnostics & Geometric Structure
@@ -260,7 +255,7 @@ To quantify the indexing latency-accuracy trade-off discussed in [[Source - LLM 
 
 > [!warning] Pre-Filtering vs. Post-Filtering Collapse in HNSW
 > In filtered vector search [[Source - LLM Engineer’s Handbook|llm_engineer_s_handbook]] (Ch. 4, PDF pp. 145, 152), applying metadata predicates *after* HNSW search (post-filtering) yields fewer than $k$ results when predicate selectivity is low ($<5\%$). Conversely, naive *pre-filtering* can disconnect the HNSW graph, forcing fallback to $O(N)$ brute-force scanning.
-> **Remedy:** Use inline predicate-aware graph traversal (ACORN / filtered-HNSW) or maintain partitioned sub-indices for high-cardinality tenant/scope keys (e.g., `user\_id` in memory stores).
+> **Remedy:** Use inline predicate-aware graph traversal (ACORN / filtered-HNSW) or maintain partitioned sub-indices for high-cardinality tenant/scope keys (e.g., `user_id` in memory stores).
 
 > [!warning] Dialogue Injection & Stale Memory Lineage
 > Injecting retrieved long-term memories directly into the `user` turn history risks *dialogue injection*, where the LLM hallucinates that it or the user explicitly uttered the memory in the current session [[Source - Engineering -|context_engineering_sessions_memory]] (p. 63). Furthermore, consolidating memories without tracking provenance/lineage propagates stale or contradictory facts across sessions [[Source - Engineering -|context_engineering_sessions_memory]] (pp. 49–52).

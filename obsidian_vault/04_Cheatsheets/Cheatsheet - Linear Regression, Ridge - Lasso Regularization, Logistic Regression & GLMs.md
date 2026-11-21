@@ -55,7 +55,7 @@ flowchart LR
   $$
   \hat{\boldsymbol{w}}_{\mathrm{MLE}}=(\boldsymbol{\Phi}^{\top}\boldsymbol{\Phi})^{-1}\boldsymbol{\Phi}^{\top}\boldsymbol{y}
   $$
-- **2. RIDGE (\ell_2) vs LASSO (\ell_1) — Prior & Geometry**
+- **2. RIDGE ($\ell_2$) vs LASSO ($\ell_1$) — Prior & Geometry**
 - **3. KEY THEOREM — Canonical Exp-Family GLM**
   $$
   p(y_n\mid\theta_n,\phi)=h(y_n,\phi)\exp\!\left(\frac{y_n\theta_n-A(\theta_n)}{\phi}\right)

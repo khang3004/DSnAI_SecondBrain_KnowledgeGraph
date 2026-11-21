@@ -50,13 +50,12 @@ tags:
 
 ## Problem Formulation & Unified Notation
 
-\begin{sloppypar}
 Dense visual scene understanding extends image-level classification $f(\boldsymbol{I}) \to y$ to structured spatial outputs: *object detection* predicts a variable-size set $\{(c_i, \boldsymbol{b}_i)\}_{i=1}^M$ of categories and bounding boxes $\boldsymbol{b}_i = (x, y, w, h)^{\top}$, while *semantic/instance segmentation* assigns pixel-level masks $M \in \{1,\dots,C\}^{H \times W}$ [[Source - Dive into Deep Learning|dive_into_deep_learning_d2l]] (Ch. 14, pp. 646–705), [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 50, pp. 982–1014). Modern vision systems further align visual features with natural language embeddings via contrastive pretraining (CLIP) and promptable mask decoders (SAM) [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 51, pp. 1015–1032).
-\end{sloppypar}
 
 > [!info] Cross-Book Notation: Detection, Anchor Boxes & Segmentation
+>
 > | **Concept** | **D2L (Zhang et al.)** | **MIT Vision / Prince** | **Unified Monograph** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Bounding Box | $(x_1,y_1,x_2,y_2)$ or $(c_x,c_y,w,h)$ | $\boldsymbol{b} \in \mathbb{R}^4$ | $\boldsymbol{b} = (c_x, c_y, w, h)^{\top}$ |
 > | Box Overlap | $\mathrm{IoU}(A,B)$ (Jaccard) | IoU / GIoU | $\mathrm{IoU}(A,B) = \frac{\mid A \cap B\mid }{\mid A \cup B\mid }$ |
 > | Anchor Parameterization | Scale $s \in (0,1]$, aspect $r > 0$ | Multi-scale FPN anchors | $w_a = s\sqrt{r}$, $h_a = s/\sqrt{r}$ |
@@ -71,14 +70,12 @@ Dense visual scene understanding extends image-level classification $f(\boldsymb
 >
 > $$
 > \mathrm{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|} \in [0, 1], \qquad \mathcal{L}_{\mathrm{GIoU}} = 1 - \mathrm{IoU}(A,B) + \frac{|C \setminus (A \cup B)|}{|C|},
->
 > $$
 >
 > where $C$ is the smallest enclosing box. Anchor-based detectors (SSD, Faster R-CNN, YOLO) tile each feature map cell $(i,j)$ with $K$ priors of scale $s$ and aspect ratio $r$ ($w_a = s\sqrt{r}, h_a = s/\sqrt{r}$) and regress scale-invariant offsets [[Source - Dive into Deep Learning|dive_into_deep_learning_d2l]] (Ch. 14, pp. 650–675):
 >
 > $$
 > t_x = \frac{c_x - c_{x,a}}{w_a}, \quad t_y = \frac{c_y - c_{y,a}}{h_a}, \quad t_w = \log\frac{w}{w_a}, \quad t_h = \log\frac{h}{h_a}.
->
 > $$
 >
 > To suppress extreme easy-negative background dominance in dense one-stage detectors, *Focal Loss* down-weights well-classified anchors: $\mathcal{L}_{\mathrm{FL}}(p_t) = -\alpha_t (1-p_t)^\gamma \log p_t$ ($\gamma \approx 2$) [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 50, pp. 995–1002). Overlapping predictions are pruned via *Non-Maximum Suppression (NMS)* or eliminated entirely in *DETR*, which treats detection as direct set prediction via optimal bipartite *Hungarian matching* $\hat{\sigma} = \arg\min_{\sigma \in \mathfrak{S}_N} \sum_{i=1}^N \mathcal{L}_{\mathrm{match}}(y_i, \hat{y}_{\sigma(i)})$ [[Source - Antonio Torralba, Phillip Isola, and William Freeman|foundations_computer_vision_mit]] (Ch. 50, pp. 1004–1010).
@@ -92,8 +89,8 @@ Dense visual scene understanding extends image-level classification $f(\boldsymb
 >
 > $$
 > \mathcal{L}_{\mathrm{CLIP}} = -\frac{1}{2B}\sum_{i=1}^B \left[\log\frac{\exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_i \rangle/\tau)}{\sum_j \exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_j \rangle/\tau)} + \log\frac{\exp(\langle \boldsymbol{u}_i, \boldsymbol{v}_i \rangle/\tau)}{\sum_j \exp(\langle \boldsymbol{u}_j, \boldsymbol{v}_i \rangle/\tau)}\right].
->
 > $$
+>
 
 ## Visual Diagnostics & Algorithmic Pipeline
 
@@ -109,7 +106,6 @@ Dense visual scene understanding extends image-level classification $f(\boldsymb
 >
 >     **if** $\mathrm{IoU}(b^*, b) > \tau_{\mathrm{nms}}$:
 > Remove $b$ from $\mathcal{B}$
->
 >
 > **return** $\mathcal{D}$
 

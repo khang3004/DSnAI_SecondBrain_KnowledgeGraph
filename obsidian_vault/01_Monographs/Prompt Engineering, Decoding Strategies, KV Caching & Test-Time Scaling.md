@@ -67,30 +67,21 @@ LLM inference decomposes into two coupled sub-problems: (i) *model computation*,
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source textbooks adopt distinct conventions for logits, temperature, sequence indexing, and verification models. Table `tab:decode:notation` reconciles these notations into a single unified formalism used throughout this monograph.
-> 
->
-> {
->
 >
 > | **Unified Symbol** | **Meaning in This Monograph** | **Source Textbook Equivalents** |
-> | — | — | — |
+> | --- | --- | --- |
 > | $\boldsymbol{x}, \boldsymbol{y}_{<i}, y_i$ | Prompt ($m{+}1$ tokens), prefix, next token | $\boldsymbol{x}, \boldsymbol{y}_{<i}, y_i$ [[Source - Foundations of Large Language Models]] (p. 211); $w_{<t}, w_t$ [[Source - Speech and Language Processing]] (p. 196); $s_i, a_i$ [[Source - Reinforcement Learning from Human Feedback]] (p. 103) |
 > | $\boldsymbol{u}_i \in \mathbb{R}^{\mid \mathcal{V}\mid }$ | Unnormalized next-token logit vector | $(\boldsymbol{H}\boldsymbol{W}_o)_{m+i}$ [[Source - Foundations of Large Language Models]] (p. 212); $\boldsymbol{u}$ [[Source - Speech and Language Processing]] (p. 196); `logits` [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (p. 381) |
 > | $\tau > 0$ | Softmax temperature scaling parameter | $\tau$ [[Source - Speech and Language Processing]] (p. 198); $T/\tau$ [[Source - Foundations of Large Language Models]] (p. 224); `temperature` [[Source - Build a Large Language Model (From Scratch) (for sam speaks)]] (p. 384) |
 > | $p(\cdot), q(\cdot)$ | Target (verifier) and draft distributions | $\Pr_p(\cdot), \Pr_q(\cdot)$ [[Source - Foundations of Large Language Models]] (p. 226) |
 > | $b, s, n_{\mathrm{layers}}, n_{\mathrm{kv}}, d_h$ | Batch, seq len, layers, KV heads, head dim | $L$ layers, $d$ hidden dim [[Source - Foundations of Large Language Models]] (p. 216) |
->
-> }
 
 ## In-Context Learning, Prompting & Mechanistic Circuits
 
-\begin{sloppypar}
 Unlike gradient-based fine-tuning, *in-context learning* (ICL) adapts model behavior during the forward pass at inference time with zero parameter updates ($\Delta\theta = \boldsymbol{0}$, see [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 3, p. 106)). Prompting spans a spectrum of conditioning regimes:
 - **Zero-Shot, One-Shot & Few-Shot ICL:** In zero-shot prompting, the input $\boldsymbol{x}$ specifies task instructions and role constraints. One-shot and few-shot prompting prepend $k$ input–output demonstrations $\{(x^{(j)}, y^{(j)})\}_{j=1}^k$ to $\boldsymbol{x}$, inducing an empirical task mapping directly in the residual stream [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 3, pp. 106–108).
 - **Chain-of-Thought (CoT) & Problem Decomposition:** Rather than mapping $\boldsymbol{x} \mapsto \boldsymbol{y}_{\mathrm{ans}}$ directly, CoT conditions generation on an explicit intermediate reasoning trajectory $\boldsymbol{z} = (z_1, \dots, z_T)$ before emitting the final answer: $\Pr(\boldsymbol{y}_{\mathrm{ans}} \mid \boldsymbol{x}) = \sum_{\boldsymbol{z}} \Pr(\boldsymbol{y}_{\mathrm{ans}} \mid \boldsymbol{x}, \boldsymbol{z}) \Pr(\boldsymbol{z} \mid \boldsymbol{x})$ [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 3, pp. 122–125). Decomposing multi-step problems allocates serial Transformer compute across intermediate token positions.
 - **Self-Consistency & Tree-of-Thoughts (ToT):** Sampling $M$ diverse CoT paths $\{\boldsymbol{z}^{(m)}, \boldsymbol{y}_{\mathrm{ans}}^{(m)}\}_{m=1}^M$ and marginalizing via majority vote approximates the intractable sum over $\boldsymbol{z}$, whereas ToT structures intermediate thoughts as a search tree with lookahead and backtracking ([[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 3, pp. 125–141)).
-
-\end{sloppypar}
 
 > [!tip] Mechanistic Interpretability: Logit Lens, SAEs & Induction Heads
 > How does a frozen Transformer execute ICL without weight updates? Mechanistic interpretability probes the residual stream across layers $l \in \{1, \dots, L\}$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Ch. 10, pp. 248–251):
@@ -110,8 +101,8 @@ Exact maximum a posteriori (MAP) decoding $\arg\max_{\boldsymbol{y}} \log \Pr_{\
 >
 > $$
 > \log \Pr(\boldsymbol{y}_{1:i} \mid \boldsymbol{x}) = \log \Pr(\boldsymbol{y}_{<i} \mid \boldsymbol{x}) + \log \Pr(y_i \mid \boldsymbol{x}, \boldsymbol{y}_{<i}).
->
 > $$
+>
 > - **Greedy Decoding:** Sets $|\mathcal{Y}_i| = 1$ by selecting $\hat{y}_i = \arg\max_{y_i \in \mathcal{V}} \log \Pr(y_i \mid \boldsymbol{x}, \boldsymbol{y}_{<i})$ [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 7.6.1, p. 196). Greedy decoding is $O(n|\mathcal{V}|)$ but is locally myopic and prone to repetitive degeneration.
 > - **Beam Search:** Maintains the top-$K$ hypotheses $\mathcal{Y}_i = \mathrm{argTopK}_{\boldsymbol{y} \in \mathcal{Y}_{i-1} \times \mathcal{V}} \log \Pr(\boldsymbol{y} \mid \boldsymbol{x})$ with beam width $K$ (typically $K \in \{2, 4\}$) [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 221–222). Beam search excels in constrained sequence-to-sequence tasks (e.g., machine translation) but often produces generic, low-entropy text in open-ended generation.
 
@@ -124,26 +115,23 @@ To restore diversity and match human-like entropy profiles, stochastic decoding 
 > p_{\tau}(w_j) = \frac{\exp(u_j / \tau)}{\sum_{v=1}^{|\mathcal{V}|} \exp(u_v / \tau)}, \qquad
 >   \lim_{\tau \to 0^+} p_{\tau}(w_j) = \mathbb{I}[j = \arg\max_v u_v], \quad
 >   \lim_{\tau \to \infty} p_{\tau}(w_j) = \frac{1}{|\mathcal{V}|}.
->
 > $$
 >
 > Sampling directly from $p_{\tau}$ across all $|\mathcal{V}|$ tokens exposes generation to the *unreliable tail* (accumulated probability mass over thousands of implausible tokens). Two truncation filters eliminate this tail:
 > - **Top-$k$ Filtering:** Retain the $k$ highest-logit indices $\mathcal{V}_k = \mathrm{argTopK}(\boldsymbol{u}, k)$ and mask all other logits to $-\infty$ prior to softmax [[Source - Build a Large Language Model (From Scratch) (for sam speaks)|build_large_language_model_from_scratch]] (Sec. 5.3.2, pp. 388–393):
 >
->
 > $$
 > \tilde{u}_j = \begin{cases} u_j & \text{if } j \in \mathcal{V}_k, \\ -\infty & \text{otherwise}, \end{cases}
 >     \qquad p_{\tau, k}(w_j) = \frac{\exp(\tilde{u}_j / \tau)}{\sum_{v \in \mathcal{V}_k} \exp(u_v / \tau)}.
->
 > $$
-> - **Top-$p$ (Nucleus) Filtering:** Sort tokens in descending probability order $p_{\tau}(w_{(1)}) \ge p_{\tau}(w_{(2)}) \ge \dots \ge p_{\tau}(w_{(|\mathcal{V}|)})$ and define the minimal nucleus $\mathcal{V}_p = \{w_{(1)}, \dots, w_{(m^*)}\}$ whose cumulative mass meets threshold $p \in (0, 1]$ [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 222–224), [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 7.6.4, p. 200):
 >
+> - **Top-$p$ (Nucleus) Filtering:** Sort tokens in descending probability order $p_{\tau}(w_{(1)}) \ge p_{\tau}(w_{(2)}) \ge \dots \ge p_{\tau}(w_{(|\mathcal{V}|)})$ and define the minimal nucleus $\mathcal{V}_p = \{w_{(1)}, \dots, w_{(m^*)}\}$ whose cumulative mass meets threshold $p \in (0, 1]$ [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 222–224), [[Source - Speech and Language Processing|speech_language_processing_aug26]] (Sec. 7.6.4, p. 200):
 >
 > $$
 > m^* = \min \left\{ m \in \{1, \dots, |\mathcal{V}|\} : \sum_{r=1}^{m} p_{\tau}(w_{(r)}) \ge p \right\},
 >     \qquad p_{\tau, p}(w_j) = \frac{p_{\tau}(w_j) \mathbb{I}[w_j \in \mathcal{V}_p]}{\sum_{v \in \mathcal{V}_p} p_{\tau}(v)}.
->
 > $$
+>
 
 > [!tip] Why Nucleus ($p$) Adapts Better Than Fixed $k$
 > When the model is highly certain (e.g., completing a deterministic idiom), $p_{\tau}(w_{(1)}) \approx 0.95$, so a fixed $k = 50$ forces 49 junk tokens into the candidate pool, whereas top-$p$ with $p = 0.9$ automatically collapses $|\mathcal{V}_p| = 1$. Conversely, in high-entropy contexts (e.g., starting a story), probability mass spreads across hundreds of valid continuations; top-$p$ expands $|\mathcal{V}_p|$ dynamically while still excising the long tail.
@@ -163,11 +151,11 @@ To restore diversity and match human-like entropy profiles, stochastic decoding 
 >
 >     **if** $k < |\mathcal{V}|$:
 >
->       $\mathcal{V}_k \leftarrow \mathrm{argTopK}(\boldsymbol{u}_i, k)$;\quad set $u_{i,v} \leftarrow -\infty$ for $v \notin \mathcal{V}_k$
+>       $\mathcal{V}_k \leftarrow \mathrm{argTopK}(\boldsymbol{u}_i, k)$;  set $u_{i,v} \leftarrow -\infty$ for $v \notin \mathcal{V}_k$
 >
 >     $\boldsymbol{p} \leftarrow \mathrm{softmax}(\boldsymbol{u}_i / \tau)$
 >     Sort $\boldsymbol{p}$ descending: $p_{(1)} \ge p_{(2)} \ge \dots$; find $m^* = \min \{m : \sum_{r=1}^m p_{(r)} \ge p\}$
->     $\mathcal{V}_p \leftarrow \{(1), \dots, (m^*)\}$;\quad zero out $p_v$ for $v \notin \mathcal{V}_p$ and renormalize $\boldsymbol{p} \leftarrow \boldsymbol{p} / \sum_{v \in \mathcal{V}_p} p_v$
+>     $\mathcal{V}_p \leftarrow \{(1), \dots, (m^*)\}$;  zero out $p_v$ for $v \notin \mathcal{V}_p$ and renormalize $\boldsymbol{p} \leftarrow \boldsymbol{p} / \sum_{v \in \mathcal{V}_p} p_v$
 >     Sample $y_i \sim \mathrm{Cat}(\boldsymbol{p})$
 >
 >   Append $y_i$ to $\boldsymbol{y}$ and update $\mathrm{cache}$
@@ -190,7 +178,6 @@ In causal self-attention, keys $\boldsymbol{k}_{t}$ and values $\boldsymbol{v}_{
 >
 > $$
 > M_{\mathrm{KV}} = 2 \cdot b \cdot s \cdot n_{\mathrm{layers}} \cdot n_{\mathrm{kv}} \cdot d_h \cdot p_{\mathrm{bytes}} \quad [\text{bytes}],
->
 > $$
 >
 > where the factor of $2$ accounts for storing both $\boldsymbol{K}$ and $\boldsymbol{V}$ tensors. Architectural variants reduce $n_{\mathrm{kv}}$ relative to query heads $n_q$:
@@ -223,12 +210,9 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 > - If $r \le \frac{p(\hat{y})}{q(\hat{y})}$ (equivalently, always accept when $q(\hat{y}) \le p(\hat{y})$), **accept** $\hat{y}$.
 > - Otherwise, **reject** $\hat{y}$ and all subsequent draft tokens, and resample $\bar{y}$ from the normalized residual distribution
 >
->
 > $$
 > p_{\mathrm{res}}(y) = \frac{\max(0,  p(y) - q(y))}{Z}, \qquad Z = \sum_{v \in \mathcal{V}} \max(0,  p(v) - q(v)) = 1 - \sum_{v \in \mathcal{V}} \min(p(v), q(v)).
->
 > $$
->
 >
 > **Theorem (Losslessness):** The emitted token $Y$ satisfies $\Pr(Y = y) = p(y)$ for all $y \in \mathcal{V}$.
 >
@@ -240,7 +224,6 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 >   &= q(y)\min\!\left(1, \frac{p(y)}{q(y)}\right) + Z \cdot \frac{\max(0,  p(y) - q(y))}{Z}  \\
 >   &= \min(p(y), q(y)) + \max(0,  p(y) - q(y)) = p(y). \qquad \square
 > \end{aligned}
->
 > $$
 >
 > If all $\tau$ draft tokens are accepted, the target model emits one bonus token from $p(\cdot \mid \boldsymbol{x}, \boldsymbol{y}_{<i}, \hat{\boldsymbol{y}}_{1:\tau})$ at zero extra forward-pass cost, yielding up to $\tau + 1$ exact target tokens per verification step.
@@ -263,7 +246,6 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 >     Sample $\bar{y}_{i+n_a+1} \sim p_{\mathrm{res}}(\cdot)$ via Eq. `(eq:decode:residual_dist)`
 >     **break**
 >
->
 > **if** $n_a = \tau$:
 >
 >   Sample bonus token $\bar{y}_{i+\tau+1} \sim p(\cdot \mid \boldsymbol{x}, \boldsymbol{y}_{<i}, \hat{y}_{i+1:i+\tau})$
@@ -272,9 +254,7 @@ Because autoregressive decoding is memory-bandwidth-bound, evaluating $\tau + 1$
 
 ## Test-Time Scaling, Verifiers & RLVR Reasoning
 
-\begin{sloppypar}
 Beyond pretraining and fine-tuning scaling laws, *inference-time (test-time) scaling* improves accuracy on complex reasoning tasks by allocating additional compute during generation without updating parameters $\theta$ ([[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 241–251); [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 7, pp. 101–105)). Test-time compute scales along two primary axes:
-\end{sloppypar}
 - **Parallel Scaling (Best-of-$N$ & Majority Voting):** Sample $N$ independent rollouts $\{\boldsymbol{y}^{(1)}, \dots, \boldsymbol{y}^{(N)}\}$ and aggregate via unweighted majority vote (Self-Consistency) or select $\arg\max_{m} V(\boldsymbol{x}, \boldsymbol{y}^{(m)})$ using a learned verifier $V$ [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 244–248).
 - **Sequential Scaling & Step-Level Search:** Extend a single reasoning trajectory via self-refinement or explore partial reasoning states $\boldsymbol{a}_{\le i} = (a_1, \dots, a_i)$ with a *Process Reward Model* (PRM), which scores intermediate steps $V(\boldsymbol{x}, \boldsymbol{a}_{\le i})$ rather than only terminal outcomes (Outcome Reward Models, ORMs), enabling beam search or MCTS over thought steps [[Source - Foundations of Large Language Models|foundations_large_language_models]] (Ch. 5, pp. 248–251).
 - **RLVR-Elicited Long Thinking:** Reinforcement Learning with Verifiable Rewards (RLVR) trains policies $\pi_{\theta}$ against deterministic binary verifiers $r \in \{0, \gamma\}$ (e.g., exact math extraction via `\boxed{}` or unit-test execution, Fig. `fig:decode:rlvr_loop`), teaching models to allocate long CoT budgets, backtrack, and self-verify natively at test time [[Source - Reinforcement Learning from Human Feedback|reinforcement_learning_from_human_feedback]] (Ch. 7, pp. 101–112).
@@ -290,7 +270,7 @@ Figure `fig:decode:test_time_scaling` illustrates the empirical scaling regimes 
 **Table:** Complexity and hardware bottleneck synthesis across LLM inference mechanisms.
 
 | **Mechanism** | **Compute / Step** | **Memory / Req.** | **Bottleneck & Primary Trade-off** |
-| — | — | — | — |
+| --- | --- | --- | --- |
 | Prefill (no cache) | $O(m^2 d + m d^2)$ | $O(b m n_{\mathrm{layers}} n_{\mathrm{kv}} d_h)$ | Compute-bound; sets TTFT |
 | Naive Decode (no cache) | $O(s^2 d + s d^2)$ | $O(1)$ cache | $O(n^3)$ total compute; unusable for long $s$ |
 | KV-Cached Decode | $O(s d + d^2)$ | $O(b s n_{\mathrm{layers}} n_{\mathrm{kv}} d_h)$ | HBM bandwidth-bound; sets ITL / TPS |

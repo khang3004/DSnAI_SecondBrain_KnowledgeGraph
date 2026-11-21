@@ -54,12 +54,12 @@ flowchart LR
 
 ## Branch Summary & Key Equations
 
-- **1. INIT — Variance Preservation at t=0**
+- **1. INIT — Variance Preservation at $t=0$**
   $$
   \mathrm{Var}(f_i^{(l)})=D_{l-1}\sigma_l^2 \mathbb{E}\bigl[(h_j^{(l-1)})^2\bigr]
   $$
 - **2. NORMALIZATION — Which Axes to Slice?**
-- **3. RESIDUALS — The \boldsymbol{I} Gradient Highway**
+- **3. RESIDUALS — The $\boldsymbol{I}$ Gradient Highway**
   $$
   \frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(l)}}=\frac{\partial \mathcal{L}}{\partial \boldsymbol{x}^{(L)}}\!\left(\boldsymbol{I}+\frac{\partial }{\partial \boldsymbol{x}^{(l)}}\sum_{k=l}^{L-1}\mathcal{F}_k\right)
   $$

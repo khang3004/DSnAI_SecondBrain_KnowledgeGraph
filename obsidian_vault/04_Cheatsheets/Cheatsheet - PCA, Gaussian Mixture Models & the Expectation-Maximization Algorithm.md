@@ -57,7 +57,7 @@ flowchart LR
   $$
 - **2. PPCA & FACTOR ANALYSIS — generative subspace**
   $$
-  \boldsymbol{z}_n\sim\mathcal{N}(\boldsymbol{0},\boldsymbol{I}_M),\qquad \boldsymbol{x}_n\mid\boldsymbol{z}_n\sim\mathcal{N}(\boldsymbol{W}\boldsymbol{z}_n+\boldsymbol{\mu}, \boldsymbol{\Psi})
+  \boldsymbol{z}_n\sim\mathcal{N}(\boldsymbol{0},\boldsymbol{I}_M),  \boldsymbol{x}_n\mid\boldsymbol{z}_n\sim\mathcal{N}(\boldsymbol{W}\boldsymbol{z}_n+\boldsymbol{\mu}, \boldsymbol{\Psi})
   $$
 - **3. GENERAL EM — ELBO & monotone ascent**
   $$
@@ -65,7 +65,7 @@ flowchart LR
   $$
 - **4. GMM vs. K-MEANS — soft to hard limit**
   $$
-  r_{nk} = \frac{\pi_k\mathcal{N}(\boldsymbol{x}_n\mid\boldsymbol{\mu}_k,\boldsymbol{\Sigma}_k)}{\sum_{j=1}^K \pi_j\mathcal{N}(\boldsymbol{x}_n\mid\boldsymbol{\mu}_j,\boldsymbol{\Sigma}_j)},\qquad N_k = \sum_{n=1}^N r_{nk}
+  r_{nk} = \frac{\pi_k\mathcal{N}(\boldsymbol{x}_n\mid\boldsymbol{\mu}_k,\boldsymbol{\Sigma}_k)}{\sum_{j=1}^K \pi_j\mathcal{N}(\boldsymbol{x}_n\mid\boldsymbol{\mu}_j,\boldsymbol{\Sigma}_j)},  N_k = \sum_{n=1}^N r_{nk}
   $$
 - **5. COMPLEXITY & SCALING — which solver?**
 - **6. LATENT TAXONOMY — one shallow template**

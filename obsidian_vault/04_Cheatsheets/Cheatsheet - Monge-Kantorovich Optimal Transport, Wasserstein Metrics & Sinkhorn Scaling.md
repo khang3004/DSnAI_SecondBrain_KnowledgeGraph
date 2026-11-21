@@ -55,13 +55,13 @@ flowchart LR
   $$
   \mathrm{OT}_c(\mu,\nu)=\inf_{\pi\in\Pi(\mu,\nu)}\int c(\boldsymbol{x},\boldsymbol{y}) \mathrm{d}\pi
   $$
-- **2. DUALITY & WASSERSTEIN-p — c-transforms**
+- **2. DUALITY & WASSERSTEIN-$p$ — $c$-transforms**
   $$
   \mathrm{OT}_c(\mu,\nu)=\sup_{f(\boldsymbol{x})+g(\boldsymbol{y})\le c}\mathbb{E}_\mu[f]+\mathbb{E}_\nu[g]=\sup_{f\in\mathcal F_c}\mathbb{E}_\mu[f]+\mathbb{E}_\nu[f^c]
   $$
 - **3. BRENIER & DYNAMIC OT — convex potentials**
   $$
-  T^\star(\boldsymbol{x})=\nabla u(\boldsymbol{x}),\quad u(\boldsymbol{x})=\tfrac12\lVert \boldsymbol{x} \rVert_2^2-f^\star(\boldsymbol{x}) \text{convex}
+  T^\star(\boldsymbol{x})=\nabla u(\boldsymbol{x}),  u(\boldsymbol{x})=\tfrac12\lVert \boldsymbol{x} \rVert_2^2-f^\star(\boldsymbol{x}) \text{convex}
   $$
 - **4. ENTROPIC OT & SINKHORN — matrix scaling**
   $$

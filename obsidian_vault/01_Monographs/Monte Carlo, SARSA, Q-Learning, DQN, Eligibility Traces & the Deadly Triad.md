@@ -57,12 +57,9 @@ where $T = \infty$ for continuing tasks ($\gamma < 1$) and $T < \infty$ for epis
 
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source texts adopt slightly different indexing conventions for rewards, step sizes, and network parameters. We standardize on Sutton & Barto's $R_{t+1}$ transition indexing while mapping Murphy's and Prince's conventions explicitly in Table `tab:td:notation`.
-> 
->
->
 >
 > | **Concept** | **Sutton & Barto** | **Murphy (RL / Adv.)** | **Prince** | **Unified Monograph Convention** |
-> | — | — | — | — | — |
+> | --- | --- | --- | --- | --- |
 > | Step-size / LR | $\alpha$ | $\eta$ | $\alpha$ | $\alpha \in (0, 1]$ (TD/MC), $\eta$ for SGD |
 > | Reward at $t \to t+1$ | $R_{t+1}$ | $r_t$ or $r_{t+1}$ | $r[s_t, a_t]$ | $R_{t+1}$ (emitted upon $S_t, A_t \to S_{t+1}$) |
 > | Value parameters | $\boldsymbol{w} \in \mathbb{R}^d$ | $\boldsymbol{w}$ | $\boldsymbol{\phi}$ | $\boldsymbol{w}$ (linear/general), $\boldsymbol{\theta}$ (deep Q-net) |
@@ -128,7 +125,6 @@ Notice that Q-learning is a special case of Expected Sarsa when $\pi$ is the det
 >
 > $$
 > \mathbb{E}\bigl[\max_{a} X_a\bigr]  \ge  \max_{a} \mathbb{E}[X_a]  =  \max_{a} q(a),
->
 > $$
 >
 > with strict inequality whenever multiple actions have noisy estimates near the maximum [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 6, PDF pp. 156–157) [[Source - Understanding Deep Learning|understandingdl_simonprince]] (Sec. 19.4.2, p. 401). This positive *maximization bias* causes Q-learning to overestimate risky/high-variance suboptimal actions.
@@ -137,7 +133,6 @@ Notice that Q-learning is a special case of Expected Sarsa when $\pi$ is the det
 >
 > $$
 > Q_1(S_t, A_t)  \leftarrow  Q_1(S_t, A_t) + \alpha \Bigl[ R_{t+1} + \gamma Q_2\bigl(S_{t+1}, \arg\max_{a'} Q_1(S_{t+1}, a')\bigr) - Q_1(S_t, A_t) \Bigr].
->
 > $$
 >
 > Since $Q_2$ is independent of the noise that selected $a^* = \arg\max_{a'} Q_1(S_{t+1}, a')$, $\mathbb{E}[Q_2(S_{t+1}, a^*)] = q(S_{t+1}, a^*)$ is unbiased for that action's true value.
@@ -166,21 +161,18 @@ Setting $\lambda = 0$ recovers $G_t^0 = G_{t:t+1}$ ($\mathrm{TD}(0)$), while $\l
 >
 > $$
 > \boldsymbol{z}_{-1} = \boldsymbol{0}, \qquad \boldsymbol{z}_t  \doteq  \gamma \lambda \boldsymbol{z}_{t-1} + \nabla_{\boldsymbol{w}} \hat{v}(S_t, \boldsymbol{w}_t),
->
 > $$
 >
 > paired with the semi-gradient update driven by the one-step TD error $\delta_t = R_{t+1} + \gamma \hat{v}(S_{t+1}, \boldsymbol{w}_t) - \hat{v}(S_t, \boldsymbol{w}_t)$:
 >
 > $$
 > \boldsymbol{w}_{t+1}  \doteq  \boldsymbol{w}_t + \alpha \delta_t \boldsymbol{z}_t.
->
 > $$
 >
 > For linear function approximation $\hat{v}(s, \boldsymbol{w}) = \boldsymbol{w}^{\top} \boldsymbol{x}(s)$ under offline (end-of-episode) weight accumulation, the sum of backward-view updates equals the sum of forward-view $\lambda$-return updates:
 >
 > $$
 > \sum_{t=0}^{T-1} \delta_t \boldsymbol{z}_t  =  \sum_{t=0}^{T-1} \bigl(G_t^\lambda - \boldsymbol{w}^{\top} \boldsymbol{x}(S_t)\bigr) \boldsymbol{x}(S_t),
->
 > $$
 >
 > verified by telescoping the geometric series $G_t^\lambda - \hat{v}(S_t) = \sum_{k=t}^{T-1} (\gamma \lambda)^{k-t} \delta_k$ and exchanging summation indices [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 12, PDF pp. 315–316). For online step-by-step updates, *True Online $\mathrm{TD}(\lambda)$* eliminates the discrepancy via Dutch traces [[Source - Francis Bach|reinforcement_learning_introduction_richard_s_su]] (Ch. 12, PDF p. 321).
@@ -205,15 +197,14 @@ However, when *off-policy* sampling ($\mu \ne d^\pi$) is combined with bootstrap
 >
 > $$
 > \nabla_{\boldsymbol{w}} \mathrm{PBE}(\boldsymbol{w})  =  2 \mathbb{E}\bigl[\rho_t (\gamma \boldsymbol{x}_{t+1} - \boldsymbol{x}_t)\boldsymbol{x}_t^{\top}\bigr] \bigl(\mathbb{E}[\boldsymbol{x}_t \boldsymbol{x}_t^{\top}]\bigr)^{-1} \mathbb{E}[\rho_t \delta_t \boldsymbol{x}_t].
->
 > $$
 >
 > Because the first and third expectations both depend on $\boldsymbol{x}_{t+1}$, multiplying single-step samples is biased. GTD2/TDC circumvents this double-sampling issue by maintaining an auxiliary $d$-vector $\boldsymbol{v}_t \approx (\mathbb{E}[\boldsymbol{x}_t \boldsymbol{x}_t^{\top}])^{-1} \mathbb{E}[\rho_t \delta_t \boldsymbol{x}_t]$ via a fast-timescale LMS update ($\boldsymbol{v}_{t+1} = \boldsymbol{v}_t + \beta \rho_t (\delta_t - \boldsymbol{v}_t^{\top} \boldsymbol{x}_t) \boldsymbol{x}_t$) and updating $\boldsymbol{w}$ on a slower timescale:
 >
 > $$
 > \boldsymbol{w}_{t+1}  =  \boldsymbol{w}_t + \alpha \rho_t \bigl(\delta_t \boldsymbol{x}_t - \gamma \boldsymbol{x}_{t+1} (\boldsymbol{x}_t^{\top} \boldsymbol{v}_t)\bigr) \qquad (\text{TDC}).
->
 > $$
+>
 
 ## Algorithmic Implementation & Comparative Synthesis
 
@@ -263,7 +254,7 @@ $$
 **Table:** Per-step computational complexity, memory footprint, and convergence properties ($d$: parameter dimension; $\lvert \mathcal{A} \rvert$: action count; $B$: minibatch size).
 
 | **Method** | **Time / Step** | **Memory** | **Policy** | **Linear / Nonlinear Stability** |
-| — | — | — | — | — |
+| --- | --- | --- | --- | --- |
 | First-Visit MC | $O(1)$ per step | $O(T)$ episode | On / Off (IS) | Unbiased; converges under coverage |
 | $\mathrm{TD}(0)$ / SARSA | $O(d)$ | $O(d)$ | On-policy | Converges w.p.1 (linear, on-policy) |
 | $\mathrm{TD}(\lambda)$ | $O(d)$ | $O(d)$ (trace $\boldsymbol{z}$) | On-policy | Converges w.p.1 (linear, on-policy) |

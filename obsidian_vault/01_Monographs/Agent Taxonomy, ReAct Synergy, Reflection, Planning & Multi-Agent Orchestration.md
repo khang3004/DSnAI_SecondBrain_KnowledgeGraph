@@ -64,11 +64,8 @@ When should a system be architected as an autonomous agent rather than a determi
 > [!info] Cross-Book Notation & Pedagogical Reconciliation
 > Source texts adopt differing terminology for agency levels, loop steps, and architectural primitives across [[Source - Published as a conference paper at ICLR 2023|react_agent]] (pp. 3–8), [[Source - Introduction to|introduction_agents]] (pp. 10–26), [[Source - A practical|practical_guide_building_agents]] (pp. 7–23), and [[Source - Agents Book|ai_agents_2025_illustrated_guidebook]] (pp. 11–34). The matrix below establishes a unified mapping.
 >
->
->
->
 > | **Concept** | **ReAct Paper** | **Intro to Agents** | **Practical / 2025 Guide** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Core Triad | Policy $\pi$, Action $\mathcal{A}$, Context $c_t$ | Model (Brain), Tools (Hands), Orchestration Layer | Model, Tools, Instructions (+ Memory, Guardrails, Role) |
 > | Loop Cycle | Thought ($\hat{a}_t \in \mathcal{L}$) $\to$ Act ($a_t \in \mathcal{A}$) $\to$ Obs ($o_{t+1}$) | Get Mission $\to$ Scan Scene $\to$ Think $\to$ Act $\to$ Observe & Iterate | `Runner.run()` while-loop until exit condition |
 > | Agency Scale | Standard $\to$ CoT / Act $\to$ ReAct $\to$ ReAct+CoT-SC | Levels 0–4 (Core $\to$ Connected $\to$ Strategic $\to$ Multi-Agent $\to$ Self-Evolving) | Levels 1–5 (Responder $\to$ Router $\to$ Tool Calling $\to$ Multi-Agent $\to$ Autonomous) |
@@ -85,7 +82,6 @@ Isolating reasoning from acting induces complementary failure modes. Pure Chain-
 >
 > $$
 > \mathbb{P}(\tau \mid x) = \prod_{t=1}^{T} \pi(\hat{a}_t \mid c_t)   \pi(a_t \mid c_t, \hat{a}_t)   \mathcal{P}(o_{t+1} \mid s_t, a_t),
->
 > $$
 >
 > where the context update satisfies $c_t' = (c_t, \hat{a}_t)$ after a thought and $c_{t+1} = (c_t', a_t, o_{t+1})$ after an external action. Because thoughts $\hat{a}_t \in \mathcal{L}$ incur zero environment cost, they serve as a differentiable-free working memory that (1) decomposes goals, (2) extracts salient entities from $o_t$, (3) reformulates failed queries, and (4) tracks subgoal completion.
@@ -94,10 +90,9 @@ Isolating reasoning from acting induces complementary failure modes. Pure Chain-
 >
 > $$
 > \begin{aligned}
-> \text{ReAct} \to \text{CoT-SC}: \quad & \text{if } t > T_{\max} \text{ without } `Finish`[\cdot], \text{ back off to } \text{CoT-SC}(n),  \\
+> \text{ReAct} \to \text{CoT-SC}: \quad & \text{if } t > T_{\max} \text{ without } \mathtt{Finish}[\cdot], \text{ back off to } \text{CoT-SC}(n),  \\
 >   \text{CoT-SC} \to \text{ReAct}: \quad & \text{if } \max_{y} \sum_{i=1}^{n} \mathbb{I}[y^{(i)} = y] < \frac{n}{2}, \text{ back off to ReAct}.
 > \end{aligned}
->
 > $$
 >
 > In `(eq:agent:switch_react_cot)`, $T_{\max} = 7$ for HotpotQA and $T_{\max} = 5$ for FEVER (fewer than $0.84\%$ and $1.33\%$ of correct ReAct trajectories exceed these horizons, respectively). In `(eq:agent:switch_cot_react)`, a sub-majority consensus signals low internal confidence, triggering external retrieval.
@@ -116,14 +111,12 @@ Beyond single-trajectory ReAct, modern agentic architectures compose five canoni
 
 > [!important] Formalizing Manager vs. Decentralized Multi-Agent Graphs
 > Let $G = (V, E)$ be an agent orchestration graph where each vertex $v_i \in V$ is an agent tuple $(M_i, \mathcal{T}_i, I_i)$ comprising a model $M_i$, toolset $\mathcal{T}_i$, and instruction constitution $I_i$ [[Source - A practical|practical_guide_building_agents]] (pp. 7, 17):
-> - **Manager Pattern (Agents-as-Tools):** A distinguished root $v_{\mathrm{mgr}} \in V$ has directed edges $(v_{\mathrm{mgr}}, v_i) \in E$ representing synchronous tool calls $v_i.`as\_tool`()$. Control always returns to $v_{\mathrm{mgr}}$, which retains global state and synthesizes the final user response [[Source - A practical|practical_guide_building_agents]] (pp. 18–20); [[Source - Introduction to|introduction_agents]] (p. 25).
+> - **Manager Pattern (Agents-as-Tools):** A distinguished root $v_{\mathrm{mgr}} \in V$ has directed edges $(v_{\mathrm{mgr}}, v_i) \in E$ representing synchronous tool calls $v_i.\mathtt{as\_tool}()$. Control always returns to $v_{\mathrm{mgr}}$, which retains global state and synthesizes the final user response [[Source - A practical|practical_guide_building_agents]] (pp. 18–20); [[Source - Introduction to|introduction_agents]] (p. 25).
 > - **Decentralized Pattern (Peer Handoffs):** Directed edges $(v_i, v_j) \in E$ represent one-way *handoff* functions that transfer execution control and the conversation state $c_t$ from $v_i$ to $v_j$ without returning to $v_i$ [[Source - A practical|practical_guide_building_agents]] (pp. 21–23).
 
 ## Algorithmic Implementation & Comparative Synthesis
 
-{
 Production agent runtimes implement the Model, Tools, and Orchestration triad as a bounded `while` loop with explicit exit conditions, layered guardrails, and optional reflection [[Source - A practical|practical_guide_building_agents]] (pp. 14–15, 24–31); [[Source - Introduction to|introduction_agents]] (pp. 11–12). Algorithm `alg:agent:react_loop` synthesizes the ReAct execution loop with guardrail tripwires, quality-evaluator reflection, and bounded termination.
-}
 
 > [!example] Algorithm: Bounded ReAct Orchestration Loop with Guardrails & Reflection
 > **Input:** Mission $x$, system constitution $I$, tool registry $\mathcal{T}$, max turns $T_{\max}$, quality threshold $\tau$
@@ -147,8 +140,7 @@ Production agent runtimes implement the Model, Tools, and Orchestration triad as
 >
 >       Append critique $f_t$ to $c_{t+1} \leftarrow (c_t', a_t, f_t)$; $t \leftarrow t + 1$; **continue**
 >
->
->   **else if** $a_t = `ToolCall`(g, \theta)$ with $g \in \mathcal{T}$:
+>   **else if** $a_t = \mathtt{ToolCall}(g, \theta)$ with $g \in \mathcal{T}$:
 >
 >     **if** $\mathrm{Risk}(g) = \mathrm{High}$ **and not** $HumanApproval(g, \theta)$:
 > **return** EscalateToHuman($c_t', a_t$)
@@ -161,20 +153,15 @@ Production agent runtimes implement the Model, Tools, and Orchestration triad as
 > [!info] Cross-Book Synthesis: Taxonomy of Agency Levels (0–4 vs. 1–5)
 > Both [[Source - Introduction to|introduction_agents]] (pp. 14–18) (Levels 0–4) and [[Source - Agents Book|ai_agents_2025_illustrated_guidebook]] (pp. 31–34) (Levels 1–5) stratify systems by how much control-flow authority shifts from deterministic code to the LLM. The alignment below maps these taxonomies to concrete architectural capabilities and operational bottlenecks.
 >
->
->
->
 > | **Intro to Agents** | **2025 Guidebook** | **Control Flow & Capabilities** | **Primary Bottleneck** |
-> | — | — | — | — |
+> | --- | --- | --- | --- |
 > | Level 0: Core Reasoning | Level 1: Basic Responder | Parametric LM only; zero tools or live state | Blind to post-training facts; hallucination |
 > | Level 1: Connected Solver | Level 2–3: Router / Tool Calling | Single-turn routing or tool invocation ($\mathcal{A}$) | Myopic on multi-step dependencies |
 > | Level 2: Strategic Solver | Planning + ReAct | Multi-step planning, context engineering, memory | Context bloat; repetitive action loops |
 > | Level 3: Collaborative MAS | Level 4: Multi-Agent | Coordinator/Manager or Decentralized handoffs | Inter-agent latency, coordination overhead |
 > | Level 4: Self-Evolving | Level 5: Autonomous | Dynamic tool/agent synthesis (`AgentCreator`) | Verification, sandboxing, security risk |
 
-{
 When transitioning from Level 2 (single strategic agent) to Level 3 (multi-agent), [[Source - A practical|practical_guide_building_agents]] (p. 16) advises maximizing single-agent performance first via prompt templates and clear tool descriptions, splitting into multiple agents only when (i) conditional branching (`if-then-else`) overwhelms a single instruction set, or (ii) tool overlap degrades selection accuracy (some implementations handle $>15$ distinct tools while others fail with $<10$ overlapping tools).
-}
 
 ## Visual Diagnostics & Geometric Structure
 

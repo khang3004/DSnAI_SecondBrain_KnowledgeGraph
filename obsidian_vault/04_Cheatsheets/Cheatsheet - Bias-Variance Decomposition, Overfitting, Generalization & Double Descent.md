@@ -55,7 +55,7 @@ flowchart LR
   $$
   \mathbb{E}_{\mathcal D,\epsilon}\!\big[(y-\hat f_{\mathcal D}(\boldsymbol{x}))^2\big]=\mathrm{Bias}^2+\mathrm{Var}+\sigma_\epsilon^2
   $$
-- **2. FOUR REGIMES ACROSS P/N**
+- **2. FOUR REGIMES ACROSS $P/N$**
 - **3. KEY THEOREM — Min-Norm & Marchenko–Pastur**
   $$
   \hat{\boldsymbol{w}}_{\min}=\arg\min_{\boldsymbol{\Phi}\boldsymbol{w}=\boldsymbol{y}}\lVert \boldsymbol{w} \rVert_2=\boldsymbol{\Phi}^{+}\boldsymbol{y}=\boldsymbol{\Phi}^{\top}(\boldsymbol{\Phi}\boldsymbol{\Phi}^{\top})^{-1}\boldsymbol{y}
